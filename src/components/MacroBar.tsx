@@ -35,21 +35,45 @@ interface MacroBarProps {
   unit?: string;
 }
 
-/** Labeled macro progress bar (protein/carb/fat/fiber), colored per hifi tokens. */
+/** Labeled macro progress bar (protein/carb/fat/fiber) with remaining allowance indicator & smooth fill animation. */
 export function MacroBar({ kind, value, target, unit = "g" }: MacroBarProps) {
   const pct = target > 0 ? Math.min(100, Math.max(0, (value / target) * 100)) : 0;
+  const remaining = target - value;
+  const isOver = target > 0 && remaining < 0;
+  const isMet = target > 0 && remaining === 0;
   const c = macroClasses(kind);
+
   return (
     <div>
       <div className="mb-1.5 flex items-center justify-between">
-        <span className={`text-[13px] font-bold ${c.text}`}>{macroLabel(kind)}</span>
-        <span className="font-mono text-xs text-ink-secondary">
+        <div className="flex items-center gap-1.5">
+          <span className={`text-[13px] font-bold ${c.text}`}>{macroLabel(kind)}</span>
+          {target > 0 && (
+            <span
+              className={`text-xs font-mono ${
+                isOver
+                  ? "font-bold text-danger animate-pulse"
+                  : isMet
+                  ? "font-bold text-accent"
+                  : `${c.text} opacity-75 font-semibold`
+              }`}
+            >
+              • {isOver ? `+${formatNumber(Math.abs(remaining))}${unit} aşıldı!` : isMet ? "✓ Tamamlandı" : `${formatNumber(remaining)}${unit} kaldı`}
+            </span>
+          )}
+        </div>
+        <span className={`font-mono text-xs ${isOver ? "font-bold text-danger" : "text-ink-secondary"}`}>
           {formatNumber(value)} / {formatNumber(target)}
           {unit}
         </span>
       </div>
-      <div className={`h-2 rounded-full ${c.track}`}>
-        <div className={`h-full rounded-full ${c.bg}`} style={{ width: `${pct}%` }} />
+      <div className={`h-2 rounded-full ${c.track} overflow-hidden`}>
+        <div
+          className={`h-full rounded-full transition-all duration-700 ease-out ${
+            isOver ? "bg-danger shadow-[0_0_8px_rgba(255,128,128,0.5)]" : c.bg
+          }`}
+          style={{ width: `${pct}%` }}
+        />
       </div>
     </div>
   );
