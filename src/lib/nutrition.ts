@@ -14,6 +14,7 @@ import type { Nutrition } from "../types";
  *    "2.600"   -> 2600    (tek nokta + tam 3 hane = binlik)
  *    "1.234.5" -> 1234.5  (birden çok nokta: sonuncusu ondalık)
  *    "12.5"    -> 12.5    (3 haneli değil = ondalık)
+ *    "0.500"   -> 0.5     (baştaki 0 binlik olamaz)
  */
 export function parseNum(input: string): number {
   const s = String(input).trim();
@@ -34,8 +35,10 @@ export function parseNum(input: string): number {
         ? parts.join("")
         : parts.slice(0, -1).join("") + "." + last;
     } else {
-      // Tek nokta: "2.600" binlik, "12.5" ondalık.
-      normalized = /^\d+$/.test(parts[0]) && /^\d{3}$/.test(parts[1]) ? parts.join("") : s;
+      // Tek nokta: "2.600" binlik; "12.5" ve "0.500" ondalık.
+      // parts[0] sıfırla başlıyorsa binlik gruplama olamaz — kimse bini "0.500" yazmaz.
+      const isThousands = /^[1-9]\d*$/.test(parts[0]) && /^\d{3}$/.test(parts[1]);
+      normalized = isThousands ? parts.join("") : s;
     }
   }
 
