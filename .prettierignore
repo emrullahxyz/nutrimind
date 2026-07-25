@@ -1,0 +1,6 @@
+pnpm-lock.yaml
+*.dc.html
+support.js
+eski veriler ('Emrullah' kullanıcısı).json
+dist
+node_modules
