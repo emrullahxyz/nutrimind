@@ -32,6 +32,9 @@ export default {
         sans: ["Manrope", "system-ui", "sans-serif"],
         mono: ['"JetBrains Mono"', "ui-monospace", "monospace"],
       },
+      screens: {
+        fine: { raw: "(pointer: fine)" },
+      },
       borderRadius: {
         chip: "12px",
         card: "20px",
