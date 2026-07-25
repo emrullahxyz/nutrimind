@@ -1,0 +1,499 @@
+{
+  "user_profile": {
+    "weight_kg": 80,
+    "height_cm": 187
+  },
+  "known_products": {
+    "protein_powder": {
+      "name": "KFD WPC 82",
+      "per_100g_estimate": {
+        "kcal": 388,
+        "protein_g": 82.5,
+        "carbs_g": 5,
+        "fat_g": 5
+      }
+    },
+    "greek_yogurt_lean": {
+      "name": "Jogurt typu greckiego naturalny",
+      "serving_g": 150,
+      "nutrition": {
+        "kcal": 77,
+        "protein_g": 13.1,
+        "carbs_g": 6.2,
+        "fat_g": 0,
+        "fiber_g": 0
+      }
+    },
+    "lavash": {
+      "serving_g": 60,
+      "nutrition": {
+        "kcal": 175,
+        "protein_g": 4.9,
+        "carbs_g": 29.4,
+        "fat_g": 3.5
+      }
+    },
+    "oat": {
+      "name": "Kupiec Płatki Owsiane Błyskawiczne",
+      "brand": "Kupiec",
+      "barcode": "5902172000220",
+      "url": "https://pl.openfoodfacts.org/product/5902172000220/p%C5%82atki-owsiane-b%C5%82yskawiczne-kupiec",
+      "nutrition_per_100g": {
+        "kcal": 375,
+        "protein_g": 14.0,
+        "carbs_g": 60.0,
+        "fat_g": 7.3,
+        "fiber_g": 6.9
+      }
+    },
+    "homemade_pizza": {
+      "name": "Ev yapımı pizza",
+      "items": [
+        "280 g pizza hamuru",
+        "60 g domates sosu",
+        "125 g mozzarella",
+        "22 g grana padano",
+        "1 tatlı kaşığı zeytinyağı"
+      ],
+      "nutrition": {
+        "kcal": 1012.5,
+        "protein_g": 53.2,
+        "carbs_g": 128.7,
+        "fat_g": 29.9,
+        "fiber_g": 4.8
+      }
+    },
+    "paczki_marmolada_auchan": {
+      "name": "Pączki z marmoladą i cukrem pudrem (Auchan)",
+      "brand": "Auchan",
+      "serving_g": 65,
+      "nutrition_per_100g": {
+        "kcal": 349,
+        "protein_g": 5.8,
+        "carbs_g": 56.1,
+        "fat_g": 12.0,
+        "fiber_g": 1.5
+      },
+      "nutrition_per_serving": {
+        "kcal": 227,
+        "protein_g": 3.8,
+        "carbs_g": 36.5,
+        "fat_g": 7.8,
+        "fiber_g": 1.0
+      }
+    }
+  },
+  "days": [
+    {
+      "date": "2026-07-20",
+      "meals": [
+        {
+          "name": "Overnight oats",
+          "items": [
+            "75 g instant yulaf",
+            "40 g KFD WPC 82",
+            "150 g süt",
+            "1 muz"
+          ],
+          "nutrition": {
+            "kcal": 625,
+            "protein_g": 52,
+            "carbs_g": 86,
+            "fat_g": 10,
+            "fiber_g": 12
+          }
+        },
+        {
+          "name": "Yoğurt + yumurta",
+          "items": [
+            "150 g yağsız Yunan yoğurdu",
+            "3 haşlanmış yumurta"
+          ],
+          "nutrition": {
+            "kcal": 311,
+            "protein_g": 32,
+            "carbs_g": 7,
+            "fat_g": 16,
+            "fiber_g": 0
+          }
+        },
+        {
+          "name": "Kavun",
+          "items": [
+            "4 ince dilim kavun"
+          ],
+          "nutrition": {
+            "kcal": 70,
+            "protein_g": 1.5,
+            "carbs_g": 17,
+            "fat_g": 0,
+            "fiber_g": 2
+          }
+        },
+        {
+          "name": "Kayseri yağlaması",
+          "items": [
+            "250 g dana kıyma",
+            "2 sivri biber",
+            "2 domates",
+            "2 soğan",
+            "1.5 tatlı kaşığı biber salçası",
+            "2.5 yemek kaşığı domates salçası",
+            "5 lavaş",
+            "Sarımsaklı yoğurt"
+          ],
+          "portion": "20 dilimin 13'ü",
+          "nutrition": {
+            "kcal": 1230,
+            "protein_g": 71,
+            "carbs_g": 136,
+            "fat_g": 50,
+            "fiber_g": 6.5
+          }
+        }
+      ],
+      "daily_total_estimated": {
+        "kcal": 2240,
+        "protein_g": 157,
+        "carbs_g": 246,
+        "fat_g": 76,
+        "fiber_g": 21
+      }
+    },
+    {
+      "date": "2026-07-21",
+      "meals": [
+        {
+          "name": "Tavuklu makarna",
+          "nutrition": {
+            "kcal": 641,
+            "protein_g": 61,
+            "carbs_g": 75,
+            "fat_g": 8
+          }
+        },
+        {
+          "name": "Yumurta + mozzarella + hindi füme + süt",
+          "items": [
+            "2 yumurta",
+            "76 g mozzarella",
+            "83 g hindi füme",
+            "306 g süt"
+          ],
+          "nutrition": {
+            "kcal": 551,
+            "protein_g": 53,
+            "carbs_g": 17,
+            "fat_g": 27
+          }
+        },
+        {
+          "name": "Spor sonrası shake",
+          "items": [
+            "45 g KFD WPC 82",
+            "200 g süt"
+          ],
+          "nutrition": {
+            "kcal": 296,
+            "protein_g": 44,
+            "carbs_g": 11,
+            "fat_g": 8
+          }
+        },
+        {
+          "name": "Kabak kızartması + sarımsaklı yoğurt",
+          "portion": "Yarısı",
+          "nutrition": {
+            "kcal": 573,
+            "protein_g": 10.5,
+            "carbs_g": 21,
+            "fat_g": 51.5,
+            "fiber_g": 5
+          }
+        },
+        {
+          "name": "Mercimek çorbası",
+          "items": [
+            "3 kepçe"
+          ],
+          "nutrition": {
+            "kcal": 240,
+            "protein_g": 12,
+            "carbs_g": 36,
+            "fat_g": 5,
+            "fiber_g": 10
+          }
+        }
+      ],
+      "daily_total_estimated": {
+        "kcal": 2301,
+        "protein_g": 180.5,
+        "carbs_g": 160,
+        "fat_g": 99.5,
+        "fiber_g": 15
+      }
+    },
+    {
+      "date": "2026-07-22",
+      "meals": [
+        {
+          "name": "Ev yapımı pizza",
+          "items": [
+            "280 g pizza hamuru",
+            "60 g domates sosu",
+            "125 g mozzarella",
+            "22 g grana padano",
+            "1 tatlı kaşığı zeytinyağı"
+          ],
+          "nutrition": {
+            "kcal": 1012.5,
+            "protein_g": 53.2,
+            "carbs_g": 128.7,
+            "fat_g": 29.9,
+            "fiber_g": 4.8
+          }
+        },
+        {
+          "name": "Tavuklu patatesli bezelye yemeği + Pilav (%60)",
+          "items": [
+            "430 g pişmiş tavuklu patatesli bezelye yemeği (süzülmüş)",
+            "178g parboiled pirinç & şehriyeli tereyağlı pilavın %60'ı"
+          ],
+          "nutrition": {
+            "kcal": 942.7,
+            "protein_g": 50.6,
+            "carbs_g": 136.9,
+            "fat_g": 17.8,
+            "fiber_g": 9.6
+          }
+        },
+        {
+          "name": "Protein shake",
+          "items": [
+            "45 g KFD WPC 82 (su ile)"
+          ],
+          "nutrition": {
+            "kcal": 175.5,
+            "protein_g": 36.0,
+            "carbs_g": 2.9,
+            "fat_g": 2.9,
+            "fiber_g": 0.0
+          }
+        }
+      ],
+      "daily_total_estimated": {
+        "kcal": 2130.7,
+        "protein_g": 139.8,
+        "carbs_g": 268.5,
+        "fat_g": 50.6,
+        "fiber_g": 14.4
+      }
+    },
+    {
+      "date": "2026-07-23",
+      "meals": [
+        {
+          "name": "Yulaf + protein + süt",
+          "items": [
+            "75 g Kupiec yulaf ezmesi",
+            "30 g KFD WPC 82",
+            "120 g süt (%3.2)"
+          ],
+          "nutrition": {
+            "kcal": 470.3,
+            "protein_g": 38.6,
+            "carbs_g": 52.6,
+            "fat_g": 11.3,
+            "fiber_g": 5.2
+          }
+        },
+        {
+          "name": "Ev yapımı pizza",
+          "items": [
+            "280 g pizza hamuru",
+            "60 g domates sosu",
+            "125 g mozzarella",
+            "22 g grana padano",
+            "1 tatlı kaşığı zeytinyağı"
+          ],
+          "nutrition": {
+            "kcal": 1012.5,
+            "protein_g": 53.2,
+            "carbs_g": 128.7,
+            "fat_g": 29.9,
+            "fiber_g": 4.8
+          }
+        },
+        {
+          "name": "Pączki z marmoladą i cukrem pudrem (Auchan)",
+          "items": [
+            "1.5 adet Auchan marmelatlı ve pudra şekerli pączek (~97.5 g)"
+          ],
+          "portion": "1.5 adet",
+          "nutrition": {
+            "kcal": 340.5,
+            "protein_g": 5.7,
+            "carbs_g": 54.8,
+            "fat_g": 11.7,
+            "fiber_g": 1.5
+          }
+        },
+        {
+          "name": "Taş Fırında Ev Yapımı Kıymalı İskender Pide",
+          "items": [
+            "176 g dana kıyma",
+            "110 g pizza hamuru",
+            "80 g domates sosu",
+            "21 g tereyağı / sade yağ"
+          ],
+          "nutrition": {
+            "kcal": 851.1,
+            "protein_g": 47.0,
+            "carbs_g": 60.7,
+            "fat_g": 43.0,
+            "fiber_g": 2.5
+          }
+        }
+      ],
+      "daily_total_estimated": {
+        "kcal": 2674.4,
+        "protein_g": 144.5,
+        "carbs_g": 296.8,
+        "fat_g": 95.9,
+        "fiber_g": 14.0
+      }
+    }
+  ]
+}
+
+
+{
+  "aliases": [
+    {
+      "trigger": [
+        "yoğurt",
+        "aynı yoğurt",
+        "daha önce attığım yoğurt"
+      ],
+      "maps_to": {
+        "name": "Jogurt typu greckiego naturalny",
+        "brand": "Auchan",
+        "serving_g": 150,
+        "nutrition": {
+          "kcal": 77,
+          "protein_g": 13.1,
+          "carbs_g": 6.2,
+          "fat_g": 0,
+          "fiber_g": 0
+        }
+      },
+      "created_from_message": "İkinci öğün olarak da ekteki yoğurdu ve 3 haşlanmış yumurta yedim. Bundan sonra yoğurt yedim dediğim zaman bu yoğurdu anlamalısın."
+    },
+    {
+      "trigger": [
+        "aynı protein tozu",
+        "protein tozu",
+        "kfd",
+        "kfd wpc 82"
+      ],
+      "maps_to": {
+        "name": "KFD WPC 82",
+        "nutrition_per_100g": {
+          "kcal": 388,
+          "protein_g": 82.5,
+          "carbs_g": 5,
+          "fat_g": 5
+        }
+      },
+      "created_from_context": true
+    },
+    {
+      "trigger": [
+        "o lavaş",
+		"auchan lavaş",
+        "daha önce attığım lavaş",
+        "kayseri yağlaması lavaşı"
+      ],
+      "maps_to": {
+        "name": "Lavaş",
+        "portion_g": 60,
+        "nutrition": {
+          "kcal": 175,
+          "protein_g": 4.9,
+          "carbs_g": 29.4,
+          "fat_g": 3.5
+        }
+      },
+      "created_from_message": "Bu lavaşları aklında tut. Kayseri yağlaması için kullanacağım."
+    },
+    {
+      "trigger": [
+        "yulaf",
+        "aynı yulaf",
+        "daha önce attığım yulaf",
+        "yulaf ezmesi",
+        "kupiec yulaf"
+      ],
+      "maps_to": {
+        "name": "Kupiec Płatki Owsiane Błyskawiczne",
+        "brand": "Kupiec",
+        "barcode": "5902172000220",
+        "nutrition_per_100g": {
+          "kcal": 375,
+          "protein_g": 14.0,
+          "carbs_g": 60.0,
+          "fat_g": 7.3,
+          "fiber_g": 6.9
+        }
+      },
+      "created_from_message": "yulafın detayları burada: https://pl.openfoodfacts.org/product/5902172000220/p%C5%82atki-owsiane-b%C5%82yskawiczne-kupiec"
+    },
+    {
+      "trigger": [
+        "ev yapımı pizza",
+        "aynı pizza",
+        "pizza",
+        "daha önce yaptığım pizza"
+      ],
+      "maps_to": {
+        "name": "Ev yapımı pizza",
+        "items": [
+          "280 g pizza hamuru",
+          "60 g domates sosu",
+          "125 g mozzarella",
+          "22 g grana padano",
+          "1 tatlı kaşığı zeytinyağı"
+        ],
+        "nutrition": {
+          "kcal": 1012.5,
+          "protein_g": 53.2,
+          "carbs_g": 128.7,
+          "fat_g": 29.9,
+          "fiber_g": 4.8
+        }
+      },
+      "created_from_message": "Daha önceki günlerde yaptığım bi pizza var. Aynısını bugün yaptım ve yedim."
+    },
+    {
+      "trigger": [
+        "donut",
+        "donat",
+        "pudralı donat",
+        "pudralı donut"
+      ],
+      "maps_to": {
+        "name": "Pączki z marmoladą i cukrem pudrem (Auchan)",
+        "brand": "Auchan",
+        "serving_g": 65,
+        "nutrition": {
+          "kcal": 227,
+          "protein_g": 3.8,
+          "carbs_g": 36.5,
+          "fat_g": 7.8,
+          "fiber_g": 1.0
+        }
+      },
+      "created_from_message": "Polonya Auchan'da satılan pudra şekerli Pączki z marmoladą"
+    }
+  ]
+}

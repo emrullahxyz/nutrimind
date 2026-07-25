@@ -1,0 +1,36 @@
+# deps
+node_modules/
+.pnpm-store/
+
+# build output
+dist/
+build/
+*.tsbuildinfo
+
+# env & secrets
+.env
+.env.local
+.env.*.local
+
+# db data (docker volume is external, but ignore any local dumps)
+*.sql.bak
+db-data/
+
+# logs
+*.log
+npm-debug.log*
+pnpm-debug.log*
+
+# editor / os
+.DS_Store
+Thumbs.db
+.vscode/*
+!.vscode/extensions.json
+.idea/
+
+# vite / web
+apps/web/dist/
+.vite/
+
+# misc
+coverage/
