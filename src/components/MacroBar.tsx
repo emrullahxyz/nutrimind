@@ -62,9 +62,25 @@ function useAnimatedValue(targetVal: number, durationMs: number = 750): number {
   return displayVal;
 }
 
+/** Hook to trigger initial mount CSS width transition from 0 to targetPct. */
+function useAnimatedPct(targetPct: number): number {
+  const [currentPct, setCurrentPct] = useState(0);
+
+  useEffect(() => {
+    // Micro-delay ensures browser paints initial 0% before transitioning to targetPct
+    const timer = setTimeout(() => {
+      setCurrentPct(targetPct);
+    }, 50);
+    return () => clearTimeout(timer);
+  }, [targetPct]);
+
+  return currentPct;
+}
+
 /** Labeled macro progress bar (protein/carb/fat/fiber) with count-up number animation & smooth bar fill. */
 export function MacroBar({ kind, value, target, unit = "g" }: MacroBarProps) {
-  const pct = target > 0 ? Math.min(100, Math.max(0, (value / target) * 100)) : 0;
+  const targetPct = target > 0 ? Math.min(100, Math.max(0, (value / target) * 100)) : 0;
+  const pct = useAnimatedPct(targetPct);
   const animatedValue = useAnimatedValue(value);
   const remaining = target - animatedValue;
   const isOver = target > 0 && (target - value) < 0;
