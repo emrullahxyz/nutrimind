@@ -134,6 +134,11 @@ export function DayView({ date, emptyLabel = "Bu gün için kayıt yok." }: { da
     setErr(null);
   }
 
+  function requestCloseMerge() {
+    if (busy) return;
+    setShowMergeModal(false);
+  }
+
   const selectedMeals = selectedIndices.map((i) => meals[i]).filter(Boolean);
 
   return (
@@ -259,7 +264,7 @@ export function DayView({ date, emptyLabel = "Bu gün için kayıt yok." }: { da
         <MergeModal
           selectedMeals={selectedMeals}
           onConfirm={handleMergeConfirm}
-          onClose={() => setShowMergeModal(false)}
+          onClose={requestCloseMerge}
           busy={busy}
         />
       )}
