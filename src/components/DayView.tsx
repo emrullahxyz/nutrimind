@@ -207,16 +207,18 @@ export function DayView({ date, emptyLabel = "Bu gün için kayıt yok." }: { da
               const pct = total.kcal ? (m.computed.kcal / total.kcal) * 100 : 0;
               const isSelected = selectedIndices.includes(i);
               return (
-                <li key={m.id} className="anim-fadeup flex flex-col gap-1" style={{ animationDelay: `${i * 70}ms` }}>
+                <li key={m.id} className="group anim-fadeup flex flex-col gap-1" style={{ animationDelay: `${i * 70}ms` }}>
                   <div className="flex items-baseline justify-between gap-3">
                     <label className="flex min-w-0 cursor-pointer items-baseline gap-2">
                       <input
                         type="checkbox"
                         checked={isSelected}
                         onChange={() => toggleSelect(i)}
-                        className="h-3.5 w-3.5 rounded border-line bg-white/[0.06] text-accent focus:ring-0"
+                        className={`h-3.5 w-3.5 rounded border-line bg-white/[0.06] text-accent focus:ring-0 transition-opacity duration-150 ${
+                          isSelected ? "opacity-100" : "opacity-0 group-hover:opacity-100 focus:opacity-100"
+                        }`}
                       />
-                      <span className={`min-w-0 truncate text-sm font-semibold ${isSelected ? "text-accent" : "text-ink-primary"}`}>
+                      <span className={`min-w-0 truncate text-sm font-semibold transition-colors ${isSelected ? "text-accent" : "text-ink-primary"}`}>
                         {m.label}
                       </span>
                     </label>

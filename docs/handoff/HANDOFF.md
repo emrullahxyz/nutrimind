@@ -161,7 +161,7 @@ Vite `localhost`'a bağlanıyor; `127.0.0.1:5173`'e curl atmak boş döner — `
 **Deploy tuzakları:**
 - `pnpm deploy` ÇALIŞMAZ — pnpm'in kendi `deploy` alt komutuna gidip `ERR_PNPM_CANNOT_DEPLOY` verir.
   **`pnpm run deploy`** kullan.
-- `deploy.sh` içindeki SSH anahtarı yolu `C:\Users\Emrullah\Desktop\Projeler\OPS\id_oracle` olarak
+- `deploy.sh` içindeki SSH anahtarı yolu `C:\Users\Emrullah\Desktop\Projeler\.ssh\id_oracle` olarak
   güncellendi. Global `CLAUDE.md` hâlâ `.gemini\tmp\shared\id_oracle` diyor ama **o dosya artık yok**.
   Sunucuya bağlanan başka script'ler de kırılmış olabilir.
 - `deploy.sh` yalnızca frontend'i (`dist/`) yayınlar; `/var/www/nutri` içeriğini silip yerine koyar.
@@ -199,7 +199,7 @@ Yerelde çalıştırmak İKİ terminal ister:
 `node server/index.js` (127.0.0.1:8790) ve `pnpm dev` (localhost:5173 — 127.0.0.1:5173 çalışmaz).
 
 Yayın: `pnpm run deploy` ← "run" ŞART; çıplak `pnpm deploy` pnpm'in kendi komutuna gider.
-SSH anahtarı: `C:\Users\Emrullah\Desktop\Projeler\OPS\id_oracle`
+SSH anahtarı: `C:\Users\Emrullah\Desktop\Projeler\.ssh\id_oracle`
 (CLAUDE.md'deki `.gemini\tmp\shared` yolu ARTIK YOK — güncellenmesi gerekiyor.)
 
 Kod yazmadan önce oku:

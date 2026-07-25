@@ -3,7 +3,7 @@
 # Kullanım (Git Bash):  bash deploy.sh   ya da   pnpm deploy
 set -e
 
-KEY="/c/Users/Emrullah/.gemini/tmp/shared/id_oracle"
+KEY="/c/Users/Emrullah/Desktop/Projeler/.ssh/id_oracle"
 SERVER="emrullah@92.5.42.0"
 WEBROOT="/var/www/nutri"
 

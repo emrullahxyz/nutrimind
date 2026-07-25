@@ -67,6 +67,21 @@ export function MealForm({
   const [saving, setSaving] = useState(false);
   const [err, setErr] = useState<string | null>(null);
 
+  function switchMode(newMode: Mode) {
+    setMode(newMode);
+    // Düzenleme modunda "Hafızadan" sekmesine geçilince ve sepet boşsa, mevcut öğünü sepete 1. kalem olarak koy
+    if (newMode === "alias" && existing && basket.length === 0) {
+      setBasket([
+        {
+          id: `existing-${Date.now()}`,
+          name: existing.label,
+          grams: 0,
+          nutrition: existing.computed,
+        },
+      ]);
+    }
+  }
+
   const alias = aliases.find((a) => a.id === aliasId);
   const gramsValue = parseNum(grams);
   const scaled: Nutrition | null =
@@ -112,7 +127,7 @@ export function MealForm({
     };
     const nextBasket = [...basket, newItem];
     setBasket(nextBasket);
-    if (!name.trim()) {
+    if (!name.trim() || (existing && name === existing.label)) {
       setName(nextBasket.map((b) => b.name).join(" + "));
     }
   }
@@ -121,7 +136,7 @@ export function MealForm({
     const next = basket.filter((_, i) => i !== index);
     setBasket(next);
     if (next.length === 0) {
-      setName("");
+      setName(existing?.label ?? "");
     } else {
       setName(next.map((b) => b.name).join(" + "));
     }
@@ -146,12 +161,10 @@ export function MealForm({
 
   return (
     <Modal title={editIndex === null ? "Öğün ekle" : "Öğünü düzenle"} onClose={requestClose}>
-      {editIndex === null && (
-        <div className="mb-4 flex gap-2">
-          <ModeTab active={mode === "alias"} onClick={() => setMode("alias")} label="Hafızadan" />
-          <ModeTab active={mode === "manual"} onClick={() => setMode("manual")} label="Elle" />
-        </div>
-      )}
+      <div className="mb-4 flex gap-2">
+        <ModeTab active={mode === "alias"} onClick={() => switchMode("alias")} label="Hafızadan" />
+        <ModeTab active={mode === "manual"} onClick={() => switchMode("manual")} label="Elle" />
+      </div>
 
       {mode === "alias" ? (
         aliases.length === 0 ? (
@@ -160,7 +173,7 @@ export function MealForm({
           <div className="flex flex-col gap-3">
             <div className="flex flex-col gap-2 rounded-chip border border-line bg-white/[0.02] p-3">
               <label className="block">
-                <Label>Besin seç</Label>
+                <Label>Hafızadan besin seç</Label>
                 <select className={fieldCls} value={aliasId} onChange={(e) => pickAlias(e.target.value)}>
                   {aliases.map((a) => (
                     <option key={a.id} value={a.id} className="bg-elevated-2">
@@ -199,7 +212,7 @@ export function MealForm({
               <div className="flex flex-col gap-2 rounded-chip border border-line bg-white/[0.03] p-3">
                 <div className="flex items-center justify-between">
                   <span className="font-mono text-xs font-bold text-ink-secondary">
-                    Eklenen Kalemler ({basket.length})
+                    Öğün Kalemleri ({basket.length})
                   </span>
                   <button
                     type="button"
