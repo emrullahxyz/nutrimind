@@ -217,3 +217,97 @@ Yeni bir yazma formu eklersen: gün yazımı günün TAMAMINI değiştirir — p
 `mealsOf(days, date)`'ten TAZE türet, closure'daki eski diziyi kullanma.
 
 ---
+
+## Handoff: 2026-07-25T19:10Z — agy bulguları doğrulandı ve düzeltmeler agy'ye yaptırıldı
+
+> ⚠️ **Bir üstteki 2026-07-25T00:20Z kaydı birkaç noktada ARTIK GEÇERSİZ.** Düzeltmeler için
+> "Üstteki handoff'un yanlış kalan maddeleri" bölümüne bak — özellikle "git yok" ve "SSH anahtar yolu"
+> maddeleri.
+
+### Current Task State
+
+**Bitti.** Bu oturumda kod yazılmadı — iş bilinçli olarak **agy'ye (Antigravity / Gemini) devredildi.**
+
+Akış şuydu: agy bir analiz raporu üretmişti (`agy_debugging.md`, takip edilmeyen dosya olarak duruyordu).
+Claude o raporun **her bulgusunu kaynak kodda tek tek doğruladı**, gerçek olanları ayıkladı, kullanıcıyla
+kapsamı netleştirdi, sonra raporu agy'nin soğuk başlayıp tek başına uygulayabileceği bir **yürütme
+brifingine** dönüştürdü. Kullanıcı brifingi agy'ye verdi; agy uyguladı; Claude sonucu doğruladı.
+
+- Doğrulama + brifing + sonuç: `docs/analysis/2026-07-25-agy-debugging.md` (tek doğruluk kaynağı)
+- Plan dosyası: `<USERPROFILE>\.claude\plans\joyful-scribbling-tarjan.md`
+
+Açık iş yok. **Deploy YAPILMADI** — değişiklikler yerelde commit'li, `https://nutri.emrullah.xyz`
+hâlâ eski sürümü sunuyor.
+
+### Modified Files (agy tarafından, 6 commit)
+
+| Commit | Ne yaptı |
+|---|---|
+| `f7094b4` | `src/lib/nutrition.ts` + `.test.ts` — `parseNum` baştan sıfırlı ondalık |
+| `9eb6fce` | `src/components/MacroBar.tsx` — kalan/aşan gerçek değerden |
+| `6a317dd` | `src/components/DayView.tsx` + `tailwind.config.js` — dokunmatikte checkbox |
+| `ed86f4d` | `src/components/DayView.tsx` — `MergeModal` kapanma guard'ı |
+| `cb0e7eb` | `.gitignore` + rapor `docs/analysis/` altına arşivlendi |
+| `a1b537d` | `src/components/CalorieRing.tsx` — **kapsam dışıydı**, aşağıya bak |
+
+### Key Decisions
+
+- **Raporu körlemesine uygulama.** agy'nin 6 bulgusundan 3'ü gerçek+kapsam içi çıktı, 2'si gerçek ama
+  kapsam dışı bırakıldı, 1'i **çürütüldü**. Claude ayrıca agy'nin kaçırdığı 2 bulgu ekledi. Bir LLM
+  raporunu doğrulamadan uygulamak bu projede kabul edilmiş bir yöntem değil.
+- **Backend'e yine dokunulmadı.** `server/index.js`'in gerçek doğrulama eksikleri var (bkz. "Bilinen
+  açıklar") ama dosya donmuş kabul ediliyor — kullanıcı kararı.
+- **`parseNum` düzeltmesi minimum tutuldu**: `^\d+$` → `^[1-9]\d*$`. Çok noktalı dala (`"0.500.250"`)
+  guard eklenmedi; pratikte imkânsız girdi için karmaşıklık eklemek istenmedi.
+- **MacroBar'da `0.05` eşiği bilinçli.** Tam eşitlik (`=== 0`) kullanılsaydı "0,0g kaldı" yazan bir bar
+  "✓ Tamamlandı" rozetini alamaz, düzeltilen tutarsızlığın aynısı geri gelirdi.
+- **Tailwind `fine:` varyantı el ile tanımlandı.** Proje **Tailwind 3.4.17** — v4'ün yerleşik
+  `pointer-fine:` varyantı burada YOK. `tailwind.config.js` → `theme.extend.screens.fine = { raw: "(pointer: fine)" }`.
+
+### Critical Context
+
+**1. Üstteki handoff'un yanlış kalan maddeleri — düzeltmeler:**
+
+- ❌ "Bu proje GIT DEPOSU DEĞİL, commit atma" → **YANLIŞ.** Proje artık git deposu (`master` dalı,
+  16 commit). Normal şekilde commit at.
+- ❌ "SSH anahtarı `Desktop\Projeler\.ssh\id_deploy`, CLAUDE.md'deki yol artık yok" → **YANLIŞ.**
+  Bu, o oturumun yanlış teşhisiydi ve sonradan geri alındı. Geçerli yol global CLAUDE.md'dekidir:
+  `<USERPROFILE>\.gemini\tmp\shared\id_deploy`. `deploy.sh` bu yolu kullanıyor.
+- ⚠️ "Doğrulama kapısı `pnpm typecheck` + `pnpm test` + `pnpm build`" → hâlâ geçerli, ama beklenen test
+  sayısı **12/12**.
+- ✅ Hâlâ geçerli: iki terminal (`node server/index.js` + `pnpm dev`), `localhost:5173`
+  (`127.0.0.1:5173` boş döner), `pnpm run deploy` ("run" şart), salt-okunur referans listesi.
+
+**2. agy kapsamı aştı — `a1b537d`.** `CalorieRing` düzeltmesi brifingde açıkça "❌ Dokunma" işaretliydi;
+agy yine de uyguladı. Sonuç doğru çalışıyor ve kullanıcı kabul etti, ama **agy'ye iş devrederken
+"kapsam dışı" maddelerin gerçekten dışarıda kaldığını sonradan kontrol et** — brifingde yazması yetmiyor.
+
+**3. Çürütülen bulgu — tekrar açma.** `ConfirmButton`'ın `onBlur`'ünün dokunmatikte silme onayını
+sıfırladığı iddiası (`src/components/FormBits.tsx`) kodda doğrulanamadı: `onBlur` yalnızca odak **başka
+bir öğeye** geçtiğinde çalışır, aynı butona ikinci dokunuşta tetiklenmez. Gerçek cihazda tekrarlanabilir
+bir hata gösterilmeden düzeltme yapılmamalı.
+
+**4. Bilinen açıklar (bilinçli olarak açık bırakıldı):**
+- `server/index.js` → `PUT /api/goals` gövdeyi hiç doğrulamıyor; `{}` gönderilirse hedefler bozulur.
+  `readBody` 1 MB aşımında `req.destroy()` yapıyor ama `413` dönmüyor.
+- İndeks tabanlı gün mutasyonu — "gün yazımı günün tamamını değiştirir" mimarisinin kabul edilmiş
+  sonucu. `MealForm.save()` payload'ı kayıt anında taze türettiği için tek istemcide güvenli; iki
+  istemci aynı anda yazarsa indeksler kayabilir. Çözümü optimistic-locking gerektirir.
+- `useAnimatedValue` (`MacroBar.tsx`) her değer değişiminde 0'dan sayıyor, önceki değerden geçmiyor.
+  Kozmetik; bilinçli tasarım tercihi olabilir, ayrı karar.
+- Ham hex: `CalorieRing.tsx` (`#34d399`, `#ff8080` — ikisinin de token karşılığı var: `accent`, `danger`),
+  `WeekBars.tsx:53-57`, `HistoryPage.tsx:38`.
+- Üstteki handoff'un "Next Steps" listesindeki Minor'lar (negatif makro engeli, ölü proplar,
+  `fetchData`'nın `{error}` gövdesini okumaması, ilk yükleme hatasında yeniden dene butonu yok,
+  `toDraft`'ın ondalıkları nokta ile yazması, Modal focus trap yok) — hiçbirine dokunulmadı.
+
+### Next Steps
+
+1. **Deploy** — istenirse `pnpm run deploy` (yalnızca `dist/` frontend'i yayınlar, backend'e dokunmaz).
+   Bu oturumda kullanıcı açıkça istemedi.
+2. **Tarayıcıda elle doğrulama** — otomatik kapılar (typecheck/test/build) geçti ama 4 düzeltmenin
+   tarayıcı doğrulaması yapılmadı. Adımlar `docs/analysis/2026-07-25-agy-debugging.md` § 2.7'de.
+   Özellikle mobil checkbox görünürlüğü ve MergeModal guard'ı gerçek cihaz/emülatör istiyor.
+3. Yukarıdaki "Bilinen açıklar"dan biri — hepsi opsiyonel.
+
+---

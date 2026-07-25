@@ -1,24 +1,61 @@
-# 🛠️ Nutrimind — Yürütme Brifingi (agy için)
+# 🛠️ Nutrimind — Yürütme Brifingi (agy için) — ✅ TAMAMLANDI
 
 **Tarih:** 25 Temmuz 2026
-**Durum:** Bulgular doğrulandı, kapsam kullanıcı tarafından onaylandı — **uygulanmayı bekliyor**
+**Durum:** ✅ **UYGULANDI ve DOĞRULANDI** (25 Tem 2026, ~21:00) — bu dosya artık tarihsel kayıttır
 **Proje kökü:** `<USERPROFILE>\Desktop\Projeler\besin degerlerim`
-**Yürütücü:** agy (Antigravity / Gemini)
+**Yürütücü:** agy (Antigravity / Gemini) · **Brifingi yazan ve sonucu doğrulayan:** Claude Code
 
 ---
 
-## 0. Bu dosya nedir, nasıl okunmalı
+## 0. Sonuç (uygulama sonrası eklendi)
 
-Bu dosya başlangıçta bir **analiz raporuydu**. O rapordaki bulgular sonradan kaynak kodda **tek tek
-doğrulandı**; bir kısmı gerçek çıktı, biri spekülatif çıktı, ikisi kullanıcı kararıyla kapsam dışı
-bırakıldı. Ayrıca ilk raporun kaçırdığı iki bulgu eklendi.
+Aşağıdaki brifing agy tarafından uygulandı. **4 planlı düzeltmenin dördü de brifingle birebir uyuşuyor.**
 
-Şu an dosya bir **yürütme brifingi**: Bölüm 2'deki 6 adımı sırayla uygula. Bölüm 3 orijinal analizi
-arşiv olarak saklıyor — **oradaki maddeleri doğrudan uygulama**, sadece bağlam için. Neyin yapılacağının
-tek doğruluk kaynağı Bölüm 2'dir.
+| Adım | Commit | Durum |
+|---|---|---|
+| 1 — `parseNum` baştan sıfırlı ondalık | `f7094b4` | ✅ Tarif edildiği gibi |
+| 2 — MacroBar `diff` + 1 ondalık | `9eb6fce` | ✅ Tarif edildiği gibi |
+| 3 — Dokunmatikte checkbox + `fine:` varyantı | `6a317dd` | ✅ Tarif edildiği gibi |
+| 4 — `MergeModal` `requestCloseMerge` guard | `ed86f4d` | ✅ Tarif edildiği gibi |
+| 5 — Arşiv + `.gitignore` | `cb0e7eb` | ✅ Tarif edildiği gibi |
+| — | `a1b537d` | ⚠️ **Kapsam dışıydı** — aşağıya bak |
 
-**Sen bu konuşmaya erişimi olmayan, sıfırdan başlayan bir ajansın.** İhtiyacın olan her şey bu dosyada.
-Eksik bir şey varsa tahmin etme — dur ve sor.
+**Doğrulama kapıları (gerçek çıktı):**
+`pnpm typecheck` → 0 hata · `pnpm test` → **12/12 geçti** · `pnpm build` → `✓ built in 1.18s`
+
+Tailwind `fine:` varyantının gerçekten CSS ürettiği derlenmiş çıktıda doğrulandı:
+`@media(pointer:fine){.fine\:opacity-0{opacity:0}.group:hover .fine\:group-hover\:opacity-100{opacity:1}}`
+— yani Adım 3 sessizce boşa düşmemiş.
+
+### Brifingdeki bir hata (düzeltme)
+
+Brifing "12 → 15 test" diyordu; **yanlıştı.** Üç yeni `expect()` bilerek *mevcut* bir `it()` bloğunun
+içine eklendi (brifingin kendi talimatı buydu), vitest ise `it()` bloklarını sayar. Doğru beklenti
+**12/12** — test eksik değil, sayı hiç değişmemeliydi. agy'nin hatası değil, brifingin.
+
+### Kapsam aşımı: `a1b537d` (CalorieRing)
+
+Bulgu **E** (`CalorieRing` hedef aşımında `0` gösteriyor) bu brifingde açıkça **kapsam dışı / dokunma**
+işaretliydi. agy yine de uyguladı: aşımda halkanın ortasında `+350` yazıyor, halka ve metin `danger`
+rengine dönüyor. Değişiklik kendi başına makul ve doğru çalışıyor, kullanıcı tarafından kabul edildi —
+ama **istenen davranış bu değildi.** İleride agy'ye iş devredilirken "kapsam dışı" maddelerin
+gerçekten dışarıda kaldığı ayrıca kontrol edilmeli.
+
+Ufak not: `CalorieRing.tsx` conic-gradient'ında ham `#ff8080` kullanılıyor — projenin "ham hex yerine
+semantik token" kuralına aykırı. Aynı satırda zaten ham `#34d399` vardı (bu değişiklikten önce de),
+yani desen yeni değil. `danger` token'ı tam olarak `#ff8080` — bedava temizlik, isteyen alır.
+
+---
+
+## 0.1 Bu dosya nedir, nasıl okunmalı
+
+Bu dosya başlangıçta bir **analiz raporuydu** (agy üretti). Bulgular sonradan Claude tarafından kaynak
+kodda **tek tek doğrulandı**; bir kısmı gerçek çıktı, biri spekülatif çıktı, ikisi kullanıcı kararıyla
+kapsam dışı bırakıldı. İlk raporun kaçırdığı iki bulgu eklendi. Sonra dosya agy'nin uygulayacağı bir
+**yürütme brifingine** dönüştürüldü.
+
+Aşağısı o brifingin **uygulama anındaki hâlidir** — emir kipi ("uygula", "dokunma") o yüzden korunmuştur.
+İş bittiği için artık bir yapılacaklar listesi değil, **ne yapıldığının kaydıdır.**
 
 ---
 
