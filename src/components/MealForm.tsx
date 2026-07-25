@@ -41,6 +41,128 @@ function ModeTab({ active, onClick, label }: { active: boolean; onClick: () => v
   );
 }
 
+function BasketSection({
+  basket,
+  editingIndex,
+  onStartEdit,
+  onSaveEdit,
+  onCancelEdit,
+  onRemove,
+  onClear,
+  editDraft,
+  setEditDraft,
+  basketTotal,
+}: {
+  basket: BasketItem[];
+  editingIndex: number | null;
+  onStartEdit: (idx: number) => void;
+  onSaveEdit: (idx: number) => void;
+  onCancelEdit: () => void;
+  onRemove: (idx: number) => void;
+  onClear: () => void;
+  editDraft: { name: string; nutrition: NutritionDraft };
+  setEditDraft: (d: { name: string; nutrition: NutritionDraft }) => void;
+  basketTotal: Nutrition | null;
+}) {
+  if (basket.length === 0) return null;
+
+  return (
+    <div className="flex flex-col gap-2 rounded-chip border border-line bg-white/[0.03] p-3">
+      <div className="flex items-center justify-between">
+        <span className="font-mono text-xs font-bold text-ink-secondary">
+          Öğün Kalemleri ({basket.length})
+        </span>
+        <button
+          type="button"
+          onClick={onClear}
+          className="text-[11px] text-ink-tertiary hover:text-danger"
+        >
+          Temizle
+        </button>
+      </div>
+      <ul className="flex flex-col gap-2">
+        {basket.map((item, idx) => {
+          const isEditing = editingIndex === idx;
+          if (isEditing) {
+            return (
+              <li
+                key={item.id}
+                className="flex flex-col gap-2.5 rounded-chip border border-memory/40 bg-white/[0.06] p-3"
+              >
+                <TextField
+                  label="Kalem Adı"
+                  value={editDraft.name}
+                  onChange={(name) => setEditDraft({ ...editDraft, name })}
+                />
+                <NutritionFields
+                  draft={editDraft.nutrition}
+                  onChange={(nutrition) => setEditDraft({ ...editDraft, nutrition })}
+                />
+                <div className="flex justify-end gap-2 mt-1">
+                  <button
+                    type="button"
+                    onClick={onCancelEdit}
+                    className="rounded-pill border border-line px-3 py-1.5 text-xs text-ink-tertiary hover:text-ink-primary"
+                  >
+                    Vazgeç
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => onSaveEdit(idx)}
+                    className="rounded-pill bg-memory px-3 py-1.5 text-xs font-bold text-memory-ink"
+                  >
+                    Tamam
+                  </button>
+                </div>
+              </li>
+            );
+          }
+
+          return (
+            <li
+              key={item.id}
+              className="flex items-center justify-between rounded bg-white/[0.04] px-2.5 py-2 text-xs"
+            >
+              <div className="flex flex-col min-w-0">
+                <span className="font-semibold text-ink-primary truncate">{item.name}</span>
+                <span className="font-mono text-[10px] text-ink-tertiary">
+                  P{formatNumber(item.nutrition.protein, 1)} · K{formatNumber(item.nutrition.carbs, 1)} · Y
+                  {formatNumber(item.nutrition.fat, 1)} · L{formatNumber(item.nutrition.fiber, 1)}
+                </span>
+              </div>
+              <div className="flex flex-none items-center gap-2 font-mono text-[11px] text-ink-secondary">
+                <span>{formatKcal(item.nutrition.kcal)}</span>
+                <button
+                  type="button"
+                  onClick={() => onStartEdit(idx)}
+                  className="font-sans text-xs font-semibold text-ink-tertiary transition hover:text-memory"
+                >
+                  Düzenle
+                </button>
+                <button
+                  type="button"
+                  onClick={() => onRemove(idx)}
+                  className="text-ink-tertiary transition hover:text-danger"
+                >
+                  ✕
+                </button>
+              </div>
+            </li>
+          );
+        })}
+      </ul>
+
+      {basketTotal && (
+        <div className="mt-1 border-t border-line pt-2 font-mono text-xs text-accent">
+          <strong>Toplam: {formatKcal(basketTotal.kcal)}</strong> (P
+          {formatNumber(basketTotal.protein, 1)} · K{formatNumber(basketTotal.carbs, 1)} · Y
+          {formatNumber(basketTotal.fat, 1)} · L{formatNumber(basketTotal.fiber, 1)})
+        </div>
+      )}
+    </div>
+  );
+}
+
 /** Öğün ekleme/düzenleme. editIndex null ise ekleme, değilse o günün o indeksli öğünü. */
 export function MealForm({
   date,
@@ -54,7 +176,7 @@ export function MealForm({
   const { aliases, days, setDayMeals } = useData();
   const existing = editIndex === null ? undefined : mealsOf(days, date)[editIndex];
 
-  // Düzenle kısmına basınca da varsayılan olarak "Hafızadan" seçili gelsin
+  // Varsayılan olarak "Hafızadan" seçili gelsin
   const [mode, setMode] = useState<Mode>("alias");
   const [name, setName] = useState(existing?.label ?? "");
   const [draft, setDraft] = useState<NutritionDraft>(existing ? toDraft(existing.computed) : EMPTY_DRAFT);
@@ -77,12 +199,18 @@ export function MealForm({
       : []
   );
 
+  // Sepetteki bir kalemi satır-içi (inline) düzenleme durumu
+  const [editingBasketIndex, setEditingBasketIndex] = useState<number | null>(null);
+  const [basketEditDraft, setBasketEditDraft] = useState<{ name: string; nutrition: NutritionDraft }>({
+    name: "",
+    nutrition: EMPTY_DRAFT,
+  });
+
   const [saving, setSaving] = useState(false);
   const [err, setErr] = useState<string | null>(null);
 
   function switchMode(newMode: Mode) {
     setMode(newMode);
-    // Sekme değiştiğinde sepet boş ve düzenleme modundaysak, mevcut öğünü sepete 1. kalem olarak koy
     if (existing && basket.length === 0) {
       setBasket([
         {
@@ -92,6 +220,35 @@ export function MealForm({
         },
       ]);
     }
+  }
+
+  function startEditingBasketItem(idx: number) {
+    const item = basket[idx];
+    if (!item) return;
+    setEditingBasketIndex(idx);
+    setBasketEditDraft({
+      name: item.name,
+      nutrition: toDraft(item.nutrition),
+    });
+  }
+
+  function saveBasketItemEdit(idx: number) {
+    if (editingBasketIndex === null) return;
+    const nextBasket = [...basket];
+    nextBasket[idx] = {
+      ...nextBasket[idx],
+      name: basketEditDraft.name.trim() || nextBasket[idx].name,
+      nutrition: fromDraft(basketEditDraft.nutrition),
+    };
+    setBasket(nextBasket);
+    setEditingBasketIndex(null);
+    if (existing && name === existing.label) {
+      setName(nextBasket.map((b) => b.name).join(" + "));
+    }
+  }
+
+  function cancelBasketItemEdit() {
+    setEditingBasketIndex(null);
   }
 
   const alias = aliases.find((a) => a.id === aliasId);
@@ -140,7 +297,6 @@ export function MealForm({
   function addAliasToBasket() {
     if (!alias || !scaled || gramsValue <= 0) return;
 
-    // Düzenleme modunda ve sepet henüz boşsa mevcut öğünü de sepete 1. kalem olarak al
     let currentBasket = basket;
     if (existing && currentBasket.length === 0) {
       currentBasket = [
@@ -166,8 +322,6 @@ export function MealForm({
     if (!hasManualNutrition) return;
 
     let currentBasket = basket;
-
-    // Eğer düzenleme modundaysak ve sepet boşsa mevcut öğünü sepete 1. kalem yap
     if (existing && currentBasket.length === 0) {
       currentBasket = [
         {
@@ -193,6 +347,9 @@ export function MealForm({
   }
 
   function removeFromBasket(index: number) {
+    if (editingBasketIndex === index) {
+      setEditingBasketIndex(null);
+    }
     const next = basket.filter((_, i) => i !== index);
     setBasket(next);
     if (next.length === 0) {
@@ -268,50 +425,21 @@ export function MealForm({
               )}
             </div>
 
-            {basket.length > 0 && (
-              <div className="flex flex-col gap-2 rounded-chip border border-line bg-white/[0.03] p-3">
-                <div className="flex items-center justify-between">
-                  <span className="font-mono text-xs font-bold text-ink-secondary">
-                    Öğün Kalemleri ({basket.length})
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => setBasket([])}
-                    className="text-[11px] text-ink-tertiary hover:text-danger"
-                  >
-                    Temizle
-                  </button>
-                </div>
-                <ul className="flex flex-col gap-1.5">
-                  {basket.map((item, idx) => (
-                    <li
-                      key={item.id}
-                      className="flex items-center justify-between rounded bg-white/[0.04] px-2.5 py-1.5 text-xs"
-                    >
-                      <span className="font-medium text-ink-primary">{item.name}</span>
-                      <div className="flex items-center gap-2 font-mono text-[11px] text-ink-secondary">
-                        <span>{formatKcal(item.nutrition.kcal)}</span>
-                        <button
-                          type="button"
-                          onClick={() => removeFromBasket(idx)}
-                          className="text-ink-tertiary transition hover:text-danger"
-                        >
-                          ✕
-                        </button>
-                      </div>
-                    </li>
-                  ))}
-                </ul>
-
-                {basketTotal && (
-                  <div className="mt-1 border-t border-line pt-2 font-mono text-xs text-accent">
-                    <strong>Toplam: {formatKcal(basketTotal.kcal)}</strong> (P
-                    {formatNumber(basketTotal.protein, 1)} · K{formatNumber(basketTotal.carbs, 1)} · Y
-                    {formatNumber(basketTotal.fat, 1)} · L{formatNumber(basketTotal.fiber, 1)})
-                  </div>
-                )}
-              </div>
-            )}
+            <BasketSection
+              basket={basket}
+              editingIndex={editingBasketIndex}
+              onStartEdit={startEditingBasketItem}
+              onSaveEdit={saveBasketItemEdit}
+              onCancelEdit={cancelBasketItemEdit}
+              onRemove={removeFromBasket}
+              onClear={() => {
+                setEditingBasketIndex(null);
+                setBasket([]);
+              }}
+              editDraft={basketEditDraft}
+              setEditDraft={setBasketEditDraft}
+              basketTotal={basketTotal}
+            />
 
             <TextField
               label="Birleşik Öğün Adı"
@@ -346,50 +474,21 @@ export function MealForm({
             </div>
           </div>
 
-          {basket.length > 0 && (
-            <div className="flex flex-col gap-2 rounded-chip border border-line bg-white/[0.03] p-3">
-              <div className="flex items-center justify-between">
-                <span className="font-mono text-xs font-bold text-ink-secondary">
-                  Öğün Kalemleri ({basket.length})
-                </span>
-                <button
-                  type="button"
-                  onClick={() => setBasket([])}
-                  className="text-[11px] text-ink-tertiary hover:text-danger"
-                >
-                  Temizle
-                </button>
-              </div>
-              <ul className="flex flex-col gap-1.5">
-                {basket.map((item, idx) => (
-                  <li
-                    key={item.id}
-                    className="flex items-center justify-between rounded bg-white/[0.04] px-2.5 py-1.5 text-xs"
-                  >
-                    <span className="font-medium text-ink-primary">{item.name}</span>
-                    <div className="flex items-center gap-2 font-mono text-[11px] text-ink-secondary">
-                      <span>{formatKcal(item.nutrition.kcal)}</span>
-                      <button
-                        type="button"
-                        onClick={() => removeFromBasket(idx)}
-                        className="text-ink-tertiary transition hover:text-danger"
-                      >
-                        ✕
-                      </button>
-                    </div>
-                  </li>
-                ))}
-              </ul>
-
-              {basketTotal && (
-                <div className="mt-1 border-t border-line pt-2 font-mono text-xs text-accent">
-                  <strong>Toplam: {formatKcal(basketTotal.kcal)}</strong> (P
-                  {formatNumber(basketTotal.protein, 1)} · K{formatNumber(basketTotal.carbs, 1)} · Y
-                  {formatNumber(basketTotal.fat, 1)} · L{formatNumber(basketTotal.fiber, 1)})
-                </div>
-              )}
-            </div>
-          )}
+          <BasketSection
+            basket={basket}
+            editingIndex={editingBasketIndex}
+            onStartEdit={startEditingBasketItem}
+            onSaveEdit={saveBasketItemEdit}
+            onCancelEdit={cancelBasketItemEdit}
+            onRemove={removeFromBasket}
+            onClear={() => {
+              setEditingBasketIndex(null);
+              setBasket([]);
+            }}
+            editDraft={basketEditDraft}
+            setEditDraft={setBasketEditDraft}
+            basketTotal={basketTotal}
+          />
 
           <TextField
             label="Öğün Adı"
