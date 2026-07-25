@@ -33,6 +33,9 @@ describe("parseNum", () => {
     expect(parseNum("12.5")).toBe(12.5);
     expect(parseNum("0.75")).toBe(0.75);
     expect(parseNum("66.7")).toBe(66.7);
+    expect(parseNum("0.500")).toBe(0.5);
+    expect(parseNum("0.250")).toBe(0.25);
+    expect(parseNum("0,500")).toBe(0.5); // virgüllü yol zaten doğruydu — regresyon kilidi
   });
   it("negatif değerleri korur", () => {
     expect(parseNum("-12,5")).toBe(-12.5);
