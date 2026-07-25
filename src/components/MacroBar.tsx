@@ -82,9 +82,9 @@ export function MacroBar({ kind, value, target, unit = "g" }: MacroBarProps) {
   const targetPct = target > 0 ? Math.min(100, Math.max(0, (value / target) * 100)) : 0;
   const pct = useAnimatedPct(targetPct);
   const animatedValue = useAnimatedValue(value);
-  const remaining = target - animatedValue;
-  const isOver = target > 0 && (target - value) < 0;
-  const isMet = target > 0 && (target - value) === 0;
+  const diff = target - value;
+  const isOver = target > 0 && diff < -0.05;
+  const isMet = target > 0 && Math.abs(diff) <= 0.05;
   const c = macroClasses(kind);
 
   return (
@@ -102,7 +102,7 @@ export function MacroBar({ kind, value, target, unit = "g" }: MacroBarProps) {
                   : `${c.text} opacity-75 font-semibold`
               }`}
             >
-              • {isOver ? `+${formatNumber(Math.abs(target - value))}${unit} aşıldı!` : isMet ? "✓ Tamamlandı" : `${formatNumber(remaining)}${unit} kaldı`}
+              • {isOver ? `+${formatNumber(Math.abs(diff), 1)}${unit} aşıldı!` : isMet ? "✓ Tamamlandı" : `${formatNumber(diff, 1)}${unit} kaldı`}
             </span>
           )}
         </div>
