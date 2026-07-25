@@ -3,7 +3,7 @@
 # Kullanım (Git Bash):  bash deploy.sh   ya da   pnpm deploy
 set -e
 
-KEY="$HOME/.gemini/tmp/shared/id_deploy"
+KEY="$HOME/Desktop/Projeler/.ssh/id_deploy"
 SERVER="nutri@<SERVER_IP>"
 WEBROOT="/var/www/nutri"
 
