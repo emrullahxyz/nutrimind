@@ -54,7 +54,8 @@ export function MealForm({
   const { aliases, days, setDayMeals } = useData();
   const existing = editIndex === null ? undefined : mealsOf(days, date)[editIndex];
 
-  const [mode, setMode] = useState<Mode>(existing ? "manual" : "alias");
+  // Düzenle kısmına basınca da varsayılan olarak "Hafızadan" seçili gelsin
+  const [mode, setMode] = useState<Mode>("alias");
   const [name, setName] = useState(existing?.label ?? "");
   const [draft, setDraft] = useState<NutritionDraft>(existing ? toDraft(existing.computed) : EMPTY_DRAFT);
   const [aliasId, setAliasId] = useState(aliases[0]?.id ?? "");
@@ -63,8 +64,18 @@ export function MealForm({
   // Elle modunda girilen münferit kalem adı
   const [manualItemName, setManualItemName] = useState("");
 
-  // Çoklu kalem (sepet) desteği
-  const [basket, setBasket] = useState<BasketItem[]>([]);
+  // Çoklu kalem (sepet) desteği — düzenleme modundaysa mevcut öğünü varsayılan ilk kalem yap
+  const [basket, setBasket] = useState<BasketItem[]>(() =>
+    existing
+      ? [
+          {
+            id: `existing-${Date.now()}`,
+            name: existing.label,
+            nutrition: existing.computed,
+          },
+        ]
+      : []
+  );
 
   const [saving, setSaving] = useState(false);
   const [err, setErr] = useState<string | null>(null);
@@ -156,7 +167,7 @@ export function MealForm({
 
     let currentBasket = basket;
 
-    // Eğer düzenleme modundaysak, sepet boşsa ve draft hala orijinal öğün değerleriyse mevcut öğünü sepete 1. kalem yap
+    // Eğer düzenleme modundaysak ve sepet boşsa mevcut öğünü sepete 1. kalem yap
     if (existing && currentBasket.length === 0) {
       currentBasket = [
         {
