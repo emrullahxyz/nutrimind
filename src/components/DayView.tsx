@@ -4,14 +4,62 @@ import { MacroBar } from "./MacroBar";
 import { MacroDonut } from "./MacroDonut";
 import { Card } from "./Card";
 import { MealForm } from "./MealForm";
-import { ConfirmButton, ErrorText } from "./FormBits";
-import { formatKcal } from "../lib/format";
+import { ConfirmButton, ErrorText, FormActions, TextField } from "./FormBits";
+import { Modal } from "./Modal";
+import { formatKcal, formatNumber } from "../lib/format";
 import { useData } from "../lib/data";
-import { dayTotal, mealsOf, toPayload } from "../lib/days";
+import { dayTotal, mealsOf, sumMeals, toPayload } from "../lib/days";
+import type { MealItem, MealPayload } from "../types";
+
+function MergeModal({
+  selectedMeals,
+  onConfirm,
+  onClose,
+  busy,
+}: {
+  selectedMeals: MealItem[];
+  onConfirm: (name: string) => Promise<void>;
+  onClose: () => void;
+  busy: boolean;
+}) {
+  const defaultName = selectedMeals.map((m) => m.label).join(" + ");
+  const [name, setName] = useState(defaultName);
+  const totalNutrition = sumMeals(selectedMeals);
+
+  return (
+    <Modal title={`${selectedMeals.length} Öğünü Birleştir`} onClose={onClose}>
+      <div className="flex flex-col gap-4">
+        <TextField label="Birleşik öğün adı" value={name} onChange={setName} placeholder="örn. Kahvaltı" />
+        <div className="rounded-chip border border-line bg-white/[0.03] p-3">
+          <p className="mb-2 text-xs font-semibold text-ink-secondary">Birleşecek Öğünler:</p>
+          <ul className="space-y-1 text-xs text-ink-tertiary">
+            {selectedMeals.map((m) => (
+              <li key={m.id} className="flex justify-between">
+                <span>• {m.label}</span>
+                <span className="font-mono">{formatKcal(m.computed.kcal)}</span>
+              </li>
+            ))}
+          </ul>
+          <div className="mt-3 border-t border-line pt-2 font-mono text-xs text-accent">
+            <strong>Toplam: {formatKcal(totalNutrition.kcal)}</strong> (P{formatNumber(totalNutrition.protein, 1)} · K
+            {formatNumber(totalNutrition.carbs, 1)} · Y{formatNumber(totalNutrition.fat, 1)} · L
+            {formatNumber(totalNutrition.fiber, 1)})
+          </div>
+        </div>
+        <FormActions
+          onCancel={onClose}
+          onSave={() => onConfirm(name.trim() || defaultName)}
+          saving={busy}
+          disabled={!name.trim()}
+          saveLabel="Birleştir"
+        />
+      </div>
+    </Modal>
+  );
+}
 
 /** Bir günün besin görselleri (halka + makro donut + barlar + öğün katkısı)
- *  ve öğün ekleme/düzenleme/silme kontrolleri.
- *  Hem "Günlük" sekmesi hem Geçmiş'teki gün-detayı bunu kullanır → görünüm eşleşir. */
+ *  ve öğün ekleme/düzenleme/silme/birleştirme kontrolleri. */
 export function DayView({ date, emptyLabel = "Bu gün için kayıt yok." }: { date: string; emptyLabel?: string }) {
   const { goals, days, setDayMeals } = useData();
   const meals = mealsOf(days, date);
@@ -20,9 +68,18 @@ export function DayView({ date, emptyLabel = "Bu gün için kayıt yok." }: { da
 
   // editIndex: null = yeni öğün, sayı = o indeksli öğünü düzenle. form kapalıysa undefined.
   const [editIndex, setEditIndex] = useState<number | null | undefined>(undefined);
+  const [selectedIndices, setSelectedIndices] = useState<number[]>([]);
+  const [showMergeModal, setShowMergeModal] = useState(false);
   const [err, setErr] = useState<string | null>(null);
-  // Gün yazımı tüm günü değiştirdiği için iki silme aynı anda uçarsa biri diğerini geri getirir.
   const [busy, setBusy] = useState(false);
+
+  function toggleSelect(index: number) {
+    if (selectedIndices.includes(index)) {
+      setSelectedIndices(selectedIndices.filter((i) => i !== index));
+    } else {
+      setSelectedIndices([...selectedIndices, index]);
+    }
+  }
 
   async function removeMeal(index: number) {
     if (busy) return;
@@ -33,6 +90,7 @@ export function DayView({ date, emptyLabel = "Bu gün için kayıt yok." }: { da
         date,
         toPayload(meals.filter((_, i) => i !== index)),
       );
+      setSelectedIndices(selectedIndices.filter((i) => i !== index));
     } catch (e) {
       setErr(String((e as Error)?.message ?? e));
     } finally {
@@ -40,11 +98,43 @@ export function DayView({ date, emptyLabel = "Bu gün için kayıt yok." }: { da
     }
   }
 
-  /** Form kapanınca eski silme hatası ekranda kalmasın. */
+  async function handleMergeConfirm(mergedName: string) {
+    if (busy || selectedIndices.length < 2) return;
+    setErr(null);
+    setBusy(true);
+    try {
+      const selectedMeals = selectedIndices.map((i) => meals[i]);
+      const mergedNutrition = sumMeals(selectedMeals);
+      const mergedMeal: MealPayload = { name: mergedName, nutrition: mergedNutrition };
+
+      const firstIndex = Math.min(...selectedIndices);
+      const selectedSet = new Set(selectedIndices);
+
+      const nextPayload: MealPayload[] = [];
+      meals.forEach((m, idx) => {
+        if (idx === firstIndex) {
+          nextPayload.push(mergedMeal);
+        } else if (!selectedSet.has(idx)) {
+          nextPayload.push({ name: m.label, nutrition: m.computed });
+        }
+      });
+
+      await setDayMeals(date, nextPayload);
+      setSelectedIndices([]);
+      setShowMergeModal(false);
+    } catch (e) {
+      setErr(String((e as Error)?.message ?? e));
+    } finally {
+      setBusy(false);
+    }
+  }
+
   function closeForm() {
     setEditIndex(undefined);
     setErr(null);
   }
+
+  const selectedMeals = selectedIndices.map((i) => meals[i]).filter(Boolean);
 
   return (
     <div className="flex flex-col gap-5">
@@ -74,15 +164,39 @@ export function DayView({ date, emptyLabel = "Bu gün için kayıt yok." }: { da
 
       <section className="flex flex-col gap-2">
         <div className="flex items-center justify-between gap-3">
-          <h3 className="text-sm font-bold text-ink-secondary">Öğün katkısı</h3>
-          <button
-            type="button"
-            onClick={() => setEditIndex(null)}
-            disabled={busy}
-            className="rounded-pill bg-accent px-3 py-1.5 text-xs font-extrabold text-accent-ink transition hover:opacity-90 disabled:opacity-40"
-          >
-            + Öğün ekle
-          </button>
+          <div className="flex items-center gap-2">
+            <h3 className="text-sm font-bold text-ink-secondary">Öğün katkısı</h3>
+            {selectedIndices.length > 0 && (
+              <button
+                type="button"
+                onClick={() => setSelectedIndices([])}
+                className="text-[11px] text-ink-tertiary hover:text-ink-primary"
+              >
+                (Seçimi Temizle)
+              </button>
+            )}
+          </div>
+
+          <div className="flex items-center gap-2">
+            {selectedIndices.length >= 2 && (
+              <button
+                type="button"
+                onClick={() => setShowMergeModal(true)}
+                disabled={busy}
+                className="rounded-pill bg-memory px-3 py-1.5 text-xs font-bold text-memory-ink transition hover:opacity-90 disabled:opacity-40"
+              >
+                🔗 Birleştir ({selectedIndices.length})
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={() => setEditIndex(null)}
+              disabled={busy}
+              className="rounded-pill bg-accent px-3 py-1.5 text-xs font-extrabold text-accent-ink transition hover:opacity-90 disabled:opacity-40"
+            >
+              + Öğün ekle
+            </button>
+          </div>
         </div>
 
         {err && <ErrorText>{err}</ErrorText>}
@@ -91,10 +205,21 @@ export function DayView({ date, emptyLabel = "Bu gün için kayıt yok." }: { da
           <ul className="flex flex-col gap-2.5">
             {meals.map((m, i) => {
               const pct = total.kcal ? (m.computed.kcal / total.kcal) * 100 : 0;
+              const isSelected = selectedIndices.includes(i);
               return (
                 <li key={m.id} className="anim-fadeup flex flex-col gap-1" style={{ animationDelay: `${i * 70}ms` }}>
                   <div className="flex items-baseline justify-between gap-3">
-                    <span className="min-w-0 truncate text-sm font-semibold text-ink-primary">{m.label}</span>
+                    <label className="flex min-w-0 cursor-pointer items-baseline gap-2">
+                      <input
+                        type="checkbox"
+                        checked={isSelected}
+                        onChange={() => toggleSelect(i)}
+                        className="h-3.5 w-3.5 rounded border-line bg-white/[0.06] text-accent focus:ring-0"
+                      />
+                      <span className={`min-w-0 truncate text-sm font-semibold ${isSelected ? "text-accent" : "text-ink-primary"}`}>
+                        {m.label}
+                      </span>
+                    </label>
                     <span className="flex flex-none items-center gap-2">
                       <span className="font-mono text-xs text-ink-secondary">
                         {formatKcal(m.computed.kcal)}
@@ -126,8 +251,15 @@ export function DayView({ date, emptyLabel = "Bu gün için kayıt yok." }: { da
         )}
       </section>
 
-      {editIndex !== undefined && (
-        <MealForm date={date} editIndex={editIndex} onClose={closeForm} />
+      {editIndex !== undefined && <MealForm date={date} editIndex={editIndex} onClose={closeForm} />}
+
+      {showMergeModal && (
+        <MergeModal
+          selectedMeals={selectedMeals}
+          onConfirm={handleMergeConfirm}
+          onClose={() => setShowMergeModal(false)}
+          busy={busy}
+        />
       )}
     </div>
   );
