@@ -5,6 +5,7 @@ import type { ReactNode } from "react";
  *  Esc ya da zemine tıklama kapatır; açıkken arka plan kaydırması kilitlenir. */
 export function Modal({ title, onClose, children }: { title: string; onClose: () => void; children: ReactNode }) {
   const dialogRef = useRef<HTMLDivElement>(null);
+  const mouseDownTargetRef = useRef<EventTarget | null>(null);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -20,10 +21,7 @@ export function Modal({ title, onClose, children }: { title: string; onClose: ()
   }, [onClose]);
 
   // Odak yönetimi: açılışta odağı diyalog içine taşı, kapanışta açılmadan önceki
-  // odaklı elemana geri döndür. Bağımlılık dizisi bilerek boş bırakıldı ki bu
-  // sadece mount/unmount sırasında bir kez çalışsın (onClose her render'da
-  // kimlik değiştirebildiği için yukarıdaki Esc efektine eklenmedi). Tam bir
-  // odak tuzağı (focus trap) KURULMADI — Tab tuşu diyalogdan serbestçe çıkabilir.
+  // odaklı elemana geri döndür.
   useEffect(() => {
     const previouslyFocused = document.activeElement as HTMLElement | null;
 
@@ -46,7 +44,16 @@ export function Modal({ title, onClose, children }: { title: string; onClose: ()
   return (
     <div
       className="fixed inset-0 z-50 flex items-end justify-center bg-black/70 backdrop-blur-sm sm:items-center sm:p-4"
-      onClick={onClose}
+      onMouseDown={(e) => {
+        mouseDownTargetRef.current = e.target;
+      }}
+      onClick={(e) => {
+        // Tıklama mousedown anında da tam olarak backdrop üzerinde başladıysa kapat.
+        // Modal içerisinden başlayan fare sürüklemelerinde mousedownTarget modal içi olacağı için kapanmaz.
+        if (mouseDownTargetRef.current === e.currentTarget && e.target === e.currentTarget) {
+          onClose();
+        }
+      }}
     >
       <div
         ref={dialogRef}
