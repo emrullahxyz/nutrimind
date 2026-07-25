@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import { formatNumber } from "../lib/format";
 
 export type MacroKind = "protein" | "carb" | "fat" | "memory";
@@ -35,12 +36,39 @@ interface MacroBarProps {
   unit?: string;
 }
 
-/** Labeled macro progress bar (protein/carb/fat/fiber) with remaining allowance indicator & smooth fill animation. */
+/** Synchronized count-up animation hook for numeric values. */
+function useAnimatedValue(targetVal: number, durationMs: number = 750): number {
+  const [displayVal, setDisplayVal] = useState(0);
+
+  useEffect(() => {
+    let startTimestamp: number | null = null;
+
+    const step = (timestamp: number) => {
+      if (!startTimestamp) startTimestamp = timestamp;
+      const progress = Math.min((timestamp - startTimestamp) / durationMs, 1);
+      // Cubic ease-out curve matching CSS ease-out
+      const easeProgress = 1 - Math.pow(1 - progress, 3);
+      setDisplayVal(Math.round(targetVal * easeProgress));
+
+      if (progress < 1) {
+        requestAnimationFrame(step);
+      }
+    };
+
+    const handle = requestAnimationFrame(step);
+    return () => cancelAnimationFrame(handle);
+  }, [targetVal, durationMs]);
+
+  return displayVal;
+}
+
+/** Labeled macro progress bar (protein/carb/fat/fiber) with count-up number animation & smooth bar fill. */
 export function MacroBar({ kind, value, target, unit = "g" }: MacroBarProps) {
   const pct = target > 0 ? Math.min(100, Math.max(0, (value / target) * 100)) : 0;
-  const remaining = target - value;
-  const isOver = target > 0 && remaining < 0;
-  const isMet = target > 0 && remaining === 0;
+  const animatedValue = useAnimatedValue(value);
+  const remaining = target - animatedValue;
+  const isOver = target > 0 && (target - value) < 0;
+  const isMet = target > 0 && (target - value) === 0;
   const c = macroClasses(kind);
 
   return (
@@ -58,12 +86,12 @@ export function MacroBar({ kind, value, target, unit = "g" }: MacroBarProps) {
                   : `${c.text} opacity-75 font-semibold`
               }`}
             >
-              • {isOver ? `+${formatNumber(Math.abs(remaining))}${unit} aşıldı!` : isMet ? "✓ Tamamlandı" : `${formatNumber(remaining)}${unit} kaldı`}
+              • {isOver ? `+${formatNumber(Math.abs(target - value))}${unit} aşıldı!` : isMet ? "✓ Tamamlandı" : `${formatNumber(remaining)}${unit} kaldı`}
             </span>
           )}
         </div>
         <span className={`font-mono text-xs ${isOver ? "font-bold text-danger" : "text-ink-secondary"}`}>
-          {formatNumber(value)} / {formatNumber(target)}
+          {formatNumber(animatedValue)} / {formatNumber(target)}
           {unit}
         </span>
       </div>
