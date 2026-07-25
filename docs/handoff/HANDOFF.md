@@ -236,8 +236,10 @@ brifingine** dönüştürdü. Kullanıcı brifingi agy'ye verdi; agy uyguladı; 
 - Doğrulama + brifing + sonuç: `docs/analysis/2026-07-25-agy-debugging.md` (tek doğruluk kaynağı)
 - Plan dosyası: `C:\Users\Emrullah\.claude\plans\joyful-scribbling-tarjan.md`
 
-Açık iş yok. **Deploy YAPILMADI** — değişiklikler yerelde commit'li, `https://nutri.emrullah.xyz`
-hâlâ eski sürümü sunuyor.
+Açık iş yok. **Deploy YAPILDI** — kullanıcı yayına çıkmayı da agy'ye yaptırdı (25 Tem 2026, 21:02).
+Doğrulandı: sunucudaki `/var/www/nutri/assets/` içeriği (`index-BIYpJ9cQ.js`, `index-BYQaleaD.css`)
+yereldeki `dist/assets/` ile birebir aynı. Vite dosya adlarını içerik hash'iyle ürettiği için aynı isim
+= aynı içerik. `https://nutri.emrullah.xyz` güncel sürümü sunuyor.
 
 ### Modified Files (agy tarafından, 6 commit)
 
@@ -270,9 +272,18 @@ hâlâ eski sürümü sunuyor.
 
 - ❌ "Bu proje GIT DEPOSU DEĞİL, commit atma" → **YANLIŞ.** Proje artık git deposu (`master` dalı,
   16 commit). Normal şekilde commit at.
-- ❌ "SSH anahtarı `Desktop\Projeler\.ssh\id_oracle`, CLAUDE.md'deki yol artık yok" → **YANLIŞ.**
-  Bu, o oturumun yanlış teşhisiydi ve sonradan geri alındı. Geçerli yol global CLAUDE.md'dekidir:
-  `C:\Users\Emrullah\.gemini\tmp\shared\id_oracle`. `deploy.sh` bu yolu kullanıyor.
+- ✅ "SSH anahtarı `Desktop\Projeler\.ssh\id_oracle`, CLAUDE.md'deki yol artık yok" → **DOĞRUYMUŞ.**
+  (Bu satır önce hatalı olarak "yanlış" diye işaretlenmişti; 2026-07-25 21:15'te sunucuya bağlanarak
+  test edilip düzeltildi.) Dolaşımdaki üç yolun durumu:
+
+  | Yol | Durum |
+  |---|---|
+  | `C:\Users\Emrullah\.gemini\tmp\shared\id_oracle` (global CLAUDE.md belgeliyor) | ❌ **Klasör bile yok** |
+  | `C:\Users\Emrullah\Desktop\Projeler\OPS\id_oracle` (bir hafıza notu iddia ediyordu) | ❌ Yok |
+  | `C:\Users\Emrullah\Desktop\Projeler\.ssh\id_oracle` | ✅ **Var ve çalışıyor** — `deploy.sh:6` bunu kullanıyor |
+
+  **Global `CLAUDE.md` hâlâ var olmayan yolu belgeliyor.** Bu depoya ait olmadığı için düzeltilmedi;
+  sunucuya bağlanan başka script'ler de aynı yüzden kırık olabilir. Kullanıcının kararı.
 - ⚠️ "Doğrulama kapısı `pnpm typecheck` + `pnpm test` + `pnpm build`" → hâlâ geçerli, ama beklenen test
   sayısı **12/12**.
 - ✅ Hâlâ geçerli: iki terminal (`node server/index.js` + `pnpm dev`), `localhost:5173`
@@ -303,11 +314,11 @@ bir hata gösterilmeden düzeltme yapılmamalı.
 
 ### Next Steps
 
-1. **Deploy** — istenirse `pnpm run deploy` (yalnızca `dist/` frontend'i yayınlar, backend'e dokunmaz).
-   Bu oturumda kullanıcı açıkça istemedi.
-2. **Tarayıcıda elle doğrulama** — otomatik kapılar (typecheck/test/build) geçti ama 4 düzeltmenin
-   tarayıcı doğrulaması yapılmadı. Adımlar `docs/analysis/2026-07-25-agy-debugging.md` § 2.7'de.
-   Özellikle mobil checkbox görünürlüğü ve MergeModal guard'ı gerçek cihaz/emülatör istiyor.
+1. **Tarayıcıda elle doğrulama** — otomatik kapılar (typecheck/test/build) geçti ve deploy yapıldı, ama
+   4 düzeltmenin hiçbiri tarayıcıda elle doğrulanmadı. Adımlar
+   `docs/analysis/2026-07-25-agy-debugging.md` § 2.7'de. Özellikle mobil checkbox görünürlüğü ve
+   MergeModal guard'ı gerçek cihaz/emülatör istiyor — ve bunlar artık **canlıda**.
+2. **Global `CLAUDE.md`'deki ölü SSH yolunu düzelt** (yukarıdaki tablo). Bu depo dışı bir iş.
 3. Yukarıdaki "Bilinen açıklar"dan biri — hepsi opsiyonel.
 
 ---
