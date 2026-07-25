@@ -215,7 +215,7 @@ export function DayView({ date, emptyLabel = "Bu gün için kayıt yok." }: { da
                         checked={isSelected}
                         onChange={() => toggleSelect(i)}
                         className={`h-3.5 w-3.5 rounded border-line bg-white/[0.06] text-accent focus:ring-0 transition-opacity duration-150 ${
-                          isSelected ? "opacity-100" : "opacity-0 group-hover:opacity-100 focus:opacity-100"
+                          isSelected ? "opacity-100" : "opacity-100 fine:opacity-0 fine:group-hover:opacity-100 focus:opacity-100"
                         }`}
                       />
                       <span className={`min-w-0 truncate text-sm font-semibold transition-colors ${isSelected ? "text-accent" : "text-ink-primary"}`}>
