@@ -35,6 +35,21 @@ interface RawAlias {
   brand?: string | null;
   serving_g?: number;
   nutrition: RawNutrition;
+  barcode?: string | null;
+  off_id?: string | null;
+}
+
+/** Boş olmayan metin ya da `undefined`. Barkod/off_id için: backend'den `null`
+ *  ya da boş metin gelebiliyor, ikisi de "yok" demek — `Alias`'ta alanın HİÇ
+ *  olmaması bunu tek biçimde ifade eder (boş metin barkod diye çizilmesin). */
+function optionalText(v: unknown): string | undefined {
+  return typeof v === "string" && v.trim() !== "" ? v.trim() : undefined;
+}
+
+/** Alan yalnızca değeri varsa nesneye girer — `{barcode: undefined}` yazmak
+ *  `"barcode" in alias` kontrolünü bozardı. */
+function withOptional<K extends string>(key: K, value: string | undefined): Partial<Record<K, string>> {
+  return value === undefined ? {} : { [key]: value } as Record<K, string>;
 }
 
 interface RawData {
@@ -65,6 +80,8 @@ export async function fetchData(): Promise<AppData> {
     brand: a.brand ?? null,
     serving_g: a.serving_g ?? 100,
     nutrition: fill(a.nutrition),
+    ...withOptional("barcode", optionalText(a.barcode)),
+    ...withOptional("off_id", optionalText(a.off_id)),
   }));
 
   return { goals: fill(raw.goals), days, aliases };
@@ -79,6 +96,13 @@ export interface AliasPayload {
   brand: string | null;
   serving_g: number;
   nutrition: Nutrition;
+  /** Faz 4 alanları. GÖNDERİLMEZSE backend öncekini KORUR (`server/index.js`
+   *  içindeki `carry()`), yani elle düzenlenen bir besinin barkodu silinmez.
+   *  `JSON.stringify` `undefined` alanları düşürdüğü için "alanı yazma" ile
+   *  "alanı hiç göndermeme" burada aynı şeydir — bu bilinçli.
+   *  Alanı GERÇEKTEN temizlemek için açıkça `null` gönderilmelidir. */
+  barcode?: string | null;
+  off_id?: string | null;
 }
 
 /** Ortak yazma isteği: JSON gönderir, backend'in {error} mesajını yükseltir. */
