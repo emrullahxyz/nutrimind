@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Card } from "../components/Card";
+import { Stat } from "../components/Stat";
 import { WeekBars } from "../components/WeekBars";
 import { MacroDonut } from "../components/MacroDonut";
 import { DayView } from "../components/DayView";
@@ -81,16 +82,6 @@ function Sparkline({ week }: { week: Week }) {
         );
       })}
     </div>
-  );
-}
-
-function Stat({ label, value, hint }: { label: string; value: string; hint?: string }) {
-  return (
-    <Card className="flex flex-col gap-0.5 p-4">
-      <div className="text-[11px] uppercase tracking-wide text-ink-tertiary">{label}</div>
-      <div className="font-mono text-lg font-extrabold text-ink-primary">{value}</div>
-      {hint && <div className="text-[11px] text-ink-tertiary">{hint}</div>}
-    </Card>
   );
 }
 
