@@ -13,8 +13,11 @@ import {
   toDraft,
 } from "./FormBits";
 import type { NutritionDraft } from "./FormBits";
+import { OffSearch } from "./OffSearch";
 import { useData } from "../lib/data";
 import { parseNum } from "../lib/nutrition";
+import { OFF_SERVING_G } from "../lib/off";
+import type { OffFood } from "../lib/off";
 import type { Alias } from "../types";
 
 /** Alias (besin hafızası) ekleme/düzenleme. initial null ise yeni kayıt. */
@@ -26,6 +29,11 @@ export function AliasForm({ initial, onClose }: { initial: Alias | null; onClose
   const [brand, setBrand] = useState(initial?.brand ?? "");
   const [servingG, setServingG] = useState(String(initial?.serving_g ?? 100));
   const [draft, setDraft] = useState<NutritionDraft>(initial ? toDraft(initial.nutrition) : EMPTY_DRAFT);
+  // Kaynak izi. Elle girilen besinde boş kalır; OFF'tan seçilende dolar ve
+  // düzenlemeler boyunca korunur (backend gövdede olmayan alanı da korur).
+  const [barcode, setBarcode] = useState(initial?.barcode ?? "");
+  const [offId, setOffId] = useState(initial?.off_id ?? "");
+  const [searchOpen, setSearchOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [err, setErr] = useState<string | null>(null);
 
@@ -40,6 +48,24 @@ export function AliasForm({ initial, onClose }: { initial: Alias | null; onClose
   ];
 
   const canSave = triggerList.length > 0 && name.trim().length > 0 && parseNum(servingG) > 0;
+
+  /** OFF'tan gelen ürün formu doldurur.
+   *
+   *  İFADELERE BİLEREK DOKUNULMUYOR. Alias hafızasının tamamı kullanıcının kendi
+   *  diliyle yazdığı ifadeye dayanıyor ("aynı yoğurt"); oraya ürünün Lehçe raf
+   *  adını ("Skyr - jogurt typu islandzkiego z truskawkami") kendiliğinden
+   *  yazmak, hiçbir zaman eşleşmeyecek bir tetikleyici üretirdi. Kayıt zaten en
+   *  az bir ifade istiyor, yani kullanıcı kendi kelimesini yazmadan geçemez. */
+  function applyOffFood(food: OffFood) {
+    setName(food.name);
+    setBrand(food.brand ?? "");
+    // OFF besin değerleri her zaman 100 g içindir.
+    setServingG(String(OFF_SERVING_G));
+    setDraft(toDraft(food.nutrition));
+    setBarcode(food.code);
+    setOffId(food.code);
+    setSearchOpen(false);
+  }
 
   /** Kayıt uçarken kapanmayı engelle: yazma sunucuya düşerken vazgeçilmiş sanılmasın. */
   function requestClose() {
@@ -59,6 +85,10 @@ export function AliasForm({ initial, onClose }: { initial: Alias | null; onClose
         brand: brand.trim() || null,
         serving_g: parseNum(servingG),
         nutrition: fromDraft(draft),
+        // Boş alan GÖNDERİLMEZ (`undefined` JSON'da düşer): backend gövdede
+        // olmayan alanı korur, yani elle düzenleme barkodu silmez.
+        ...(barcode.trim() ? { barcode: barcode.trim() } : {}),
+        ...(offId.trim() ? { off_id: offId.trim() } : {}),
       });
       onClose();
     } catch (e) {
@@ -70,6 +100,24 @@ export function AliasForm({ initial, onClose }: { initial: Alias | null; onClose
   return (
     <Modal title={initial ? "Besini düzenle" : "Yeni besin"} onClose={requestClose}>
       <div className="flex flex-col gap-3">
+        {/* --- Open Food Facts: elle girişin YERİNE değil, YANINA --- */}
+        <div>
+          <button
+            type="button"
+            onClick={() => setSearchOpen((o) => !o)}
+            aria-expanded={searchOpen}
+            className="w-full rounded-chip border border-line bg-white/[0.03] px-3 py-2 text-left text-xs font-semibold text-ink-secondary transition hover:text-ink-primary"
+          >
+            {searchOpen ? "− " : "+ "}
+            Open Food Facts'ten getir (arama veya barkod)
+          </button>
+          {searchOpen && (
+            <div className="mt-2">
+              <OffSearch onPick={applyOffFood} />
+            </div>
+          )}
+        </div>
+
         <label className="block">
           <Label>İfadeler (virgülle ayır)</Label>
           <input
@@ -93,6 +141,15 @@ export function AliasForm({ initial, onClose }: { initial: Alias | null; onClose
         <TextField label="Besin adı" value={name} onChange={setName} placeholder="örn. Süzme yoğurt %0" />
         <TextField label="Marka (opsiyonel)" value={brand} onChange={setBrand} placeholder="örn. Auchan" />
         <NumField label="Porsiyon" suffix="g" value={servingG} onChange={setServingG} />
+
+        {/* Barkod düzenlenebilir bir alan DEĞİL, kaynak izi: nereden geldiğini
+            görebil diye gösteriliyor. Kaydetmede olduğu gibi taşınır. */}
+        {barcode && (
+          <p className="font-mono text-[11px] text-ink-tertiary">
+            Barkod: <span className="text-ink-secondary">{barcode}</span>
+            <span className="ml-2 text-ink-faint">(Open Food Facts)</span>
+          </p>
+        )}
 
         <div>
           <p className="mb-2 text-[11px] text-ink-tertiary">

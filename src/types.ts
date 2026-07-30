@@ -41,6 +41,13 @@ export interface Alias {
   brand: string | null;
   serving_g: number;
   nutrition: Nutrition;
+  /** Ambalaj barkodu — Faz 4. Yalnızca Open Food Facts'ten gelen besinlerde
+   *  dolu; elle girilen besinlerde YOK (boş metin değil, alan hiç olmaz). */
+  barcode?: string;
+  /** Kaynak kayıttaki ürün kimliği. OFF'ta barkodla aynı sayıdır ama ayrı bir
+   *  alan: ileride başka bir katalog (ör. USDA) eklenirse barkodu olmayan bir
+   *  kaydın kimliği yine taşınabilsin. */
+  off_id?: string;
 }
 
 /** Sıfır besin: yalnızca çekirdek 5 alan, hepsi 0. Mikro alanlar bilinçli olarak
