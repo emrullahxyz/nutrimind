@@ -2,7 +2,6 @@ import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { buildTrend, formatNutrientValue, trendStats } from "./trend";
 import type { TrendSeries } from "./trend";
 import { nutrientOf } from "./nutrients";
-import type { NutrientDef } from "./nutrients";
 import type { Days } from "./days";
 import type { MealItem, Nutrition } from "../types";
 
@@ -22,19 +21,9 @@ const GOAL: Nutrition = { kcal: 2600, protein: 145, carbs: 360, fat: 72, fiber: 
 const KCAL = nutrientOf("kcal");
 const PROTEIN = nutrientOf("protein");
 
-/** Faz 2'de kaydedilecek `limit` besinin yerine geçen tanım — limit dalı bugün
- *  kayıtta karşılığı olmadan test edilmek zorunda. */
-const SODIUM_LIMIT: NutrientDef = {
-  key: "sodium",
-  label: "Sodyum",
-  short: "Na",
-  unit: "mg",
-  group: "micro",
-  direction: "limit",
-  decimals: 0,
-  hex: "#ff8080",
-  classes: { text: "text-danger", bg: "bg-danger", track: "bg-danger/[0.15]" },
-};
+/** Faz 2'den beri gerçek kayıttan geliyor — limit dalı artık yerine geçen bir
+ *  tanımla değil, uygulamanın kendi sodyum tanımıyla test ediliyor. */
+const SODIUM_LIMIT = nutrientOf("sodium");
 
 function meals(kcal: number, extra: Partial<Nutrition> = {}): MealItem[] {
   return [

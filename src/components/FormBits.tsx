@@ -1,7 +1,7 @@
 import { useState } from "react";
 import type { ReactNode } from "react";
 import { parseNum } from "../lib/nutrition";
-import { MACROS, NUTRIENTS, makeNutrition } from "../lib/nutrients";
+import { MACROS, MICROS, NUTRIENTS, makeNutrition } from "../lib/nutrients";
 import type { NutrientDef, NutrientKey } from "../lib/nutrients";
 import { formatKcal, formatNumber } from "../lib/format";
 import type { Nutrition } from "../types";
@@ -77,9 +77,16 @@ export function toDraft(n: Nutrition): NutritionDraft {
   for (const def of NUTRIENTS) {
     const v = n[def.key];
     // Girilmemiş (bilinmiyor) alan boş kutu olarak açılır, "0" olarak değil.
+    // `fromDraft` boş mikro kutusunu yine "yok"a çevirdiği için gidiş-dönüş
+    // kapalı: girilmemiş sodyum düzenle-kaydet sonrası da girilmemiş kalır.
     d[def.key] = v === undefined ? "" : String(v);
   }
   return d;
+}
+
+/** Kutu gerçekten boş mu (yalnızca boşluk da boştur). */
+function isBlank(raw: string | undefined): boolean {
+  return raw === undefined || raw.trim() === "";
 }
 
 export function fromDraft(d: NutritionDraft): Nutrition {
@@ -87,11 +94,13 @@ export function fromDraft(d: NutritionDraft): Nutrition {
   for (const def of NUTRIENTS) {
     const raw = d[def.key];
     if (raw === undefined) continue;
+    // BOŞ MİKRO KUTUSU = "bilinmiyor", 0 DEĞİL. `parseNum("")` 0 döndüğü için
+    // burada elemezsek boş bırakılan sodyum kutusu sessizce "sodyum limiti 0"
+    // olarak kaydedilir ve sonsuza dek aşılmış bir limit olarak çizilirdi.
+    // Çekirdek 5 alanda boş HÂLÂ 0 demek (`makeNutrition` tabanı).
+    if (def.group === "micro" && isBlank(raw)) continue;
     out[def.key] = parseNum(raw);
   }
-  // Çekirdek alanlar `makeNutrition` tabanında 0'a düşer; kayıtta olmayan mikro
-  // alanlar hiç yazılmaz. (Faz 2: mikro kutusu BOŞ bırakıldığında da 0 değil
-  // "bilinmiyor" üretmesi gerekecek.)
   return makeNutrition(out);
 }
 
@@ -100,6 +109,19 @@ export function draftNum(d: NutritionDraft, key: NutrientKey): number {
   return parseNum(d[key] ?? "");
 }
 
+/** Taslakta değer girilmiş mikro besinler — katlanmış bölüm veri saklamasın
+ *  diye tetikleyicideki ipucu bunu sayar. */
+export function filledMicros(d: NutritionDraft): readonly NutrientDef[] {
+  return MICROS.filter((def) => !isBlank(d[def.key]));
+}
+
+/** Formda her zaman açık duran alanlar: kalori + makrolar. */
+const FORM_MAIN: readonly NutrientDef[] = NUTRIENTS.filter((def) => def.group !== "micro");
+
+/** Besin alanları. Makrolar hep açık; mikrolar KATLANMIŞ bir bölümde durur —
+ *  üç form da (öğün, alias, hedefler) bunu paylaştığı için mikrolar gelince
+ *  hiçbiri boğulmuyor. Bölüm katlıyken veri saklamasın diye tetikleyici dolu
+ *  kutu sayısını gösterir. */
 export function NutritionFields({
   draft,
   onChange,
@@ -108,17 +130,66 @@ export function NutritionFields({
   onChange: (d: NutritionDraft) => void;
 }) {
   const set = (k: NutrientKey) => (v: string) => onChange({ ...draft, [k]: v });
+  const [open, setOpen] = useState(false);
+  const filled = filledMicros(draft);
+
   return (
-    <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-      {NUTRIENTS.map((def) => (
-        <NumField
-          key={def.key}
-          label={def.label}
-          suffix={def.unit}
-          value={draft[def.key] ?? ""}
-          onChange={set(def.key)}
-        />
-      ))}
+    <div className="flex flex-col gap-3">
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+        {FORM_MAIN.map((def) => (
+          <NumField
+            key={def.key}
+            label={def.label}
+            suffix={def.unit}
+            value={draft[def.key] ?? ""}
+            onChange={set(def.key)}
+          />
+        ))}
+      </div>
+
+      {MICROS.length > 0 && (
+        <div className="rounded-chip border border-line bg-white/[0.02]">
+          <button
+            type="button"
+            onClick={() => setOpen(!open)}
+            aria-expanded={open}
+            className="flex w-full items-center justify-between gap-2 px-3 py-2 text-left transition hover:bg-white/[0.03]"
+          >
+            <span className="flex items-center gap-2">
+              <span className="font-mono text-[11px] uppercase tracking-mono text-ink-tertiary">
+                Mikro besinler
+              </span>
+              {filled.length > 0 && (
+                <span className="rounded-pill bg-micro/15 px-2 py-0.5 font-mono text-[10px] font-semibold text-micro">
+                  {filled.map((def) => def.short).join(" · ")}
+                </span>
+              )}
+            </span>
+            <span className="font-mono text-xs text-ink-tertiary">{open ? "−" : "+"}</span>
+          </button>
+          {open && (
+            <div className="grid grid-cols-2 gap-3 border-t border-line p-3 sm:grid-cols-3">
+              {MICROS.map((def) => (
+                <NumField
+                  key={def.key}
+                  label={def.label}
+                  suffix={def.unit}
+                  value={draft[def.key] ?? ""}
+                  onChange={set(def.key)}
+                />
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Boş bırakılan mikro kutusu 0 değil "bilinmiyor" demektir; hedeflerde de
+          "limit yok" anlamına gelir (bkz. fromDraft). */}
+      {open && (
+        <p className="text-[11px] text-ink-faint">
+          Boş bıraktığın mikro besin "bilinmiyor" sayılır — 0 olarak kaydedilmez.
+        </p>
+      )}
     </div>
   );
 }
@@ -129,8 +200,9 @@ export function nutrientSummary(
   defs: readonly NutrientDef[],
   decimals?: number,
 ): string {
-  // Faz 2: eksik mikro besin burada "0" olarak görünür; mikrolar arayüze
-  // girdiğinde "veri yok" gösterimi gerekecek (bkz. coverage()).
+  // Çağrı yerlerinin hepsi MAKRO listeler (her zaman sayı). Buraya bir mikro
+  // tanımı geçirilirse eksik veri "0" olarak yazılır — mikroların dürüst
+  // gösterimi bar tarafında, veri varsa çizme + `coverage()` ile yapılıyor.
   return defs
     .map((def) => `${def.short}${formatNumber(n[def.key] ?? 0, decimals ?? def.decimals)}`)
     .join(" · ");

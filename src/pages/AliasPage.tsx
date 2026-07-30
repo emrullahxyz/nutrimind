@@ -4,13 +4,7 @@ import { AliasForm } from "../components/AliasForm";
 import { ConfirmButton, ErrorText, NutrientSummaryLine } from "../components/FormBits";
 import { formatNumber } from "../lib/format";
 import { useData } from "../lib/data";
-import { MACROS } from "../lib/nutrients";
 import type { Alias } from "../types";
-
-// TODO Faz 2: bu kart özeti lifi bilinçli olarak atlıyor ve makroları tam sayı
-// gösteriyor — uygulamanın diğer özet satırlarıyla tutarsız. Düzeltmek görünür
-// bir değişiklik olduğu için mikro besinlerle birlikte Faz 2'ye bırakıldı.
-const CARD_SUMMARY = MACROS.filter((def) => def.key !== "fiber");
 
 export function AliasPage() {
   const { aliases, removeAlias } = useData();
@@ -74,9 +68,11 @@ export function AliasPage() {
                 ))}
               </div>
 
+              {/* Lif dahil TÜM makrolar — uygulamanın diğer özet satırlarıyla
+                  aynı liste. `decimals={0}` bilinçli: 11px mono kartta tam sayı
+                  okunuyor, "12,0 · 30,0" satırı gereksiz yere şişiriyordu. */}
               <NutrientSummaryLine
                 nutrition={a.nutrition}
-                defs={CARD_SUMMARY}
                 decimals={0}
                 kcal="inline"
                 prefix={`${formatNumber(a.serving_g)} g · `}
