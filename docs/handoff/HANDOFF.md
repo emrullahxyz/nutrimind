@@ -322,3 +322,107 @@ bir hata gösterilmeden düzeltme yapılmamalı.
 3. Yukarıdaki "Bilinen açıklar"dan biri — hepsi opsiyonel.
 
 ---
+
+## Handoff: 2026-07-30 — Besin kapsamı / trend / OFF genişletmesi — Faz 0-4 BİTTİ, 5-9 + deploy KALDI
+
+### Current Task State
+
+Kullanıcı 10 maddelik bir genişletme istedi (mikro besinler, birim dönüşümü, resmi veri kaynağı,
+barkod, Polonya kataloğu, geçmişe dayalı miktar, tarif, gün-tipli hedefler, export/import, **ve en
+önemlisi gerçek trend grafiği**). Plan onaylandı, **Faz 0-4 tamamlandı ve doğrulandı. Faz 5-9 ile
+sunucu deploy'u kaldı.**
+
+- **Onaylı plan:** `<USERPROFILE>\.claude\plans\oklu-n-alias-istemiyorum-ge-mi-e-squishy-prism.md`
+  — fazların tam tanımı, mimari gerekçeler, riskler. **Devam etmeden önce oku.**
+
+**Yürütme modeli (kullanıcının açık talebi):** Claude bu planın *yöneticisi*. Her fazı bir subagent'a
+devreder, agent'lar **sırayla** açılır (aynı anda değil), her fazdan sonra Claude çıktıyı **kontrol
+eder** — testi agent'ın kendisi çalıştırır ve komut çıktısını rapora yapıştırmak zorundadır.
+Kullanıcı hiçbir komut çalıştırmıyor; SSH/terminal işleri de dahil her şey devredilecek.
+
+### Tamamlananlar (her biri ayrı commit, hepsi kapıdan geçti)
+
+| Commit | Faz | Ne |
+|---|---|---|
+| `73c8923` | 0 | Besin kaydı (nutrient registry) — `src/lib/nutrients.ts` tek doğruluk kaynağı |
+| `e4a590f` | 1 | **Gerçek trend grafiği** — 4. sekme, elle yazılmış SVG, 7 gün hareketli ortalama |
+| `f1399f2` | 2 | Mikro besinler: şeker, doymuş yağ, sodyum (`direction: "limit"`) |
+| `15558ec` | 3a | **Backend** — OFF proxy, alias geçirgenliği, doğrulama sertleştirme |
+| `9d4bd54` | 4 | OFF Polonya kataloğu + barkod tarama |
+
+Test sayısı 12 → **140**. `pnpm typecheck` 0 hata, `pnpm build` başarılı.
+
+### Kalan işler
+
+| Faz | İş | Önerilen |
+|---|---|---|
+| 5 | Birim + gram dönüşümü (`units` alias'ta) | **agy** — dar kapsam |
+| 6 | Geçmişe dayalı miktar tahmini (medyan) | **agy** — dar kapsam |
+| 7 | Tarif → porsiyon (malzemelerden 100 g değeri) | subagent |
+| 8 | Gün-tipli hedefler (antrenman/dinlenme) | subagent — v1→v2 göçü hassas |
+| 3b | **Sunucuya deploy** — en sonda, tek sefer | subagent |
+
+**Token bütçesi:** her Claude subagent fazı ~160-260k token harcadı. Kullanıcı açıkça uyardı:
+*"agy delegasyonu yapmayı unutma. Her şeyi subagent'lara verirsen token yetmez."* Dar ve kolay
+doğrulanabilir fazları `agy -p "…"` ile ver; hassas olanları (göç, canlı sunucu) Claude'da tut.
+agy'nin kapsam dışına çıkma geçmişi var — çıktısını mutlaka diff'le.
+
+### Key Decisions
+
+- **`server/index.js` Faz 3a'da bir kez açıldı, sonra TEKRAR DONDU.** Kalan tüm fazların backend
+  ihtiyacı o tek turda karşılandı (alias'ta `units`/`barcode`/`off_id`/`recipe` geçirgenliği,
+  `PUT /api/goals` hem düz `Nutrition` hem **Faz 8'in v2 profil yapısını** kabul ediyor). Faz 5-9
+  backend'e dokunmamalı — dokunursa riskli sunucu prosedürü ikinci kez gerekir.
+- **"Bilinmiyor" ≠ "sıfır"** — projenin çekirdek dürüstlük kuralı. Girilmemiş/bildirilmemiş mikro
+  `undefined` kalır, asla 0 yazılmaz (`fill`, `scaleNutrition`, `addNutrition`, `fromDraft`, OFF eşlemesi).
+  Trend grafiğinde kayıtsız gün `null` ve çizgi **kırılır**, interpolasyon yok.
+- **Yeni bağımlılık eklenmedi** — hâlâ sadece `react` + `react-dom`. Trend grafiği ve barkod tarama
+  (native `BarcodeDetector`) elle yazıldı.
+- **OFF tarayıcıdan çağrılamaz** — zorunlu `User-Agent` başlığını tarayıcı ayarlatmıyor. Bu yüzden
+  sunucu proxy'si. Arama `https://search.openfoodfacts.org/search` üzerinden (legacy `cgi/search.pl`
+  bağlantı hatası veriyor, v2 full-text 503). Kota: ürün 15/dk, arama 10/dk — **aşılırsa IP banlanır.**
+- **OFF sodyumu GRAM gönderiyor**, kayıt mg — ×1000. Yoksa `salt/2.5×1000`.
+- Mikrolar ortak sessiz slate tonunda (`#94a3b8`); palet doluydu ve limit besinin kendi rengi zaten
+  yalnızca %80'in altında görünüyor.
+
+### Critical Context
+
+1. **Deploy HENÜZ YAPILMADI.** Kullanıcı kararı: *"Her şeyi tamamla sunucuya en sonda tek seferde
+   deploy yap."* Canlı `https://nutri.emrullah.xyz` hâlâ eski sürümü sunuyor. Faz 3b planda iki
+   aşamalı tarif edilmiş (önce keşif+yedekleme, sonra **kullanıcı onayıyla** geçiş) — `deploy.sh`
+   sadece `dist/` gönderir, backend elle senkronlanır.
+2. **`server/data.db` git'te izleniyor.** Yerel test için **asla** ona yazma; `NUTRI_DB` ortam
+   değişkeniyle scratchpad'de geçici bir dosya kullan (`server/index.js:16` okuyor).
+3. **Tarayıcı paneli kare üretmiyor** — screenshot alınamıyor ve fare olayları oturum ortasında
+   ölebiliyor. Agent'lar DOM ölçümü + dispatch edilmiş olaylarla doğruladı; bu kabul edilebilir kanıt
+   ama **gerçek kamerayla barkod okuma hiç test edilemedi** — kullanıcının Android telefonunda
+   denenmeli.
+4. **Depo Prettier-temiz değil** (HEAD'de ~21 dosya). Bilinçli olarak `pnpm format` çalıştırılmadı,
+   yoksa diff'ler alakasız biçimlendirmeye gömülür.
+5. **`pnpm-workspace.yaml` her `pnpm` çağrısında yeniden oluşuyor** (pnpm 11 `esbuild` için
+   `allowBuilds` kararı istiyor). Bir kerelik `pnpm approve-builds` bunu bitirir. Ayrıca `pnpm`
+   TTY'siz ortamda purge/reinstall denerse: bir kez `pnpm install`, sonra komutlara
+   `PNPM_CONFIG_VERIFY_DEPS_BEFORE_RUN=false` ön eki.
+6. **AgentsRoom temizlendi.** Oturum sırasında `.claude/settings.local.json` (her mesaj/izin/düzenlemede
+   çalışan hook'lar), `.mcp.json` ve `.agentsroom/` belirmişti. Kullanıcı "kurmuştum ama sildim,
+   artıklarını silebilirsin" dedi; üçü de kaldırıldı, `.gitignore` geri alındı. Projenin kendi
+   `.claude/settings.json` ve `.claude/hooks/*.cjs` dosyalarına dokunulmadı.
+7. **Faz 0 sırasında kaybolan dosya:** oturum başında takip dışı duran eski `src/lib/trend.ts` ve
+   `trend.test.ts` taslakları Faz 0 agent'ının temizliği sırasında raporlanmadan silindi. Faz 1
+   yerlerine test edilmiş sürümler yazdı, kayıp yok — ama agent temizliklerinin diff'lenmesi gerektiğini
+   gösteriyor.
+8. **Doğrulama kapısı:** `pnpm typecheck` (0 hata) + `pnpm test` (**140**) + `pnpm build`.
+   Yerel geliştirme iki terminal ister: `node server/index.js` ve `pnpm dev`, sonra
+   `http://localhost:5173` — `127.0.0.1:5173` boş döner. Yayın: `pnpm run deploy` ("run" şart).
+
+### Next Steps
+
+1. **Faz 5 (birim + gram dönüşümü)** — `Alias.units`, MealForm'da miktar yanına birim seçici,
+   AliasForm'da eklenip çıkarılabilir birim satırları. Backend geçirgenliği hazır. → agy'ye ver.
+2. **Faz 6 (geçmişe dayalı miktar)** — `MealPayload.source {aliasId, qty, unit}` (backend değişikliği
+   gerekmiyor, öğünler blob), son 10 kaydın **medyanı**, eski kayıtlar için etiketten regex yedeği.
+3. **Faz 7 → 8 → 9**, sonra **Faz 3b deploy.**
+4. Deploy sonrası: kullanıcının Android telefonunda **gerçek barkod taraması** denenmeli — bu ortamda
+   doğrulanamayan tek şey.
+
+---
