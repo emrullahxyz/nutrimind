@@ -185,6 +185,7 @@ export function MealForm({
   const [draft, setDraft] = useState<NutritionDraft>(existing ? toDraft(existing.computed) : EMPTY_DRAFT);
   const [aliasId, setAliasId] = useState(aliases[0]?.id ?? "");
   const [grams, setGrams] = useState(String(aliases[0]?.serving_g ?? 100));
+  const [unitName, setUnitName] = useState("g");
 
   // Elle modunda girilen münferit kalem adı
   const [manualItemName, setManualItemName] = useState("");
@@ -255,16 +256,23 @@ export function MealForm({
   }
 
   const alias = aliases.find((a) => a.id === aliasId);
-  const gramsValue = parseNum(grams);
+  const availableUnits = [
+    { name: "g", grams: 1 },
+    ...(alias?.units ?? []),
+  ];
+  const selectedUnitObj = availableUnits.find((u) => u.name === unitName) ?? { name: "g", grams: 1 };
+  const amountValue = parseNum(grams);
+  const calculatedGrams = amountValue * selectedUnitObj.grams;
+
   const scaled: Nutrition | null =
-    alias && gramsValue > 0 ? scaleNutrition(alias.nutrition, alias.serving_g, gramsValue) : null;
+    alias && calculatedGrams > 0 ? scaleNutrition(alias.nutrition, alias.serving_g, calculatedGrams) : null;
 
   const currentManualNutrition = fromDraft(draft);
   // Formdaki alanlardan en az biri doldurulmuş mu — kayıt üzerinden yürür ki
   // yeni bir besin eklenince burası da kendiliğinden kapsasın.
   const hasManualNutrition = NUTRIENTS.some((def) => (currentManualNutrition[def.key] ?? 0) > 0);
 
-  // Sepette öğün var ise onların toplamı, yoksa tekli alias/manual hesabı
+  // Sepette öğün var ise mevcuttan veya yeni eklenenlerden sumMeals
   const basketTotal: Nutrition | null =
     basket.length > 0
       ? sumMeals(basket.map((b) => ({ id: b.id, label: b.name, computed: b.nutrition })))
@@ -292,10 +300,11 @@ export function MealForm({
     setAliasId(id);
     const a = aliases.find((x) => x.id === id);
     if (a) setGrams(String(a.serving_g));
+    setUnitName("g");
   }
 
   function addAliasToBasket() {
-    if (!alias || !scaled || gramsValue <= 0) return;
+    if (!alias || !scaled || calculatedGrams <= 0) return;
 
     let currentBasket = basket;
     if (existing && currentBasket.length === 0) {
@@ -308,9 +317,10 @@ export function MealForm({
       ];
     }
 
+    const unitSuffix = selectedUnitObj.name === "g" ? `${amountValue}g` : `${amountValue} ${selectedUnitObj.name}`;
     const newItem: BasketItem = {
       id: `${alias.id}-${Date.now()}-${Math.random()}`,
-      name: `${alias.name} (${gramsValue}g)`,
+      name: `${alias.name} (${unitSuffix})`,
       nutrition: scaled,
     };
     const nextBasket = [...currentBasket, newItem];
@@ -402,7 +412,23 @@ export function MealForm({
 
               <div className="flex items-end gap-2">
                 <div className="flex-1">
-                  <NumField label="Miktar" suffix="g" value={grams} onChange={setGrams} />
+                  <NumField label="Miktar" value={grams} onChange={setGrams} />
+                </div>
+                <div className="w-28 flex-none">
+                  <label className="block">
+                    <Label>Birim</Label>
+                    <select
+                      className={fieldCls}
+                      value={unitName}
+                      onChange={(e) => setUnitName(e.target.value)}
+                    >
+                      {availableUnits.map((u) => (
+                        <option key={u.name} value={u.name} className="bg-elevated-2">
+                          {u.name}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
                 </div>
                 <button
                   type="button"

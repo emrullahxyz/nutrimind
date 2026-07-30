@@ -33,6 +33,13 @@ export interface MealPayload {
   nutrition: Nutrition;
 }
 
+export interface AliasUnit {
+  /** Kullanıcının gördüğü ad: "adet", "kase", "dilim", "ölçek". */
+  name: string;
+  /** Bu birimin 1 tanesinin kaç gram olduğu. */
+  grams: number;
+}
+
 /** Öğrenilmiş alias: kullanıcının ifadeleri -> belirli besin + makro (serving_g gram için). */
 export interface Alias {
   id: string;
@@ -41,6 +48,8 @@ export interface Alias {
   brand: string | null;
   serving_g: number;
   nutrition: Nutrition;
+  /** Özel birimler — Faz 5. Opsiyonel. */
+  units?: AliasUnit[];
   /** Ambalaj barkodu — Faz 4. Yalnızca Open Food Facts'ten gelen besinlerde
    *  dolu; elle girilen besinlerde YOK (boş metin değil, alan hiç olmaz). */
   barcode?: string;

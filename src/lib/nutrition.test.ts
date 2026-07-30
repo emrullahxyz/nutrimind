@@ -1,9 +1,10 @@
 import { describe, expect, it } from "vitest";
 import { addNutrition, parseNum, scaleNutrition } from "./nutrition";
+import { parseUnits } from "./api";
 import { coverage, sumMeals } from "./days";
 import { CORE_KEYS, MACROS, MICROS, NUTRIENTS, nutrientOf } from "./nutrients";
 import type { NutrientKey } from "./nutrients";
-import type { MealItem, Nutrition } from "../types";
+import type { Alias, AliasUnit, MealItem, Nutrition } from "../types";
 
 const BASE: Nutrition = { kcal: 100, protein: 10, carbs: 20, fat: 5, fiber: 2 };
 
@@ -253,3 +254,60 @@ describe("besin kaydı (registry)", () => {
     expect(new Set(NUTRIENTS.map((d) => d.short)).size).toBe(NUTRIENTS.length);
   });
 });
+
+describe("parseUnits (Faz 5)", () => {
+  it("geçerli birim dizisini doğru doğrular ve döndürür", () => {
+    const raw = [
+      { name: "adet", grams: 60 },
+      { name: "kase", grams: 250 },
+    ];
+    expect(parseUnits(raw)).toEqual([
+      { name: "adet", grams: 60 },
+      { name: "kase", grams: 250 },
+    ]);
+  });
+
+  it("metin olan grams değerlerini parseNum ile dönüştürür", () => {
+    const raw = [{ name: "ölçek", grams: "30,5" }];
+    expect(parseUnits(raw)).toEqual([{ name: "ölçek", grams: 30.5 }]);
+  });
+
+  it("bozuk veya negatif gram değerlerini eler", () => {
+    const raw = [
+      { name: "geçersiz1", grams: 0 },
+      { name: "geçersiz2", grams: -50 },
+      { name: "", grams: 100 },
+      { name: "geçerli", grams: 40 },
+    ];
+    expect(parseUnits(raw)).toEqual([{ name: "geçerli", grams: 40 }]);
+  });
+
+  it("dizi olamayan veya boş girdilerde undefined döner", () => {
+    expect(parseUnits(null)).toBeUndefined();
+    expect(parseUnits(undefined)).toBeUndefined();
+    expect(parseUnits({})).toBeUndefined();
+    expect(parseUnits([])).toBeUndefined();
+  });
+
+  it("birim miktarı ile toplam gram hesabı ve besin ölçeklemesi", () => {
+    const baseAlias: Alias = {
+      id: "yumurta",
+      triggers: ["yumurta"],
+      name: "Yumurta",
+      brand: null,
+      serving_g: 100,
+      nutrition: { kcal: 155, protein: 13, carbs: 1.1, fat: 11, fiber: 0 },
+      units: [{ name: "adet", grams: 50 }],
+    };
+
+    const unit = baseAlias.units![0];
+    const amount = 2; // 2 adet
+    const totalGrams = amount * unit.grams; // 100g
+    const scaled = scaleNutrition(baseAlias.nutrition, baseAlias.serving_g, totalGrams);
+
+    expect(totalGrams).toBe(100);
+    expect(scaled.kcal).toBe(155);
+    expect(scaled.protein).toBe(13);
+  });
+});
+
