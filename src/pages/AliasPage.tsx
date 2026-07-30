@@ -68,6 +68,16 @@ export function AliasPage() {
                 ))}
               </div>
 
+              {a.units && a.units.length > 0 && (
+                <div className="flex flex-wrap gap-1 text-[11px] font-mono text-ink-tertiary">
+                  {a.units.map((u) => (
+                    <span key={u.name} className="rounded bg-white/[0.04] px-1.5 py-0.5 border border-line/40">
+                      1 {u.name} = {formatNumber(u.grams)} g
+                    </span>
+                  ))}
+                </div>
+              )}
+
               {/* Lif dahil TÜM makrolar — uygulamanın diğer özet satırlarıyla
                   aynı liste. `decimals={0}` bilinçli: 11px mono kartta tam sayı
                   okunuyor, "12,0 · 30,0" satırı gereksiz yere şişiriyordu. */}

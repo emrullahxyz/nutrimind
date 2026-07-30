@@ -18,7 +18,13 @@ import { useData } from "../lib/data";
 import { parseNum } from "../lib/nutrition";
 import { OFF_SERVING_G } from "../lib/off";
 import type { OffFood } from "../lib/off";
-import type { Alias } from "../types";
+import type { Alias, AliasUnit } from "../types";
+
+interface UnitDraft {
+  id: string;
+  name: string;
+  grams: string;
+}
 
 /** Alias (besin hafızası) ekleme/düzenleme. initial null ise yeni kayıt. */
 export function AliasForm({ initial, onClose }: { initial: Alias | null; onClose: () => void }) {
@@ -29,6 +35,13 @@ export function AliasForm({ initial, onClose }: { initial: Alias | null; onClose
   const [brand, setBrand] = useState(initial?.brand ?? "");
   const [servingG, setServingG] = useState(String(initial?.serving_g ?? 100));
   const [draft, setDraft] = useState<NutritionDraft>(initial ? toDraft(initial.nutrition) : EMPTY_DRAFT);
+  const [unitDrafts, setUnitDrafts] = useState<UnitDraft[]>(() =>
+    (initial?.units ?? []).map((u, i) => ({
+      id: `unit-${i}-${Date.now()}`,
+      name: u.name,
+      grams: String(u.grams),
+    }))
+  );
   // Kaynak izi. Elle girilen besinde boş kalır; OFF'tan seçilende dolar ve
   // düzenlemeler boyunca korunur (backend gövdede olmayan alanı da korur).
   const [barcode, setBarcode] = useState(initial?.barcode ?? "");
@@ -77,6 +90,22 @@ export function AliasForm({ initial, onClose }: { initial: Alias | null; onClose
     if (!canSave) return;
     setSaving(true);
     setErr(null);
+
+    // Boş adlı veya grams <= 0 olan satırlar elenir; aynı birim adı tekilleştirilir.
+    const validUnits: AliasUnit[] = [];
+    const seenNames = new Set<string>();
+    for (const u of unitDrafts) {
+      const trimmedName = u.name.trim();
+      const parsedGrams = parseNum(u.grams);
+      if (trimmedName.length > 0 && parsedGrams > 0) {
+        const key = trimmedName.toLowerCase();
+        if (!seenNames.has(key)) {
+          seenNames.add(key);
+          validUnits.push({ name: trimmedName, grams: parsedGrams });
+        }
+      }
+    }
+
     try {
       await upsertAlias({
         ...(initial ? { id: initial.id } : {}),
@@ -85,6 +114,7 @@ export function AliasForm({ initial, onClose }: { initial: Alias | null; onClose
         brand: brand.trim() || null,
         serving_g: parseNum(servingG),
         nutrition: fromDraft(draft),
+        units: validUnits,
         // Boş alan GÖNDERİLMEZ (`undefined` JSON'da düşer): backend gövdede
         // olmayan alanı korur, yani elle düzenleme barkodu silmez.
         ...(barcode.trim() ? { barcode: barcode.trim() } : {}),
@@ -141,6 +171,65 @@ export function AliasForm({ initial, onClose }: { initial: Alias | null; onClose
         <TextField label="Besin adı" value={name} onChange={setName} placeholder="örn. Süzme yoğurt %0" />
         <TextField label="Marka (opsiyonel)" value={brand} onChange={setBrand} placeholder="örn. Auchan" />
         <NumField label="Porsiyon" suffix="g" value={servingG} onChange={setServingG} />
+
+        {/* Özel Birimler */}
+        <div className="flex flex-col gap-2 rounded-chip border border-line bg-white/[0.02] p-3">
+          <span className="font-mono text-[11px] uppercase tracking-mono text-ink-tertiary">
+            Özel Birimler (opsiyonel)
+          </span>
+          {unitDrafts.length > 0 && (
+            <div className="flex flex-col gap-2">
+              {unitDrafts.map((u) => (
+                <div key={u.id} className="flex items-end gap-2">
+                  <div className="flex-1">
+                    <TextField
+                      label="Birim adı"
+                      value={u.name}
+                      placeholder="örn. adet, kase, dilim"
+                      onChange={(val) =>
+                        setUnitDrafts((prev) =>
+                          prev.map((x) => (x.id === u.id ? { ...x, name: val } : x))
+                        )
+                      }
+                    />
+                  </div>
+                  <div className="w-28">
+                    <NumField
+                      label="Miktar"
+                      suffix="g"
+                      value={u.grams}
+                      onChange={(val) =>
+                        setUnitDrafts((prev) =>
+                          prev.map((x) => (x.id === u.id ? { ...x, grams: val } : x))
+                        )
+                      }
+                    />
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setUnitDrafts((prev) => prev.filter((x) => x.id !== u.id))}
+                    className="mb-1 rounded-chip border border-line p-2 text-xs text-ink-tertiary transition hover:border-danger/40 hover:text-danger"
+                    title="Birimi sil"
+                  >
+                    ✕
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+          <button
+            type="button"
+            onClick={() =>
+              setUnitDrafts((prev) => [
+                ...prev,
+                { id: `unit-${Date.now()}-${Math.random()}`, name: "", grams: "" },
+              ])
+            }
+            className="w-full rounded-chip border border-line bg-white/[0.03] py-1.5 text-center text-xs font-semibold text-ink-secondary transition hover:text-ink-primary"
+          >
+            + Birim ekle
+          </button>
+        </div>
 
         {/* Barkod düzenlenebilir bir alan DEĞİL, kaynak izi: nereden geldiğini
             görebil diye gösteriliyor. Kaydetmede olduğu gibi taşınır. */}

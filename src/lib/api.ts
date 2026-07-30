@@ -1,9 +1,10 @@
 // ============================================================================
 // Nutrimind — backend'den canlı veri (/api/data). SQLite'a bağlı Node servisi.
 // ============================================================================
-import type { Alias, MealItem, MealPayload, Nutrition } from "../types";
+import type { Alias, AliasUnit, MealItem, MealPayload, Nutrition } from "../types";
 import { NUTRIENT_KEYS, makeNutrition } from "./nutrients";
 import type { NutrientKey } from "./nutrients";
+import { parseNum } from "./nutrition";
 
 export interface AppData {
   goals: Nutrition;
@@ -35,6 +36,7 @@ interface RawAlias {
   brand?: string | null;
   serving_g?: number;
   nutrition: RawNutrition;
+  units?: unknown;
   barcode?: string | null;
   off_id?: string | null;
 }
@@ -46,10 +48,27 @@ function optionalText(v: unknown): string | undefined {
   return typeof v === "string" && v.trim() !== "" ? v.trim() : undefined;
 }
 
+/** Faz 5: Bozuk/eksik `units` verisini doğrular; `units` dizi değilse veya
+ *  bir satırın `grams`'ı pozitif sayı değilse o satırı atar. */
+export function parseUnits(raw: unknown): AliasUnit[] | undefined {
+  if (!Array.isArray(raw)) return undefined;
+  const valid: AliasUnit[] = [];
+  for (const u of raw) {
+    if (typeof u !== "object" || u === null) continue;
+    const name = typeof (u as { name?: unknown }).name === "string" ? (u as { name: string }).name.trim() : "";
+    const gramsRaw = (u as { grams?: unknown }).grams;
+    const grams = typeof gramsRaw === "number" ? gramsRaw : parseNum(String(gramsRaw ?? ""));
+    if (name.length > 0 && typeof grams === "number" && grams > 0 && Number.isFinite(grams)) {
+      valid.push({ name, grams });
+    }
+  }
+  return valid.length > 0 ? valid : undefined;
+}
+
 /** Alan yalnızca değeri varsa nesneye girer — `{barcode: undefined}` yazmak
  *  `"barcode" in alias` kontrolünü bozardı. */
-function withOptional<K extends string>(key: K, value: string | undefined): Partial<Record<K, string>> {
-  return value === undefined ? {} : { [key]: value } as Record<K, string>;
+function withOptional<K extends string, V>(key: K, value: V | undefined): Partial<Record<K, V>> {
+  return value === undefined ? {} : ({ [key]: value } as Record<K, V>);
 }
 
 interface RawData {
@@ -80,6 +99,7 @@ export async function fetchData(): Promise<AppData> {
     brand: a.brand ?? null,
     serving_g: a.serving_g ?? 100,
     nutrition: fill(a.nutrition),
+    ...withOptional("units", parseUnits(a.units)),
     ...withOptional("barcode", optionalText(a.barcode)),
     ...withOptional("off_id", optionalText(a.off_id)),
   }));
@@ -96,6 +116,7 @@ export interface AliasPayload {
   brand: string | null;
   serving_g: number;
   nutrition: Nutrition;
+  units?: AliasUnit[];
   /** Faz 4 alanları. GÖNDERİLMEZSE backend öncekini KORUR (`server/index.js`
    *  içindeki `carry()`), yani elle düzenlenen bir besinin barkodu silinmez.
    *  `JSON.stringify` `undefined` alanları düşürdüğü için "alanı yazma" ile
