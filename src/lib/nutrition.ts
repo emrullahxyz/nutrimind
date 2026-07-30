@@ -3,6 +3,8 @@
 // ============================================================================
 import { ZERO_NUTRITION } from "../types";
 import type { Nutrition } from "../types";
+import { NUTRIENT_KEYS, makeNutrition } from "./nutrients";
+import type { NutrientKey } from "./nutrients";
 
 /** tr-TR sayı metnini sayıya çevirir. Geçersiz/boş girdide 0.
  *
@@ -51,15 +53,34 @@ function round1(value: number): number {
   return Math.round(value * 10) / 10;
 }
 
-/** serving_g gram için verilen makroyu istenen grama lineer ölçekler. */
+/** serving_g gram için verilen besin değerlerini istenen grama lineer ölçekler. */
 export function scaleNutrition(n: Nutrition, servingG: number, grams: number): Nutrition {
   if (!(servingG > 0)) return { ...ZERO_NUTRITION };
   const f = grams / servingG;
-  return {
-    kcal: round1(n.kcal * f),
-    protein: round1(n.protein * f),
-    carbs: round1(n.carbs * f),
-    fat: round1(n.fat * f),
-    fiber: round1(n.fiber * f),
-  };
+  const out: Partial<Record<NutrientKey, number>> = {};
+  for (const key of NUTRIENT_KEYS) {
+    const v = n[key];
+    // Girilmemiş mikro besin ölçeklenmez, YOK kalır: 0 yazmak "0 mg sodyum"
+    // gibi uydurma bir bilgi üretirdi.
+    if (v === undefined) continue;
+    out[key] = round1(v * f);
+  }
+  return makeNutrition(out);
+}
+
+/** İki besin değerini toplar — `sumMeals` ve haftalık toplamların ortak tabanı.
+ *
+ *  Mikro alanlarda "bilinmiyor" ≠ "sıfır": bir mikro besin sonuçta yalnızca EN AZ
+ *  BİR tarafta sayı varsa görünür, o toplamda eksik taraf 0 sayılır. Böylece
+ *  "5 öğünün 3'ünde sodyum verisi var" durumu toplamı silmez ama uydurmaz da
+ *  (kapsama sayısı için bkz. `coverage`, src/lib/days.ts). */
+export function addNutrition(a: Nutrition, b: Nutrition): Nutrition {
+  const out: Partial<Record<NutrientKey, number>> = {};
+  for (const key of NUTRIENT_KEYS) {
+    const av = a[key];
+    const bv = b[key];
+    if (av === undefined && bv === undefined) continue;
+    out[key] = (av ?? 0) + (bv ?? 0);
+  }
+  return makeNutrition(out);
 }

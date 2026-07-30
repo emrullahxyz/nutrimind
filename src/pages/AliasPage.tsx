@@ -1,10 +1,16 @@
 import { useState } from "react";
 import { Card } from "../components/Card";
 import { AliasForm } from "../components/AliasForm";
-import { ConfirmButton, ErrorText } from "../components/FormBits";
-import { formatKcal, formatNumber } from "../lib/format";
+import { ConfirmButton, ErrorText, NutrientSummaryLine } from "../components/FormBits";
+import { formatNumber } from "../lib/format";
 import { useData } from "../lib/data";
+import { MACROS } from "../lib/nutrients";
 import type { Alias } from "../types";
+
+// TODO Faz 2: bu kart özeti lifi bilinçli olarak atlıyor ve makroları tam sayı
+// gösteriyor — uygulamanın diğer özet satırlarıyla tutarsız. Düzeltmek görünür
+// bir değişiklik olduğu için mikro besinlerle birlikte Faz 2'ye bırakıldı.
+const CARD_SUMMARY = MACROS.filter((def) => def.key !== "fiber");
 
 export function AliasPage() {
   const { aliases, removeAlias } = useData();
@@ -68,13 +74,14 @@ export function AliasPage() {
                 ))}
               </div>
 
-              <div className="border-t border-line pt-2 font-mono text-[11px] text-ink-secondary">
-                {formatNumber(a.serving_g)} g · {formatKcal(a.nutrition.kcal)}
-                <span className="ml-2 text-ink-tertiary">
-                  P{formatNumber(a.nutrition.protein)} · K{formatNumber(a.nutrition.carbs)} · Y
-                  {formatNumber(a.nutrition.fat)}
-                </span>
-              </div>
+              <NutrientSummaryLine
+                nutrition={a.nutrition}
+                defs={CARD_SUMMARY}
+                decimals={0}
+                kcal="inline"
+                prefix={`${formatNumber(a.serving_g)} g · `}
+                className="border-t border-line pt-2 font-mono text-[11px] text-ink-secondary"
+              />
 
               <div className="flex items-center justify-end gap-2">
                 <button

@@ -6,6 +6,7 @@ import {
   FormActions,
   Label,
   NumField,
+  NutrientSummaryLine,
   NutritionFields,
   TextField,
   fieldCls,
@@ -15,8 +16,9 @@ import {
 import type { NutritionDraft } from "./FormBits";
 import { useData } from "../lib/data";
 import { mealsOf, sumMeals, toPayload } from "../lib/days";
+import { NUTRIENTS } from "../lib/nutrients";
 import { parseNum, scaleNutrition } from "../lib/nutrition";
-import { formatKcal, formatNumber } from "../lib/format";
+import { formatKcal } from "../lib/format";
 import type { MealPayload, Nutrition } from "../types";
 
 type Mode = "alias" | "manual";
@@ -125,10 +127,11 @@ function BasketSection({
             >
               <div className="flex flex-col min-w-0">
                 <span className="font-semibold text-ink-primary truncate">{item.name}</span>
-                <span className="font-mono text-[10px] text-ink-tertiary">
-                  P{formatNumber(item.nutrition.protein, 1)} · K{formatNumber(item.nutrition.carbs, 1)} · Y
-                  {formatNumber(item.nutrition.fat, 1)} · L{formatNumber(item.nutrition.fiber, 1)}
-                </span>
+                <NutrientSummaryLine
+                  as="span"
+                  nutrition={item.nutrition}
+                  className="font-mono text-[10px] text-ink-tertiary"
+                />
               </div>
               <div className="flex flex-none items-center gap-2 font-mono text-[11px] text-ink-secondary">
                 <span>{formatKcal(item.nutrition.kcal)}</span>
@@ -153,11 +156,11 @@ function BasketSection({
       </ul>
 
       {basketTotal && (
-        <div className="mt-1 border-t border-line pt-2 font-mono text-xs text-accent">
-          <strong>Toplam: {formatKcal(basketTotal.kcal)}</strong> (P
-          {formatNumber(basketTotal.protein, 1)} · K{formatNumber(basketTotal.carbs, 1)} · Y
-          {formatNumber(basketTotal.fat, 1)} · L{formatNumber(basketTotal.fiber, 1)})
-        </div>
+        <NutrientSummaryLine
+          nutrition={basketTotal}
+          kcal="total"
+          className="mt-1 border-t border-line pt-2 font-mono text-xs text-accent"
+        />
       )}
     </div>
   );
@@ -257,12 +260,9 @@ export function MealForm({
     alias && gramsValue > 0 ? scaleNutrition(alias.nutrition, alias.serving_g, gramsValue) : null;
 
   const currentManualNutrition = fromDraft(draft);
-  const hasManualNutrition =
-    currentManualNutrition.kcal > 0 ||
-    currentManualNutrition.protein > 0 ||
-    currentManualNutrition.carbs > 0 ||
-    currentManualNutrition.fat > 0 ||
-    currentManualNutrition.fiber > 0;
+  // Formdaki alanlardan en az biri doldurulmuş mu — kayıt üzerinden yürür ki
+  // yeni bir besin eklenince burası da kendiliğinden kapsasın.
+  const hasManualNutrition = NUTRIENTS.some((def) => (currentManualNutrition[def.key] ?? 0) > 0);
 
   // Sepette öğün var ise onların toplamı, yoksa tekli alias/manual hesabı
   const basketTotal: Nutrition | null =
@@ -415,13 +415,11 @@ export function MealForm({
               </div>
 
               {scaled && basket.length === 0 && (
-                <div className="font-mono text-[11px] text-ink-secondary">
-                  {formatKcal(scaled.kcal)}
-                  <span className="ml-2 text-ink-tertiary">
-                    P{formatNumber(scaled.protein, 1)} · K{formatNumber(scaled.carbs, 1)} · Y
-                    {formatNumber(scaled.fat, 1)} · L{formatNumber(scaled.fiber, 1)}
-                  </span>
-                </div>
+                <NutrientSummaryLine
+                  nutrition={scaled}
+                  kcal="inline"
+                  className="font-mono text-[11px] text-ink-secondary"
+                />
               )}
             </div>
 
