@@ -8,8 +8,8 @@ import { ConfirmButton, ErrorText, FormActions, NutrientSummaryLine, TextField }
 import { Modal } from "./Modal";
 import { formatKcal } from "../lib/format";
 import { useData } from "../lib/data";
-import { MACROS } from "../lib/nutrients";
-import { dayTotal, mealsOf, sumMeals, toPayload } from "../lib/days";
+import { MACROS, MICROS } from "../lib/nutrients";
+import { coverage, dayTotal, mealsOf, sumMeals, toPayload } from "../lib/days";
 import type { MealItem, MealPayload } from "../types";
 
 function MergeModal({
@@ -142,6 +142,15 @@ export function DayView({ date, emptyLabel = "Bu gün için kayıt yok." }: { da
 
   const selectedMeals = selectedIndices.map((i) => meals[i]).filter(Boolean);
 
+  // Mikro barlar YALNIZCA gerçekten veri olan besinler için çizilir: kimsenin
+  // girmediği sodyumu "0 mg" göstermek besin hakkında yanlış bir beyandır.
+  // (`sumMeals` bir mikroyu ancak en az bir öğünde varsa üretir.)
+  const microRows = MICROS.filter((def) => total[def.key] !== undefined).map((def) => ({
+    def,
+    value: total[def.key] ?? 0,
+    cover: coverage(meals, def.key),
+  }));
+
   return (
     <div className="flex flex-col gap-5">
       <div className="grid gap-4 md:grid-cols-2">
@@ -169,6 +178,28 @@ export function DayView({ date, emptyLabel = "Bu gün için kayıt yok." }: { da
               target={goals[def.key] ?? 0}
             />
           ))}
+
+          {microRows.length > 0 && (
+            <div className="flex flex-col gap-3 border-t border-line pt-4">
+              <span className="font-mono text-[11px] uppercase tracking-mono text-ink-tertiary">
+                Mikro besinler
+              </span>
+              {microRows.map(({ def, value, cover }) => (
+                <div key={def.key}>
+                  <MacroBar def={def} value={value} target={goals[def.key] ?? 0} />
+                  {cover.have < cover.of && (
+                    // Kısmi veri: toplam gerçek ama EKSİK. Bunu yazmazsak
+                    // 5 öğünün 3'ünden toplanan sodyum tam günmüş gibi okunur.
+                    // ("3/5" biçimi bilinçli: Türkçe sayı ekleri sayıya göre
+                    // değişiyor, kesir gösterimi her sayıda doğru okunuyor.)
+                    <p className="mt-1 font-mono text-[11px] text-ink-faint">
+                      {cover.have}/{cover.of} öğünde veri
+                    </p>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
         </Card>
       )}
 

@@ -16,10 +16,16 @@ export function GoalsForm({ onClose }: { onClose: () => void }) {
   // sonsuz "aşım" gösterir. kcal dışındaki besinler negatif olmamalı (bar
   // genişliği negatife düşmesin) ama 0 geçerli (ör. kullanıcı lif hedefi takip
   // etmiyor). Kural kayıt üzerinden yürüdüğü için formdaki her alanı kapsar.
+  //
+  // BOŞ MİKRO KUTUSU KAYDI ENGELLEMEZ: mikrolarda boş = "limit koymuyorum".
+  // Kutuya bakmadan `draftNum` çağırmak boşu 0 sayar ve kuralı sessizce
+  // geçirirdi; niyet burada açıkça yazılı (kaydedilen değer için bkz. fromDraft).
   const kcal = draftNum(draft, "kcal");
-  const restNonNegative = NUTRIENTS.every(
-    (def) => def.key === "kcal" || draftNum(draft, def.key) >= 0,
-  );
+  const restNonNegative = NUTRIENTS.every((def) => {
+    if (def.key === "kcal") return true;
+    if (def.group === "micro" && (draft[def.key] ?? "").trim() === "") return true;
+    return draftNum(draft, def.key) >= 0;
+  });
   const canSave = kcal > 0 && restNonNegative;
 
   /** Kayıt uçarken kapanmayı engelle: yazma sunucuya düşerken vazgeçilmiş sanılmasın. */

@@ -23,6 +23,7 @@ export default {
         memory: "#a78bfa", // mor (lif / hafıza)
         "memory-deep": "#8b6df2", // memory gradyanının koyu ucu
         "memory-ink": "#1e1b4b", // memory zemin üstü koyu metin
+        micro: "#94a3b8", // mikro besinlerin ORTAK sessiz tonu (şeker/doymuş yağ/sodyum)
         accent: "#34d399",
         "accent-ink": "#062e22",
         warn: "#fbbf24",

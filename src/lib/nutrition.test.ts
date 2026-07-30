@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { addNutrition, parseNum, scaleNutrition } from "./nutrition";
 import { coverage, sumMeals } from "./days";
 import { CORE_KEYS, MACROS, MICROS, NUTRIENTS, nutrientOf } from "./nutrients";
+import type { NutrientKey } from "./nutrients";
 import type { MealItem, Nutrition } from "../types";
 
 const BASE: Nutrition = { kcal: 100, protein: 10, carbs: 20, fat: 5, fiber: 2 };
@@ -162,12 +163,45 @@ describe("coverage", () => {
   it("öğün yoksa 0/0", () => {
     expect(coverage([], "protein")).toEqual({ have: 0, of: 0 });
   });
+
+  // --- Faz 2: DayView'ın mikro satır kararı bu ikiliye dayanıyor ---
+  it("hiçbir öğünde veri yoksa toplam da kapsama da besini üretmez (satır çizilmez)", () => {
+    const meals = [meal("a", BASE), meal("b", BASE), meal("c", BASE)];
+    expect(sumMeals(meals).sodium).toBeUndefined();
+    expect(coverage(meals, "sodium")).toEqual({ have: 0, of: 3 });
+  });
+  it("kısmi veride toplam gerçek ama eksik — kapsama bunu söyleyebiliyor", () => {
+    const meals = [
+      meal("a", { ...BASE, sodium: 400 }),
+      meal("b", BASE),
+      meal("c", { ...BASE, sodium: 250 }),
+      meal("d", BASE),
+      meal("e", BASE),
+    ];
+    expect(sumMeals(meals).sodium).toBe(650);
+    expect(coverage(meals, "sodium")).toEqual({ have: 2, of: 5 }); // "2/5 öğünde veri"
+  });
+  it("tam kapsamada uyarı gerekmez (have === of)", () => {
+    const meals = [meal("a", { ...BASE, sugar: 10 }), meal("b", { ...BASE, sugar: 5 })];
+    const cov = coverage(meals, "sugar");
+    expect(cov).toEqual({ have: 2, of: 2 });
+    expect(cov.have < cov.of).toBe(false);
+  });
 });
 
 describe("besin kaydı (registry)", () => {
-  it("Faz 0 tam olarak mevcut 5 besinle çalışır — mikro kayıtlı değil", () => {
-    expect(NUTRIENTS.map((d) => d.key)).toEqual(["kcal", "protein", "carbs", "fat", "fiber"]);
-    expect(MICROS).toEqual([]);
+  it("Faz 2 kaydı: çekirdek 5 + mikro 3, bu sırayla", () => {
+    expect(NUTRIENTS.map((d) => d.key)).toEqual([
+      "kcal",
+      "protein",
+      "carbs",
+      "fat",
+      "fiber",
+      "sugar",
+      "satFat",
+      "sodium",
+    ]);
+    expect(MICROS.map((d) => d.key)).toEqual(["sugar", "satFat", "sodium"]);
   });
   it("MACROS kaloriyi ve mikroları dışlar, bar sırasını korur", () => {
     expect(MACROS.map((d) => d.key)).toEqual(["protein", "carbs", "fat", "fiber"]);
@@ -183,6 +217,39 @@ describe("besin kaydı (registry)", () => {
   it("nutrientOf kayıtlı tanımı döner, kayıtlı olmayanda patlar", () => {
     expect(nutrientOf("carbs").label).toBe("Karbonhidrat");
     expect(nutrientOf("carbs").classes.text).toBe("text-carb"); // domain `carbs` ↔ token `carb`
-    expect(() => nutrientOf("sodium")).toThrow();
+    expect(nutrientOf("sodium").label).toBe("Sodyum");
+    // Kayıtta olmayan anahtar hâlâ çağrı hatası — kayıt dışı bir anahtar
+    // uydurulamaz. (Tip zaten engelliyor; bu çalışma-zamanı kilidi.)
+    expect(() => nutrientOf("magnesium" as NutrientKey)).toThrow();
+  });
+
+  // --- Faz 2: mikro kayıtlarının değişmezleri ---
+  it("mikroların hepsi limit yönlü ve mikro grubunda", () => {
+    for (const def of MICROS) {
+      expect(def.group).toBe("micro");
+      expect(def.direction).toBe("limit"); // limite ULAŞMAK başarı değil
+    }
+  });
+  it("birimler: şeker/doymuş yağ g, sodyum mg", () => {
+    expect(nutrientOf("sugar").unit).toBe("g");
+    expect(nutrientOf("satFat").unit).toBe("g");
+    expect(nutrientOf("sodium").unit).toBe("mg");
+    expect(nutrientOf("sodium").decimals).toBe(0); // mg'de ondalık sahte hassasiyet
+  });
+  it("mikroların OFF anahtarı Faz 4 için kayıtta hazır", () => {
+    expect(nutrientOf("sugar").offKey).toBe("sugars_100g");
+    expect(nutrientOf("satFat").offKey).toBe("saturated-fat_100g");
+    expect(nutrientOf("sodium").offKey).toBe("sodium_100g");
+  });
+  it("mikrolar tek ortak sessiz tonu paylaşır (etiketle ayrışır, renkle değil)", () => {
+    const tones = new Set(MICROS.map((d) => d.classes.bg));
+    expect(tones).toEqual(new Set(["bg-micro"]));
+    // Makroların rengiyle çakışmıyor: yanındaki makro kadar bağırmasın.
+    for (const macro of MACROS) expect(macro.classes.bg).not.toBe("bg-micro");
+  });
+  it("mikroların kısa etiketleri ayrı ve boş değil", () => {
+    const shorts = MICROS.map((d) => d.short);
+    expect(shorts).toEqual(["Ş", "DY", "Na"]);
+    expect(new Set(NUTRIENTS.map((d) => d.short)).size).toBe(NUTRIENTS.length);
   });
 });

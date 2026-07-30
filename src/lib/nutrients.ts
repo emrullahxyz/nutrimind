@@ -13,8 +13,9 @@
 //   • NUTRIENTS — arayüze GİRMİŞ besinlerin tanımları (etiket, renk, birim…).
 //     Formlar, barlar, donut ve özet satırları bunu dolaşır.
 //
-// Faz 0'da NUTRIENTS tam olarak mevcut 5 besindir; mikrolar (şeker, doymuş yağ,
-// sodyum) tipte ve anahtar listesinde hazır ama Faz 2'de kaydedilecek.
+// Faz 2'de NUTRIENTS 8 besindir: çekirdek 5 + mikro 3 (şeker, doymuş yağ,
+// sodyum). Mikroların ortak yanı `direction: "limit"` — ulaşılacak değil,
+// aşılmayacak sayılar.
 // ============================================================================
 import type { Nutrition } from "../types";
 
@@ -43,6 +44,10 @@ export interface NutrientDef {
   kcalPerG?: number;
   /** Doğal gösterim hassasiyeti. */
   decimals: number;
+  /** Open Food Facts `nutriments` anahtarı — Faz 4'ün eşleme tablosu.
+   *  Birim dönüşümü OFF katmanının işi: OFF gramla konuşur, sodyumu biz mg
+   *  tutuyoruz (`sodium_100g` × 1000; alan boşsa `salt_100g / 2,5 × 1000`). */
+  offKey?: string;
   /** SVG stroke/fill ve gradyan için ham renk (className'de ASLA kullanılmaz). */
   hex: string;
   /** TAM Tailwind sınıf adları. Tailwind JIT yalnızca kaynaktaki DÜZ metinleri
@@ -73,6 +78,19 @@ const MICRO_KEYS: readonly MicroNutrientKey[] = keysOf<MicroNutrientKey>({
 
 /** `Nutrition`'ın tüm anahtarları — matematik katmanı bunu dolaşır. */
 export const NUTRIENT_KEYS: readonly NutrientKey[] = [...CORE_KEYS, ...MICRO_KEYS];
+
+/** Mikroların ORTAK rengi: hepsi tek bir sessiz `micro` token'ını paylaşır,
+ *  birbirlerinden etiketle ayrılır — renkle değil.
+ *
+ *  Gerekçe: paletin dört doygun rengi (protein yeşili, karb turuncusu, yağ
+ *  sarısı, lif/hafıza moru) zaten dolu; `accent`/`warn`/`danger` de bu üçünden
+ *  türüyor. Üç doygun renk daha eklemek hem bu tonlara çarpardı hem de ikincil
+ *  bir "limit" besinini üstündeki makro kadar bağırtırdı. Üstelik limit modunda
+ *  besinin kendi rengi zaten yalnızca %80'in ALTINDA görünür (üstünde warn, %100
+ *  üstünde danger devralır) — yani mikronun kendi rengi tam da sessiz kalması
+ *  gereken bölgenin rengidir. */
+const MICRO_CLASSES = { text: "text-micro", bg: "bg-micro", track: "bg-micro/[0.15]" };
+const MICRO_HEX = "#94a3b8";
 
 /** Arayüze girmiş besinler. Sıra formdaki ve barlardaki sırayı belirler.
  *  Renk sınıfları ve hex değerleri tailwind.config.js token'larıyla birebir:
@@ -139,6 +157,49 @@ export const NUTRIENTS: readonly NutrientDef[] = [
     hex: "#a78bfa",
     classes: { text: "text-memory", bg: "bg-memory", track: "bg-memory/[0.15]" },
   },
+  // --- Mikrolar (Faz 2) — hepsi `limit`: hedef ulaşmak değil, aşmamak. -------
+  // İlk parti bilinçli olarak dar tutuldu: OFF'un güvenilir biçimde doldurduğu
+  // üç alan. Vitamin/mineral alanları OFF'ta çok seyrek dolu; boş kutu
+  // göstermenin anlamı yok. Yeni satır eklemek her zaman tek satırlık iş.
+  {
+    key: "sugar",
+    label: "Şeker",
+    short: "Ş",
+    unit: "g",
+    group: "micro",
+    direction: "limit",
+    decimals: 1,
+    offKey: "sugars_100g",
+    hex: MICRO_HEX,
+    classes: MICRO_CLASSES,
+  },
+  {
+    key: "satFat",
+    label: "Doymuş yağ",
+    compactLabel: "Doymuş",
+    short: "DY",
+    unit: "g",
+    group: "micro",
+    direction: "limit",
+    decimals: 1,
+    offKey: "saturated-fat_100g",
+    hex: MICRO_HEX,
+    classes: MICRO_CLASSES,
+  },
+  {
+    key: "sodium",
+    label: "Sodyum",
+    short: "Na",
+    // mg cinsinden tutulur; 1 ondalık "1.399,5 mg" gibi sahte bir hassasiyet
+    // gösterirdi — mg zaten yeterince ince.
+    unit: "mg",
+    group: "micro",
+    direction: "limit",
+    decimals: 0,
+    offKey: "sodium_100g",
+    hex: MICRO_HEX,
+    classes: MICRO_CLASSES,
+  },
 ];
 
 /** Makro barları/satırları: kalori dışındaki kayıtlı makrolar. */
@@ -146,7 +207,8 @@ export const MACROS: readonly NutrientDef[] = NUTRIENTS.filter(
   (n) => n.group !== "micro" && n.key !== "kcal",
 );
 
-/** Mikro besinler — Faz 0'da boş, Faz 2'de dolacak. */
+/** Mikro besinler — formda katlanabilir bölüm, günlük görünümde YALNIZCA veri
+ *  varsa çizilen barlar. */
 export const MICROS: readonly NutrientDef[] = NUTRIENTS.filter((n) => n.group === "micro");
 
 const BY_KEY = new Map<NutrientKey, NutrientDef>(NUTRIENTS.map((n) => [n.key, n]));
