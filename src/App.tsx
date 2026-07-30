@@ -1,10 +1,11 @@
 import { useState } from "react";
 import { DailyPage } from "./pages/DailyPage";
 import { HistoryPage } from "./pages/HistoryPage";
+import { TrendPage } from "./pages/TrendPage";
 import { AliasPage } from "./pages/AliasPage";
 import { DataProvider } from "./lib/data";
 
-type Tab = "daily" | "history" | "aliases";
+type Tab = "daily" | "history" | "trend" | "aliases";
 
 function TabButton({ active, onClick, label }: { active: boolean; onClick: () => void; label: string }) {
   return (
@@ -35,13 +36,22 @@ export function App() {
         <nav className="flex gap-2">
           <TabButton active={tab === "daily"} onClick={() => setTab("daily")} label="Günlük" />
           <TabButton active={tab === "history"} onClick={() => setTab("history")} label="Geçmiş" />
+          <TabButton active={tab === "trend"} onClick={() => setTab("trend")} label="Trend" />
           <TabButton active={tab === "aliases"} onClick={() => setTab("aliases")} label="Hafıza" />
         </nav>
       </header>
 
       <main>
         <DataProvider>
-          {tab === "daily" ? <DailyPage /> : tab === "history" ? <HistoryPage /> : <AliasPage />}
+          {tab === "daily" ? (
+            <DailyPage />
+          ) : tab === "history" ? (
+            <HistoryPage />
+          ) : tab === "trend" ? (
+            <TrendPage />
+          ) : (
+            <AliasPage />
+          )}
         </DataProvider>
       </main>
     </div>
