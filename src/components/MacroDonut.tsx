@@ -1,15 +1,17 @@
 import { formatNumber } from "../lib/format";
+import { MACROS } from "../lib/nutrients";
 import type { Nutrition } from "../types";
 
-const PARTS = [
-  { key: "protein", label: "Protein", color: "#34d399", perG: 4 },
-  { key: "carbs", label: "Karb", color: "#fb923c", perG: 4 },
-  { key: "fat", label: "Yağ", color: "#fbbf24", perG: 9 },
-] as const;
+// Donut yalnızca kaloriye çevrilebilen makroları gösterir; lifin `kcalPerG`'si
+// olmadığı için kayıttan kendiliğinden düşer.
+const PARTS = MACROS.filter((def) => def.kcalPerG !== undefined);
 
 /** Makro kalori dağılımını (protein/karb/yağ) gösteren donut. */
 export function MacroDonut({ nutrition, size = 200 }: { nutrition: Nutrition; size?: number }) {
-  const segs = PARTS.map((p) => ({ ...p, kcal: nutrition[p.key] * p.perG }));
+  const segs = PARTS.map((def) => ({
+    def,
+    kcal: (nutrition[def.key] ?? 0) * (def.kcalPerG ?? 0),
+  }));
   const total = segs.reduce((a, s) => a + s.kcal, 0) || 1;
 
   const stroke = 18;
@@ -32,12 +34,12 @@ export function MacroDonut({ nutrition, size = 200 }: { nutrition: Nutrition; si
             const len = frac * circ;
             const el = (
               <circle
-                key={s.key}
+                key={s.def.key}
                 cx={size / 2}
                 cy={size / 2}
                 r={r}
                 fill="none"
-                stroke={s.color}
+                stroke={s.def.hex}
                 strokeWidth={stroke}
                 strokeDasharray={`${len} ${circ - len}`}
                 strokeDashoffset={-offset}
@@ -57,9 +59,9 @@ export function MacroDonut({ nutrition, size = 200 }: { nutrition: Nutrition; si
 
       <div className="flex flex-wrap justify-center gap-x-4 gap-y-1">
         {segs.map((s) => (
-          <div key={s.key} className="flex items-center gap-1.5 text-xs">
-            <span className="h-2.5 w-2.5 rounded-full" style={{ background: s.color }} />
-            <span className="text-ink-secondary">{s.label}</span>
+          <div key={s.def.key} className="flex items-center gap-1.5 text-xs">
+            <span className="h-2.5 w-2.5 rounded-full" style={{ background: s.def.hex }} />
+            <span className="text-ink-secondary">{s.def.compactLabel ?? s.def.label}</span>
             <span className="font-mono text-ink-tertiary">%{Math.round((s.kcal / total) * 100)}</span>
           </div>
         ))}

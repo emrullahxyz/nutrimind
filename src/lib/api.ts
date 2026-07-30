@@ -2,6 +2,8 @@
 // Nutrimind — backend'den canlı veri (/api/data). SQLite'a bağlı Node servisi.
 // ============================================================================
 import type { Alias, MealItem, MealPayload, Nutrition } from "../types";
+import { NUTRIENT_KEYS, makeNutrition } from "./nutrients";
+import type { NutrientKey } from "./nutrients";
 
 export interface AppData {
   goals: Nutrition;
@@ -9,14 +11,21 @@ export interface AppData {
   aliases: Alias[];
 }
 
-function fill(n: Partial<Nutrition> | undefined): Nutrition {
-  return {
-    kcal: n?.kcal ?? 0,
-    protein: n?.protein ?? 0,
-    carbs: n?.carbs ?? 0,
-    fat: n?.fat ?? 0,
-    fiber: n?.fiber ?? 0,
-  };
+/** Backend'den gelen ham besin nesnesi: alanlar eksik ya da `null` olabilir. */
+type RawNutrition = Partial<Record<NutrientKey, number | null>>;
+
+/** Ham JSON'u `Nutrition`'a tamamlar.
+ *  Çekirdek 5 alan eksikse 0'a düşer (eski `?? 0` davranışı, `makeNutrition`
+ *  tabanı). Mikro alanlarda "bilinmiyor" ≠ "sıfır": eksik ya da `null` mikro
+ *  `undefined` KALIR, 0'a çevrilmez. */
+function fill(n: RawNutrition | undefined): Nutrition {
+  const out: Partial<Record<NutrientKey, number>> = {};
+  for (const key of NUTRIENT_KEYS) {
+    const v = n?.[key];
+    if (v === undefined || v === null) continue;
+    out[key] = v;
+  }
+  return makeNutrition(out);
 }
 
 interface RawAlias {
@@ -25,12 +34,12 @@ interface RawAlias {
   name: string;
   brand?: string | null;
   serving_g?: number;
-  nutrition: Partial<Nutrition>;
+  nutrition: RawNutrition;
 }
 
 interface RawData {
-  goals: Partial<Nutrition>;
-  days: Record<string, { name: string; nutrition: Partial<Nutrition> }[]>;
+  goals: RawNutrition;
+  days: Record<string, { name: string; nutrition: RawNutrition }[]>;
   aliases?: RawAlias[];
 }
 

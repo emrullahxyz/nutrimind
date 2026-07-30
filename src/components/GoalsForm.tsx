@@ -1,9 +1,9 @@
 import { useState } from "react";
 import { Modal } from "./Modal";
-import { ErrorText, FormActions, NutritionFields, fromDraft, toDraft } from "./FormBits";
+import { ErrorText, FormActions, NutritionFields, draftNum, fromDraft, toDraft } from "./FormBits";
 import type { NutritionDraft } from "./FormBits";
 import { useData } from "../lib/data";
-import { parseNum } from "../lib/nutrition";
+import { NUTRIENTS } from "../lib/nutrients";
 
 /** Günlük kalori/makro hedeflerini düzenler. */
 export function GoalsForm({ onClose }: { onClose: () => void }) {
@@ -13,11 +13,14 @@ export function GoalsForm({ onClose }: { onClose: () => void }) {
   const [err, setErr] = useState<string | null>(null);
 
   // Kalori halkası hedefe bölerek yüzde hesaplar: kcal <= 0 sıfıra bölme /
-  // sonsuz "aşım" gösterir. Diğer makrolar negatif olmamalı (bar genişliği
-  // negatife düşmesin) ama 0 geçerli (ör. kullanıcı lif hedefi takip etmiyor).
-  const kcal = parseNum(draft.kcal);
-  const macrosNonNegative = [draft.protein, draft.carbs, draft.fat, draft.fiber].every((v) => parseNum(v) >= 0);
-  const canSave = kcal > 0 && macrosNonNegative;
+  // sonsuz "aşım" gösterir. kcal dışındaki besinler negatif olmamalı (bar
+  // genişliği negatife düşmesin) ama 0 geçerli (ör. kullanıcı lif hedefi takip
+  // etmiyor). Kural kayıt üzerinden yürüdüğü için formdaki her alanı kapsar.
+  const kcal = draftNum(draft, "kcal");
+  const restNonNegative = NUTRIENTS.every(
+    (def) => def.key === "kcal" || draftNum(draft, def.key) >= 0,
+  );
+  const canSave = kcal > 0 && restNonNegative;
 
   /** Kayıt uçarken kapanmayı engelle: yazma sunucuya düşerken vazgeçilmiş sanılmasın. */
   function requestClose() {

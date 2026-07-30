@@ -3,6 +3,7 @@
 // ============================================================================
 import { dayTotal } from "./days";
 import type { Days } from "./days";
+import { addNutrition } from "./nutrition";
 import { ZERO_NUTRITION } from "../types";
 import type { Nutrition } from "../types";
 
@@ -14,15 +15,6 @@ function parseUTC(dateStr: string): Date {
 }
 function toISO(dt: Date): string {
   return dt.toISOString().slice(0, 10);
-}
-function addN(a: Nutrition, b: Nutrition): Nutrition {
-  return {
-    kcal: a.kcal + b.kcal,
-    protein: a.protein + b.protein,
-    carbs: a.carbs + b.carbs,
-    fat: a.fat + b.fat,
-    fiber: a.fiber + b.fiber,
-  };
 }
 
 /** dateStr'in içinde bulunduğu haftanın Pazartesi'si (YYYY-MM-DD). */
@@ -62,7 +54,7 @@ export function weeks(days: Days): Week[] {
       const hasData = date in days;
       const t = hasData ? dayTotal(days, date) : { ...ZERO_NUTRITION };
       if (hasData) {
-        total = addN(total, t);
+        total = addNutrition(total, t);
         active++;
       }
       week.push({ date, total: t, hasData });

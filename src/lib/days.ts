@@ -3,20 +3,22 @@
 // ============================================================================
 import { ZERO_NUTRITION } from "../types";
 import type { MealItem, MealPayload, Nutrition } from "../types";
+import { addNutrition } from "./nutrition";
+import type { NutrientKey } from "./nutrients";
 
 export type Days = Record<string, MealItem[]>;
 
 export function sumMeals(meals: MealItem[]): Nutrition {
-  return meals.reduce<Nutrition>(
-    (a, m) => ({
-      kcal: a.kcal + m.computed.kcal,
-      protein: a.protein + m.computed.protein,
-      carbs: a.carbs + m.computed.carbs,
-      fat: a.fat + m.computed.fat,
-      fiber: a.fiber + m.computed.fiber,
-    }),
-    { ...ZERO_NUTRITION },
-  );
+  return meals.reduce<Nutrition>((a, m) => addNutrition(a, m.computed), { ...ZERO_NUTRITION });
+}
+
+/** Bir besin için kapsama: kaç öğünde veri var / toplam kaç öğün.
+ *  Arayüz "5 öğünün 3'ünde veri var" uyarısını buradan üretecek (Faz 2);
+ *  toplam tek başına bunu söyleyemez, çünkü eksik öğün 0 sayılıyor. */
+export function coverage(meals: MealItem[], key: NutrientKey): { have: number; of: number } {
+  let have = 0;
+  for (const m of meals) if (m.computed[key] !== undefined) have++;
+  return { have, of: meals.length };
 }
 
 export function mealsOf(days: Days, date: string): MealItem[] {

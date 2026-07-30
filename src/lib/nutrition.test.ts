@@ -1,8 +1,15 @@
 import { describe, expect, it } from "vitest";
-import { parseNum, scaleNutrition } from "./nutrition";
-import type { Nutrition } from "../types";
+import { addNutrition, parseNum, scaleNutrition } from "./nutrition";
+import { coverage, sumMeals } from "./days";
+import { CORE_KEYS, MACROS, MICROS, NUTRIENTS, nutrientOf } from "./nutrients";
+import type { MealItem, Nutrition } from "../types";
 
 const BASE: Nutrition = { kcal: 100, protein: 10, carbs: 20, fat: 5, fiber: 2 };
+
+/** Test öğünü — `sumMeals`/`coverage` MealItem üzerinde çalışır. */
+function meal(id: string, computed: Nutrition): MealItem {
+  return { id, label: id, computed };
+}
 
 describe("parseNum", () => {
   it("virgüllü tr-TR girdisini sayıya çevirir", () => {
@@ -72,5 +79,110 @@ describe("scaleNutrition", () => {
       fat: 0,
       fiber: 0,
     });
+  });
+
+  // --- Kayıt (registry) tabanlı davranış ---
+  it("sonuçta tam olarak çekirdek 5 alan bulunur (mikro uydurmaz)", () => {
+    expect(Object.keys(scaleNutrition(BASE, 100, 200)).sort()).toEqual([...CORE_KEYS].sort());
+  });
+  it("girilmemiş mikro besin YOK kalır, 0'a çevrilmez", () => {
+    const out = scaleNutrition(BASE, 100, 200);
+    expect(out.sodium).toBeUndefined();
+    expect("sodium" in out).toBe(false);
+    expect("sugar" in out).toBe(false);
+    expect("satFat" in out).toBe(false);
+  });
+  it("verilmiş mikro besin de ölçeklenir (arayüze girmemiş olsa bile düşmez)", () => {
+    const out = scaleNutrition({ ...BASE, sodium: 300 }, 100, 200);
+    expect(out.sodium).toBe(600);
+  });
+});
+
+describe("addNutrition", () => {
+  it("çekirdek alanları toplar", () => {
+    expect(addNutrition(BASE, BASE)).toEqual({
+      kcal: 200,
+      protein: 20,
+      carbs: 40,
+      fat: 10,
+      fiber: 4,
+    });
+  });
+  it("iki tarafta da olmayan mikro besin sonuçta hiç görünmez", () => {
+    const out = addNutrition(BASE, BASE);
+    expect("sodium" in out).toBe(false);
+  });
+  it("tek tarafta olan mikro besin görünür; eksik taraf 0 sayılır", () => {
+    const out = addNutrition({ ...BASE, sodium: 300 }, BASE);
+    expect(out.sodium).toBe(300);
+  });
+  it("her iki taraftaki mikro besin toplanır", () => {
+    const out = addNutrition({ ...BASE, sodium: 300 }, { ...BASE, sodium: 120 });
+    expect(out.sodium).toBe(420);
+  });
+});
+
+describe("sumMeals", () => {
+  it("öğün yoksa sıfır besin döner", () => {
+    expect(sumMeals([])).toEqual({ kcal: 0, protein: 0, carbs: 0, fat: 0, fiber: 0 });
+  });
+  it("öğünlerin çekirdek alanlarını toplar", () => {
+    expect(sumMeals([meal("a", BASE), meal("b", BASE), meal("c", BASE)])).toEqual({
+      kcal: 300,
+      protein: 30,
+      carbs: 60,
+      fat: 15,
+      fiber: 6,
+    });
+  });
+  it("mikro besin YALNIZCA en az bir öğünde veri varsa sonuca girer", () => {
+    const without = sumMeals([meal("a", BASE), meal("b", BASE)]);
+    expect("sodium" in without).toBe(false);
+
+    const withOne = sumMeals([meal("a", BASE), meal("b", { ...BASE, sodium: 500 })]);
+    // Veri olmayan öğün o toplamda 0 sayılır — toplam silinmez ama uydurulmaz da.
+    expect(withOne.sodium).toBe(500);
+  });
+});
+
+describe("coverage", () => {
+  it("kaç öğünde veri olduğunu sayar", () => {
+    const meals = [
+      meal("a", { ...BASE, sodium: 100 }),
+      meal("b", BASE),
+      meal("c", { ...BASE, sodium: 0 }), // 0 geçerli bir VERİ, eksik değil
+      meal("d", BASE),
+      meal("e", { ...BASE, sodium: 50 }),
+    ];
+    expect(coverage(meals, "sodium")).toEqual({ have: 3, of: 5 });
+  });
+  it("çekirdek alanlar her öğünde vardır", () => {
+    expect(coverage([meal("a", BASE), meal("b", BASE)], "protein")).toEqual({ have: 2, of: 2 });
+  });
+  it("öğün yoksa 0/0", () => {
+    expect(coverage([], "protein")).toEqual({ have: 0, of: 0 });
+  });
+});
+
+describe("besin kaydı (registry)", () => {
+  it("Faz 0 tam olarak mevcut 5 besinle çalışır — mikro kayıtlı değil", () => {
+    expect(NUTRIENTS.map((d) => d.key)).toEqual(["kcal", "protein", "carbs", "fat", "fiber"]);
+    expect(MICROS).toEqual([]);
+  });
+  it("MACROS kaloriyi ve mikroları dışlar, bar sırasını korur", () => {
+    expect(MACROS.map((d) => d.key)).toEqual(["protein", "carbs", "fat", "fiber"]);
+  });
+  it("Tailwind sınıfları DÜZ metin olmak zorunda (JIT birleştirilmiş sınıfı üretmez)", () => {
+    for (const def of NUTRIENTS) {
+      for (const cls of [def.classes.text, def.classes.bg, def.classes.track]) {
+        expect(cls).not.toContain("$");
+        expect(cls.length).toBeGreaterThan(0);
+      }
+    }
+  });
+  it("nutrientOf kayıtlı tanımı döner, kayıtlı olmayanda patlar", () => {
+    expect(nutrientOf("carbs").label).toBe("Karbonhidrat");
+    expect(nutrientOf("carbs").classes.text).toBe("text-carb"); // domain `carbs` ↔ token `carb`
+    expect(() => nutrientOf("sodium")).toThrow();
   });
 });

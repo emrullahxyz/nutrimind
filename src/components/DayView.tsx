@@ -4,10 +4,11 @@ import { MacroBar } from "./MacroBar";
 import { MacroDonut } from "./MacroDonut";
 import { Card } from "./Card";
 import { MealForm } from "./MealForm";
-import { ConfirmButton, ErrorText, FormActions, TextField } from "./FormBits";
+import { ConfirmButton, ErrorText, FormActions, NutrientSummaryLine, TextField } from "./FormBits";
 import { Modal } from "./Modal";
-import { formatKcal, formatNumber } from "../lib/format";
+import { formatKcal } from "../lib/format";
 import { useData } from "../lib/data";
+import { MACROS } from "../lib/nutrients";
 import { dayTotal, mealsOf, sumMeals, toPayload } from "../lib/days";
 import type { MealItem, MealPayload } from "../types";
 
@@ -40,11 +41,11 @@ function MergeModal({
               </li>
             ))}
           </ul>
-          <div className="mt-3 border-t border-line pt-2 font-mono text-xs text-accent">
-            <strong>Toplam: {formatKcal(totalNutrition.kcal)}</strong> (P{formatNumber(totalNutrition.protein, 1)} · K
-            {formatNumber(totalNutrition.carbs, 1)} · Y{formatNumber(totalNutrition.fat, 1)} · L
-            {formatNumber(totalNutrition.fiber, 1)})
-          </div>
+          <NutrientSummaryLine
+            nutrition={totalNutrition}
+            kcal="total"
+            className="mt-3 border-t border-line pt-2 font-mono text-xs text-accent"
+          />
         </div>
         <FormActions
           onCancel={onClose}
@@ -160,10 +161,14 @@ export function DayView({ date, emptyLabel = "Bu gün için kayıt yok." }: { da
 
       {hasData && (
         <Card className="flex flex-col gap-4 p-6">
-          <MacroBar kind="protein" value={total.protein} target={goals.protein} />
-          <MacroBar kind="carb" value={total.carbs} target={goals.carbs} />
-          <MacroBar kind="fat" value={total.fat} target={goals.fat} />
-          <MacroBar kind="memory" value={total.fiber} target={goals.fiber} />
+          {MACROS.map((def) => (
+            <MacroBar
+              key={def.key}
+              def={def}
+              value={total[def.key] ?? 0}
+              target={goals[def.key] ?? 0}
+            />
+          ))}
         </Card>
       )}
 

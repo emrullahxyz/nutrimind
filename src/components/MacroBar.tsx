@@ -1,39 +1,34 @@
 import { useEffect, useState } from "react";
 import { formatNumber } from "../lib/format";
-
-export type MacroKind = "protein" | "carb" | "fat" | "memory";
-
-function macroLabel(kind: MacroKind): string {
-  switch (kind) {
-    case "protein":
-      return "Protein";
-    case "carb":
-      return "Karbonhidrat";
-    case "fat":
-      return "Yağ";
-    case "memory":
-      return "Lif";
-  }
-}
-
-function macroClasses(kind: MacroKind): { text: string; bg: string; track: string } {
-  switch (kind) {
-    case "protein":
-      return { text: "text-protein", bg: "bg-protein", track: "bg-protein/[0.15]" };
-    case "carb":
-      return { text: "text-carb", bg: "bg-carb", track: "bg-carb/[0.15]" };
-    case "fat":
-      return { text: "text-fat", bg: "bg-fat", track: "bg-fat/[0.15]" };
-    case "memory":
-      return { text: "text-memory", bg: "bg-memory", track: "bg-memory/[0.15]" };
-  }
-}
+import type { NutrientDef } from "../lib/nutrients";
 
 interface MacroBarProps {
-  kind: MacroKind;
+  /** Besin kaydındaki tanım — etiket, birim, renk sınıfları ve `direction`. */
+  def: NutrientDef;
   value: number;
   target: number;
-  unit?: string;
+}
+
+/** Hedef durumu metni.
+ *
+ *  `target` (protein, karbonhidrat, yağ, lif): hedefe ULAŞILACAK — kalanı sayar,
+ *  tam tutunca "✓ Tamamlandı", aşınca uyarır.
+ *
+ *  `limit` (Faz 2: sodyum, şeker, doymuş yağ): hedef AŞILMAYACAK bir üst sınır;
+ *  limite ulaşmak bir başarı olmadığı için "✓ Tamamlandı" hiç görünmez. Kayıttaki
+ *  5 besinin hepsi `target` olduğundan bu dal şimdilik hiç çalışmıyor; renk/eşik
+ *  semantiği (%80 warn vb.) Faz 2'de eklenecek. */
+function statusText(def: NutrientDef, diff: number, isOver: boolean, isMet: boolean): string {
+  if (def.direction === "limit") {
+    return isOver
+      ? `+${formatNumber(Math.abs(diff), def.decimals)}${def.unit} limit aşıldı!`
+      : `${formatNumber(diff, def.decimals)}${def.unit} kullanılabilir`;
+  }
+  return isOver
+    ? `+${formatNumber(Math.abs(diff), def.decimals)}${def.unit} aşıldı!`
+    : isMet
+      ? "✓ Tamamlandı"
+      : `${formatNumber(diff, def.decimals)}${def.unit} kaldı`;
 }
 
 /** Synchronized count-up animation hook for numeric values. */
@@ -77,21 +72,21 @@ function useAnimatedPct(targetPct: number): number {
   return currentPct;
 }
 
-/** Labeled macro progress bar (protein/carb/fat/fiber) with count-up number animation & smooth bar fill. */
-export function MacroBar({ kind, value, target, unit = "g" }: MacroBarProps) {
+/** Labeled nutrient progress bar (protein/carb/fat/fiber) with count-up number animation & smooth bar fill. */
+export function MacroBar({ def, value, target }: MacroBarProps) {
   const targetPct = target > 0 ? Math.min(100, Math.max(0, (value / target) * 100)) : 0;
   const pct = useAnimatedPct(targetPct);
   const animatedValue = useAnimatedValue(value);
   const diff = target - value;
   const isOver = target > 0 && diff < -0.05;
   const isMet = target > 0 && Math.abs(diff) <= 0.05;
-  const c = macroClasses(kind);
+  const c = def.classes;
 
   return (
     <div>
       <div className="mb-1.5 flex items-center justify-between">
         <div className="flex items-center gap-1.5">
-          <span className={`text-[13px] font-bold ${c.text}`}>{macroLabel(kind)}</span>
+          <span className={`text-[13px] font-bold ${c.text}`}>{def.label}</span>
           {target > 0 && (
             <span
               className={`text-xs font-mono ${
@@ -102,13 +97,13 @@ export function MacroBar({ kind, value, target, unit = "g" }: MacroBarProps) {
                   : `${c.text} opacity-75 font-semibold`
               }`}
             >
-              • {isOver ? `+${formatNumber(Math.abs(diff), 1)}${unit} aşıldı!` : isMet ? "✓ Tamamlandı" : `${formatNumber(diff, 1)}${unit} kaldı`}
+              • {statusText(def, diff, isOver, isMet)}
             </span>
           )}
         </div>
         <span className={`font-mono text-xs ${isOver ? "font-bold text-danger" : "text-ink-secondary"}`}>
           {formatNumber(animatedValue)} / {formatNumber(target)}
-          {unit}
+          {def.unit}
         </span>
       </div>
       <div className={`h-2 rounded-full ${c.track} overflow-hidden`}>

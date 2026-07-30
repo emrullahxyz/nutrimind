@@ -5,6 +5,8 @@ import { MacroDonut } from "../components/MacroDonut";
 import { DayView } from "../components/DayView";
 import { formatKcal, formatLongDate, formatNumber, formatRelativeDay, formatShortDate } from "../lib/format";
 import { useData } from "../lib/data";
+import { MACROS } from "../lib/nutrients";
+import type { NutrientDef } from "../lib/nutrients";
 import { weekStart, weeks } from "../lib/weeks";
 import type { Week } from "../lib/weeks";
 import { addDaysISO } from "../lib/format";
@@ -92,11 +94,13 @@ function Stat({ label, value, hint }: { label: string; value: string; hint?: str
   );
 }
 
-function MacroRow({ label, value, color }: { label: string; value: number; color: string }) {
+function MacroRow({ def, value }: { def: NutrientDef; value: number }) {
   return (
     <div className="flex items-center justify-between">
-      <span className={`text-[13px] font-bold ${color}`}>{label}</span>
-      <span className="font-mono text-xs text-ink-secondary">{formatNumber(value)} g</span>
+      <span className={`text-[13px] font-bold ${def.classes.text}`}>{def.label}</span>
+      <span className="font-mono text-xs text-ink-secondary">
+        {formatNumber(value)} {def.unit}
+      </span>
     </div>
   );
 }
@@ -173,10 +177,9 @@ export function HistoryPage() {
           </Card>
           <Card className="flex flex-col justify-center gap-2 p-6">
             <div className="text-sm font-bold text-ink-secondary">Haftalık makro (toplam)</div>
-            <MacroRow label="Protein" value={week.total.protein} color="text-protein" />
-            <MacroRow label="Karbonhidrat" value={week.total.carbs} color="text-carb" />
-            <MacroRow label="Yağ" value={week.total.fat} color="text-fat" />
-            <MacroRow label="Lif" value={week.total.fiber} color="text-memory" />
+            {MACROS.map((def) => (
+              <MacroRow key={def.key} def={def} value={week.total[def.key] ?? 0} />
+            ))}
           </Card>
         </div>
       </div>
