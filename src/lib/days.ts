@@ -36,5 +36,9 @@ export function datesDesc(days: Days): string[] {
 
 /** Görüntüleme öğünlerini backend biçimine çevirir. */
 export function toPayload(meals: MealItem[]): MealPayload[] {
-  return meals.map((m) => ({ name: m.label, nutrition: m.computed }));
+  return meals.map((m) => ({
+    name: m.label,
+    nutrition: m.computed,
+    ...(m.sources && m.sources.length > 0 ? { sources: m.sources } : {}),
+  }));
 }

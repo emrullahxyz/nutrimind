@@ -20,17 +20,27 @@ export interface Nutrition {
   sodium?: number; // mg (sodyum)         — Faz 2
 }
 
+export interface MealSource {
+  aliasId: string;
+  /** Kullanıcının yazdığı miktar (gram DEĞİL — birim cinsinden). */
+  qty: number;
+  /** Birim adı; gram için "g". */
+  unit: string;
+}
+
 /** Bir öğün kalemi (gösterim). */
 export interface MealItem {
   id: string;
   label: string;
   computed: Nutrition;
+  sources?: MealSource[];
 }
 
 /** Backend'e gönderilen öğün biçimi (days[date] dizisindeki kayıt). */
 export interface MealPayload {
   name: string;
   nutrition: Nutrition;
+  sources?: MealSource[];
 }
 
 export interface AliasUnit {
