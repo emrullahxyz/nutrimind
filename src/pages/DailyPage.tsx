@@ -10,7 +10,7 @@ export function DailyPage() {
           kalıyor ki öğün listesi yukarıda dursun. */}
       <p className="text-sm text-ink-tertiary">{formatLongDate(date)}</p>
 
-      <DayView date={date} emptyLabel="Bugün henüz bir şey yok." />
+      <DayView date={date} emptyLabel="Bugün henüz bir şey yok." enableScan />
     </div>
   );
 }
