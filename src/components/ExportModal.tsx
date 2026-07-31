@@ -14,16 +14,18 @@ import { ErrorText, Label } from "./FormBits";
 import { Modal } from "./Modal";
 import { ReportView } from "./ReportView";
 
-type ActiveTab = "export" | "import" | "report";
+type ActiveTab = "export" | "import";
 
 export function ExportModal({
   data,
   refresh,
   onClose,
+  embedded = false,
 }: {
   data: AppData;
   refresh: () => Promise<void>;
   onClose: () => void;
+  embedded?: boolean;
 }) {
   const [tab, setTab] = useState<ActiveTab>("export");
   const [fileError, setFileError] = useState<string | null>(null);
@@ -74,43 +76,31 @@ export function ExportModal({
     }
   };
 
-  return (
-    <Modal title="Veri Yönetimi & PDF Raporu" onClose={onClose}>
+  const content = (
       <div className="flex flex-col gap-4">
-        {/* Alt Sekme Butonları */}
-        <div className="no-print flex border-b border-line pb-3">
+        {/* Alt Sekme Butonları (Pill stili) */}
+        <div className="no-print -mx-1 flex gap-2 overflow-x-auto px-1 pb-1">
           <button
             type="button"
             onClick={() => setTab("export")}
-            className={`flex-1 pb-2 text-center text-xs font-bold transition border-b-2 ${
+            className={`flex-none rounded-pill px-3 py-1.5 text-xs font-bold transition ${
               tab === "export"
-                ? "border-accent text-accent"
-                : "border-transparent text-ink-secondary hover:text-ink-primary"
+                ? "bg-memory text-memory-ink"
+                : "border border-line bg-white/[0.06] text-ink-secondary hover:text-ink-primary"
             }`}
           >
-            Dışa Aktar (Export)
+            Dışa Aktar
           </button>
           <button
             type="button"
             onClick={() => setTab("import")}
-            className={`flex-1 pb-2 text-center text-xs font-bold transition border-b-2 ${
+            className={`flex-none rounded-pill px-3 py-1.5 text-xs font-bold transition ${
               tab === "import"
-                ? "border-accent text-accent"
-                : "border-transparent text-ink-secondary hover:text-ink-primary"
+                ? "bg-memory text-memory-ink"
+                : "border border-line bg-white/[0.06] text-ink-secondary hover:text-ink-primary"
             }`}
           >
-            Geri Yükle (Import)
-          </button>
-          <button
-            type="button"
-            onClick={() => setTab("report")}
-            className={`flex-1 pb-2 text-center text-xs font-bold transition border-b-2 ${
-              tab === "report"
-                ? "border-accent text-accent"
-                : "border-transparent text-ink-secondary hover:text-ink-primary"
-            }`}
-          >
-            PDF Raporu
+            Geri Yükle
           </button>
         </div>
 
@@ -264,10 +254,14 @@ export function ExportModal({
             )}
           </div>
         )}
-
-        {/* 3. SEKME: PDF RAPORU */}
-        {tab === "report" && <ReportView data={data} />}
       </div>
+  );
+
+  if (embedded) return content;
+
+  return (
+    <Modal title="Veri Yönetimi" onClose={onClose}>
+      {content}
     </Modal>
   );
 }

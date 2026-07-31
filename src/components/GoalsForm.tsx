@@ -67,7 +67,7 @@ function profileErrorOf(p: ProfileDraft): string | null {
   return null;
 }
 
-export function GoalsForm({ onClose }: { onClose: () => void }) {
+export function GoalsForm({ onClose, embedded = false }: { onClose: () => void; embedded?: boolean }) {
   const { goals, updateGoals } = useData();
 
   const [profiles, setProfiles] = useState<ProfileDraft[]>(() => toProfileDrafts(goals));
@@ -172,8 +172,7 @@ export function GoalsForm({ onClose }: { onClose: () => void }) {
 
   const multi = profiles.length > 1;
 
-  return (
-    <Modal title="Günlük hedefler" onClose={requestClose}>
+  const content = (
       <div className="flex flex-col gap-4">
         {/* --- profil sekmeleri ------------------------------------------- */}
         <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1">
@@ -318,6 +317,13 @@ export function GoalsForm({ onClose }: { onClose: () => void }) {
 
         <FormActions onCancel={requestClose} onSave={save} saving={saving} disabled={!canSave} />
       </div>
+  );
+
+  if (embedded) return content;
+
+  return (
+    <Modal title="Günlük hedefler" onClose={requestClose}>
+      {content}
     </Modal>
   );
 }
