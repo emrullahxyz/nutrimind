@@ -92,8 +92,10 @@ export function AliasForm({ initial, onClose }: { initial: Alias | null; onClose
     setErr(null);
 
     // Boş adlı veya grams <= 0 olan satırlar elenir; aynı birim adı tekilleştirilir.
+    // "g" ayrılmıştır: öğün formunda gram zaten her zaman listede ve 1'e eşit,
+    // aynı adı ikinci kez kaydetmek yalnızca yinelenen bir seçenek üretirdi.
     const validUnits: AliasUnit[] = [];
-    const seenNames = new Set<string>();
+    const seenNames = new Set<string>(["g"]);
     for (const u of unitDrafts) {
       const trimmedName = u.name.trim();
       const parsedGrams = parseNum(u.grams);

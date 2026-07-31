@@ -103,24 +103,28 @@ describe("buildTrend — aralık sınırları", () => {
 });
 
 describe("buildTrend — kayıtsız gün null kalır (asla 0)", () => {
-  const days = daysOf({ "2026-07-28": 2000, [TODAY]: 2200 });
-  const s = buildTrend(days, "kcal", 7, GOAL);
+  // DİKKAT: `buildTrend` bu describe'ın GÖVDESİNDE çağrılmamalı. Gövde toplama
+  // aşamasında, yani `beforeAll` sahte saati kurmadan ÖNCE çalışır; oradaki
+  // çağrı gerçek tarihi görür ve gerçek gün 2026-07-30'u geçtiğinde pencere
+  // kayarak test kendiliğinden kırılır. Bu yüzden her çağrı `it()` içinde.
+  const days = () => daysOf({ "2026-07-28": 2000, [TODAY]: 2200 });
 
   it("boşluklar null, 0 değil", () => {
+    const s = buildTrend(days(), "kcal", 7, GOAL);
     expect(s.points.map((p) => p.value)).toEqual([null, null, null, null, 2000, null, 2200]);
     expect(s.points.some((p) => p.value === 0)).toBe(false);
   });
   it("dataCount yalnızca verisi olan günleri sayar", () => {
-    expect(s.dataCount).toBe(2);
+    expect(buildTrend(days(), "kcal", 7, GOAL).dataCount).toBe(2);
   });
   it("kaydı olan ama bu besinde verisi olmayan gün de null (bilinmiyor ≠ sıfır)", () => {
     // Öğünlerde sodyum hiç girilmemiş: gün KAYITLI ama sodyum bilinmiyor.
-    const micro = buildTrend(days, "sodium", 7, GOAL);
+    const micro = buildTrend(days(), "sodium", 7, GOAL);
     expect(micro.points.every((p) => p.value === null)).toBe(true);
     expect(micro.dataCount).toBe(0);
   });
   it("girilmiş mikro besin verisi görünür", () => {
-    const withSodium: Days = { ...days, [TODAY]: meals(2200, { sodium: 1400 }) };
+    const withSodium: Days = { ...days(), [TODAY]: meals(2200, { sodium: 1400 }) };
     const micro = buildTrend(withSodium, "sodium", 7, GOAL);
     expect(micro.points[6].value).toBe(1400);
     expect(micro.dataCount).toBe(1);

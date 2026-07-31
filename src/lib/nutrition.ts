@@ -2,9 +2,26 @@
 // Nutrimind — saf besin hesapları (alias ölçekleme + tr-TR sayı ayrıştırma).
 // ============================================================================
 import { ZERO_NUTRITION } from "../types";
-import type { Nutrition } from "../types";
+import type { AliasUnit, Nutrition } from "../types";
 import { NUTRIENT_KEYS, makeNutrition } from "./nutrients";
 import type { NutrientKey } from "./nutrients";
+
+/** Gram her zaman vardır ve tanımı gereği 1'e eşittir. */
+export const GRAM_UNIT: AliasUnit = { name: "g", grams: 1 };
+
+/** Öğün formundaki birim seçeneği listesi: gram + besinin kendi birimleri.
+ *
+ *  Kullanıcının "g" adıyla tanımladığı birim ELENİR. Aksi halde select'te aynı
+ *  adda iki seçenek olur (yinelenen React key) ve seçim yerleşik gramı bulacağı
+ *  için kullanıcının tanımı zaten hiçbir zaman uygulanmazdı. */
+export function unitOptions(units: AliasUnit[] | undefined): AliasUnit[] {
+  return [GRAM_UNIT, ...(units ?? []).filter((u) => u.name.trim().toLowerCase() !== GRAM_UNIT.name)];
+}
+
+/** Seçili birimdeki miktarı grama çevirir ("2 adet" × 50 = 100 g). */
+export function toGrams(amount: number, unit: AliasUnit): number {
+  return amount * unit.grams;
+}
 
 /** tr-TR sayı metnini sayıya çevirir. Geçersiz/boş girdide 0.
  *
