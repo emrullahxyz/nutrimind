@@ -3,8 +3,10 @@ import { Card } from "../components/Card";
 import { AliasForm } from "../components/AliasForm";
 import { RecipeBuilder } from "../components/RecipeBuilder";
 import { ScanSheet } from "../components/ScanSheet";
-import { ConfirmButton, ErrorText, NutrientSummaryLine } from "../components/FormBits";
+import { ConfirmButton, ErrorText } from "../components/FormBits";
 import { formatNumber } from "../lib/format";
+import { scaleNutrition } from "../lib/nutrition";
+import { filterAliases } from "../lib/aliasFilter";
 import { useData } from "../lib/data";
 import type { Alias } from "../types";
 
@@ -14,8 +16,11 @@ export function AliasPage() {
   const [editingAlias, setEditingAlias] = useState<Alias | null | undefined>(undefined);
   const [editingRecipe, setEditingRecipe] = useState<Alias | null | undefined>(undefined);
   const [showScan, setShowScan] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
   const [err, setErr] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+
+  const filteredAliases = filterAliases(aliases, searchQuery);
 
   async function remove(id: string) {
     if (busy) return;
@@ -64,74 +69,78 @@ export function AliasPage() {
         </div>
       </div>
 
+      {aliases.length > 0 && (
+        <div className="relative">
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="Besin adı, marka veya ifade ara..."
+            className="w-full rounded-chip border border-line bg-white/[0.03] px-3.5 py-2 text-xs text-ink-primary placeholder:text-ink-tertiary focus:border-memory/50 focus:outline-none"
+          />
+          {searchQuery && (
+            <button
+              type="button"
+              onClick={() => setSearchQuery("")}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-ink-tertiary hover:text-ink-primary"
+              title="Aramayı temizle"
+            >
+              ✕
+            </button>
+          )}
+        </div>
+      )}
+
       {err && <ErrorText>{err}</ErrorText>}
 
       {aliases.length === 0 ? (
         <p className="text-sm text-ink-tertiary">Henüz alias yok. "+ Tarif oluştur" veya "+ Yeni besin" ile ekle.</p>
+      ) : filteredAliases.length === 0 ? (
+        <p className="text-sm text-ink-tertiary">"{searchQuery}" için sonuç bulunamadı.</p>
       ) : (
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {aliases.map((a, i) => (
-            <Card key={a.id} className="anim-fadeup flex flex-col gap-3 p-4" style={{ animationDelay: `${i * 50}ms` }}>
-              <div>
-                <div className="flex items-center justify-between gap-2">
-                  <div className="text-sm font-bold text-ink-primary">{a.name}</div>
-                  {a.recipe && (
-                    <span className="rounded-pill bg-accent/15 px-2 py-0.5 font-mono text-[10px] font-semibold text-accent">
-                      tarif
-                    </span>
-                  )}
+        <div className="grid gap-3 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
+          {filteredAliases.map((a, i) => {
+            const kcal100g = scaleNutrition(a.nutrition, a.serving_g, 100).kcal;
+            return (
+              <Card key={a.id} className="anim-fadeup flex flex-col justify-between gap-2.5 p-3.5" style={{ animationDelay: `${i * 30}ms` }}>
+                <div>
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-1.5">
+                        <span className="truncate text-sm font-bold text-ink-primary" title={a.name}>
+                          {a.name}
+                        </span>
+                        {a.recipe && (
+                          <span className="shrink-0 rounded-pill bg-accent/15 px-1.5 py-0.5 font-mono text-[10px] font-semibold text-accent">
+                            tarif
+                          </span>
+                        )}
+                      </div>
+                      {a.brand && <div className="truncate text-[11px] text-ink-tertiary">{a.brand}</div>}
+                    </div>
+                    <div className="shrink-0 font-mono text-xs font-semibold text-ink-secondary">
+                      {formatNumber(kcal100g)} kcal/100g
+                    </div>
+                  </div>
                 </div>
-                {a.brand && <div className="text-[11px] text-ink-tertiary">{a.brand}</div>}
-              </div>
 
-              <div className="flex flex-wrap gap-1.5">
-                {a.triggers.map((t) => (
-                  <span
-                    key={t}
-                    className="rounded-pill bg-memory/15 px-2.5 py-1 text-[11px] font-semibold text-memory"
+                <div className="flex items-center justify-end gap-2 border-t border-line/40 pt-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (a.recipe) setEditingRecipe(a);
+                      else setEditingAlias(a);
+                    }}
+                    disabled={busy}
+                    className="rounded-pill bg-white/[0.06] px-2.5 py-1 text-[11px] font-semibold text-ink-tertiary transition hover:text-ink-primary disabled:opacity-40"
                   >
-                    {t}
-                  </span>
-                ))}
-              </div>
-
-              {a.units && a.units.length > 0 && (
-                <div className="flex flex-wrap gap-1 text-[11px] font-mono text-ink-tertiary">
-                  {a.units.map((u) => (
-                    <span key={u.name} className="rounded bg-white/[0.04] px-1.5 py-0.5 border border-line/40">
-                      1 {u.name} = {formatNumber(u.grams)} g
-                    </span>
-                  ))}
+                    {a.recipe ? "Tarifi düzenle" : "Düzenle"}
+                  </button>
+                  <ConfirmButton onConfirm={() => remove(a.id)} disabled={busy} />
                 </div>
-              )}
-
-              {/* Lif dahil TÜM makrolar — uygulamanın diğer özet satırlarıyla
-                  aynı liste. `decimals={0}` bilinçli: 11px mono kartta tam sayı
-                  okunuyor, "12,0 · 30,0" satırı gereksiz yere şişiriyordu. */}
-              <NutrientSummaryLine
-                nutrition={a.nutrition}
-                decimals={0}
-                kcal="inline"
-                prefix={`${formatNumber(a.serving_g)} g · `}
-                className="border-t border-line pt-2 font-mono text-[11px] text-ink-secondary"
-              />
-
-              <div className="flex items-center justify-end gap-2">
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (a.recipe) setEditingRecipe(a);
-                    else setEditingAlias(a);
-                  }}
-                  disabled={busy}
-                  className="rounded-pill bg-white/[0.06] px-2.5 py-1 text-[11px] font-semibold text-ink-tertiary transition hover:text-ink-primary disabled:opacity-40"
-                >
-                  Düzenle
-                </button>
-                <ConfirmButton onConfirm={() => remove(a.id)} disabled={busy} />
-              </div>
-            </Card>
-          ))}
+              </Card>
+            );
+          })}
         </div>
       )}
 

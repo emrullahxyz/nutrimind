@@ -12,6 +12,7 @@ import { useMemo, useState } from "react";
 import { Card } from "../components/Card";
 import { Stat } from "../components/Stat";
 import { TrendChart } from "../components/TrendChart";
+import { RangePicker } from "../components/RangePicker";
 import { useData } from "../lib/data";
 import { formatNumber } from "../lib/format";
 import { effectiveGoal, weeklyAverageGoal } from "../lib/goals";
@@ -19,13 +20,7 @@ import { NUTRIENTS, nutrientOf } from "../lib/nutrients";
 import type { NutrientDef, NutrientKey } from "../lib/nutrients";
 import { buildTrend, formatNutrientValue, trendStats } from "../lib/trend";
 import type { TrendRange } from "../lib/trend";
-
-const RANGES: { value: TrendRange; label: string }[] = [
-  { value: 7, label: "7 gün" },
-  { value: 30, label: "30 gün" },
-  { value: 90, label: "90 gün" },
-  { value: "all", label: "Tümü" },
-];
+import { formatTargetHitRate } from "../lib/trendFormat";
 
 /** Seçici çipi — App.tsx'teki TabButton'ın küçük kardeşi (aynı aktif durumu). */
 function Chip({
@@ -99,8 +94,7 @@ export function TrendPage() {
   );
 
   const gaps = series.points.length - series.dataCount;
-  const hitRate =
-    stats.ratedDays > 0 ? `%${Math.round((stats.onTargetDays / stats.ratedDays) * 100)}` : "—";
+  const hitRate = formatTargetHitRate(stats);
 
   return (
     <div className="flex flex-col gap-4">
@@ -126,16 +120,7 @@ export function TrendPage() {
       </div>
 
       {/* aralık seçici */}
-      <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1">
-        {RANGES.map((r) => (
-          <Chip
-            key={String(r.value)}
-            active={r.value === range}
-            label={r.label}
-            onClick={() => setRange(r.value)}
-          />
-        ))}
-      </div>
+      <RangePicker value={range} onChange={setRange} />
 
       {/* özet kutuları — trendin asıl bilgi değeri burada */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">

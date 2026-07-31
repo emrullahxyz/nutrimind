@@ -51,22 +51,79 @@ function AnimatedKcal({ value, delayMs }: { value: number; delayMs: number }) {
 }
 
 /** Haftanın 7 günü için 3D-görünümlü kalori bar grafiği + hedef çizgisi.
- *  onSelectDay verilirse veri olan günler tıklanabilir (gün detayına drill). */
-export function WeekBars({ week, onSelectDay }: { week: Week; onSelectDay?: (date: string) => void }) {
+ *  `compact` verilirse hafta listesi kartları için mini sparkline görünümü sunar.
+ *  `onSelectDay` verilirse veri olan günler tıklanabilir (gün detayına drill). */
+export function WeekBars({
+  week,
+  onSelectDay,
+  compact = false,
+}: {
+  week: Week;
+  onSelectDay?: (date: string) => void;
+  compact?: boolean;
+}) {
   const { goals } = useData();
 
   // Faz 8: her gün KENDİ hedefiyle karşılaştırılır (eskiden hepsi bugünün
-  // hedefine bakıyordu — geçmiş bir hafta yanlış renkleniyordu). Kesikli çizgi
-  // tek bir yatay çizgi olduğu için haftanın ORTALAMA hedefini gösterir;
-  // günler farklıysa etiket bunu "ort." diye söyler.
+  // hedefine bakıyordu — geçmiş bir hafta yanlış renkleniyordu).
   const dayGoals = useMemo(
     () => week.days.map((d) => effectiveGoal(goals, d.date).kcal),
     [goals, week],
   );
-  const avgGoal = dayGoals.reduce((a, b) => a + b, 0) / dayGoals.length;
-  const goalVaries = new Set(dayGoals).size > 1;
 
   const max = Math.max(...dayGoals, ...week.days.map((d) => d.total.kcal)) * 1.12 || 1;
+
+  if (compact) {
+    return (
+      <div className="flex h-12 items-end gap-1.5 overflow-hidden rounded-lg bg-black/40 p-1.5 inset-0 border border-white/[0.06]">
+        {week.days.map((d, i) => {
+          const over = dayGoals[i] > 0 && d.total.kcal > dayGoals[i];
+          return (
+            <div key={d.date} className="relative flex-1 h-full flex flex-col justify-end">
+              {d.hasData ? (
+                <div
+                  className="anim-grow-spring relative w-full overflow-hidden rounded-t-[4px] shadow-[0_0_8px_rgba(45,212,191,0.2)] transition-transform duration-200 group-hover:-translate-y-0.5"
+                  style={{
+                    height: `${Math.max((d.total.kcal / max) * 100, 10)}%`,
+                    animationDelay: `${i * 45}ms`,
+                  }}
+                >
+                  {/* Obsidyen Zümrüt / Carmine Kırmızısı Bar Gövdesi */}
+                  <div
+                    className="relative z-10 h-full w-full overflow-hidden rounded-t-[4px]"
+                    style={{
+                      background: over
+                        ? "linear-gradient(180deg, #fb7185 0%, #e11d48 35%, #9f1239 70%, #4c0519 100%)"
+                        : "linear-gradient(180deg, #5eead4 0%, #2dd4bf 30%, #0d9488 70%, #042f2e 100%)",
+                      boxShadow: "inset 1px 1px 1px rgba(255,255,255,0.3), inset -1px -1px 3px rgba(0,0,0,0.5)",
+                      filter: "brightness(0.96)",
+                    }}
+                  >
+                    {/* Chroma Katmanı */}
+                    <div
+                      className="pointer-events-none absolute inset-0 z-12 opacity-70 mix-blend-overlay"
+                      style={{
+                        background:
+                          "linear-gradient(135deg, rgba(255, 0, 128, 0.15) 0%, rgba(0, 255, 240, 0.15) 50%, rgba(168, 85, 247, 0.15) 100%)",
+                      }}
+                    />
+                    {/* Cam Yansıması */}
+                    <div className="pointer-events-none absolute bottom-0 left-0 top-0 z-15 w-[40%] rounded-tl-[4px] bg-gradient-to-r from-white/20 via-white/4 to-transparent" />
+                  </div>
+                </div>
+              ) : (
+                <div className="h-[3px] w-full rounded-t-sm border border-dashed border-white/10 bg-white/[0.03]" />
+              )}
+            </div>
+          );
+        })}
+      </div>
+    );
+  }
+
+  // Kesikli çizgi tek bir yatay çizgi olduğu için haftanın ORTALAMA hedefini gösterir
+  const avgGoal = dayGoals.reduce((a, b) => a + b, 0) / dayGoals.length;
+  const goalVaries = new Set(dayGoals).size > 1;
   const goalPct = (avgGoal / max) * 100;
 
   return (
@@ -173,10 +230,6 @@ export function WeekBars({ week, onSelectDay }: { week: Week; onSelectDay?: (dat
             </div>
           ))}
         </div>
-
-        {onSelectDay && (
-          <p className="mt-3 text-center text-[11px] text-ink-tertiary">Bir güne tıkla → o günün detayı</p>
-        )}
       </div>
     </div>
   );
