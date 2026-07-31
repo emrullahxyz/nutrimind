@@ -12,7 +12,6 @@
 import { useState } from "react";
 import { useData } from "../lib/data";
 import { effectiveProfile, hasOverride, nextProfileId, profileIcon, withOverride } from "../lib/goals";
-import { formatKcal } from "../lib/format";
 
 export function DayTypeBadge({ date }: { date: string }) {
   const { goals, updateGoals } = useData();
@@ -51,9 +50,6 @@ export function DayTypeBadge({ date }: { date: string }) {
       >
         <span aria-hidden>{profileIcon(profile.id)}</span>
         {profile.name}
-        <span className="font-mono text-[10px] font-semibold text-ink-tertiary">
-          {formatKcal(profile.nutrition.kcal)}
-        </span>
       </button>
 
       {pinned ? (

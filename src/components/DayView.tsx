@@ -1,11 +1,10 @@
 import { useState } from "react";
 import { CalorieRing } from "./CalorieRing";
 import { MacroBar } from "./MacroBar";
-import { MacroDonut } from "./MacroDonut";
 import { Card } from "./Card";
 import { DayTypeBadge } from "./DayTypeBadge";
 import { MealForm } from "./MealForm";
-import { ConfirmButton, ErrorText, FormActions, NutrientSummaryLine, TextField } from "./FormBits";
+import { ConfirmButton, ErrorText, ExpandableMealName, FormActions, NutrientSummaryLine, TextField } from "./FormBits";
 import { Modal } from "./Modal";
 import { formatKcal } from "../lib/format";
 import { useData } from "../lib/data";
@@ -35,11 +34,14 @@ function MergeModal({
         <TextField label="Birleşik öğün adı" value={name} onChange={setName} placeholder="örn. Kahvaltı" />
         <div className="rounded-chip border border-line bg-white/[0.03] p-3">
           <p className="mb-2 text-xs font-semibold text-ink-secondary">Birleşecek Öğünler:</p>
-          <ul className="space-y-1 text-xs text-ink-tertiary">
+          <ul className="space-y-1.5 text-xs text-ink-tertiary">
             {selectedMeals.map((m) => (
-              <li key={m.id} className="flex justify-between">
-                <span>• {m.label}</span>
-                <span className="font-mono">{formatKcal(m.computed.kcal)}</span>
+              <li key={m.id} className="flex justify-between items-baseline gap-2">
+                <div className="flex items-baseline gap-1 min-w-0">
+                  <span className="flex-none">•</span>
+                  <ExpandableMealName name={m.label} className="min-w-0 text-ink-tertiary" />
+                </div>
+                <span className="font-mono flex-none">{formatKcal(m.computed.kcal)}</span>
               </li>
             ))}
           </ul>
@@ -61,7 +63,7 @@ function MergeModal({
   );
 }
 
-/** Bir günün besin görselleri (halka + makro donut + barlar + öğün katkısı)
+/** Bir günün besin görselleri (halka + barlar + öğün katkısı)
  *  ve öğün ekleme/düzenleme/silme/birleştirme kontrolleri. */
 export function DayView({ date, emptyLabel = "Bu gün için kayıt yok." }: { date: string; emptyLabel?: string }) {
   const { goals, days, setDayMeals } = useData();
@@ -75,6 +77,7 @@ export function DayView({ date, emptyLabel = "Bu gün için kayıt yok." }: { da
   // editIndex: null = yeni öğün, sayı = o indeksli öğünü düzenle. form kapalıysa undefined.
   const [editIndex, setEditIndex] = useState<number | null | undefined>(undefined);
   const [selectedIndices, setSelectedIndices] = useState<number[]>([]);
+  const [selectMode, setSelectMode] = useState(false);
   const [showMergeModal, setShowMergeModal] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -127,6 +130,7 @@ export function DayView({ date, emptyLabel = "Bu gün için kayıt yok." }: { da
 
       await setDayMeals(date, nextPayload);
       setSelectedIndices([]);
+      setSelectMode(false);
       setShowMergeModal(false);
     } catch (e) {
       setErr(String((e as Error)?.message ?? e));
@@ -160,23 +164,21 @@ export function DayView({ date, emptyLabel = "Bu gün için kayıt yok." }: { da
     <div className="flex flex-col gap-5">
       <DayTypeBadge date={date} />
 
-      <div className="grid gap-4 md:grid-cols-2">
-        <Card className="flex items-center justify-center p-6">
-          <CalorieRing consumed={total.kcal} target={goal.kcal} />
+      {/* Halka mobilde küçültüldü (196 → 168): bu ekranın asıl işi altındaki
+          öğün listesi ve o listenin ilk ekranda kalması halkanın 28 pikselinden
+          daha değerli. */}
+      <Card className="flex items-center justify-center p-4">
+        <CalorieRing consumed={total.kcal} target={goal.kcal} size={168} />
+      </Card>
+
+      {!hasData && (
+        <Card className="flex items-center justify-center p-4 text-center text-sm text-ink-tertiary">
+          {emptyLabel}
         </Card>
-        {hasData ? (
-          <Card className="flex items-center justify-center p-6">
-            <MacroDonut nutrition={total} />
-          </Card>
-        ) : (
-          <Card className="flex items-center justify-center p-6 text-center text-sm text-ink-tertiary">
-            {emptyLabel}
-          </Card>
-        )}
-      </div>
+      )}
 
       {hasData && (
-        <Card className="flex flex-col gap-4 p-6">
+        <Card className="flex flex-col gap-3 p-4">
           {MACROS.map((def) => (
             <MacroBar
               key={def.key}
@@ -212,29 +214,51 @@ export function DayView({ date, emptyLabel = "Bu gün için kayıt yok." }: { da
 
       <section className="flex flex-col gap-2">
         <div className="flex items-center justify-between gap-3">
-          <div className="flex items-center gap-2">
-            <h3 className="text-sm font-bold text-ink-secondary">Öğün katkısı</h3>
-            {selectedIndices.length > 0 && (
-              <button
-                type="button"
-                onClick={() => setSelectedIndices([])}
-                className="text-[11px] text-ink-tertiary hover:text-ink-primary"
-              >
-                (Seçimi Temizle)
-              </button>
-            )}
-          </div>
+          <h3 className="text-sm font-bold text-ink-secondary">Öğün katkısı</h3>
 
           <div className="flex items-center gap-2">
-            {selectedIndices.length >= 2 && (
-              <button
-                type="button"
-                onClick={() => setShowMergeModal(true)}
-                disabled={busy}
-                className="rounded-pill bg-memory px-3 py-1.5 text-xs font-bold text-memory-ink transition hover:opacity-90 disabled:opacity-40"
-              >
-                🔗 Birleştir ({selectedIndices.length})
-              </button>
+            {selectMode ? (
+              <>
+                {selectedIndices.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => setSelectedIndices([])}
+                    className="rounded-pill border border-line bg-white/[0.06] px-2.5 py-1.5 text-xs font-semibold text-ink-tertiary transition hover:text-ink-primary"
+                  >
+                    Seçimi temizle
+                  </button>
+                )}
+                {selectedIndices.length >= 2 && (
+                  <button
+                    type="button"
+                    onClick={() => setShowMergeModal(true)}
+                    disabled={busy}
+                    className="rounded-pill bg-memory px-3 py-1.5 text-xs font-bold text-memory-ink transition hover:opacity-90 disabled:opacity-40"
+                  >
+                    🔗 Birleştir ({selectedIndices.length})
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSelectMode(false);
+                    setSelectedIndices([]);
+                  }}
+                  className="rounded-pill border border-memory/40 bg-white/[0.09] px-3 py-1.5 text-xs font-bold text-ink-primary transition hover:bg-white/[0.15]"
+                >
+                  Tamam
+                </button>
+              </>
+            ) : (
+              hasData && (
+                <button
+                  type="button"
+                  onClick={() => setSelectMode(true)}
+                  className="rounded-pill border border-line bg-white/[0.06] px-3 py-1.5 text-xs font-semibold text-ink-secondary transition hover:border-memory/40 hover:bg-white/[0.09] hover:text-ink-primary"
+                >
+                  Seç
+                </button>
+              )
             )}
             <button
               type="button"
@@ -257,19 +281,20 @@ export function DayView({ date, emptyLabel = "Bu gün için kayıt yok." }: { da
               return (
                 <li key={m.id} className="group anim-fadeup flex flex-col gap-1" style={{ animationDelay: `${i * 70}ms` }}>
                   <div className="flex items-baseline justify-between gap-3">
-                    <label className="flex min-w-0 cursor-pointer items-baseline gap-2">
-                      <input
-                        type="checkbox"
-                        checked={isSelected}
-                        onChange={() => toggleSelect(i)}
-                        className={`h-3.5 w-3.5 rounded border-line bg-white/[0.06] text-accent focus:ring-0 transition-opacity duration-150 ${
-                          isSelected ? "opacity-100" : "opacity-100 fine:opacity-0 fine:group-hover:opacity-100 focus:opacity-100"
-                        }`}
+                    <div className="flex min-w-0 items-baseline gap-2">
+                      {selectMode && (
+                        <input
+                          type="checkbox"
+                          checked={isSelected}
+                          onChange={() => toggleSelect(i)}
+                          className="h-3.5 w-3.5 flex-none rounded border-line bg-white/[0.06] text-accent focus:ring-0 cursor-pointer"
+                        />
+                      )}
+                      <ExpandableMealName
+                        name={m.label}
+                        className={`min-w-0 text-sm font-semibold transition-colors ${isSelected ? "text-accent" : "text-ink-primary"}`}
                       />
-                      <span className={`min-w-0 truncate text-sm font-semibold transition-colors ${isSelected ? "text-accent" : "text-ink-primary"}`}>
-                        {m.label}
-                      </span>
-                    </label>
+                    </div>
                     <span className="flex flex-none items-center gap-2">
                       <span className="font-mono text-xs text-ink-secondary">
                         {formatKcal(m.computed.kcal)}
@@ -297,7 +322,7 @@ export function DayView({ date, emptyLabel = "Bu gün için kayıt yok." }: { da
             })}
           </ul>
         ) : (
-          <p className="text-sm text-ink-tertiary">Henüz öğün yok. "+ Öğün ekle" ile başla.</p>
+          <p className="text-sm text-ink-tertiary">Henüz öğün yok.</p>
         )}
       </section>
 

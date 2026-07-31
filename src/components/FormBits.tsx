@@ -329,3 +329,30 @@ export function ConfirmButton({
     </button>
   );
 }
+
+/** Uzun öğün adlarını varsayılan 2 satıra sıkan, dokununca tam açan/kapatan bileşen. */
+export function ExpandableMealName({
+  name,
+  className = "",
+}: {
+  name: string;
+  className?: string;
+}) {
+  const [expanded, setExpanded] = useState(false);
+
+  return (
+    <span
+      onClick={(e) => {
+        e.stopPropagation();
+        setExpanded((prev) => !prev);
+      }}
+      title={name}
+      className={`cursor-pointer transition-colors hover:text-memory ${
+        expanded ? "line-clamp-none" : "line-clamp-2"
+      } ${className}`}
+    >
+      {name}
+    </span>
+  );
+}
+
