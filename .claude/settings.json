@@ -1,4 +1,7 @@
 {
+  "permissions": {
+    "allow": ["Bash(agy:*)"]
+  },
   "hooks": {
     "PreToolUse": [
       {
