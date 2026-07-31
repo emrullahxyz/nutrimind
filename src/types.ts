@@ -89,6 +89,34 @@ export interface Alias {
   recipe?: Recipe;
 }
 
+/** Bir gün tipinin hedefleri — "Antrenman", "Dinlenme", "Varsayılan"… */
+export interface GoalProfile {
+  id: string;
+  name: string;
+  nutrition: Nutrition;
+}
+
+/** Hedef yapılandırması (v2) — Faz 8.
+ *
+ *  Backend `PUT /api/goals` gövdesini OLDUĞU GİBİ sakladığı için bu yapı hiçbir
+ *  backend değişikliği istemiyor; doğrulaması da Faz 3a'da hazırlandı.
+ *  Eski (v1) hedef tek bir düz `Nutrition` nesnesiydi; `parseGoals` onu tek
+ *  profilli bir v2 yapıya KAYIPSIZ sarar (bkz. `src/lib/api.ts`).
+ *
+ *  Çözümleme sırası (bkz. `effectiveGoal`): overrides → weekday → default. */
+export interface GoalConfig {
+  version: 2;
+  /** En az bir profil — boş dizi backend tarafından da reddedilir. */
+  profiles: GoalProfile[];
+  defaultProfileId: string;
+  /** 0=Pazar … 6=Cumartesi → profileId. Haftalık şablon; SAF TÜRETME olduğu
+   *  için geçmiş günlere de uygulanır, geçmişe veri yazılmaz. */
+  weekday: Record<number, string>;
+  /** "2026-07-30" → profileId. Tek günlük istisna; yalnızca kullanıcı o güne
+   *  dokunduğunda yazılır. */
+  overrides: Record<string, string>;
+}
+
 /** Sıfır besin: yalnızca çekirdek 5 alan, hepsi 0. Mikro alanlar bilinçli olarak
  *  YOK — "hiç veri girilmedi" ile "0 mg sodyum" aynı şey değil. */
 export const ZERO_NUTRITION: Nutrition = zeroCore();

@@ -105,7 +105,17 @@ function DrawnLine({ d, color }: { d: string; color: string }) {
   );
 }
 
-export function TrendChart({ series, def }: { series: TrendSeries; def: NutrientDef }) {
+export function TrendChart({
+  series,
+  def,
+  goalIsAverage = false,
+}: {
+  series: TrendSeries;
+  def: NutrientDef;
+  /** Hedef gün tipine göre değişiyorsa çizgi haftalık ORTALAMA hedeftir; etiket
+   *  bunu söyler. Günlük gerçek hedef tooltip'te görünür. */
+  goalIsAverage?: boolean;
+}) {
   const points = series.points;
   const n = points.length;
   const [active, setActive] = useState<number | null>(null);
@@ -364,7 +374,8 @@ export function TrendChart({ series, def }: { series: TrendSeries; def: Nutrient
             style={{ right: px(PAD.r), top: py(goalY), transform: "translateY(-118%)" }}
           >
             <span className="whitespace-nowrap rounded-full border border-teal-400/30 bg-app/90 px-2 py-0.5 font-mono text-[9px] font-bold leading-none text-teal-200 backdrop-blur-md">
-              hedef {formatNumber(series.goal, tickDecimals)}
+              hedef {goalIsAverage && "ort. "}
+              {formatNumber(series.goal, tickDecimals)}
             </span>
           </div>
         )}
@@ -389,6 +400,13 @@ export function TrendChart({ series, def }: { series: TrendSeries; def: Nutrient
               <div className="font-mono text-[10px] text-ink-secondary">
                 7g ort · {act.avg === null ? "—" : formatNutrientValue(def, act.avg)}
               </div>
+              {/* Gün tipli hedeflerde çizgi ortalamayı gösterdiği için O GÜNÜN
+                  gerçek hedefi yalnızca burada okunabilir. */}
+              {goalIsAverage && act.goal !== null && (
+                <div className="font-mono text-[10px] text-ink-tertiary">
+                  hedef · {formatNutrientValue(def, act.goal)}
+                </div>
+              )}
             </div>
           </div>
         )}

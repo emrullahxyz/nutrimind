@@ -3,7 +3,10 @@
 //
 // Besin ve aralık seçicileri KAYITTAN üretilir (`NUTRIENTS`): Faz 2'de eklenecek
 // mikro besinler burada tek satır değişiklik olmadan çip olarak belirir.
-// Hedef bu fazda hâlâ tek ve düz bir `Nutrition` — gün-tipli hedefler Faz 8.
+//
+// Faz 8 — hedefin İKİ YÜZÜ (bkz. `TrendGoal`): grafiğe çizilen çizgi haftalık
+// ORTALAMA hedeftir (düz kalır), "hedef tutturma" oranı ise her günü KENDİ
+// hedefiyle karşılaştırır.
 // ============================================================================
 import { useMemo, useState } from "react";
 import { Card } from "../components/Card";
@@ -11,6 +14,7 @@ import { Stat } from "../components/Stat";
 import { TrendChart } from "../components/TrendChart";
 import { useData } from "../lib/data";
 import { formatNumber } from "../lib/format";
+import { effectiveGoal, weeklyAverageGoal } from "../lib/goals";
 import { NUTRIENTS, nutrientOf } from "../lib/nutrients";
 import type { NutrientDef, NutrientKey } from "../lib/nutrients";
 import { buildTrend, formatNutrientValue, trendStats } from "../lib/trend";
@@ -73,8 +77,26 @@ export function TrendPage() {
   const [range, setRange] = useState<TrendRange>(30);
 
   const def = nutrientOf(key);
-  const series = useMemo(() => buildTrend(days, key, range, goals), [days, key, range, goals]);
-  const stats = useMemo(() => trendStats(series, def, series.goal), [series, def]);
+  const trendGoal = useMemo(
+    () => ({ of: (date: string) => effectiveGoal(goals, date), line: weeklyAverageGoal(goals) }),
+    [goals],
+  );
+  const series = useMemo(
+    () => buildTrend(days, key, range, trendGoal),
+    [days, key, range, trendGoal],
+  );
+  const stats = useMemo(() => trendStats(series, def), [series, def]);
+
+  /** BU BESİNDE günler arasında hedef farkı var mı. Varsa çizgi bir ORTALAMA'dır
+   *  ve etiketi bunu söylemek zorunda; yoksa "hedef 2.601" nereden çıktı belli
+   *  olmaz. Profil sayısına değil gerçek değerlere bakılıyor: protein iki günde
+   *  de aynı olduğu için protein grafiğinde "ort." yazmaz. */
+  const goalVaries = useMemo(
+    () =>
+      series.goal !== null &&
+      series.points.some((p) => p.goal !== null && Math.abs(p.goal - series.goal!) > 0.5),
+    [series],
+  );
 
   const gaps = series.points.length - series.dataCount;
   const hitRate =
@@ -86,6 +108,7 @@ export function TrendPage() {
         <h2 className="text-lg font-bold text-ink-primary">Trend</h2>
         <p className="text-sm text-ink-tertiary">
           Kalın çizgi 7 günlük ortalama; asıl yön onda görünür. Kayıt olmayan günler sıfır sayılmaz.
+          {goalVaries && " Hedef çizgisi haftalık ortalamadır — gün tipleri kendi hedefleriyle sayılır."}
         </p>
       </div>
 
@@ -150,14 +173,14 @@ export function TrendPage() {
                   ? "bu aralıkta kayıtlı gün yok"
                   : `${stats.onTargetDays}/${stats.ratedDays} gün · ${
                       def.direction === "limit" ? "limit içinde" : `hedefin %90'ı+`
-                    }`
+                    }${goalVaries ? " · her gün kendi hedefine göre" : ""}`
             }
           />
         </div>
       </div>
 
       <Card className="p-3 sm:p-4">
-        <TrendChart series={series} def={def} />
+        <TrendChart series={series} def={def} goalIsAverage={goalVaries} />
 
         <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1.5 border-t border-line pt-3 text-[11px] text-ink-tertiary">
           <span className="flex items-center gap-1.5">

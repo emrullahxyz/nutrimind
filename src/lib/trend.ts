@@ -32,16 +32,35 @@ export interface TrendPoint {
   value: number | null;
   /** Kayan 7 günün ortalaması; yeterli veri yoksa `null`. */
   avg: number | null;
+  /** O GÜNÜN kendi hedefi (gün-tipli) — uyum ölçümü ve tooltip buna bakar.
+   *  Girilmemiş/0 hedef `null`. */
+  goal: number | null;
 }
 
 export interface TrendSeries {
   /** Takvim sırasına göre artan, boşluklar dahil. */
   points: TrendPoint[];
-  /** Bu besinin hedefi; girilmemiş/0 ise `null`. */
+  /** Grafiğe çizilen DÜZ hedef çizgisi (haftalık ortalama); girilmemiş/0 ise
+   *  `null`. Günlük hedef değil — bkz. `TrendGoal`. */
   goal: number | null;
   yMax: number;
   /** Değeri `null` OLMAYAN nokta sayısı. */
   dataCount: number;
+}
+
+/** Faz 8: trend katmanının hedef kaynağı. Hedef artık gün-tipli olduğu için
+ *  İKİ AYRI şeye ihtiyaç var ve ikisi bilinçli olarak farklı:
+ *
+ *   • `of(date)` — o günün GERÇEK hedefi. Uyum (hedef tutturma) buna göre
+ *     ölçülür; yoksa her antrenman günü "hedefin altında", her dinlenme günü
+ *     "hedefin üstünde" görünürdü.
+ *   • `line` — grafiğe çizilen DÜZ referans (haftalık ortalama). Her gün
+ *     2.760/2.390 arasında zıplayan testere dişi bir hedef çizgisi, 7 günlük
+ *     ortalamanın okunurluğunu — yani grafiğin bütün varlık sebebini — yok
+ *     ederdi. */
+export interface TrendGoal {
+  of: (date: string) => Nutrition;
+  line: Nutrition;
 }
 
 /** Hareketli ortalama penceresi (gün). */
@@ -100,15 +119,14 @@ function yMaxOf(maxValue: number, goal: number | null): number {
   return top > 0 ? top : 1;
 }
 
-/** Bir besin için trend serisi kurar.
- *  `goal` bu fazda tek ve düz bir `Nutrition` — gün-tipli hedefler Faz 8. */
+/** Bir besin için trend serisi kurar. Hedef kaynağı için bkz. `TrendGoal`. */
 export function buildTrend(
   days: Days,
   key: NutrientKey,
   range: TrendRange,
-  goal: Nutrition,
+  goal: TrendGoal,
 ): TrendSeries {
-  const goalValue = goalFor(goal, key);
+  const goalValue = goalFor(goal.line, key);
   const end = todayISO();
   const start = windowStart(days, range, end);
 
@@ -135,7 +153,12 @@ export function buildTrend(
       dataCount++;
       if (value > maxValue) maxValue = value;
     }
-    points.push({ date: dates[i], value, avg: trailingAvg(values, i) });
+    points.push({
+      date: dates[i],
+      value,
+      avg: trailingAvg(values, i),
+      goal: goalFor(goal.of(dates[i]), key),
+    });
   }
 
   return { points, goal: goalValue, yMax: yMaxOf(maxValue, goalValue), dataCount };
@@ -168,10 +191,24 @@ function mean(values: readonly number[]): number | null {
  *  "Hedefte" ölçütü `direction`'a göre değişir:
  *    • `target` (protein, lif…)  → değer hedefin %90'ına ULAŞTIYSA
  *    • `limit`  (sodyum, şeker…) → değer hedefi AŞMADIYSA
- *  Kayıtta bugün yalnızca `target` besinler var; `limit` dalı Faz 2 için hazır. */
-export function trendStats(series: TrendSeries, def: NutrientDef, goal: number | null): TrendStats {
+ *
+ *  Faz 8: karşılaştırma HER GÜNÜN KENDİ hedefine göre yapılır (`point.goal`),
+ *  grafiğe çizilen düz ortalama çizgisine göre değil. Aksi halde antrenman
+ *  günleri sistematik olarak "hedefin altında", dinlenme günleri "üstünde"
+ *  görünür ve oran anlamını yitirirdi. Hedefi olmayan gün hiç sayılmaz. */
+export function trendStats(series: TrendSeries, def: NutrientDef): TrendStats {
   const recorded: number[] = [];
-  for (const p of series.points) if (p.value !== null) recorded.push(p.value);
+  let onTargetDays = 0;
+  let ratedDays = 0;
+
+  for (const p of series.points) {
+    if (p.value === null) continue;
+    recorded.push(p.value);
+    if (p.goal === null || !(p.goal > 0)) continue;
+    ratedDays++;
+    const ok = def.direction === "limit" ? p.value <= p.goal : p.value >= p.goal * TARGET_TOLERANCE;
+    if (ok) onTargetDays++;
+  }
 
   const recentAvg = mean(recorded.slice(-STAT_WINDOW));
   const prevAvg = mean(recorded.slice(-2 * STAT_WINDOW, -STAT_WINDOW));
@@ -179,16 +216,6 @@ export function trendStats(series: TrendSeries, def: NutrientDef, goal: number |
     recentAvg !== null && prevAvg !== null && prevAvg !== 0
       ? ((recentAvg - prevAvg) / prevAvg) * 100
       : null;
-
-  let onTargetDays = 0;
-  let ratedDays = 0;
-  if (goal !== null && goal > 0) {
-    ratedDays = recorded.length;
-    for (const v of recorded) {
-      const ok = def.direction === "limit" ? v <= goal : v >= goal * TARGET_TOLERANCE;
-      if (ok) onTargetDays++;
-    }
-  }
 
   return { recentAvg, prevAvg, changePct, onTargetDays, ratedDays };
 }

@@ -3,11 +3,13 @@ import { CalorieRing } from "./CalorieRing";
 import { MacroBar } from "./MacroBar";
 import { MacroDonut } from "./MacroDonut";
 import { Card } from "./Card";
+import { DayTypeBadge } from "./DayTypeBadge";
 import { MealForm } from "./MealForm";
 import { ConfirmButton, ErrorText, FormActions, NutrientSummaryLine, TextField } from "./FormBits";
 import { Modal } from "./Modal";
 import { formatKcal } from "../lib/format";
 import { useData } from "../lib/data";
+import { effectiveGoal } from "../lib/goals";
 import { MACROS, MICROS } from "../lib/nutrients";
 import { coverage, dayTotal, mealsOf, sumMeals, toPayload } from "../lib/days";
 import type { MealItem, MealPayload } from "../types";
@@ -63,6 +65,9 @@ function MergeModal({
  *  ve öğün ekleme/düzenleme/silme/birleştirme kontrolleri. */
 export function DayView({ date, emptyLabel = "Bu gün için kayıt yok." }: { date: string; emptyLabel?: string }) {
   const { goals, days, setDayMeals } = useData();
+  // Faz 8: hedef artık GÜNE bağlı. Geçmiş bir gün de (Geçmiş sekmesinin gün
+  // detayı bu bileşeni yeniden kullanıyor) kendi hedefiyle karşılaştırılır.
+  const goal = effectiveGoal(goals, date);
   const meals = mealsOf(days, date);
   const total = dayTotal(days, date);
   const hasData = meals.length > 0;
@@ -153,9 +158,11 @@ export function DayView({ date, emptyLabel = "Bu gün için kayıt yok." }: { da
 
   return (
     <div className="flex flex-col gap-5">
+      <DayTypeBadge date={date} />
+
       <div className="grid gap-4 md:grid-cols-2">
         <Card className="flex items-center justify-center p-6">
-          <CalorieRing consumed={total.kcal} target={goals.kcal} />
+          <CalorieRing consumed={total.kcal} target={goal.kcal} />
         </Card>
         {hasData ? (
           <Card className="flex items-center justify-center p-6">
@@ -175,7 +182,7 @@ export function DayView({ date, emptyLabel = "Bu gün için kayıt yok." }: { da
               key={def.key}
               def={def}
               value={total[def.key] ?? 0}
-              target={goals[def.key] ?? 0}
+              target={goal[def.key] ?? 0}
             />
           ))}
 
@@ -186,7 +193,7 @@ export function DayView({ date, emptyLabel = "Bu gün için kayıt yok." }: { da
               </span>
               {microRows.map(({ def, value, cover }) => (
                 <div key={def.key}>
-                  <MacroBar def={def} value={value} target={goals[def.key] ?? 0} />
+                  <MacroBar def={def} value={value} target={goal[def.key] ?? 0} />
                   {cover.have < cover.of && (
                     // Kısmi veri: toplam gerçek ama EKSİK. Bunu yazmazsak
                     // 5 öğünün 3'ünden toplanan sodyum tam günmüş gibi okunur.
