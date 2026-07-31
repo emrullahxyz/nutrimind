@@ -1,19 +1,18 @@
 import { useState } from "react";
 import { DailyPage } from "./pages/DailyPage";
 import { HistoryPage } from "./pages/HistoryPage";
-import { TrendPage } from "./pages/TrendPage";
 import { AliasPage } from "./pages/AliasPage";
-import { DataProvider, useData } from "./lib/data";
-import { ExportModal } from "./components/ExportModal";
+import { DataProvider } from "./lib/data";
+import { SettingsSheet } from "./components/SettingsSheet";
 
-type Tab = "daily" | "history" | "trend" | "aliases";
+type Tab = "daily" | "history" | "aliases";
 
 function TabButton({ active, onClick, label }: { active: boolean; onClick: () => void; label: string }) {
   return (
     <button
       type="button"
       onClick={onClick}
-      className={`rounded-pill px-4 py-2 text-sm font-bold transition ${
+      className={`flex-none rounded-pill px-4 py-2 text-sm font-bold transition ${
         active
           ? "bg-memory text-memory-ink"
           : "border border-line bg-white/[0.06] text-ink-secondary hover:text-ink-primary"
@@ -26,8 +25,7 @@ function TabButton({ active, onClick, label }: { active: boolean; onClick: () =>
 
 function MainContent() {
   const [tab, setTab] = useState<Tab>("daily");
-  const [modalOpen, setModalOpen] = useState(false);
-  const dataCtx = useData();
+  const [settingsOpen, setSettingsOpen] = useState(false);
 
   return (
     <>
@@ -39,17 +37,17 @@ function MainContent() {
           </div>
           <button
             type="button"
-            onClick={() => setModalOpen(true)}
-            title="Veri dışa/içe aktarma ve PDF raporu"
-            className="rounded-pill border border-line bg-white/[0.04] px-3 py-1.5 font-mono text-xs font-semibold text-ink-secondary transition hover:bg-white/10 hover:text-ink-primary"
+            onClick={() => setSettingsOpen(true)}
+            title="Ayarlar"
+            className="flex h-9 w-9 items-center justify-center rounded-pill border border-line bg-white/[0.04] text-base font-semibold text-ink-secondary transition hover:bg-white/10 hover:text-ink-primary"
+            aria-label="Ayarlar"
           >
-            📊 Veri / Rapor
+            ⚙
           </button>
         </div>
-        <nav className="flex gap-2">
-          <TabButton active={tab === "daily"} onClick={() => setTab("daily")} label="Günlük" />
+        <nav className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1">
+          <TabButton active={tab === "daily"} onClick={() => setTab("daily")} label="Bugün" />
           <TabButton active={tab === "history"} onClick={() => setTab("history")} label="Geçmiş" />
-          <TabButton active={tab === "trend"} onClick={() => setTab("trend")} label="Trend" />
           <TabButton active={tab === "aliases"} onClick={() => setTab("aliases")} label="Hafıza" />
         </nav>
       </header>
@@ -59,19 +57,13 @@ function MainContent() {
           <DailyPage />
         ) : tab === "history" ? (
           <HistoryPage />
-        ) : tab === "trend" ? (
-          <TrendPage />
         ) : (
           <AliasPage />
         )}
       </main>
 
-      {modalOpen && (
-        <ExportModal
-          data={dataCtx}
-          refresh={dataCtx.refresh}
-          onClose={() => setModalOpen(false)}
-        />
+      {settingsOpen && (
+        <SettingsSheet onClose={() => setSettingsOpen(false)} />
       )}
     </>
   );
