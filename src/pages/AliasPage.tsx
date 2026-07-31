@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Card } from "../components/Card";
 import { AliasForm } from "../components/AliasForm";
 import { RecipeBuilder } from "../components/RecipeBuilder";
+import { ScanSheet } from "../components/ScanSheet";
 import { ConfirmButton, ErrorText, NutrientSummaryLine } from "../components/FormBits";
 import { formatNumber } from "../lib/format";
 import { useData } from "../lib/data";
@@ -12,6 +13,7 @@ export function AliasPage() {
   // form kapalıyken undefined; yeni kayıt için null; düzenleme için Alias.
   const [editingAlias, setEditingAlias] = useState<Alias | null | undefined>(undefined);
   const [editingRecipe, setEditingRecipe] = useState<Alias | null | undefined>(undefined);
+  const [showScan, setShowScan] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -38,6 +40,13 @@ export function AliasPage() {
           </p>
         </div>
         <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setShowScan(true)}
+            className="flex-none rounded-pill border border-line bg-white/[0.06] px-3 py-1.5 text-xs font-semibold text-ink-secondary transition hover:border-memory/40 hover:bg-white/[0.09] hover:text-ink-primary"
+          >
+            📷 Tara
+          </button>
           <button
             type="button"
             onClick={() => setEditingRecipe(null)}
@@ -128,6 +137,7 @@ export function AliasPage() {
 
       {editingAlias !== undefined && <AliasForm initial={editingAlias} onClose={() => setEditingAlias(undefined)} />}
       {editingRecipe !== undefined && <RecipeBuilder initial={editingRecipe} onClose={() => setEditingRecipe(undefined)} />}
+      {showScan && <ScanSheet onClose={() => setShowScan(false)} />}
     </div>
   );
 }

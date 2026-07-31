@@ -12,7 +12,10 @@ export interface Actions {
   /** Hedef yapılandırmasının TAMAMINI değiştirir (profiller + haftalık şablon +
    *  günlük istisnalar) — gün yazımıyla aynı "tümünü değiştir" deseni. */
   updateGoals: (goals: GoalConfig) => Promise<void>;
-  upsertAlias: (alias: AliasPayload) => Promise<void>;
+  /** Yazılan/güncellenen alias'ın id'sini DÖNER (Faz S3: ScanSheet aynı anda
+   *  hem alias hem öğün yazdığında `MealSource.aliasId` için gerekli —
+   *  backend id'yi biz istemeden üretiyor, geri dönmezse kaybolur). */
+  upsertAlias: (alias: AliasPayload) => Promise<string>;
   removeAlias: (id: string) => Promise<void>;
 }
 
@@ -62,9 +65,11 @@ export function DataProvider({ children }: { children: ReactNode }) {
   // çalıştır (hata varsa olduğu gibi yukarı fırlat), sonra veriyi yenile.
   // Yalnızca yenileme aşaması başarısız olursa, ayırt edilebilir bir hata
   // mesajıyla değiştir — yazma hatasının kendi mesajına asla dokunulmaz.
+  // Jenerik <T>: `saveAlias`'ın döndürdüğü {ok, id} gibi bir sonucu da
+  // olduğu gibi yukarı taşıyabilsin diye (Faz S3 — bkz. `upsertAlias`).
   const runWriteThenRefresh = useCallback(
-    async (write: () => Promise<unknown>) => {
-      await write();
+    async <T,>(write: () => Promise<T>): Promise<T> => {
+      const result = await write();
       try {
         await refresh();
       } catch {
@@ -75,6 +80,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
         setStale(true);
         throw new Error(REFRESH_AFTER_WRITE_FAILED_MESSAGE);
       }
+      return result;
     },
     [refresh],
   );
@@ -87,9 +93,15 @@ export function DataProvider({ children }: { children: ReactNode }) {
           if (meals.length === 0) await deleteDay(date);
           else await saveDay(date, meals);
         }),
-      updateGoals: (goals) => runWriteThenRefresh(() => saveGoals(goals)),
-      upsertAlias: (alias) => runWriteThenRefresh(() => saveAlias(alias)),
-      removeAlias: (id) => runWriteThenRefresh(() => deleteAlias(id)),
+      updateGoals: (goals) =>
+        runWriteThenRefresh(async () => {
+          await saveGoals(goals);
+        }),
+      upsertAlias: (alias) => runWriteThenRefresh(() => saveAlias(alias)).then((r) => r.id),
+      removeAlias: (id) =>
+        runWriteThenRefresh(async () => {
+          await deleteAlias(id);
+        }),
     }),
     [refresh, runWriteThenRefresh],
   );

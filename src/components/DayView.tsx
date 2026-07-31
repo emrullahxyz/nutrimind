@@ -6,6 +6,7 @@ import { DayTypeBadge } from "./DayTypeBadge";
 import { MealForm } from "./MealForm";
 import { ConfirmButton, ErrorText, ExpandableMealName, FormActions, NutrientSummaryLine, TextField } from "./FormBits";
 import { Modal } from "./Modal";
+import { ScanSheet } from "./ScanSheet";
 import { formatKcal } from "../lib/format";
 import { useData } from "../lib/data";
 import { effectiveGoal } from "../lib/goals";
@@ -64,8 +65,24 @@ function MergeModal({
 }
 
 /** Bir günün besin görselleri (halka + barlar + öğün katkısı)
- *  ve öğün ekleme/düzenleme/silme/birleştirme kontrolleri. */
-export function DayView({ date, emptyLabel = "Bu gün için kayıt yok." }: { date: string; emptyLabel?: string }) {
+ *  ve öğün ekleme/düzenleme/silme/birleştirme kontrolleri.
+ *
+ *  `enableScan`: Faz S3'ün "Tara" giriş noktalarından biri (Bugün ekranı).
+ *  BİLEREK varsayılan false — DayView Geçmiş'in gün detayında da yeniden
+ *  kullanılıyor (`HistoryPage.tsx`) ve brief'in iki giriş noktası (Bugün,
+ *  Hafıza) dışına taşmasın diye yalnızca `DailyPage` bunu true geçiyor.
+ *  ScanSheet'in kendisi HER ZAMAN bugüne yazar (`todayISO()`), hangi tarihin
+ *  gösterildiğine bakmaz — bu yüzden prop yalnızca düğmenin görünürlüğünü
+ *  kontrol eder, davranışını değil. */
+export function DayView({
+  date,
+  emptyLabel = "Bu gün için kayıt yok.",
+  enableScan = false,
+}: {
+  date: string;
+  emptyLabel?: string;
+  enableScan?: boolean;
+}) {
   const { goals, days, setDayMeals } = useData();
   // Faz 8: hedef artık GÜNE bağlı. Geçmiş bir gün de (Geçmiş sekmesinin gün
   // detayı bu bileşeni yeniden kullanıyor) kendi hedefiyle karşılaştırılır.
@@ -79,6 +96,7 @@ export function DayView({ date, emptyLabel = "Bu gün için kayıt yok." }: { da
   const [selectedIndices, setSelectedIndices] = useState<number[]>([]);
   const [selectMode, setSelectMode] = useState(false);
   const [showMergeModal, setShowMergeModal] = useState(false);
+  const [showScan, setShowScan] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -260,6 +278,16 @@ export function DayView({ date, emptyLabel = "Bu gün için kayıt yok." }: { da
                 </button>
               )
             )}
+            {enableScan && (
+              <button
+                type="button"
+                onClick={() => setShowScan(true)}
+                disabled={busy}
+                className="rounded-pill border border-line bg-white/[0.06] px-3 py-1.5 text-xs font-semibold text-ink-secondary transition hover:border-memory/40 hover:bg-white/[0.09] hover:text-ink-primary disabled:opacity-40"
+              >
+                📷 Tara
+              </button>
+            )}
             <button
               type="button"
               onClick={() => setEditIndex(null)}
@@ -336,6 +364,8 @@ export function DayView({ date, emptyLabel = "Bu gün için kayıt yok." }: { da
           busy={busy}
         />
       )}
+
+      {showScan && <ScanSheet onClose={() => setShowScan(false)} />}
     </div>
   );
 }

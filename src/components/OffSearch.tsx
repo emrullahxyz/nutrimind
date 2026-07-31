@@ -10,21 +10,19 @@
 // istek veriyor ve sınır IP başına; aşılırsa sunucunun IP'si banlanabiliyor.
 // Bu yüzden: her tuşta değil 500 ms sessizlikten sonra arama, aynı sorguyu iki
 // kez sormama, ve 429 geldiğinde OTOMATİK YENİDEN DENEME YOK — geri sayım
-// gösterilip düğmeler kilitleniyor.
+// gösterilip düğmeler kilitleniyor (KAMERA DAHİL — kamera yaşam döngüsü ve
+// kota geri sayımı `../lib/offScanner`'da, ScanSheet (Faz S3) ile PAYLAŞILIYOR).
 // ============================================================================
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
-  FOOD_BARCODE_FORMATS,
   OFF_ATTRIBUTION,
-  OffError,
-  barcodeDetectorCtor,
-  cameraScanSupported,
   fetchOffProduct,
   isValidBarcode,
   missingLabels,
   searchOff,
 } from "../lib/off";
-import type { BarcodeDetectorLike, OffFood } from "../lib/off";
+import type { OffFood } from "../lib/off";
+import { useOffCooldown, useOffScanner } from "../lib/offScanner";
 import { formatKcal, formatNumber } from "../lib/format";
 import { fieldCls } from "./FormBits";
 
@@ -34,62 +32,17 @@ const DEBOUNCE_MS = 500;
 /** Bundan kısa sorgu OFF'ta anlamlı sonuç vermiyor, boşuna jeton yakar. */
 const MIN_QUERY = 2;
 const RESULT_LIMIT = 20;
-/** Kamera karesi tarama aralığı. 400 ms göze anında görünüyor, CPU'yu yormuyor. */
-const SCAN_INTERVAL_MS = 400;
-
-type Status =
-  | { kind: "idle" }
-  | { kind: "loading" }
-  | { kind: "error"; message: string }
-  /** 429: `until` epoch ms — o ana kadar hiçbir istek atılmaz. Sunucunun kendi
-   *  metni TAŞINMIYOR: içindeki saniye donuk kalır, ekrandaki geri sayımla
-   *  çelişirdi ("59 sn sonra dene (12 sn)"). Sayı tek yerden, canlı geliyor. */
-  | { kind: "cooldown"; until: number };
 
 export function OffSearch({ onPick }: { onPick: (food: OffFood) => void }) {
   const [query, setQuery] = useState("");
   const [barcode, setBarcode] = useState("");
   const [foods, setFoods] = useState<OffFood[] | null>(null);
   const [scope, setScope] = useState<"index" | "post-filter">("index");
-  const [status, setStatus] = useState<Status>({ kind: "idle" });
-  const [scanning, setScanning] = useState(false);
-  const [now, setNow] = useState(() => Date.now());
 
-  const videoRef = useRef<HTMLVideoElement | null>(null);
+  const { status, setStatus, cooldownLeft, blocked, applyError } = useOffCooldown();
+
   /** Uçan isteği iptal etmek için: kullanıcı yazmaya devam ederse eskisi düşer. */
   const abortRef = useRef<AbortController | null>(null);
-
-  // Kamera düğmesi yalnızca gerçekten çalışacaksa görünür (bkz. cameraScanSupported).
-  // Tek seferlik ölçülüyor: yetenek oturum içinde değişmez.
-  const [canScan] = useState(cameraScanSupported);
-
-  const cooldownLeft =
-    status.kind === "cooldown" ? Math.max(0, Math.ceil((status.until - now) / 1000)) : 0;
-  const blocked = cooldownLeft > 0;
-
-  // Geri sayım saniyede bir tazelenir; bitince durum kendiliğinden boşa döner.
-  useEffect(() => {
-    if (status.kind !== "cooldown") return;
-    const id = window.setInterval(() => setNow(Date.now()), 500);
-    return () => window.clearInterval(id);
-  }, [status.kind]);
-  useEffect(() => {
-    if (status.kind === "cooldown" && cooldownLeft === 0) setStatus({ kind: "idle" });
-  }, [status, cooldownLeft]);
-
-  /** Tüm hata yollarının tek çıkışı: 429 geri sayıma, diğerleri düz mesaja. */
-  const applyError = useCallback((e: unknown) => {
-    if ((e as Error | undefined)?.name === "AbortError") return; // iptal ettik, hata değil
-    if (e instanceof OffError && e.status === 429) {
-      // Sunucu süre vermezse 30 sn: uydurma ama TEMKİNLİ bir sayı — kotayı
-      // yeniden zorlamaktansa fazla beklemek yeğdir.
-      const seconds = e.retryAfter ?? 30;
-      setStatus({ kind: "cooldown", until: Date.now() + seconds * 1000 });
-      setNow(Date.now());
-      return;
-    }
-    setStatus({ kind: "error", message: String((e as Error)?.message ?? e) });
-  }, []);
 
   // --- Metinle arama (gecikmeli) --------------------------------------------
   useEffect(() => {
@@ -122,7 +75,7 @@ export function OffSearch({ onPick }: { onPick: (food: OffFood) => void }) {
 
     return () => window.clearTimeout(timer);
     // `blocked` bağımlılığı bilinçli: geri sayım bitince son sorgu tekrar denenir.
-  }, [query, blocked, applyError]);
+  }, [query, blocked, applyError, setStatus]);
 
   // --- Barkodla tek ürün ----------------------------------------------------
   const lookupBarcode = useCallback(
@@ -152,88 +105,22 @@ export function OffSearch({ onPick }: { onPick: (food: OffFood) => void }) {
         if (!ctrl.signal.aborted) applyError(e);
       }
     },
-    [applyError],
+    [applyError, setStatus],
   );
 
-  // --- Kamera ---------------------------------------------------------------
-  // Akış `scanning` true olduğu sürece yaşar; efektin temizliği HER çıkışta
-  // (kapatma, seçim, modalın unmount'ı) parçaları durdurur. Açık kalan kamera
-  // gerçek bir hatadır — telefon ışığı yanık kalır.
+  // --- Kamera: OffSearch + ScanSheet'in PAYLAŞTIĞI hook ----------------------
+  const { scanning, setScanning, videoRef, canScan, cameraError } = useOffScanner({
+    blocked,
+    onDetected: (value) => {
+      setBarcode(value);
+      void lookupBarcode(value);
+    },
+  });
+
+  // Kamera açılamadıysa (izin reddi, cihaz yok…) aynı durum satırında göster.
   useEffect(() => {
-    if (!scanning) return;
-    const Ctor = barcodeDetectorCtor();
-    if (!Ctor) {
-      setScanning(false);
-      return;
-    }
-
-    let stopped = false;
-    let stream: MediaStream | null = null;
-    let timer: number | null = null;
-
-    const release = () => {
-      stopped = true;
-      if (timer !== null) window.clearInterval(timer);
-      timer = null;
-      stream?.getTracks().forEach((t) => t.stop());
-      stream = null;
-      if (videoRef.current) videoRef.current.srcObject = null;
-    };
-
-    (async () => {
-      let detector: BarcodeDetectorLike;
-      try {
-        // Desteklenmeyen biçim istemek Chrome'da fırlatır — kesişim alınıyor.
-        const supported = (await Ctor.getSupportedFormats?.()) ?? null;
-        const formats = supported
-          ? FOOD_BARCODE_FORMATS.filter((f) => supported.includes(f))
-          : [...FOOD_BARCODE_FORMATS];
-        detector = new Ctor(formats.length > 0 ? { formats } : undefined);
-
-        stream = await navigator.mediaDevices.getUserMedia({
-          video: { facingMode: { ideal: "environment" } },
-        });
-        if (stopped) {
-          stream.getTracks().forEach((t) => t.stop());
-          return;
-        }
-        const video = videoRef.current;
-        if (!video) {
-          release();
-          return;
-        }
-        video.srcObject = stream;
-        await video.play();
-      } catch (e) {
-        if (stopped) return;
-        release();
-        setScanning(false);
-        setStatus({
-          kind: "error",
-          message: `Kamera açılamadı: ${String((e as Error)?.message ?? e)}`,
-        });
-        return;
-      }
-
-      timer = window.setInterval(async () => {
-        const video = videoRef.current;
-        if (!video || stopped) return;
-        try {
-          const hits = await detector.detect(video);
-          const value = hits[0]?.rawValue?.trim();
-          if (!value) return;
-          release();
-          setScanning(false);
-          setBarcode(value);
-          void lookupBarcode(value);
-        } catch {
-          // Tek karenin çözülememesi normal — sonraki kare denenir.
-        }
-      }, SCAN_INTERVAL_MS);
-    })();
-
-    return release;
-  }, [scanning, lookupBarcode]);
+    if (cameraError) setStatus({ kind: "error", message: cameraError });
+  }, [cameraError, setStatus]);
 
   const showEmpty = foods !== null && foods.length === 0 && status.kind === "idle";
 
@@ -259,8 +146,9 @@ export function OffSearch({ onPick }: { onPick: (food: OffFood) => void }) {
               setStatus({ kind: "idle" });
               setScanning((s) => !s);
             }}
+            disabled={blocked && !scanning}
             aria-pressed={scanning}
-            className="flex-none rounded-pill border border-line px-3 py-2 text-sm text-ink-secondary transition hover:text-ink-primary"
+            className="flex-none rounded-pill border border-line px-3 py-2 text-sm text-ink-secondary transition hover:text-ink-primary disabled:opacity-40"
           >
             {scanning ? "Kamerayı kapat" : "Barkod tara"}
           </button>
