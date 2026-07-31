@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Card } from "../components/Card";
 import { AliasForm } from "../components/AliasForm";
+import { RecipeBuilder } from "../components/RecipeBuilder";
 import { ConfirmButton, ErrorText, NutrientSummaryLine } from "../components/FormBits";
 import { formatNumber } from "../lib/format";
 import { useData } from "../lib/data";
@@ -9,7 +10,8 @@ import type { Alias } from "../types";
 export function AliasPage() {
   const { aliases, removeAlias } = useData();
   // form kapalıyken undefined; yeni kayıt için null; düzenleme için Alias.
-  const [editing, setEditing] = useState<Alias | null | undefined>(undefined);
+  const [editingAlias, setEditingAlias] = useState<Alias | null | undefined>(undefined);
+  const [editingRecipe, setEditingRecipe] = useState<Alias | null | undefined>(undefined);
   const [err, setErr] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -28,32 +30,48 @@ export function AliasPage() {
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex items-start justify-between gap-3">
+      <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h2 className="text-lg font-bold text-ink-primary">Besin hafızası</h2>
           <p className="text-sm text-ink-tertiary">
             Öğrenilmiş ifadeler → belirli besin. "yoğurt" dediğinde bu besin ve makrosu kullanılır.
           </p>
         </div>
-        <button
-          type="button"
-          onClick={() => setEditing(null)}
-          className="flex-none rounded-pill bg-memory px-3 py-1.5 text-xs font-extrabold text-memory-ink transition hover:opacity-90"
-        >
-          + Yeni besin
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setEditingRecipe(null)}
+            className="flex-none rounded-pill bg-accent px-3 py-1.5 text-xs font-extrabold text-accent-ink transition hover:opacity-90"
+          >
+            + Tarif oluştur
+          </button>
+          <button
+            type="button"
+            onClick={() => setEditingAlias(null)}
+            className="flex-none rounded-pill bg-memory px-3 py-1.5 text-xs font-extrabold text-memory-ink transition hover:opacity-90"
+          >
+            + Yeni besin
+          </button>
+        </div>
       </div>
 
       {err && <ErrorText>{err}</ErrorText>}
 
       {aliases.length === 0 ? (
-        <p className="text-sm text-ink-tertiary">Henüz alias yok. "+ Yeni besin" ile ekle.</p>
+        <p className="text-sm text-ink-tertiary">Henüz alias yok. "+ Tarif oluştur" veya "+ Yeni besin" ile ekle.</p>
       ) : (
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           {aliases.map((a, i) => (
             <Card key={a.id} className="anim-fadeup flex flex-col gap-3 p-4" style={{ animationDelay: `${i * 50}ms` }}>
               <div>
-                <div className="text-sm font-bold text-ink-primary">{a.name}</div>
+                <div className="flex items-center justify-between gap-2">
+                  <div className="text-sm font-bold text-ink-primary">{a.name}</div>
+                  {a.recipe && (
+                    <span className="rounded-pill bg-accent/15 px-2 py-0.5 font-mono text-[10px] font-semibold text-accent">
+                      tarif
+                    </span>
+                  )}
+                </div>
                 {a.brand && <div className="text-[11px] text-ink-tertiary">{a.brand}</div>}
               </div>
 
@@ -92,7 +110,10 @@ export function AliasPage() {
               <div className="flex items-center justify-end gap-2">
                 <button
                   type="button"
-                  onClick={() => setEditing(a)}
+                  onClick={() => {
+                    if (a.recipe) setEditingRecipe(a);
+                    else setEditingAlias(a);
+                  }}
                   disabled={busy}
                   className="rounded-pill bg-white/[0.06] px-2.5 py-1 text-[11px] font-semibold text-ink-tertiary transition hover:text-ink-primary disabled:opacity-40"
                 >
@@ -105,7 +126,8 @@ export function AliasPage() {
         </div>
       )}
 
-      {editing !== undefined && <AliasForm initial={editing} onClose={() => setEditing(undefined)} />}
+      {editingAlias !== undefined && <AliasForm initial={editingAlias} onClose={() => setEditingAlias(undefined)} />}
+      {editingRecipe !== undefined && <RecipeBuilder initial={editingRecipe} onClose={() => setEditingRecipe(undefined)} />}
     </div>
   );
 }

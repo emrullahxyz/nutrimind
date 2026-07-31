@@ -101,3 +101,20 @@ export function addNutrition(a: Nutrition, b: Nutrition): Nutrition {
   }
   return makeNutrition(out);
 }
+
+/** Malzemelerin besin değerlerini toplayıp toplam yemeğin besinini ve 100 g başına değerini hesaplar (Faz 7). */
+export function calculateRecipeTotals(
+  ingredients: { nutrition: Nutrition }[],
+  totalG: number,
+): { totalNutrition: Nutrition; per100g: Nutrition } {
+  // ZERO_NUTRITION paylaşılan bir sabit ve dondurulmuş değil — kod tabanındaki
+  // her kullanımı kopyalar. Ham referans döndürseydik, çağıran taraf dönen
+  // nesneyi değiştirdiğinde uygulamanın TAMAMINDAKİ sıfır bozulurdu.
+  let totalNutrition = { ...ZERO_NUTRITION };
+  for (const ing of ingredients) {
+    totalNutrition = addNutrition(totalNutrition, ing.nutrition);
+  }
+  const per100g =
+    totalG > 0 ? scaleNutrition(totalNutrition, totalG, 100) : { ...ZERO_NUTRITION };
+  return { totalNutrition, per100g };
+}
