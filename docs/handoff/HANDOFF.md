@@ -426,3 +426,84 @@ agy'nin kapsam dışına çıkma geçmişi var — çıktısını mutlaka diff'l
    doğrulanamayan tek şey.
 
 ---
+
+## Handoff: 2026-07-31 — TÜM FAZLAR BİTTİ ve CANLIYA ÇIKILDI
+
+### Current Task State
+
+**Bitti.** 10 maddelik genişletmenin tamamı uygulandı, doğrulandı ve `https://nutri.emrullah.xyz`
+adresine yayınlandı. Açık iş yok.
+
+Test sayısı **12 → 219**. `pnpm typecheck` 0 hata, `pnpm build` başarılı.
+
+| Commit | Faz | Ne |
+|---|---|---|
+| `73c8923` | 0 | Besin kaydı (nutrient registry) — tek doğruluk kaynağı |
+| `e4a590f` | 1 | Gerçek trend grafiği — 4. sekme, elle SVG, 7 gün hareketli ortalama |
+| `f1399f2` | 2 | Mikro besinler: şeker, doymuş yağ, sodyum (`direction: "limit"`) |
+| `15558ec` | 3a | Backend: OFF proxy, alias geçirgenliği, doğrulama sertleştirme |
+| `9d4bd54` | 4 | OFF Polonya kataloğu + barkod tarama |
+| `1da02d4` | 5 | Birim + gram dönüşümü *(agy)* |
+| `9827344` | — | Faz 5 takip düzeltmeleri |
+| `a66de24` | 6 | Geçmişe dayalı miktar tahmini *(agy)* |
+| `2cab568` | 7 | Tarif → porsiyon *(agy)* |
+| `fd45908` | 8 | Gün-tipli hedefler (antrenman/dinlenme) |
+| `f796484` | 9 | Export/import + PDF rapor *(agy)* |
+
+### Yürütme modeli (işe yaradı, tekrar kullanılabilir)
+
+Claude yönetici; her faz tek tek devredildi, agent'lar **sırayla** açıldı, her fazdan sonra Claude
+kapsamı diff'ledi ve doğrulama kapısını **kendisi** çalıştırdı. Faz 5/6/7/9 `agy`'ye
+(Antigravity/Gemini) gitti — token bütçesi için. Hassas olanlar (registry refactor, trend, backend,
+OFF, hedef göçü, canlı sunucu) Claude subagent'ında kaldı.
+
+**agy notu:** dört fazın dördünü de iyi yaptı, ama Faz 5'te "commit atma" denmesine rağmen commit attı
+ve brief'te olmayan `AliasPage` rozetleri ekledi. Çıktısını her seferinde diff'lemek şart.
+Ayrıca agy'nin çalışması için `.claude/settings.json`'a `"permissions": {"allow": ["Bash(agy:*)"]}`
+eklendi (kullanıcı elle ekledi; auto-mode sınıflandırıcısı Claude'un kendine izin vermesini engelliyor)
+ve **ayarın yüklenmesi için Claude Code'un yeniden başlatılması gerekti.**
+
+### Canlı ortam (2026-07-31 11:24 itibarıyla doğrulandı)
+
+- Servis `nutri-api.service`, `/home/emrullah/nutri-api/index.js` — **645 satır**, aktif.
+- `/api/health` artık `off:{cached,upstreamCalls,tokens}` bloğu da dönüyor.
+- Frontend `/var/www/nutri` — `index-D3x6sB0c.css` + `index-DY4gjVyQ.js`, yerel `dist/` ile birebir.
+- **Kullanıcı verisi el değmedi:** 12 gün, 56 öğün, 22 besin, hedefler
+  `{"kcal":2400,"protein":150,"carbs":288,"fat":70,"fiber":30}` — geçiş öncesi/sonrası bayt düzeyinde
+  karşılaştırıldı.
+- Sunucudaki geri dönüş noktaları: `index.js.bak-2026-07-31-1120`, `data.db.bak-2026-07-31-1120`
+  (+ 1108 ve 07-30 tarihli olanlar). Veritabanının bir kopyası kullanıcının makinesinde scratchpad'de.
+
+**Deploy sırası önemli:** `deploy.sh` yalnızca `dist/` gönderir. Yeni arayüz `/api/off/*` çağırdığı
+için **önce backend elle senkronlanmalı, sonra `pnpm run deploy`.** Tersi yapılırsa barkod/arama 404 verir.
+
+### Critical Context
+
+1. **`server/index.js` yeniden DONDU.** Faz 3a tek seferlik istisnaydı ve kalan tüm fazların backend
+   ihtiyacını karşıladı (alias'ta `units`/`barcode`/`off_id`/`recipe` geçirgenliği, `PUT /api/goals`
+   hem düz hem v2 profil yapısını kabul ediyor). Değiştirmeden önce sor.
+2. **"Bilinmiyor ≠ sıfır"** projenin çekirdek kuralı — `fill`, `scaleNutrition`, `addNutrition`,
+   `fromDraft`, OFF eşlemesi, CSV export ve trend serisinin hepsinde geçerli. Bozma.
+3. **Hedefler artık `GoalConfig` (v2)**, düz `Nutrition` değil. Her okuma `effectiveGoal(goals, date)`
+   üzerinden. Göç `api.ts`'teki `parseGoals`'da; v1 blob'u kayıpsız sarıyor ve idempotent.
+4. **Trend hedef çizgisi bilinçli olarak DÜZ** (haftalık ortalama), ama günlük uyum her günü kendi
+   hedefiyle ölçüyor. Bu ikisini karıştırma.
+5. **Zamana bağlı test tuzağı:** `vi.setSystemTime` kullanan testlerde tarihe bağlı hesabı `describe`
+   gövdesinde yapma — gövde `beforeAll`'dan önce gerçek saatle çalışır ve gün ilerleyince test
+   kendiliğinden kırılır. `src/lib/trend.test.ts` başında yorum var.
+6. **`server/data.db` hâlâ git'te izleniyor.** Faz 9 import özelliği geldiğine göre artık daha riskli —
+   ayrı bir karar olarak değerlendirilmeli.
+7. Depo Prettier-temiz değil (~21 dosya). Bilinçli olarak `pnpm format` çalıştırılmadı.
+8. `pnpm-workspace.yaml` her `pnpm` çağrısında yeniden oluşuyor (pnpm 11 `esbuild` için `allowBuilds`
+   kararı istiyor). Bir kerelik `pnpm approve-builds` bitirir.
+
+### Next Steps
+
+1. **Kullanıcı tarafı:** siteyi açıp **Ctrl+Shift+R** ile sert yenileme (service worker eski sürümü
+   önbellekte tutabilir). Sonra **Hedef → "Önerilen ayarı uygula"** ile gün-tipli hedefleri açması
+   gerekiyor — göçten sonra tek profil olduğu için günlük ekranda rozet görünmüyor.
+2. **Gerçek cihazda barkod taraması** — bu ortamda `BarcodeDetector` ve kamera olmadığı için
+   doğrulanamayan tek özellik. Android/Chrome'da denenmeli.
+3. Opsiyonel: `server/data.db`'yi git'ten çıkarma kararı; `pnpm approve-builds`.
+
+---
