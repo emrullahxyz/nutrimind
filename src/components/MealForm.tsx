@@ -17,7 +17,7 @@ import type { NutritionDraft } from "./FormBits";
 import { useData } from "../lib/data";
 import { mealsOf, sumMeals, toPayload } from "../lib/days";
 import { NUTRIENTS } from "../lib/nutrients";
-import { parseNum, scaleNutrition } from "../lib/nutrition";
+import { GRAM_UNIT, parseNum, scaleNutrition, toGrams, unitOptions } from "../lib/nutrition";
 import { formatKcal } from "../lib/format";
 import type { MealPayload, Nutrition } from "../types";
 
@@ -185,7 +185,7 @@ export function MealForm({
   const [draft, setDraft] = useState<NutritionDraft>(existing ? toDraft(existing.computed) : EMPTY_DRAFT);
   const [aliasId, setAliasId] = useState(aliases[0]?.id ?? "");
   const [grams, setGrams] = useState(String(aliases[0]?.serving_g ?? 100));
-  const [unitName, setUnitName] = useState("g");
+  const [unitName, setUnitName] = useState(GRAM_UNIT.name);
 
   // Elle modunda girilen münferit kalem adı
   const [manualItemName, setManualItemName] = useState("");
@@ -256,13 +256,10 @@ export function MealForm({
   }
 
   const alias = aliases.find((a) => a.id === aliasId);
-  const availableUnits = [
-    { name: "g", grams: 1 },
-    ...(alias?.units ?? []),
-  ];
-  const selectedUnitObj = availableUnits.find((u) => u.name === unitName) ?? { name: "g", grams: 1 };
+  const availableUnits = unitOptions(alias?.units);
+  const selectedUnitObj = availableUnits.find((u) => u.name === unitName) ?? GRAM_UNIT;
   const amountValue = parseNum(grams);
-  const calculatedGrams = amountValue * selectedUnitObj.grams;
+  const calculatedGrams = toGrams(amountValue, selectedUnitObj);
 
   const scaled: Nutrition | null =
     alias && calculatedGrams > 0 ? scaleNutrition(alias.nutrition, alias.serving_g, calculatedGrams) : null;
@@ -300,7 +297,7 @@ export function MealForm({
     setAliasId(id);
     const a = aliases.find((x) => x.id === id);
     if (a) setGrams(String(a.serving_g));
-    setUnitName("g");
+    setUnitName(GRAM_UNIT.name);
   }
 
   function addAliasToBasket() {
@@ -317,7 +314,12 @@ export function MealForm({
       ];
     }
 
-    const unitSuffix = selectedUnitObj.name === "g" ? `${amountValue}g` : `${amountValue} ${selectedUnitObj.name}`;
+    // Gramda eski biçim aynen korunur ("150g"); diğer birimlerde araya boşluk
+    // girer ("2 adet") — geçmiş kayıtlarla görsel tutarlılık için.
+    const unitSuffix =
+      selectedUnitObj.name === GRAM_UNIT.name
+        ? `${amountValue}g`
+        : `${amountValue} ${selectedUnitObj.name}`;
     const newItem: BasketItem = {
       id: `${alias.id}-${Date.now()}-${Math.random()}`,
       name: `${alias.name} (${unitSuffix})`,

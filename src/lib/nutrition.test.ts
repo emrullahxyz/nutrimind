@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { addNutrition, parseNum, scaleNutrition } from "./nutrition";
+import { GRAM_UNIT, addNutrition, parseNum, scaleNutrition, toGrams, unitOptions } from "./nutrition";
 import { parseUnits } from "./api";
 import { coverage, sumMeals } from "./days";
 import { CORE_KEYS, MACROS, MICROS, NUTRIENTS, nutrientOf } from "./nutrients";
@@ -308,6 +308,56 @@ describe("parseUnits (Faz 5)", () => {
     expect(totalGrams).toBe(100);
     expect(scaled.kcal).toBe(155);
     expect(scaled.protein).toBe(13);
+  });
+});
+
+describe("unitOptions / toGrams (Faz 5)", () => {
+  it("gram her zaman ilk seçenek ve 1'e eşit", () => {
+    expect(unitOptions(undefined)).toEqual([{ name: "g", grams: 1 }]);
+    expect(unitOptions([])[0]).toEqual(GRAM_UNIT);
+  });
+
+  it("besinin kendi birimleri gramdan sonra gelir", () => {
+    const units: AliasUnit[] = [
+      { name: "adet", grams: 50 },
+      { name: "kase", grams: 250 },
+    ];
+    expect(unitOptions(units).map((u) => u.name)).toEqual(["g", "adet", "kase"]);
+  });
+
+  it("kullanıcının 'g' adlı birimi elenir — yinelenen seçenek üretmez", () => {
+    // Yerleşik gram zaten listede; ikinci bir "g" hem yinelenen React key olur
+    // hem de seçim her zaman yerleşiği bulacağı için hiç uygulanmazdı.
+    const units: AliasUnit[] = [
+      { name: "g", grams: 50 },
+      { name: "G", grams: 80 },
+      { name: " g ", grams: 90 },
+      { name: "adet", grams: 50 },
+    ];
+    const opts = unitOptions(units);
+    expect(opts.map((u) => u.name)).toEqual(["g", "adet"]);
+    expect(opts.filter((u) => u.name.trim().toLowerCase() === "g")).toHaveLength(1);
+    expect(opts[0].grams).toBe(1);
+  });
+
+  it("toGrams: miktar × birim gramı", () => {
+    expect(toGrams(2, { name: "adet", grams: 50 })).toBe(100);
+    expect(toGrams(1, GRAM_UNIT)).toBe(1);
+    expect(toGrams(150, GRAM_UNIT)).toBe(150);
+  });
+
+  it("toGrams tr-TR ondalıkla birlikte çalışır", () => {
+    // Kullanıcı "2,5" yazar; parseNum 2.5 üretir, yarım kase 125 g eder.
+    expect(toGrams(parseNum("2,5"), { name: "kase", grams: 250 })).toBe(625);
+    expect(toGrams(parseNum("0,5"), { name: "dilim", grams: 30 })).toBe(15);
+  });
+
+  it("birim üzerinden ölçekleme doğru makro veriyor", () => {
+    // 50 g'lık yumurta, 100 g için tanımlı değerler → 2 adet = 100 g = birebir.
+    const perServing: Nutrition = { kcal: 155, protein: 13, carbs: 1, fat: 11, fiber: 0 };
+    const grams = toGrams(2, { name: "adet", grams: 50 });
+    expect(grams).toBe(100);
+    expect(scaleNutrition(perServing, 100, grams)).toEqual(perServing);
   });
 });
 
