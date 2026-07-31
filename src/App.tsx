@@ -29,11 +29,18 @@ function MainContent() {
 
   return (
     <>
-      <header className="no-print mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+      {/* Mobilde başlık dikey yer kazanmak için sıkıştırılmış: süsleme satırı
+          ("Besin Hafızası") yalnızca sm'den itibaren görünür. Bu ekranın asıl
+          işi öğün listesi ve o liste ilk ekranda kalmalı. */}
+      <header className="no-print mb-4 flex flex-col gap-3 sm:mb-6 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
         <div className="flex items-center justify-between sm:justify-start sm:gap-4">
           <div>
-            <div className="font-mono text-xs uppercase tracking-[0.2em] text-memory">Besin Hafızası</div>
-            <h1 className="mt-1 text-2xl font-extrabold text-ink-primary md:text-3xl">Nutrimind</h1>
+            <div className="hidden font-mono text-xs uppercase tracking-[0.2em] text-memory sm:block">
+              Besin Hafızası
+            </div>
+            <h1 className="text-xl font-extrabold text-ink-primary sm:mt-1 sm:text-2xl md:text-3xl">
+              Nutrimind
+            </h1>
           </div>
           <button
             type="button"

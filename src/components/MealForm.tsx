@@ -3,6 +3,7 @@ import { Modal } from "./Modal";
 import {
   EMPTY_DRAFT,
   ErrorText,
+  ExpandableMealName,
   FormActions,
   Label,
   NumField,
@@ -125,10 +126,10 @@ function BasketSection({
           return (
             <li
               key={item.id}
-              className="flex items-center justify-between rounded bg-white/[0.04] px-2.5 py-2 text-xs"
+              className="flex items-center justify-between gap-3 rounded bg-white/[0.04] px-2.5 py-2 text-xs"
             >
               <div className="flex flex-col min-w-0">
-                <span className="font-semibold text-ink-primary truncate">{item.name}</span>
+                <ExpandableMealName name={item.name} className="font-semibold text-ink-primary" />
                 <NutrientSummaryLine
                   as="span"
                   nutrition={item.nutrition}
