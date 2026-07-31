@@ -116,3 +116,73 @@ body {
   transform-style: preserve-3d;
 }
 
+/* ---- Faz 9: PDF Raporu & Yazdırma Stilleri (@media print) ---- */
+@media print {
+  body {
+    background: #ffffff !important;
+    color: #111827 !important;
+  }
+
+  /* Yazdırmada arayüz elemanlarını (sekmeler, başlık, butonlar) gizle */
+  header,
+  nav,
+  .no-print,
+  [role="dialog"] > div > div:first-child {
+    display: none !important;
+  }
+
+  /* Modal kabuğunu kağıda tam yayılacak biçimde sıfırla */
+  .fixed {
+    position: static !important;
+    background: transparent !important;
+    backdrop-filter: none !important;
+    padding: 0 !important;
+  }
+
+  [role="dialog"] {
+    max-height: none !important;
+    border: none !important;
+    box-shadow: none !important;
+    background: #ffffff !important;
+    color: #111827 !important;
+    padding: 0 !important;
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+
+  /* Animasyonları dondur ve tam görünür yap */
+  .anim-fadeup,
+  .anim-grow,
+  .anim-grow-spring,
+  .anim-zoom {
+    animation: none !important;
+    opacity: 1 !important;
+    transform: none !important;
+  }
+
+  /* SVG çizgilerinin animasyonsuz net çıkmasını sağla */
+  path {
+    stroke-dashoffset: 0 !important;
+    animation: none !important;
+    opacity: 1 !important;
+  }
+
+  /* Okunabilirlik için açık arka plan & koyu metin sınıfları */
+  .print-text-dark {
+    color: #111827 !important;
+  }
+
+  .print-border-light {
+    border-color: #e5e7eb !important;
+  }
+
+  .printable-area {
+    background: #ffffff !important;
+    color: #111827 !important;
+  }
+
+  .page-break-avoid {
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
+  }
+}
