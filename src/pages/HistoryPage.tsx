@@ -6,6 +6,7 @@ import { MacroDonut } from "../components/MacroDonut";
 import { DayView } from "../components/DayView";
 import { formatKcal, formatLongDate, formatNumber, formatRelativeDay, formatShortDate } from "../lib/format";
 import { useData } from "../lib/data";
+import { effectiveGoal } from "../lib/goals";
 import { MACROS } from "../lib/nutrients";
 import type { NutrientDef } from "../lib/nutrients";
 import { weekStart, weeks } from "../lib/weeks";
@@ -36,12 +37,15 @@ function BackButton({ label, onClick }: { label: string; onClick: () => void }) 
 
 function Sparkline({ week }: { week: Week }) {
   const { goals } = useData();
-  const max = Math.max(goals.kcal, ...week.days.map((d) => d.total.kcal)) * 1.12 || 1;
+  // Faz 8: geçmiş hafta artık BUGÜNÜN hedefiyle değil, her günün kendi
+  // hedefiyle karşılaştırılıyor.
+  const dayGoals = week.days.map((d) => effectiveGoal(goals, d.date).kcal);
+  const max = Math.max(...dayGoals, ...week.days.map((d) => d.total.kcal)) * 1.12 || 1;
 
   return (
     <div className="flex h-12 items-end gap-1.5 overflow-hidden rounded-lg bg-black/40 p-1.5 inset-0 border border-white/[0.06]">
       {week.days.map((d, i) => {
-        const over = d.total.kcal > goals.kcal;
+        const over = dayGoals[i] > 0 && d.total.kcal > dayGoals[i];
         return (
           <div key={d.date} className="relative flex-1 h-full flex flex-col justify-end">
             {d.hasData ? (

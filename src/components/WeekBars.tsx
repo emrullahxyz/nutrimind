@@ -1,5 +1,6 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useData } from "../lib/data";
+import { effectiveGoal } from "../lib/goals";
 import { formatNumber } from "../lib/format";
 import type { Week } from "../lib/weeks";
 
@@ -53,8 +54,20 @@ function AnimatedKcal({ value, delayMs }: { value: number; delayMs: number }) {
  *  onSelectDay verilirse veri olan günler tıklanabilir (gün detayına drill). */
 export function WeekBars({ week, onSelectDay }: { week: Week; onSelectDay?: (date: string) => void }) {
   const { goals } = useData();
-  const max = Math.max(goals.kcal, ...week.days.map((d) => d.total.kcal)) * 1.12 || 1;
-  const goalPct = (goals.kcal / max) * 100;
+
+  // Faz 8: her gün KENDİ hedefiyle karşılaştırılır (eskiden hepsi bugünün
+  // hedefine bakıyordu — geçmiş bir hafta yanlış renkleniyordu). Kesikli çizgi
+  // tek bir yatay çizgi olduğu için haftanın ORTALAMA hedefini gösterir;
+  // günler farklıysa etiket bunu "ort." diye söyler.
+  const dayGoals = useMemo(
+    () => week.days.map((d) => effectiveGoal(goals, d.date).kcal),
+    [goals, week],
+  );
+  const avgGoal = dayGoals.reduce((a, b) => a + b, 0) / dayGoals.length;
+  const goalVaries = new Set(dayGoals).size > 1;
+
+  const max = Math.max(...dayGoals, ...week.days.map((d) => d.total.kcal)) * 1.12 || 1;
+  const goalPct = (avgGoal / max) * 100;
 
   return (
     <div className="scene-3d">
@@ -66,13 +79,15 @@ export function WeekBars({ week, onSelectDay }: { week: Week; onSelectDay?: (dat
             style={{ bottom: `${goalPct}%` }}
           >
             <span className="absolute -top-4 right-0 rounded-full border border-teal-400/30 bg-[#0d1e1c]/90 px-2 py-0.5 font-mono text-[9px] font-bold text-teal-200 shadow-sm backdrop-blur-md">
-              hedef {formatNumber(goals.kcal)}
+              hedef {goalVaries && "ort. "}
+              {formatNumber(avgGoal)}
             </span>
           </div>
 
           {week.days.map((d, i) => {
             const h = d.hasData ? Math.max((d.total.kcal / max) * 100, 3) : 1.5;
-            const over = d.total.kcal > goals.kcal;
+            const dayGoal = dayGoals[i];
+            const over = dayGoal > 0 && d.total.kcal > dayGoal;
             const clickable = d.hasData && !!onSelectDay;
             const beamSpeed = BEAM_SPEEDS[i % BEAM_SPEEDS.length];
 

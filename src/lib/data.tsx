@@ -2,14 +2,16 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useState } 
 import type { ReactNode } from "react";
 import { deleteAlias, deleteDay, fetchData, saveAlias, saveDay, saveGoals } from "./api";
 import type { AliasPayload, AppData } from "./api";
-import type { MealPayload, Nutrition } from "../types";
+import type { GoalConfig, MealPayload } from "../types";
 
 /** Yazma aksiyonları — hepsi "API çağır → veriyi yeniden çek" desenini izler. */
 export interface Actions {
   refresh: () => Promise<void>;
   /** Günün tüm öğünlerini değiştirir; dizi boşsa günü siler. */
   setDayMeals: (date: string, meals: MealPayload[]) => Promise<void>;
-  updateGoals: (goals: Nutrition) => Promise<void>;
+  /** Hedef yapılandırmasının TAMAMINI değiştirir (profiller + haftalık şablon +
+   *  günlük istisnalar) — gün yazımıyla aynı "tümünü değiştir" deseni. */
+  updateGoals: (goals: GoalConfig) => Promise<void>;
   upsertAlias: (alias: AliasPayload) => Promise<void>;
   removeAlias: (id: string) => Promise<void>;
 }

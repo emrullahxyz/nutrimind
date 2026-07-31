@@ -50,11 +50,18 @@ export function formatShortDate(iso: string): string {
   return d.toLocaleDateString("tr-TR", { day: "numeric", month: "short" });
 }
 
-const WEEKDAY_SHORT = ["Paz", "Pzt", "Sal", "Çar", "Per", "Cum", "Cmt"];
+export const WEEKDAY_SHORT = ["Paz", "Pzt", "Sal", "Çar", "Per", "Cum", "Cmt"];
+
+/** Haftanın günü: 0=Pazar … 6=Cumartesi.
+ *  `addDaysISO` ile AYNI sözleşme (saf tarih, UTC) — gün-tipli hedeflerin
+ *  haftalık şablonu ile tarih aritmetiği aynı takvimi görmek zorunda. */
+export function weekdayIndex(iso: string): number {
+  const [y, m, d] = iso.slice(0, 10).split("-").map(Number);
+  return new Date(Date.UTC(y, m - 1, d)).getUTCDay();
+}
 
 export function weekdayShort(iso: string): string {
-  const d = new Date(`${iso}T00:00:00`);
-  return WEEKDAY_SHORT[d.getDay()] ?? "";
+  return WEEKDAY_SHORT[weekdayIndex(iso)] ?? "";
 }
 
 /** "bugün" / "dün" / "3g önce" / "22 Tem" */

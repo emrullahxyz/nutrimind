@@ -1,13 +1,25 @@
 // ============================================================================
 // Nutrimind — backend'den canlı veri (/api/data). SQLite'a bağlı Node servisi.
 // ============================================================================
-import type { Alias, AliasUnit, MealItem, MealPayload, MealSource, Nutrition, Recipe, RecipeIngredient } from "../types";
+import type {
+  Alias,
+  AliasUnit,
+  GoalConfig,
+  GoalProfile,
+  MealItem,
+  MealPayload,
+  MealSource,
+  Nutrition,
+  Recipe,
+  RecipeIngredient,
+} from "../types";
+import { singleProfileConfig } from "./goals";
 import { NUTRIENT_KEYS, makeNutrition } from "./nutrients";
 import type { NutrientKey } from "./nutrients";
 import { parseNum } from "./nutrition";
 
 export interface AppData {
-  goals: Nutrition;
+  goals: GoalConfig;
   days: Record<string, MealItem[]>;
   aliases: Alias[];
 }
@@ -121,6 +133,75 @@ export function parseRecipe(raw: unknown): Recipe | undefined {
   return valid.length > 0 ? { ingredients: valid, totalG } : undefined;
 }
 
+/** Faz 8: HEDEF ŞEKİL GÖÇÜ — v1 (düz `Nutrition`) → v2 (`GoalConfig`).
+ *
+ *  Bu fonksiyon uygulamanın en riskli tek noktası: kullanıcının gerçek hedefleri
+ *  buradan geçiyor. Üç durum var ve üçü de veri kaybetmeden sonuçlanmak zorunda:
+ *
+ *   1. Gövde v2 (`version`/`profiles`/`defaultProfileId` alanlarından biri var)
+ *      → doğrulanır ve olduğu gibi kullanılır.
+ *   2. Gövde düz besin nesnesi (v1 — ÜRETİMDE BUGÜN OLAN DURUM)
+ *      → sayılar AYNEN taşınarak tek profilli bir v2'ye sarılır. `fill` mikro
+ *        alanların "bilinmiyor" hâlini de korur.
+ *   3. Gövde eksik/bozuk → sıfır hedefli tek profile düşülür. Uygulama açılır;
+ *      hedefsiz bar/halka zaten sessiz kalacak biçimde yazılmış durumda.
+ *
+ *  BAYAT ATAMALAR BİLEREK ELENMİYOR: `weekday`/`overrides` değerlerinin var olan
+ *  bir profili göstermesi backend'de de zorunlu değil. Silinmiş bir profile
+ *  işaret eden atamayı burada düşürmek, sunucu gidiş-dönüşünde kullanıcının
+ *  atamasını sessizce silmek olurdu; çözümleme katmanı (`effectiveProfile`)
+ *  bayat kimliği zaten varsayılana düşürüyor. */
+export function parseGoals(raw: unknown): GoalConfig {
+  if (typeof raw !== "object" || raw === null || Array.isArray(raw)) {
+    return singleProfileConfig(fill(undefined));
+  }
+  const o = raw as Record<string, unknown>;
+
+  const looksV2 = "version" in o || "profiles" in o || "defaultProfileId" in o;
+  if (!looksV2) return singleProfileConfig(fill(o as RawNutrition));
+
+  const profiles: GoalProfile[] = [];
+  const seen = new Set<string>();
+  for (const p of Array.isArray(o.profiles) ? o.profiles : []) {
+    if (typeof p !== "object" || p === null) continue;
+    const rec = p as Record<string, unknown>;
+    const id = typeof rec.id === "string" ? rec.id.trim() : "";
+    if (id === "" || seen.has(id)) continue;
+    const rawName = typeof rec.name === "string" ? rec.name.trim() : "";
+    profiles.push({
+      id,
+      name: rawName === "" ? id : rawName,
+      nutrition: fill(rec.nutrition as RawNutrition | undefined),
+    });
+    seen.add(id);
+  }
+  // "v2 gibi görünen ama tek geçerli profili olmayan" gövde: sarılacak bir sayı
+  // da yok (v2'de hedefler profillerin İÇİNDE). Sıfır hedefe düşülür.
+  if (profiles.length === 0) return singleProfileConfig(fill(undefined));
+
+  const rawDefault = typeof o.defaultProfileId === "string" ? o.defaultProfileId : "";
+  const defaultProfileId = seen.has(rawDefault) ? rawDefault : profiles[0].id;
+
+  const weekday: Record<number, string> = {};
+  if (typeof o.weekday === "object" && o.weekday !== null) {
+    for (const [k, v] of Object.entries(o.weekday as Record<string, unknown>)) {
+      const dow = Number(k);
+      if (!Number.isInteger(dow) || dow < 0 || dow > 6) continue;
+      if (typeof v === "string" && v !== "") weekday[dow] = v;
+    }
+  }
+
+  const overrides: Record<string, string> = {};
+  if (typeof o.overrides === "object" && o.overrides !== null) {
+    for (const [date, v] of Object.entries(o.overrides as Record<string, unknown>)) {
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) continue;
+      if (typeof v === "string" && v !== "") overrides[date] = v;
+    }
+  }
+
+  return { version: 2, profiles, defaultProfileId, weekday, overrides };
+}
+
 /** Alan yalnızca değeri varsa nesneye girer — `{barcode: undefined}` yazmak
  *  `"barcode" in alias` kontrolünü bozardı. */
 function withOptional<K extends string, V>(key: K, value: V | undefined): Partial<Record<K, V>> {
@@ -134,7 +215,8 @@ interface RawMeal {
 }
 
 interface RawData {
-  goals: RawNutrition;
+  /** v1 düz besin nesnesi YA DA v2 profil yapısı — bkz. `parseGoals`. */
+  goals: unknown;
   days: Record<string, RawMeal[]>;
   aliases?: RawAlias[];
 }
@@ -171,7 +253,7 @@ export async function fetchData(): Promise<AppData> {
     ...withOptional("recipe", parseRecipe(a.recipe)),
   }));
 
-  return { goals: fill(raw.goals), days, aliases };
+  return { goals: parseGoals(raw.goals), days, aliases };
 }
 
 // --- Yazma uçları -----------------------------------------------------------
@@ -215,7 +297,11 @@ export function deleteDay(date: string): Promise<{ ok: true }> {
   return mutate(`/api/day/${encodeURIComponent(date)}`, "DELETE");
 }
 
-export function saveGoals(goals: Nutrition): Promise<{ ok: true }> {
+/** Hedefleri v2 gövdesiyle yazar. Backend Faz 3a'dan beri bu şekli doğruluyor:
+ *  `profiles` boş olmamalı, her profilin `id`/`name`'i boş olmayan metin,
+ *  `nutrition`'ı besin benzeri; `defaultProfileId` var olan bir profili
+ *  göstermeli (bkz. server/index.js `goalsError`). */
+export function saveGoals(goals: GoalConfig): Promise<{ ok: true }> {
   return mutate("/api/goals", "PUT", goals);
 }
 
