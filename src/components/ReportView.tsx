@@ -6,6 +6,8 @@ import { effectiveGoal, weeklyAverageGoal } from "../lib/goals";
 import { nutrientOf } from "../lib/nutrients";
 import { buildTrend, trendStats } from "../lib/trend";
 import type { TrendGoal, TrendRange } from "../lib/trend";
+import { formatTargetHitRate } from "../lib/trendFormat";
+import { RangePicker } from "./RangePicker";
 import { TrendChart } from "./TrendChart";
 
 export function ReportView({ data }: { data: AppData }) {
@@ -92,22 +94,7 @@ export function ReportView({ data }: { data: AppData }) {
     <div className="flex flex-col gap-6 printable-area text-ink-primary">
       {/* Filtre ve Yazdır Butonu (Baskıda Gizli) */}
       <div className="no-print flex flex-wrap items-center justify-between gap-3 border-b border-line pb-4">
-        <div className="flex items-center gap-1.5 rounded-pill border border-line bg-white/[0.04] p-1">
-          {([7, 30, 90, "all"] as const).map((r) => (
-            <button
-              key={r}
-              type="button"
-              onClick={() => setRange(r)}
-              className={`rounded-pill px-3 py-1 text-xs font-semibold transition ${
-                range === r
-                  ? "bg-memory text-memory-ink"
-                  : "text-ink-secondary hover:text-ink-primary"
-              }`}
-            >
-              {r === "all" ? "Tümü" : `${r} Gün`}
-            </button>
-          ))}
-        </div>
+        <RangePicker value={range} onChange={setRange} />
         <button
           type="button"
           onClick={() => window.print()}
@@ -160,7 +147,7 @@ export function ReportView({ data }: { data: AppData }) {
             Hedef Uyum Oranı
           </span>
           <div className="mt-1 font-mono text-lg font-extrabold text-protein print-text-dark">
-            {stats.ratedDays > 0 ? `%${Math.round((stats.onTargetDays / stats.ratedDays) * 100)}` : "—"}
+            {formatTargetHitRate(stats)}
             <span className="ml-1 text-xs font-normal text-ink-tertiary">({stats.onTargetDays}/{stats.ratedDays} gün)</span>
           </div>
         </div>

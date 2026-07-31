@@ -42,37 +42,36 @@ export function AliasForm({ initial, onClose }: { initial: Alias | null; onClose
       grams: String(u.grams),
     }))
   );
-  // Kaynak izi. Elle girilen besinde boş kalır; OFF'tan seçilende dolar ve
-  // düzenlemeler boyunca korunur (backend gövdede olmayan alanı da korur).
+  // Elle girilebilir barkod alanı. OFF'tan seçilende dolar, elle de girilebilir.
   const [barcode, setBarcode] = useState(initial?.barcode ?? "");
   const [offId, setOffId] = useState(initial?.off_id ?? "");
   const [searchOpen, setSearchOpen] = useState(false);
+  const [detailsOpen, setDetailsOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [err, setErr] = useState<string | null>(null);
 
-  // Yinelenen ifadeyi ele: aynı tetikleyici iki kez kaydedilmesin (çip listesinde de key çakışırdı).
+  // Ayrıntılar bölümünde dolu veri var mı?
+  const hasDetailsData = Boolean(
+    brand.trim() ||
+      barcode.trim() ||
+      unitDrafts.some((u) => u.name.trim() || u.grams.trim())
+  );
+
+  // Yinelenen ifadeyi ele: aynı tetikleyici iki kez kaydedilmesin.
   const triggerList = [
     ...new Set(
       triggers
         .split(",")
         .map((t) => t.trim().toLowerCase())
-        .filter(Boolean),
+        .filter(Boolean)
     ),
   ];
 
   const canSave = triggerList.length > 0 && name.trim().length > 0 && parseNum(servingG) > 0;
 
-  /** OFF'tan gelen ürün formu doldurur.
-   *
-   *  İFADELERE BİLEREK DOKUNULMUYOR. Alias hafızasının tamamı kullanıcının kendi
-   *  diliyle yazdığı ifadeye dayanıyor ("aynı yoğurt"); oraya ürünün Lehçe raf
-   *  adını ("Skyr - jogurt typu islandzkiego z truskawkami") kendiliğinden
-   *  yazmak, hiçbir zaman eşleşmeyecek bir tetikleyici üretirdi. Kayıt zaten en
-   *  az bir ifade istiyor, yani kullanıcı kendi kelimesini yazmadan geçemez. */
   function applyOffFood(food: OffFood) {
     setName(food.name);
     setBrand(food.brand ?? "");
-    // OFF besin değerleri her zaman 100 g içindir.
     setServingG(String(OFF_SERVING_G));
     setDraft(toDraft(food.nutrition));
     setBarcode(food.code);
@@ -80,7 +79,6 @@ export function AliasForm({ initial, onClose }: { initial: Alias | null; onClose
     setSearchOpen(false);
   }
 
-  /** Kayıt uçarken kapanmayı engelle: yazma sunucuya düşerken vazgeçilmiş sanılmasın. */
   function requestClose() {
     if (saving) return;
     onClose();
@@ -91,9 +89,6 @@ export function AliasForm({ initial, onClose }: { initial: Alias | null; onClose
     setSaving(true);
     setErr(null);
 
-    // Boş adlı veya grams <= 0 olan satırlar elenir; aynı birim adı tekilleştirilir.
-    // "g" ayrılmıştır: öğün formunda gram zaten her zaman listede ve 1'e eşit,
-    // aynı adı ikinci kez kaydetmek yalnızca yinelenen bir seçenek üretirdi.
     const validUnits: AliasUnit[] = [];
     const seenNames = new Set<string>(["g"]);
     for (const u of unitDrafts) {
@@ -117,8 +112,6 @@ export function AliasForm({ initial, onClose }: { initial: Alias | null; onClose
         serving_g: parseNum(servingG),
         nutrition: fromDraft(draft),
         units: validUnits,
-        // Boş alan GÖNDERİLMEZ (`undefined` JSON'da düşer): backend gövdede
-        // olmayan alanı korur, yani elle düzenleme barkodu silmez.
         ...(barcode.trim() ? { barcode: barcode.trim() } : {}),
         ...(offId.trim() ? { off_id: offId.trim() } : {}),
       });
@@ -132,7 +125,7 @@ export function AliasForm({ initial, onClose }: { initial: Alias | null; onClose
   return (
     <Modal title={initial ? "Besini düzenle" : "Yeni besin"} onClose={requestClose}>
       <div className="flex flex-col gap-3">
-        {/* --- Open Food Facts: elle girişin YERİNE değil, YANINA --- */}
+        {/* Open Food Facts arama girişi */}
         <div>
           <button
             type="button"
@@ -150,6 +143,7 @@ export function AliasForm({ initial, onClose }: { initial: Alias | null; onClose
           )}
         </div>
 
+        {/* İfadeler */}
         <label className="block">
           <Label>İfadeler (virgülle ayır)</Label>
           <input
@@ -170,78 +164,98 @@ export function AliasForm({ initial, onClose }: { initial: Alias | null; onClose
           </div>
         )}
 
+        {/* Besin adı & Porsiyon */}
         <TextField label="Besin adı" value={name} onChange={setName} placeholder="örn. Süzme yoğurt %0" />
-        <TextField label="Marka (opsiyonel)" value={brand} onChange={setBrand} placeholder="örn. Auchan" />
         <NumField label="Porsiyon" suffix="g" value={servingG} onChange={setServingG} />
 
-        {/* Özel Birimler */}
-        <div className="flex flex-col gap-2 rounded-chip border border-line bg-white/[0.02] p-3">
-          <span className="font-mono text-[11px] uppercase tracking-mono text-ink-tertiary">
-            Özel Birimler (opsiyonel)
-          </span>
-          {unitDrafts.length > 0 && (
-            <div className="flex flex-col gap-2">
-              {unitDrafts.map((u) => (
-                <div key={u.id} className="flex items-end gap-2">
-                  <div className="flex-1">
-                    <TextField
-                      label="Birim adı"
-                      value={u.name}
-                      placeholder="örn. adet, kase, dilim"
-                      onChange={(val) =>
-                        setUnitDrafts((prev) =>
-                          prev.map((x) => (x.id === u.id ? { ...x, name: val } : x))
-                        )
-                      }
-                    />
-                  </div>
-                  <div className="w-28">
-                    <NumField
-                      label="Miktar"
-                      suffix="g"
-                      value={u.grams}
-                      onChange={(val) =>
-                        setUnitDrafts((prev) =>
-                          prev.map((x) => (x.id === u.id ? { ...x, grams: val } : x))
-                        )
-                      }
-                    />
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => setUnitDrafts((prev) => prev.filter((x) => x.id !== u.id))}
-                    className="mb-1 rounded-chip border border-line p-2 text-xs text-ink-tertiary transition hover:border-danger/40 hover:text-danger"
-                    title="Birimi sil"
-                  >
-                    ✕
-                  </button>
-                </div>
-              ))}
-            </div>
-          )}
+        {/* Ayrıntılar (Marka, Barkod, Özel Birimler) */}
+        <div className="rounded-chip border border-line bg-white/[0.02]">
           <button
             type="button"
-            onClick={() =>
-              setUnitDrafts((prev) => [
-                ...prev,
-                { id: `unit-${Date.now()}-${Math.random()}`, name: "", grams: "" },
-              ])
-            }
-            className="w-full rounded-chip border border-line bg-white/[0.03] py-1.5 text-center text-xs font-semibold text-ink-secondary transition hover:text-ink-primary"
+            onClick={() => setDetailsOpen((o) => !o)}
+            aria-expanded={detailsOpen}
+            className="flex w-full items-center justify-between gap-2 px-3 py-2 text-left transition hover:bg-white/[0.03]"
           >
-            + Birim ekle
+            <span className="flex items-center gap-2">
+              <span className="font-mono text-[11px] uppercase tracking-mono text-ink-tertiary">
+                Ayrıntılar (Marka, Birimler, Barkod)
+              </span>
+              {hasDetailsData && (
+                <span className="rounded-pill bg-memory/15 px-2 py-0.5 font-mono text-[10px] font-semibold text-memory">
+                  dolu
+                </span>
+              )}
+            </span>
+            <span className="font-mono text-xs text-ink-tertiary">{detailsOpen ? "−" : "+"}</span>
           </button>
+          {detailsOpen && (
+            <div className="flex flex-col gap-3 border-t border-line p-3">
+              <TextField label="Marka (opsiyonel)" value={brand} onChange={setBrand} placeholder="örn. Auchan" />
+              <TextField label="Barkod (opsiyonel)" value={barcode} onChange={setBarcode} placeholder="örn. 8690000000000" />
+
+              {/* Özel Birimler */}
+              <div className="flex flex-col gap-2 rounded-chip border border-line/40 bg-white/[0.02] p-3">
+                <span className="font-mono text-[11px] uppercase tracking-mono text-ink-tertiary">
+                  Özel Birimler (opsiyonel)
+                </span>
+                {unitDrafts.length > 0 && (
+                  <div className="flex flex-col gap-2">
+                    {unitDrafts.map((u) => (
+                      <div key={u.id} className="flex items-end gap-2">
+                        <div className="flex-1">
+                          <TextField
+                            label="Birim adı"
+                            value={u.name}
+                            placeholder="örn. adet, kase, dilim"
+                            onChange={(val) =>
+                              setUnitDrafts((prev) =>
+                                prev.map((x) => (x.id === u.id ? { ...x, name: val } : x))
+                              )
+                            }
+                          />
+                        </div>
+                        <div className="w-28">
+                          <NumField
+                            label="Miktar"
+                            suffix="g"
+                            value={u.grams}
+                            onChange={(val) =>
+                              setUnitDrafts((prev) =>
+                                prev.map((x) => (x.id === u.id ? { ...x, grams: val } : x))
+                              )
+                            }
+                          />
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => setUnitDrafts((prev) => prev.filter((x) => x.id !== u.id))}
+                          className="mb-1 rounded-chip border border-line p-2 text-xs text-ink-tertiary transition hover:border-danger/40 hover:text-danger"
+                          title="Birimi sil"
+                        >
+                          ✕
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                <button
+                  type="button"
+                  onClick={() =>
+                    setUnitDrafts((prev) => [
+                      ...prev,
+                      { id: `unit-${Date.now()}-${Math.random()}`, name: "", grams: "" },
+                    ])
+                  }
+                  className="w-full rounded-chip border border-line bg-white/[0.03] py-1.5 text-center text-xs font-semibold text-ink-secondary transition hover:text-ink-primary"
+                >
+                  + Birim ekle
+                </button>
+              </div>
+            </div>
+          )}
         </div>
 
-        {/* Barkod düzenlenebilir bir alan DEĞİL, kaynak izi: nereden geldiğini
-            görebil diye gösteriliyor. Kaydetmede olduğu gibi taşınır. */}
-        {barcode && (
-          <p className="font-mono text-[11px] text-ink-tertiary">
-            Barkod: <span className="text-ink-secondary">{barcode}</span>
-            <span className="ml-2 text-ink-faint">(Open Food Facts)</span>
-          </p>
-        )}
-
+        {/* 5 makro + mikro alanları */}
         <div>
           <p className="mb-2 text-[11px] text-ink-tertiary">
             Aşağıdaki makrolar <strong className="text-ink-secondary">{parseNum(servingG) || 0} g</strong> için

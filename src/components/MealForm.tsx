@@ -22,6 +22,7 @@ import { GRAM_UNIT, parseNum, scaleNutrition, toGrams, unitOptions } from "../li
 import { formatKcal } from "../lib/format";
 import type { MealPayload, MealSource, Nutrition } from "../types";
 import { usualQuantity } from "../lib/quantity";
+import { AliasPicker } from "./AliasPicker";
 
 type Mode = "alias" | "manual";
 
@@ -292,7 +293,9 @@ export function MealForm({
 
   const defaultName =
     basket.length > 0
-      ? basket.map((b) => b.name).join(" + ")
+      ? basket.length === 1
+        ? basket[0].name.replace(/\s*\([^)]*\)$/, "")
+        : basket.map((b) => b.name).join(" + ")
       : mode === "alias"
         ? name.trim() || alias?.name || ""
         : name.trim();
@@ -309,6 +312,10 @@ export function MealForm({
     () => (alias ? usualQuantity(days, alias.id, unitName, aliases) : null),
     [alias, days, unitName, aliases],
   );
+
+  // `✨ her zamanki` yalnızca kutudaki değer tahminden farklıyken görünsün
+  const isDifferentFromEstimate = estimate !== null && amountValue !== estimate.value;
+  const showServingReset = alias && (grams !== String(alias.serving_g) || unitName !== GRAM_UNIT.name);
 
   function requestClose() {
     if (saving) return;
@@ -379,7 +386,11 @@ export function MealForm({
     };
     const nextBasket = [...currentBasket, newItem];
     setBasket(nextBasket);
-    setName(nextBasket.map((b) => b.name).join(" + "));
+    if (nextBasket.length > 1) {
+      setName(nextBasket.map((b) => b.name).join(" + "));
+    } else {
+      setName(alias.name);
+    }
   }
 
   function addManualToBasket() {
@@ -408,7 +419,11 @@ export function MealForm({
     setBasket(nextBasket);
     setManualItemName("");
     setDraft(EMPTY_DRAFT);
-    setName(nextBasket.map((b) => b.name).join(" + "));
+    if (nextBasket.length > 1) {
+      setName(nextBasket.map((b) => b.name).join(" + "));
+    } else {
+      setName(itemName);
+    }
   }
 
   function removeFromBasket(index: number) {
@@ -419,6 +434,8 @@ export function MealForm({
     setBasket(next);
     if (next.length === 0) {
       setName(existing?.label ?? "");
+    } else if (next.length === 1) {
+      setName(next[0].name.replace(/\s*\([^)]*\)$/, ""));
     } else {
       setName(next.map((b) => b.name).join(" + "));
     }
@@ -475,16 +492,12 @@ export function MealForm({
         ) : (
           <div className="flex flex-col gap-3">
             <div className="flex flex-col gap-2 rounded-chip border border-line bg-white/[0.02] p-3">
-              <label className="block">
-                <Label>Hafızadan besin seç</Label>
-                <select className={fieldCls} value={aliasId} onChange={(e) => pickAlias(e.target.value)}>
-                  {aliases.map((a) => (
-                    <option key={a.id} value={a.id} className="bg-elevated-2">
-                      {a.name}
-                    </option>
-                  ))}
-                </select>
-              </label>
+              <AliasPicker
+                aliases={aliases}
+                selectedAliasId={aliasId}
+                onSelectAlias={pickAlias}
+                label="Hafızadan besin seç"
+              />
 
               <div className="flex items-end gap-2">
                 <div className="flex-1">
@@ -506,19 +519,21 @@ export function MealForm({
                     </select>
                   </label>
                 </div>
-                <button
-                  type="button"
-                  onClick={addAliasToBasket}
-                  disabled={!scaled}
-                  className="rounded-chip border border-memory bg-memory/10 px-3 py-2 text-xs font-bold text-memory transition hover:bg-memory hover:text-memory-ink disabled:opacity-40"
-                >
-                  + Listeye ekle
-                </button>
+                {basket.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={addAliasToBasket}
+                    disabled={!scaled}
+                    className="rounded-chip border border-memory bg-memory/10 px-3 py-2 text-xs font-bold text-memory transition hover:bg-memory hover:text-memory-ink disabled:opacity-40"
+                  >
+                    + Listeye ekle
+                  </button>
+                )}
               </div>
 
-              {(estimate || (alias && grams !== String(alias.serving_g))) && (
+              {(isDifferentFromEstimate || showServingReset) && (
                 <div className="flex items-center justify-between text-xs pt-0.5 px-0.5">
-                  {estimate ? (
+                  {isDifferentFromEstimate && estimate ? (
                     <button
                       type="button"
                       onClick={() => setGrams(String(estimate.value))}
@@ -532,7 +547,7 @@ export function MealForm({
                   ) : (
                     <span />
                   )}
-                  {alias && (
+                  {showServingReset && alias && (
                     <button
                       type="button"
                       onClick={() => {
@@ -554,6 +569,19 @@ export function MealForm({
                   className="font-mono text-[11px] text-ink-secondary"
                 />
               )}
+
+              {basket.length === 0 && (
+                <div className="flex justify-end pt-1">
+                  <button
+                    type="button"
+                    onClick={addAliasToBasket}
+                    disabled={!scaled}
+                    className="flex items-center gap-1 text-xs font-semibold text-memory hover:underline disabled:opacity-40"
+                  >
+                    + Kalem ekle (çoklu malzeme)
+                  </button>
+                </div>
+              )}
             </div>
 
             <BasketSection
@@ -573,7 +601,7 @@ export function MealForm({
             />
 
             <TextField
-              label="Birleşik Öğün Adı"
+              label={basket.length > 0 ? "Birleşik Öğün Adı" : "Öğün adı"}
               value={name}
               onChange={setName}
               placeholder={basket.length > 0 ? basket.map((b) => b.name).join(" + ") : alias?.name ?? ""}
@@ -598,9 +626,13 @@ export function MealForm({
                 type="button"
                 onClick={addManualToBasket}
                 disabled={!hasManualNutrition}
-                className="rounded-chip border border-memory bg-memory/10 px-3 py-1.5 text-xs font-bold text-memory transition hover:bg-memory hover:text-memory-ink disabled:opacity-40"
+                className={
+                  basket.length > 0
+                    ? "rounded-chip border border-memory bg-memory/10 px-3 py-1.5 text-xs font-bold text-memory transition hover:bg-memory hover:text-memory-ink disabled:opacity-40"
+                    : "flex items-center gap-1 text-xs font-semibold text-memory hover:underline disabled:opacity-40"
+                }
               >
-                + Listeye ekle
+                + {basket.length > 0 ? "Listeye ekle" : "Kalem ekle (çoklu malzeme)"}
               </button>
             </div>
           </div>
@@ -622,7 +654,7 @@ export function MealForm({
           />
 
           <TextField
-            label="Öğün Adı"
+            label={basket.length > 0 ? "Birleşik Öğün Adı" : "Öğün adı"}
             value={name}
             onChange={setName}
             placeholder={basket.length > 0 ? basket.map((b) => b.name).join(" + ") : "örn. Yulaf + protein + süt"}
@@ -635,3 +667,4 @@ export function MealForm({
     </Modal>
   );
 }
+

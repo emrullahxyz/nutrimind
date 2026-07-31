@@ -38,71 +38,6 @@ function BackButton({ label, onClick }: { label: string; onClick: () => void }) 
   );
 }
 
-function Sparkline({ week }: { week: Week }) {
-  const { goals } = useData();
-  // Faz 8: geçmiş hafta artık BUGÜNÜN hedefiyle değil, her günün kendi
-  // hedefiyle karşılaştırılıyor.
-  const dayGoals = week.days.map((d) => effectiveGoal(goals, d.date).kcal);
-  const max = Math.max(...dayGoals, ...week.days.map((d) => d.total.kcal)) * 1.12 || 1;
-
-  return (
-    <div className="flex h-12 items-end gap-1.5 overflow-hidden rounded-lg bg-black/40 p-1.5 inset-0 border border-white/[0.06]">
-      {week.days.map((d, i) => {
-        const over = dayGoals[i] > 0 && d.total.kcal > dayGoals[i];
-        return (
-          <div key={d.date} className="relative flex-1 h-full flex flex-col justify-end">
-            {d.hasData ? (
-              <div
-                className="anim-grow-spring relative w-full overflow-hidden rounded-t-[4px] shadow-[0_0_8px_rgba(45,212,191,0.2)] transition-transform duration-200 group-hover:-translate-y-0.5"
-                style={{
-                  height: `${Math.max((d.total.kcal / max) * 100, 10)}%`,
-                  animationDelay: `${i * 45}ms`,
-                }}
-              >
-                {/* Obsidyen Zümrüt / Carmine Kırmızısı Bar Gövdesi */}
-                <div
-                  className="relative z-10 h-full w-full overflow-hidden rounded-t-[4px]"
-                  style={{
-                    background: over
-                      ? "linear-gradient(180deg, #fb7185 0%, #e11d48 35%, #9f1239 70%, #4c0519 100%)"
-                      : "linear-gradient(180deg, #5eead4 0%, #2dd4bf 30%, #0d9488 70%, #042f2e 100%)",
-                    boxShadow: "inset 1px 1px 1px rgba(255,255,255,0.3), inset -1px -1px 3px rgba(0,0,0,0.5)",
-                    filter: "brightness(0.96)",
-                  }}
-                >
-                  {/* Chroma Katmanı */}
-                  <div
-                    className="pointer-events-none absolute inset-0 z-12 opacity-70 mix-blend-overlay"
-                    style={{
-                      background:
-                        "linear-gradient(135deg, rgba(255, 0, 128, 0.15) 0%, rgba(0, 255, 240, 0.15) 50%, rgba(168, 85, 247, 0.15) 100%)",
-                    }}
-                  />
-                  {/* Cam Yansıması */}
-                  <div className="pointer-events-none absolute bottom-0 left-0 top-0 z-15 w-[40%] rounded-tl-[4px] bg-gradient-to-r from-white/20 via-white/4 to-transparent" />
-                </div>
-              </div>
-            ) : (
-              <div className="h-[3px] w-full rounded-t-sm border border-dashed border-white/10 bg-white/[0.03]" />
-            )}
-          </div>
-        );
-      })}
-    </div>
-  );
-}
-
-function MacroRow({ def, value }: { def: NutrientDef; value: number }) {
-  return (
-    <div className="flex items-center justify-between">
-      <span className={`text-[13px] font-bold ${def.classes.text}`}>{def.label}</span>
-      <span className="font-mono text-xs text-ink-secondary">
-        {formatNumber(value)} {def.unit}
-      </span>
-    </div>
-  );
-}
-
 export function HistoryPage() {
   const [segment, setSegment] = useState<HistorySegment>("weeks");
   const { days } = useData();
@@ -210,17 +145,22 @@ export function HistoryPage() {
           />
         </div>
 
-        <div className="grid gap-4 md:grid-cols-[auto_1fr] md:items-center">
-          <Card className="flex items-center justify-center p-6">
-            <MacroDonut nutrition={week.total} />
-          </Card>
-          <Card className="flex flex-col justify-center gap-2 p-6">
-            <div className="text-sm font-bold text-ink-secondary">Haftalık makro (toplam)</div>
-            {MACROS.map((def) => (
-              <MacroRow key={def.key} def={def} value={week.total[def.key] ?? 0} />
-            ))}
-          </Card>
-        </div>
+        <Card className="flex flex-col items-center justify-center p-6 gap-4">
+          <div className="text-sm font-bold text-ink-secondary">Haftalık Makro Dağılımı & Toplamları</div>
+          <MacroDonut nutrition={week.total} />
+          <div className="w-full border-t border-line/40 pt-3">
+            <div className="grid grid-cols-2 gap-x-4 gap-y-2 sm:grid-cols-4">
+              {MACROS.map((def) => (
+                <div key={def.key} className="flex flex-col items-center text-center">
+                  <span className={`text-xs font-bold ${def.classes.text}`}>{def.label}</span>
+                  <span className="font-mono text-xs font-semibold text-ink-primary">
+                    {formatNumber(week.total[def.key] ?? 0)} {def.unit}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </Card>
       </div>
     );
   }
@@ -251,7 +191,7 @@ export function HistoryPage() {
                 <div className="font-mono text-xl font-extrabold text-ink-primary">{formatKcal(w.total.kcal)}</div>
                 <div className="font-mono text-[11px] text-ink-tertiary">ort {formatKcal(w.avgKcal)}/gün</div>
               </div>
-              <Sparkline week={w} />
+              <WeekBars week={w} compact />
             </Card>
           </button>
         ))}
