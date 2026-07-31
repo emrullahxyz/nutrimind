@@ -108,8 +108,12 @@ export function AliasPicker({
           className={`${fieldCls} pr-8`}
           value={query}
           placeholder="Besin ara..."
-          onFocus={() => {
+          onFocus={(e) => {
             setIsOpen(true);
+            e.target.select();
+          }}
+          onClick={(e) => {
+            (e.target as HTMLInputElement).select();
           }}
           onChange={(e) => {
             setQuery(e.target.value);
