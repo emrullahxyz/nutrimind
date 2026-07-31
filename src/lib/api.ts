@@ -1,7 +1,7 @@
 // ============================================================================
 // Nutrimind — backend'den canlı veri (/api/data). SQLite'a bağlı Node servisi.
 // ============================================================================
-import type { Alias, AliasUnit, MealItem, MealPayload, Nutrition } from "../types";
+import type { Alias, AliasUnit, MealItem, MealPayload, MealSource, Nutrition } from "../types";
 import { NUTRIENT_KEYS, makeNutrition } from "./nutrients";
 import type { NutrientKey } from "./nutrients";
 import { parseNum } from "./nutrition";
@@ -65,15 +65,40 @@ export function parseUnits(raw: unknown): AliasUnit[] | undefined {
   return valid.length > 0 ? valid : undefined;
 }
 
+/** Faz 6: Bozuk/eksik `sources` verisini doğrular; `sources` dizi değilse veya
+ *  bir satırın `aliasId` metin değilse veya `qty` pozitif sayı değilse o satırı atar. */
+export function parseSources(raw: unknown): MealSource[] | undefined {
+  if (!Array.isArray(raw)) return undefined;
+  const valid: MealSource[] = [];
+  for (const s of raw) {
+    if (typeof s !== "object" || s === null) continue;
+    const aliasId = typeof (s as { aliasId?: unknown }).aliasId === "string" ? (s as { aliasId: string }).aliasId.trim() : "";
+    const qtyRaw = (s as { qty?: unknown }).qty;
+    const qty = typeof qtyRaw === "number" ? qtyRaw : parseNum(String(qtyRaw ?? ""));
+    const unitRaw = (s as { unit?: unknown }).unit;
+    const unit = typeof unitRaw === "string" && unitRaw.trim().length > 0 ? unitRaw.trim() : "g";
+    if (aliasId.length > 0 && typeof qty === "number" && qty > 0 && Number.isFinite(qty)) {
+      valid.push({ aliasId, qty, unit });
+    }
+  }
+  return valid.length > 0 ? valid : undefined;
+}
+
 /** Alan yalnızca değeri varsa nesneye girer — `{barcode: undefined}` yazmak
  *  `"barcode" in alias` kontrolünü bozardı. */
 function withOptional<K extends string, V>(key: K, value: V | undefined): Partial<Record<K, V>> {
   return value === undefined ? {} : ({ [key]: value } as Record<K, V>);
 }
 
+interface RawMeal {
+  name: string;
+  nutrition: RawNutrition;
+  sources?: unknown;
+}
+
 interface RawData {
   goals: RawNutrition;
-  days: Record<string, { name: string; nutrition: RawNutrition }[]>;
+  days: Record<string, RawMeal[]>;
   aliases?: RawAlias[];
 }
 
@@ -85,11 +110,15 @@ export async function fetchData(): Promise<AppData> {
 
   const days: Record<string, MealItem[]> = {};
   for (const [date, meals] of Object.entries(raw.days ?? {})) {
-    days[date] = (meals ?? []).map((m, i) => ({
-      id: `${date}_${i}`,
-      label: m.name,
-      computed: fill(m.nutrition),
-    }));
+    days[date] = (meals ?? []).map((m, i) => {
+      const parsedSources = parseSources(m.sources);
+      return {
+        id: `${date}_${i}`,
+        label: m.name,
+        computed: fill(m.nutrition),
+        ...(parsedSources ? { sources: parsedSources } : {}),
+      };
+    });
   }
 
   const aliases: Alias[] = (raw.aliases ?? []).map((a) => ({

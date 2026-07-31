@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Modal } from "./Modal";
 import {
   EMPTY_DRAFT,
@@ -19,7 +19,8 @@ import { mealsOf, sumMeals, toPayload } from "../lib/days";
 import { NUTRIENTS } from "../lib/nutrients";
 import { GRAM_UNIT, parseNum, scaleNutrition, toGrams, unitOptions } from "../lib/nutrition";
 import { formatKcal } from "../lib/format";
-import type { MealPayload, Nutrition } from "../types";
+import type { MealPayload, MealSource, Nutrition } from "../types";
+import { usualQuantity } from "../lib/quantity";
 
 type Mode = "alias" | "manual";
 
@@ -27,6 +28,7 @@ interface BasketItem {
   id: string;
   name: string;
   nutrition: Nutrition;
+  sources?: MealSource[];
 }
 
 function ModeTab({ active, onClick, label }: { active: boolean; onClick: () => void; label: string }) {
@@ -184,7 +186,17 @@ export function MealForm({
   const [name, setName] = useState(existing?.label ?? "");
   const [draft, setDraft] = useState<NutritionDraft>(existing ? toDraft(existing.computed) : EMPTY_DRAFT);
   const [aliasId, setAliasId] = useState(aliases[0]?.id ?? "");
-  const [grams, setGrams] = useState(String(aliases[0]?.serving_g ?? 100));
+
+  // Tembel başlangıç: `usualQuantity` 10 örnek toplayana kadar TÜM geçmişi
+  // tarıyor. Doğrudan çağrılsaydı her render'da (miktar kutusuna yazılan her
+  // harfte) yeniden taranırdı; useState'in fonksiyon biçimi yalnızca ilk
+  // render'da çalıştırır.
+  const [grams, setGrams] = useState(() => {
+    const first = aliases[0];
+    if (!first) return "100";
+    const est = usualQuantity(days, first.id, GRAM_UNIT.name, aliases);
+    return String(est !== null ? est.value : first.serving_g);
+  });
   const [unitName, setUnitName] = useState(GRAM_UNIT.name);
 
   // Elle modunda girilen münferit kalem adı
@@ -198,6 +210,7 @@ export function MealForm({
             id: `existing-${Date.now()}`,
             name: existing.label,
             nutrition: existing.computed,
+            sources: existing.sources,
           },
         ]
       : []
@@ -221,6 +234,7 @@ export function MealForm({
           id: `existing-${Date.now()}`,
           name: existing.label,
           nutrition: existing.computed,
+          sources: existing.sources,
         },
       ]);
     }
@@ -288,6 +302,13 @@ export function MealForm({
 
   const canSave = finalName.length > 0 && finalNutrition !== null;
 
+  // Aynı sebeple memo'lu: yalnızca besin/birim/geçmiş değişince yeniden taranır,
+  // miktar kutusuna yazarken değil.
+  const estimate = useMemo(
+    () => (alias ? usualQuantity(days, alias.id, unitName, aliases) : null),
+    [alias, days, unitName, aliases],
+  );
+
   function requestClose() {
     if (saving) return;
     onClose();
@@ -296,8 +317,30 @@ export function MealForm({
   function pickAlias(id: string) {
     setAliasId(id);
     const a = aliases.find((x) => x.id === id);
-    if (a) setGrams(String(a.serving_g));
-    setUnitName(GRAM_UNIT.name);
+    const defaultUnit = GRAM_UNIT.name;
+    setUnitName(defaultUnit);
+    if (a) {
+      const est = usualQuantity(days, id, defaultUnit, aliases);
+      if (est !== null) {
+        setGrams(String(est.value));
+      } else {
+        setGrams(String(a.serving_g));
+      }
+    }
+  }
+
+  function handleUnitChange(newUnit: string) {
+    setUnitName(newUnit);
+    if (alias) {
+      const est = usualQuantity(days, alias.id, newUnit, aliases);
+      if (est !== null) {
+        setGrams(String(est.value));
+      } else if (newUnit === GRAM_UNIT.name) {
+        setGrams(String(alias.serving_g));
+      } else {
+        setGrams("1");
+      }
+    }
   }
 
   function addAliasToBasket() {
@@ -310,6 +353,7 @@ export function MealForm({
           id: `existing-${Date.now()}`,
           name: existing.label,
           nutrition: existing.computed,
+          sources: existing.sources,
         },
       ];
     }
@@ -324,6 +368,13 @@ export function MealForm({
       id: `${alias.id}-${Date.now()}-${Math.random()}`,
       name: `${alias.name} (${unitSuffix})`,
       nutrition: scaled,
+      sources: [
+        {
+          aliasId: alias.id,
+          qty: amountValue,
+          unit: selectedUnitObj.name,
+        },
+      ],
     };
     const nextBasket = [...currentBasket, newItem];
     setBasket(nextBasket);
@@ -340,6 +391,7 @@ export function MealForm({
           id: `existing-${Date.now()}`,
           name: existing.label,
           nutrition: existing.computed,
+          sources: existing.sources,
         },
       ];
     }
@@ -377,9 +429,30 @@ export function MealForm({
     setErr(null);
     try {
       const next: MealPayload[] = toPayload(mealsOf(days, date));
-      const entry: MealPayload = { name: finalName, nutrition: finalNutrition };
+
+      let entrySources: MealSource[] | undefined;
+      if (basket.length > 0) {
+        const collected = basket.flatMap((b) => b.sources ?? []);
+        if (collected.length > 0) entrySources = collected;
+      } else if (mode === "alias" && alias && scaled && calculatedGrams > 0) {
+        entrySources = [
+          {
+            aliasId: alias.id,
+            qty: amountValue,
+            unit: selectedUnitObj.name,
+          },
+        ];
+      }
+
+      const entry: MealPayload = {
+        name: finalName,
+        nutrition: finalNutrition,
+        ...(entrySources && entrySources.length > 0 ? { sources: entrySources } : {}),
+      };
+
       if (editIndex === null) next.push(entry);
       else next[editIndex] = entry;
+
       await setDayMeals(date, next);
       onClose();
     } catch (e) {
@@ -422,7 +495,7 @@ export function MealForm({
                     <select
                       className={fieldCls}
                       value={unitName}
-                      onChange={(e) => setUnitName(e.target.value)}
+                      onChange={(e) => handleUnitChange(e.target.value)}
                     >
                       {availableUnits.map((u) => (
                         <option key={u.name} value={u.name} className="bg-elevated-2">
@@ -441,6 +514,37 @@ export function MealForm({
                   + Listeye ekle
                 </button>
               </div>
+
+              {(estimate || (alias && grams !== String(alias.serving_g))) && (
+                <div className="flex items-center justify-between text-xs pt-0.5 px-0.5">
+                  {estimate ? (
+                    <button
+                      type="button"
+                      onClick={() => setGrams(String(estimate.value))}
+                      className="flex items-center gap-1.5 text-memory hover:underline font-medium text-left"
+                    >
+                      <span>✨</span>
+                      <span>
+                        her zamanki {estimate.value} {unitName} · son {estimate.sampleCount} kayıt
+                      </span>
+                    </button>
+                  ) : (
+                    <span />
+                  )}
+                  {alias && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setUnitName(GRAM_UNIT.name);
+                        setGrams(String(alias.serving_g));
+                      }}
+                      className="text-[11px] text-ink-tertiary hover:text-ink-primary font-mono transition"
+                    >
+                      porsiyon: {alias.serving_g} g
+                    </button>
+                  )}
+                </div>
+              )}
 
               {scaled && basket.length === 0 && (
                 <NutrientSummaryLine
