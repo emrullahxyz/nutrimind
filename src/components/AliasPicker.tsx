@@ -185,7 +185,7 @@ export function AliasPicker({
                   } ${isSelected ? "text-memory font-semibold" : "text-ink-primary"}`}
                 >
                   <div className="flex items-center gap-1.5 min-w-0">
-                    <span className="truncate">{alias.name}</span>
+                    <span className="min-w-0 block truncate">{alias.name}</span>
                     {alias.brand && (
                       <span className="flex-none rounded bg-white/[0.06] px-1.5 py-0.5 font-mono text-[10px] text-ink-tertiary">
                         {alias.brand}
