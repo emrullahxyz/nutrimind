@@ -1,4 +1,3 @@
-import { useState } from "react";
 import { formatNumber } from "../lib/format";
 import type { Nutrition } from "../types";
 
@@ -50,13 +49,14 @@ function SmallDonut({ pct, color, emoji }: { pct: number; color: string; emoji: 
   );
 }
 
-export function MacroCardGrid({ total, goal }: { total: Nutrition; goal: Nutrition }) {
-  const [toggledKeys, setToggledKeys] = useState<Record<string, boolean>>({});
+interface MacroCardGridProps {
+  total: Nutrition;
+  goal: Nutrition;
+  showRatio: boolean;
+  onToggleRatio: () => void;
+}
 
-  const toggleKey = (key: string) => {
-    setToggledKeys((prev) => ({ ...prev, [key]: !prev[key] }));
-  };
-
+export function MacroCardGrid({ total, goal, showRatio, onToggleRatio }: MacroCardGridProps) {
   const items: MacroItem[] = [
     {
       key: "protein",
@@ -90,14 +90,13 @@ export function MacroCardGrid({ total, goal }: { total: Nutrition; goal: Nutriti
   return (
     <div className="grid grid-cols-3 gap-2.5 sm:gap-3">
       {items.map((item) => {
-        const isToggled = !!toggledKeys[item.key];
         const remaining = Math.max(0, item.target - item.consumed);
         const pct = item.target > 0 ? item.consumed / item.target : 0;
 
         let displayVal: string;
         let subText: string;
 
-        if (isToggled) {
+        if (showRatio) {
           displayVal = item.target > 0 
             ? `${formatNumber(item.consumed, 0)}/${formatNumber(item.target, 0)}g`
             : `${formatNumber(item.consumed, 0)}g`;
@@ -110,9 +109,9 @@ export function MacroCardGrid({ total, goal }: { total: Nutrition; goal: Nutriti
         return (
           <div
             key={item.key}
-            onClick={() => toggleKey(item.key)}
+            onClick={onToggleRatio}
             className="flex flex-col justify-between rounded-[20px] border border-calBorder bg-calCard p-3 sm:p-4 min-h-[130px] shadow-card backdrop-blur-sm transition-all duration-200 hover:border-white/20 cursor-pointer select-none active:scale-[0.98]"
-            title="Tıklayarak görünümü değiştir"
+            title="Tıklayarak tüm değerleri dönüştür"
           >
             <div>
               <div className="font-mono text-base sm:text-lg font-extrabold text-white leading-tight transition-all">
@@ -132,4 +131,3 @@ export function MacroCardGrid({ total, goal }: { total: Nutrition; goal: Nutriti
     </div>
   );
 }
-

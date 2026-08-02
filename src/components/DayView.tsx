@@ -115,6 +115,8 @@ export function DayView({
   const [err, setErr] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [microsOpen, setMicrosOpen] = usePersistedBool(PREF.microsOpen, false);
+  const [showRatio, setShowRatio] = useState(false);
+  const toggleRatio = () => setShowRatio(!showRatio);
 
   useEffect(() => {
     if (triggerAddMeal) {
@@ -248,9 +250,9 @@ export function DayView({
     <div className="flex flex-col gap-5 sm:gap-6">
       <DayTypeBadge date={date} />
 
-      <HeroCalorieCard consumed={total.kcal} target={goal.kcal} />
+      <HeroCalorieCard consumed={total.kcal} target={goal.kcal} showRatio={showRatio} onToggleRatio={toggleRatio} />
 
-      <MacroCardGrid total={total} goal={goal} />
+      <MacroCardGrid total={total} goal={goal} showRatio={showRatio} onToggleRatio={toggleRatio} />
 
       {microRows.length > 0 && (
         <Collapsible
