@@ -17,16 +17,26 @@ const fs = require("node:fs");
 const path = require("node:path");
 
 // --- .env yükleyici (yalnızca yerel geliştirme kolaylığı) -------------------
-// Prod'da systemd zaten process.env'i dolduruyor — burada zaten SET olan
+// Prod'da systemd zaten process.env'i doldurabilir — burada zaten SET olan
 // hiçbir anahtarın üzerine YAZILMAZ. .env dosyası yoksa sessizce atlanır.
+//
+// İki olası yerleşim var ve ikisi de desteklenir:
+//   - Yerel repo: bu dosya `server/ai.js`, `.env` bir üst dizinde (repo kökü).
+//   - Prod (systemd, /home/emrullah/nutri-api): `index.js`/`ai.js` ALT KLASÖRSÜZ,
+//     düz duruyor — `.env` bu dosyayla AYNI dizinde.
+// İlk bulunan aday kullanılır.
 function loadDotEnvOnce() {
-  const envPath = path.join(__dirname, "..", ".env");
+  const candidates = [path.join(__dirname, ".env"), path.join(__dirname, "..", ".env")];
   let raw;
-  try {
-    raw = fs.readFileSync(envPath, "utf8");
-  } catch {
-    return;
+  for (const envPath of candidates) {
+    try {
+      raw = fs.readFileSync(envPath, "utf8");
+      break;
+    } catch {
+      // sıradaki adaya geç
+    }
   }
+  if (raw === undefined) return;
   for (const line of raw.split("\n")) {
     const trimmed = line.trim();
     if (!trimmed || trimmed.startsWith("#")) continue;
