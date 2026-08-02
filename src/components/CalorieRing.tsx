@@ -6,9 +6,10 @@ import { bigNumCls } from "./FormBits";
 interface CalorieRingProps {
   consumed: number;
   target: number;
+  size?: number;
 }
 
-export function CalorieRing({ consumed, target }: CalorieRingProps) {
+export function CalorieRing({ consumed, target, size }: CalorieRingProps) {
   const state = ringState(consumed, target);
   const animPct = useAnimatedValue(state.pct, { durationMs: 800, round: "none" });
   // isMet: `headline` tam hedefte "kalan" (~0) değil, tamamlanan tüketimi
@@ -27,19 +28,41 @@ export function CalorieRing({ consumed, target }: CalorieRingProps) {
     <div
       role="img"
       aria-label={state.a11yLabel}
-      className="relative mx-auto flex h-[208px] w-[208px] items-center justify-center rounded-full p-[15px] sm:h-[240px] sm:w-[240px] sm:p-[17px]"
-      style={{ background: gradient }}
+      className={
+        size
+          ? "relative flex items-center justify-center rounded-full shrink-0"
+          : "relative mx-auto flex h-[208px] w-[208px] items-center justify-center rounded-full p-[15px] sm:h-[240px] sm:w-[240px] sm:p-[17px]"
+      }
+      style={{
+        background: gradient,
+        ...(size ? { width: `${size}px`, height: `${size}px`, padding: `${Math.round(size * 0.07)}px` } : {}),
+      }}
     >
       <div
-        className="flex h-full w-full flex-col items-center justify-center rounded-full bg-app"
+        className="flex h-full w-full flex-col items-center justify-center rounded-full bg-[#13131C]"
         aria-hidden="true"
       >
-        <span className={`${bigNumCls} text-[44px] leading-none text-ink-primary sm:text-[52px]`}>
+        <span
+          className={`${bigNumCls} leading-none text-ink-primary ${
+            size ? "" : "text-[44px] sm:text-[52px]"
+          }`}
+          style={size ? { fontSize: `${Math.round(size * 0.22)}px` } : undefined}
+        >
           {displayNum}
         </span>
-        <span className="mt-1 text-xs text-ink-secondary">{state.caption}</span>
+        <span
+          className={`mt-1 text-ink-secondary ${size ? "" : "text-xs"}`}
+          style={size ? { fontSize: `${Math.round(size * 0.075)}px` } : undefined}
+        >
+          {state.caption}
+        </span>
         {state.ratioText && (
-          <span className="mt-0.5 font-mono text-[11px] text-ink-faint">{state.ratioText}</span>
+          <span
+            className={`mt-0.5 font-mono text-ink-faint ${size ? "" : "text-[11px]"}`}
+            style={size ? { fontSize: `${Math.round(size * 0.065)}px` } : undefined}
+          >
+            {state.ratioText}
+          </span>
         )}
       </div>
     </div>

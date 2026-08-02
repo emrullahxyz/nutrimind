@@ -1,5 +1,6 @@
-import { useState } from "react";
-import { CalorieRing } from "./CalorieRing";
+import { useEffect, useState } from "react";
+import { HeroCalorieCard } from "./HeroCalorieCard";
+import { MacroCardGrid } from "./MacroCardGrid";
 import { MacroBar } from "./MacroBar";
 import { Card } from "./Card";
 import { DayTypeBadge } from "./DayTypeBadge";
@@ -81,25 +82,31 @@ function MergeModal({
  *  ScanSheet'in kendisi HER ZAMAN bugüne yazar (`todayISO()`), hangi tarihin
  *  gösterildiğine bakmaz — bu yüzden prop yalnızca düğmenin görünürlüğünü
  *  kontrol eder, davranışını değil. */
+
 export function DayView({
   date,
   emptyLabel = "Bu gün için kayıt yok.",
   enableScan = false,
+  triggerAddMeal,
+  onResetTriggerAddMeal,
+  triggerScan,
+  onResetTriggerScan,
 }: {
   date: string;
   emptyLabel?: string;
   enableScan?: boolean;
+  triggerAddMeal?: boolean;
+  onResetTriggerAddMeal?: () => void;
+  triggerScan?: boolean;
+  onResetTriggerScan?: () => void;
 }) {
   const { goals, days, setDayMeals, config, updateConfig } = useData();
-  // Faz 8: hedef artık GÜNE bağlı. Geçmiş bir gün de (Geçmiş sekmesinin gün
-  // detayı bu bileşeni yeniden kullanıyor) kendi hedefiyle karşılaştırılır.
   const goal = effectiveGoal(goals, date);
   const meals = mealsOf(days, date);
   const total = dayTotal(days, date);
   const hasData = meals.length > 0;
   const templates = parseTemplatesConfig(config);
 
-  // editIndex: null = yeni öğün, sayı = o indeksli öğünü düzenle. form kapalıysa undefined.
   const [editIndex, setEditIndex] = useState<number | null | undefined>(undefined);
   const [selectedIndices, setSelectedIndices] = useState<number[]>([]);
   const [selectMode, setSelectMode] = useState(false);
@@ -108,6 +115,20 @@ export function DayView({
   const [err, setErr] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [microsOpen, setMicrosOpen] = usePersistedBool(PREF.microsOpen, false);
+
+  useEffect(() => {
+    if (triggerAddMeal) {
+      setEditIndex(null);
+      onResetTriggerAddMeal?.();
+    }
+  }, [triggerAddMeal, onResetTriggerAddMeal]);
+
+  useEffect(() => {
+    if (triggerScan) {
+      setShowScan(true);
+      onResetTriggerScan?.();
+    }
+  }, [triggerScan, onResetTriggerScan]);
 
   function toggleSelect(index: number) {
     if (selectedIndices.includes(index)) {
@@ -224,61 +245,44 @@ export function DayView({
   }));
 
   return (
-    <div className="flex flex-col gap-6 sm:gap-8">
+    <div className="flex flex-col gap-5 sm:gap-6">
       <DayTypeBadge date={date} />
 
-      <Card className="px-4 py-7 sm:py-9">
-        <CalorieRing consumed={total.kcal} target={goal.kcal} />
-      </Card>
+      <HeroCalorieCard consumed={total.kcal} target={goal.kcal} />
+
+      <MacroCardGrid total={total} goal={goal} />
+
+      {microRows.length > 0 && (
+        <Collapsible
+          title="Mikro besinler"
+          badge={
+            <span className="rounded-pill bg-micro/15 px-2 py-0.5 font-mono text-[10px] font-semibold text-micro">
+              {microRows.map(({ def }) => def.short).join(" \u00b7 ")}
+            </span>
+          }
+          open={microsOpen}
+          onToggle={() => setMicrosOpen(!microsOpen)}
+        >
+          <div className="flex flex-col gap-3">
+            {microRows.map(({ def, value, cover }) => (
+              <div key={def.key}>
+                <MacroBar def={def} value={value} target={goal[def.key] ?? 0} />
+                {cover.have < cover.of && (
+                  <p className="mt-1 font-mono text-[11px] text-ink-faint">
+                    {cover.have}/{cover.of} öğünde veri
+                  </p>
+                )}
+              </div>
+            ))}
+          </div>
+        </Collapsible>
+      )}
 
       <SupplementCard date={date} />
 
-      {hasData && (
-        <Card className="flex flex-col gap-4 p-5">
-          {MACROS.map((def) => (
-            <MacroBar
-              key={def.key}
-              def={def}
-              value={total[def.key] ?? 0}
-              target={goal[def.key] ?? 0}
-            />
-          ))}
-
-          {microRows.length > 0 && (
-            <Collapsible
-              title="Mikro besinler"
-              badge={
-                <span className="rounded-pill bg-micro/15 px-2 py-0.5 font-mono text-[10px] font-semibold text-micro">
-                  {microRows.map(({ def }) => def.short).join(" \u00b7 ")}
-                </span>
-              }
-              open={microsOpen}
-              onToggle={() => setMicrosOpen(!microsOpen)}
-            >
-              <div className="flex flex-col gap-3">
-                {microRows.map(({ def, value, cover }) => (
-                  <div key={def.key}>
-                    <MacroBar def={def} value={value} target={goal[def.key] ?? 0} />
-                    {cover.have < cover.of && (
-                      // Kısmi veri: toplam gerçek ama EKSİK. Bunu yazmazsak
-                      // 5 öğünün 3'ünden toplanan sodyum tam günmüş gibi okunur.
-                      // ("3/5" biçimi bilinçli: Türkçe sayı ekleri sayıya göre
-                      // değişiyor, kesir gösterimi her sayıda doğru okunuyor.)
-                      <p className="mt-1 font-mono text-[11px] text-ink-faint">
-                        {cover.have}/{cover.of} öğünde veri
-                      </p>
-                    )}
-                  </div>
-                ))}
-              </div>
-            </Collapsible>
-          )}
-        </Card>
-      )}
-
       <section className="flex flex-col gap-3">
         <div className="flex items-center justify-between gap-3">
-          <h3 className="text-sm font-bold text-ink-secondary">Öğün katkısı</h3>
+          <h3 className="text-sm font-bold text-ink-secondary">Son eklenen</h3>
 
           <div className="flex items-center gap-2">
             {selectMode ? (
@@ -334,14 +338,6 @@ export function DayView({
                 📷 Tara
               </button>
             )}
-            <button
-              type="button"
-              onClick={() => setEditIndex(null)}
-              disabled={busy}
-              className="rounded-pill bg-accent px-3 py-1.5 text-xs font-extrabold text-accent-ink transition hover:opacity-90 disabled:opacity-40"
-            >
-              + Öğün ekle
-            </button>
           </div>
         </div>
 

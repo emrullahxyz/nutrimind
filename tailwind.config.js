@@ -4,29 +4,33 @@ export default {
   theme: {
     extend: {
       colors: {
-        // hifi tokens (Besin Hafızası.dc.html)
-        app: "#08090a",
-        surface: "rgba(255,255,255,0.045)",
+        // CAL AI design tokens
+        app: "#0D0D14",
+        calCard: "rgba(255,255,255,0.05)",
+        calBorder: "rgba(255,255,255,0.08)",
+        surface: "rgba(255,255,255,0.05)",
         "surface-strong": "rgba(255,255,255,0.08)",
         line: "rgba(255,255,255,0.08)",
         elevated: "#0c0d10",
         "elevated-2": "#15161a",
         ink: {
-          primary: "#f5f5f7",
-          secondary: "#a1a1aa",
-          tertiary: "#71717a",
+          primary: "#FFFFFF",
+          secondary: "#8E8E93",
+          tertiary: "#636366",
           faint: "#52525b",
         },
-        protein: "#34d399", // yeşil
-        carb: "#fb923c", // turuncu
-        fat: "#fbbf24", // sarı
+        protein: "#FF6B8A", // pink-red
+        carb: "#FFB84D", // orange-gold
+        fat: "#5B8DEF", // blue
+        fab: "#4DD4E6", // cyan/turquoise
+        streak: { bg: "rgba(255,255,255,0.1)", text: "#FFFFFF" },
         memory: "#a78bfa", // mor (lif / hafıza)
         "memory-deep": "#8b6df2", // memory gradyanının koyu ucu
         "memory-ink": "#1e1b4b", // memory zemin üstü koyu metin
-        micro: "#94a3b8", // mikro besinlerin ORTAK sessiz tonu (şeker/doymuş yağ/sodyum)
-        accent: "#34d399",
-        "accent-ink": "#062e22",
-        warn: "#fbbf24",
+        micro: "#94a3b8", // mikro besinlerin ORTAK sessiz tonu
+        accent: "#4DD4E6",
+        "accent-ink": "#092e38",
+        warn: "#FFB84D",
         danger: "#ff8080",
       },
       fontFamily: {
