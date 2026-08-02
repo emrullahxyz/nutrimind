@@ -4,6 +4,8 @@
 // POST   /api/day                   -> { date, meals:[{name,nutrition}] }       (upsert)
 // DELETE /api/day/:date              -> günü sil
 // PUT    /api/goals                 -> düz besin nesnesi VEYA v2 profil yapısı (bkz. goalsError)
+// GET    /api/config/:key           -> { ok, key, value } (yoksa value:null)
+// PUT    /api/config/:key           -> { ok, key }  (gövde düz nesne olmalı; ayrılmış anahtar: goals, seeded)
 // POST   /api/alias                 -> { id?, triggers[], name, brand?, serving_g?, nutrition,
 //                                        units?, barcode?, off_id?, recipe? }   (upsert)
 // DELETE /api/alias/:id              -> alias sil
@@ -167,6 +169,19 @@ const getDays = () => {
   return out;
 };
 const getAliases = () => db.prepare("SELECT id, data FROM aliases").all().map((r) => ({ id: r.id, ...JSON.parse(r.data) }));
+const getConfig = () => {
+  const out = {};
+  for (const r of db.prepare("SELECT key, value FROM config").all()) {
+    if (RESERVED_CONFIG_KEYS.has(r.key)) continue;
+    try {
+      const parsed = JSON.parse(r.value);
+      if (isPlainObject(parsed)) out[r.key] = parsed;
+    } catch {
+      // bozuk satır sessizce atlanır — tüm /api/data'yı düşürmemeli
+    }
+  }
+  return out;
+};
 
 /** Yanıt kodunu taşıyan hata. Router'ın catch'i bunu 500 yerine kendi koduyla
  *  döndürür; `extra` gövdeye eklenir (ör. 429'da `retryAfter`). */
@@ -224,6 +239,8 @@ function readBody(req) {
 // --- Doğrulama yardımcıları -------------------------------------------------
 
 const isPlainObject = (v) => typeof v === "object" && v !== null && !Array.isArray(v);
+const CONFIG_KEY_PATTERN = /^[a-z][a-z0-9_]{0,31}$/;
+const RESERVED_CONFIG_KEYS = new Set(["goals", "seeded"]);
 
 /** `Nutrition`'ın çekirdek alanları. Doğrulama bunlardan EN AZ BİRİNİ arar. */
 const CORE_NUTRIENT_KEYS = ["kcal", "protein", "carbs", "fat", "fiber"];
@@ -514,7 +531,7 @@ const server = http.createServer(async (req, res) => {
   const p = u.pathname;
   try {
     if (req.method === "GET" && p === "/api/data")
-      return send(res, 200, { goals: getGoals(), days: getDays(), aliases: getAliases() });
+      return send(res, 200, { goals: getGoals(), days: getDays(), aliases: getAliases(), config: getConfig() });
     if (req.method === "GET" && p === "/api/health")
       return send(res, 200, {
         ok: true,
@@ -549,6 +566,35 @@ const server = http.createServer(async (req, res) => {
         "INSERT INTO config(key, value) VALUES('goals', ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value",
       ).run(JSON.stringify(b));
       return send(res, 200, { ok: true });
+    }
+    if (req.method === "GET" && p.startsWith("/api/config/")) {
+      const key = decodeURIComponent(p.slice("/api/config/".length));
+      if (!CONFIG_KEY_PATTERN.test(key)) return send(res, 400, { error: "geçersiz config anahtarı" });
+      if (RESERVED_CONFIG_KEYS.has(key))
+        return send(res, 400, { error: `"${key}" ayrılmış bir anahtar, bu uçtan erişilemez` });
+      const row = db.prepare("SELECT value FROM config WHERE key = ?").get(key);
+      let value = null;
+      if (row) {
+        try {
+          const parsed = JSON.parse(row.value);
+          value = isPlainObject(parsed) ? parsed : null;
+        } catch {
+          value = null;
+        }
+      }
+      return send(res, 200, { ok: true, key, value });
+    }
+    if (req.method === "PUT" && p.startsWith("/api/config/")) {
+      const key = decodeURIComponent(p.slice("/api/config/".length));
+      if (!CONFIG_KEY_PATTERN.test(key)) return send(res, 400, { error: "geçersiz config anahtarı" });
+      if (RESERVED_CONFIG_KEYS.has(key))
+        return send(res, 400, { error: `"${key}" ayrılmış bir anahtar, bu uçtan yazılamaz` });
+      const b = await readBody(req);
+      if (!isPlainObject(b)) return send(res, 400, { error: "config değeri bir nesne olmalı" });
+      db.prepare(
+        "INSERT INTO config(key, value) VALUES(?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value",
+      ).run(key, JSON.stringify(b));
+      return send(res, 200, { ok: true, key });
     }
 
     if (req.method === "POST" && p === "/api/alias") {

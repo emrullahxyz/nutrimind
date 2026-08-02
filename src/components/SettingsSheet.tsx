@@ -3,9 +3,10 @@ import { Modal } from "./Modal";
 import { GoalsForm } from "./GoalsForm";
 import { ExportModal } from "./ExportModal";
 import { ReportView } from "./ReportView";
+import { SupplementSettings } from "./SupplementSettings";
 import { useData } from "../lib/data";
 
-type SettingsTab = "goals" | "data" | "report";
+type SettingsTab = "goals" | "supplements" | "data" | "report";
 
 export function SettingsSheet({ onClose }: { onClose: () => void }) {
   const [tab, setTab] = useState<SettingsTab>("goals");
@@ -26,6 +27,17 @@ export function SettingsSheet({ onClose }: { onClose: () => void }) {
             }`}
           >
             Hedefler
+          </button>
+          <button
+            type="button"
+            onClick={() => setTab("supplements")}
+            className={`flex-none rounded-pill px-3.5 py-1.5 text-xs font-bold transition ${
+              tab === "supplements"
+                ? "bg-memory text-memory-ink"
+                : "border border-line bg-white/[0.06] text-ink-secondary hover:text-ink-primary"
+            }`}
+          >
+            Takviyeler
           </button>
           <button
             type="button"
@@ -53,6 +65,7 @@ export function SettingsSheet({ onClose }: { onClose: () => void }) {
 
         {/* Tab İçerikleri */}
         {tab === "goals" && <GoalsForm onClose={onClose} embedded />}
+        {tab === "supplements" && <SupplementSettings />}
         {tab === "data" && <ExportModal data={dataCtx} refresh={dataCtx.refresh} onClose={onClose} embedded />}
         {tab === "report" && <ReportView data={dataCtx} />}
       </div>
