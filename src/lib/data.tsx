@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 import { deleteAlias, deleteDay, fetchData, saveAlias, saveConfig, saveDay, saveGoals } from "./api";
 import type { AliasPayload, AppData } from "./api";
 import type { GoalConfig, MealPayload } from "../types";
+import { AppSkeleton } from "../components/Skeleton";
 
 /** Yazma aksiyonları — hepsi "API çağır → veriyi yeniden çek" desenini izler. */
 export interface Actions {
@@ -116,6 +117,6 @@ export function DataProvider({ children }: { children: ReactNode }) {
 
   if (stale) return <Center>{REFRESH_AFTER_WRITE_FAILED_MESSAGE}</Center>;
   if (err) return <Center>Veri alınamadı ({err}). Sunucu çalışıyor mu?</Center>;
-  if (!value) return <Center>Yükleniyor…</Center>;
+  if (!value) return <AppSkeleton />;
   return <DataCtx.Provider value={value}>{children}</DataCtx.Provider>;
 }

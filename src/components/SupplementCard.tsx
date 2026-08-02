@@ -1,12 +1,15 @@
 import { useState } from "react";
-import { Card } from "./Card";
+import { Collapsible } from "./Collapsible";
 import { useData } from "../lib/data";
-import { parseSupplementsConfig } from "../lib/supplements";
+import { parseSupplementsConfig, supplementProgress } from "../lib/supplements";
+import { PREF } from "../lib/prefs";
+import { usePersistedBool } from "../lib/usePersistedBool";
 
 export function SupplementCard({ date }: { date: string }) {
   const { config, updateConfig } = useData();
   const suppConfig = parseSupplementsConfig(config);
   const [busy, setBusy] = useState(false);
+  const [open, setOpen] = usePersistedBool(PREF.supplementsOpen, false);
 
   if (suppConfig.items.length === 0) {
     return null;
@@ -35,12 +38,14 @@ export function SupplementCard({ date }: { date: string }) {
     }
   }
 
-  return (
-    <Card className="flex flex-col gap-2.5 p-4">
-      <span className="font-mono text-[11px] uppercase tracking-mono text-ink-tertiary">
-        Takviyeler
-      </span>
+  const badge = (
+    <span className="rounded-pill bg-memory/15 px-2 py-0.5 font-mono text-[10px] text-memory">
+      {supplementProgress(suppConfig.items.length, daySupps.length)}
+    </span>
+  );
 
+  return (
+    <Collapsible title="Takviyeler" badge={badge} open={open} onToggle={() => setOpen(!open)}>
       <div className="flex flex-col gap-1.5">
         {suppConfig.items.map((item) => {
           const checked = daySupps.includes(item.id);
@@ -70,6 +75,6 @@ export function SupplementCard({ date }: { date: string }) {
           );
         })}
       </div>
-    </Card>
+    </Collapsible>
   );
 }

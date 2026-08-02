@@ -4,6 +4,12 @@
 
 :root {
   color-scheme: dark;
+  --ring-deep: #065f46;
+  --ring-mid: #10b981;
+  --ring-bright: #34d399;
+  --ring-over: #ff8080;
+  --ring-over-deep: #b91c1c;
+  --ring-track: rgba(255, 255, 255, 0.06);
 }
 
 html,
@@ -116,6 +122,51 @@ body {
   transform-style: preserve-3d;
 }
 
+/* ---- iOS safe-area alt boşluğu (viewport-fit=cover index.html'de zaten var) ---- */
+.pad-safe {
+  padding-bottom: max(1.5rem, env(safe-area-inset-bottom));
+}
+
+/* ---- Skeleton shimmer — transform-driven, compositor'da çalışır ---- */
+@keyframes shimmer {
+  to {
+    transform: translateX(100%);
+  }
+}
+.skeleton {
+  position: relative;
+  overflow: hidden;
+}
+.skeleton::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  transform: translateX(-100%);
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.07), transparent);
+  animation: shimmer 1.4s ease-in-out infinite;
+}
+
+/* ---- Hareket hassasiyeti: reduced-motion tercihi ---- */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-delay: 0ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+  .anim-fadeup,
+  .anim-grow,
+  .anim-grow-spring,
+  .anim-zoom {
+    animation: none !important;
+    opacity: 1 !important;
+    transform: none !important;
+  }
+}
+
 /* ---- Faz 9: PDF Raporu & Yazdırma Stilleri (@media print) ---- */
 @media print {
   body {
@@ -158,6 +209,14 @@ body {
     animation: none !important;
     opacity: 1 !important;
     transform: none !important;
+  }
+
+  /* Yazdırmada skeleton hiç görünmemeli (yüklenirken yazdırma senaryosu yok,
+     ama shimmer'ın kağıda animasyonsuz "yarı saydam çizgi" olarak sızmasını
+     önle) */
+  .skeleton::after {
+    animation: none !important;
+    display: none !important;
   }
 
   /* SVG çizgilerinin animasyonsuz net çıkmasını sağla */

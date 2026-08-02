@@ -32,7 +32,7 @@ function MainContent() {
       {/* Mobilde başlık dikey yer kazanmak için sıkıştırılmış: süsleme satırı
           ("Besin Hafızası") yalnızca sm'den itibaren görünür. Bu ekranın asıl
           işi öğün listesi ve o liste ilk ekranda kalmalı. */}
-      <header className="no-print mb-4 flex flex-col gap-3 sm:mb-6 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
+      <header className="no-print mb-5 flex flex-col gap-3 sm:mb-7 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
         <div className="flex items-center justify-between sm:justify-start sm:gap-4">
           <div>
             <div className="hidden font-mono text-xs uppercase tracking-[0.2em] text-memory sm:block">
@@ -78,7 +78,7 @@ function MainContent() {
 
 export function App() {
   return (
-    <div className="mx-auto w-full max-w-md px-4 py-6 md:max-w-5xl md:px-10 md:py-10">
+    <div className="mx-auto w-full max-w-md px-5 py-6 pad-safe sm:px-6 md:max-w-5xl md:px-10 md:py-10">
       <DataProvider>
         <MainContent />
       </DataProvider>

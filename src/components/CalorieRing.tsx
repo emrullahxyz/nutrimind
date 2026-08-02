@@ -1,42 +1,46 @@
+import { ringState, ringGradient } from "../lib/ring";
+import { useAnimatedValue } from "../lib/useAnimatedValue";
 import { formatNumber } from "../lib/format";
+import { bigNumCls } from "./FormBits";
 
 interface CalorieRingProps {
   consumed: number;
   target: number;
-  size?: number;
 }
 
-/** Big conic-gradient calorie ring, center shows remaining/consumed/target. */
-export function CalorieRing({ consumed, target, size = 196 }: CalorieRingProps) {
-  const pct = target > 0 ? Math.min(100, Math.max(0, (consumed / target) * 100)) : 0;
-  const isOver = target > 0 && consumed > target;
-  const diff = isOver ? consumed - target : Math.max(0, target - consumed);
-  const innerSize = size - 38;
+export function CalorieRing({ consumed, target }: CalorieRingProps) {
+  const state = ringState(consumed, target);
+  const animPct = useAnimatedValue(state.pct, { durationMs: 800, round: "none" });
+  // isMet: `headline` tam hedefte "kalan" (~0) değil, tamamlanan tüketimi
+  // gösterir (ring.ts'teki headline semantiğiyle birebir) — aksi halde
+  // "Hedefe ulaşıldı" yazarken sayı 0 görünürdü.
+  const animNum = useAnimatedValue(
+    state.isOver ? Math.abs(state.diff) : state.isMet ? consumed : state.hasTarget ? state.diff : consumed,
+    { durationMs: 800 },
+  );
+
+  const gradient = ringGradient(state.isOver, animPct);
+
+  const displayNum = state.isOver ? `+${formatNumber(animNum)}` : formatNumber(animNum);
 
   return (
     <div
-      className="relative flex items-center justify-center rounded-full"
-      style={{
-        width: size,
-        height: size,
-        background: isOver
-          ? `conic-gradient(#ff8080 0 ${pct}%, rgba(255,255,255,0.06) ${pct}% 100%)`
-          : `conic-gradient(#34d399 0 ${pct}%, rgba(255,255,255,0.06) ${pct}% 100%)`,
-      }}
+      role="img"
+      aria-label={state.a11yLabel}
+      className="relative mx-auto flex h-[208px] w-[208px] items-center justify-center rounded-full p-[15px] sm:h-[240px] sm:w-[240px] sm:p-[17px]"
+      style={{ background: gradient }}
     >
       <div
-        className="flex flex-col items-center justify-center rounded-full bg-app"
-        style={{ width: innerSize, height: innerSize }}
+        className="flex h-full w-full flex-col items-center justify-center rounded-full bg-app"
+        aria-hidden="true"
       >
-        <div className={`text-[40px] font-extrabold leading-none tracking-tight ${isOver ? "text-danger" : "text-ink-primary"}`}>
-          {isOver ? `+${formatNumber(diff)}` : formatNumber(diff)}
-        </div>
-        <div className={`mt-2 text-xs ${isOver ? "font-semibold text-danger" : "text-ink-tertiary"}`}>
-          {isOver ? "kcal aşıldı!" : "kcal kaldı"}
-        </div>
-        <div className="mt-1.5 font-mono text-[11px] text-ink-faint">
-          {formatNumber(consumed)} / {formatNumber(target)}
-        </div>
+        <span className={`${bigNumCls} text-[44px] leading-none text-ink-primary sm:text-[52px]`}>
+          {displayNum}
+        </span>
+        <span className="mt-1 text-xs text-ink-secondary">{state.caption}</span>
+        {state.ratioText && (
+          <span className="mt-0.5 font-mono text-[11px] text-ink-faint">{state.ratioText}</span>
+        )}
       </div>
     </div>
   );

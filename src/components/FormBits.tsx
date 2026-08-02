@@ -10,10 +10,11 @@ import type { Nutrition } from "../types";
 export const fieldCls =
   "w-full rounded-chip border border-line bg-white/[0.04] px-3 py-2 text-sm text-ink-primary outline-none transition placeholder:text-ink-faint focus:border-memory/60";
 
+export const sectionLabelCls = "font-mono text-[11px] uppercase tracking-mono text-ink-tertiary";
+export const bigNumCls = "font-mono font-extrabold tabular-nums tracking-tight";
+
 export function Label({ children }: { children: ReactNode }) {
-  return (
-    <span className="mb-1 block font-mono text-[11px] uppercase tracking-mono text-ink-tertiary">{children}</span>
-  );
+  return <span className={`mb-1 block ${sectionLabelCls}`}>{children}</span>;
 }
 
 export function TextField({
@@ -156,9 +157,7 @@ export function NutritionFields({
             className="flex w-full items-center justify-between gap-2 px-3 py-2 text-left transition hover:bg-white/[0.03]"
           >
             <span className="flex items-center gap-2">
-              <span className="font-mono text-[11px] uppercase tracking-mono text-ink-tertiary">
-                Mikro besinler
-              </span>
+              <span className={sectionLabelCls}>Mikro besinler</span>
               {filled.length > 0 && (
                 <span className="rounded-pill bg-micro/15 px-2 py-0.5 font-mono text-[10px] font-semibold text-micro">
                   {filled.map((def) => def.short).join(" · ")}

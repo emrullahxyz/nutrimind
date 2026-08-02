@@ -56,3 +56,8 @@ export function parseSupplementsConfig(config: AppConfig): SupplementsConfig {
 export function newSupplementId(): string {
   return `s_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
 }
+
+/** Rozet metni: "2/5" — toplam takviye sayısı ve o gün işaretlenen sayı. */
+export function supplementProgress(total: number, done: number): string {
+  return `${done}/${total}`;
+}

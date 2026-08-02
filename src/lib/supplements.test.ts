@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   newSupplementId,
   parseSupplementsConfig,
+  supplementProgress,
 } from "./supplements";
 import type { AppConfig } from "../types";
 
@@ -83,6 +84,14 @@ describe("supplements", () => {
       const id1 = newSupplementId();
       const id2 = newSupplementId();
       expect(id1).not.toEqual(id2);
+    });
+  });
+
+  describe("supplementProgress", () => {
+    it("done/total formatında döner", () => {
+      expect(supplementProgress(5, 2)).toBe("2/5");
+      expect(supplementProgress(3, 0)).toBe("0/3");
+      expect(supplementProgress(1, 1)).toBe("1/1");
     });
   });
 });

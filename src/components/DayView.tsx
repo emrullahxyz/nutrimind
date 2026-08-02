@@ -4,10 +4,12 @@ import { MacroBar } from "./MacroBar";
 import { Card } from "./Card";
 import { DayTypeBadge } from "./DayTypeBadge";
 import { MealForm } from "./MealForm";
-import { ConfirmButton, ErrorText, ExpandableMealName, FormActions, NutrientSummaryLine, TextField } from "./FormBits";
+import { ErrorText, ExpandableMealName, FormActions, NutrientSummaryLine, TextField } from "./FormBits";
 import { Modal } from "./Modal";
 import { ScanSheet } from "./ScanSheet";
 import { SupplementCard } from "./SupplementCard";
+import { Collapsible } from "./Collapsible";
+import { MealRow } from "./MealRow";
 import { formatKcal } from "../lib/format";
 import { useData } from "../lib/data";
 import { effectiveGoal } from "../lib/goals";
@@ -16,6 +18,8 @@ import { coverage, dayTotal, mealsOf, sumMeals, toPayload } from "../lib/days";
 import { newTemplateId, parseTemplatesConfig } from "../lib/templates";
 import type { MealTemplate } from "../lib/templates";
 import type { MealItem, MealPayload } from "../types";
+import { PREF } from "../lib/prefs";
+import { usePersistedBool } from "../lib/usePersistedBool";
 
 function MergeModal({
   selectedMeals,
@@ -103,6 +107,7 @@ export function DayView({
   const [showScan, setShowScan] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [microsOpen, setMicrosOpen] = usePersistedBool(PREF.microsOpen, false);
 
   function toggleSelect(index: number) {
     if (selectedIndices.includes(index)) {
@@ -219,26 +224,17 @@ export function DayView({
   }));
 
   return (
-    <div className="flex flex-col gap-5">
+    <div className="flex flex-col gap-6 sm:gap-8">
       <DayTypeBadge date={date} />
 
-      {/* Halka mobilde küçültüldü (196 → 168): bu ekranın asıl işi altındaki
-          öğün listesi ve o listenin ilk ekranda kalması halkanın 28 pikselinden
-          daha değerli. */}
-      <Card className="flex items-center justify-center p-4">
-        <CalorieRing consumed={total.kcal} target={goal.kcal} size={168} />
+      <Card className="px-4 py-7 sm:py-9">
+        <CalorieRing consumed={total.kcal} target={goal.kcal} />
       </Card>
 
       <SupplementCard date={date} />
 
-      {!hasData && (
-        <Card className="flex items-center justify-center p-4 text-center text-sm text-ink-tertiary">
-          {emptyLabel}
-        </Card>
-      )}
-
       {hasData && (
-        <Card className="flex flex-col gap-3 p-4">
+        <Card className="flex flex-col gap-4 p-5">
           {MACROS.map((def) => (
             <MacroBar
               key={def.key}
@@ -249,30 +245,38 @@ export function DayView({
           ))}
 
           {microRows.length > 0 && (
-            <div className="flex flex-col gap-3 border-t border-line pt-4">
-              <span className="font-mono text-[11px] uppercase tracking-mono text-ink-tertiary">
-                Mikro besinler
-              </span>
-              {microRows.map(({ def, value, cover }) => (
-                <div key={def.key}>
-                  <MacroBar def={def} value={value} target={goal[def.key] ?? 0} />
-                  {cover.have < cover.of && (
-                    // Kısmi veri: toplam gerçek ama EKSİK. Bunu yazmazsak
-                    // 5 öğünün 3'ünden toplanan sodyum tam günmüş gibi okunur.
-                    // ("3/5" biçimi bilinçli: Türkçe sayı ekleri sayıya göre
-                    // değişiyor, kesir gösterimi her sayıda doğru okunuyor.)
-                    <p className="mt-1 font-mono text-[11px] text-ink-faint">
-                      {cover.have}/{cover.of} öğünde veri
-                    </p>
-                  )}
-                </div>
-              ))}
-            </div>
+            <Collapsible
+              title="Mikro besinler"
+              badge={
+                <span className="rounded-pill bg-micro/15 px-2 py-0.5 font-mono text-[10px] font-semibold text-micro">
+                  {microRows.map(({ def }) => def.short).join(" \u00b7 ")}
+                </span>
+              }
+              open={microsOpen}
+              onToggle={() => setMicrosOpen(!microsOpen)}
+            >
+              <div className="flex flex-col gap-3">
+                {microRows.map(({ def, value, cover }) => (
+                  <div key={def.key}>
+                    <MacroBar def={def} value={value} target={goal[def.key] ?? 0} />
+                    {cover.have < cover.of && (
+                      // Kısmi veri: toplam gerçek ama EKSİK. Bunu yazmazsak
+                      // 5 öğünün 3'ünden toplanan sodyum tam günmüş gibi okunur.
+                      // ("3/5" biçimi bilinçli: Türkçe sayı ekleri sayıya göre
+                      // değişiyor, kesir gösterimi her sayıda doğru okunuyor.)
+                      <p className="mt-1 font-mono text-[11px] text-ink-faint">
+                        {cover.have}/{cover.of} öğünde veri
+                      </p>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </Collapsible>
           )}
         </Card>
       )}
 
-      <section className="flex flex-col gap-2">
+      <section className="flex flex-col gap-3">
         <div className="flex items-center justify-between gap-3">
           <h3 className="text-sm font-bold text-ink-secondary">Öğün katkısı</h3>
 
@@ -360,63 +364,38 @@ export function DayView({
         )}
 
         {hasData ? (
-          <ul className="flex flex-col gap-2.5">
+          <ul className="flex flex-col gap-2.5 sm:gap-3">
             {meals.map((m, i) => {
               const pct = total.kcal ? (m.computed.kcal / total.kcal) * 100 : 0;
-              const isSelected = selectedIndices.includes(i);
               return (
-                <li key={m.id} className="group anim-fadeup flex flex-col gap-1" style={{ animationDelay: `${i * 70}ms` }}>
-                  <div className="flex items-baseline justify-between gap-3">
-                    <div className="flex min-w-0 items-baseline gap-2">
-                      {selectMode && (
-                        <input
-                          type="checkbox"
-                          checked={isSelected}
-                          onChange={() => toggleSelect(i)}
-                          className="h-3.5 w-3.5 flex-none rounded border-line bg-white/[0.06] text-accent focus:ring-0 cursor-pointer"
-                        />
-                      )}
-                      <ExpandableMealName
-                        name={m.label}
-                        className={`min-w-0 text-sm font-semibold transition-colors ${isSelected ? "text-accent" : "text-ink-primary"}`}
-                      />
-                    </div>
-                    <span className="flex flex-none items-center gap-2">
-                      <span className="font-mono text-xs text-ink-secondary">
-                        {formatKcal(m.computed.kcal)}
-                        <span className="ml-1 text-ink-tertiary">%{Math.round(pct)}</span>
-                      </span>
-                      <button
-                        type="button"
-                        onClick={() => setEditIndex(i)}
-                        disabled={busy}
-                        className="rounded-pill bg-white/[0.06] px-2.5 py-1 text-[11px] font-semibold text-ink-tertiary transition hover:text-ink-primary disabled:opacity-40"
-                      >
-                        Düzenle
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => saveAsTemplate(m)}
-                        disabled={busy}
-                        className="rounded-pill bg-white/[0.06] px-2.5 py-1 text-[11px] font-semibold text-ink-tertiary transition hover:text-ink-primary disabled:opacity-40"
-                      >
-                        Şablon yap
-                      </button>
-                      <ConfirmButton onConfirm={() => removeMeal(i)} disabled={busy} />
-                    </span>
-                  </div>
-                  <div className="h-2.5 overflow-hidden rounded-full bg-white/[0.06]">
-                    <div
-                      className="h-full rounded-full bg-gradient-to-r from-memory-deep to-memory shadow-memory"
-                      style={{ width: `${pct}%` }}
-                    />
-                  </div>
-                </li>
+                <MealRow
+                  key={m.id}
+                  meal={m}
+                  pct={pct}
+                  index={i}
+                  selectMode={selectMode}
+                  isSelected={selectedIndices.includes(i)}
+                  onToggleSelect={() => toggleSelect(i)}
+                  onEdit={() => setEditIndex(i)}
+                  onSaveTemplate={() => saveAsTemplate(m)}
+                  onRemove={() => removeMeal(i)}
+                  busy={busy}
+                />
               );
             })}
           </ul>
         ) : (
-          <p className="text-sm text-ink-tertiary">Henüz öğün yok.</p>
+          <button
+            type="button"
+            onClick={() => setEditIndex(null)}
+            disabled={busy}
+            className="flex flex-col items-center justify-center gap-2 rounded-card border border-dashed border-line px-4 py-8 text-center transition hover:border-memory/40 hover:bg-white/[0.02] disabled:opacity-40"
+          >
+            <span className="text-sm text-ink-tertiary">{emptyLabel}</span>
+            <span className="rounded-pill bg-accent px-3 py-1.5 text-xs font-extrabold text-accent-ink">
+              + Öğün ekle
+            </span>
+          </button>
         )}
       </section>
 
