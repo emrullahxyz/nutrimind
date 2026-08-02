@@ -647,3 +647,161 @@ eaf98f2 refactor(ui): Hafiza aramasi, aranabilir ogun secici, tekrar temizligi (
 (TODO: fill after compaction — 10–20 lines of concrete resume instructions)
 
 ---
+
+## Handoff: 2026-08-02T19:24:38Z — Faz 1+2, CAL AI klonu, prod deploy, master birleşti, proje toparlandı
+
+### Current Task State
+
+**Bitti / stabil.** İki paralel iş akışı bir araya geldi ve `master`'a birleştirildi:
+
+1. **Faz 1 (UI Premium Polish)** — Claude'un yönettiği agy oturumlarıyla, 6 adım: animasyon
+   altyapısı + reduced-motion, Hero CalorieRing yeniden tasarımı, tipografi/whitespace, Collapsible
+   primitive + kalıcılık, öğün kartı (MealRow) yeniden tasarımı, Skeleton loading. Doğrulandı,
+   tarayıcıda test edildi.
+2. **Faz 2 (Gemini AI Entegrasyonu, yalnızca metin)** — `server/ai.js` (izole Gemini proxy),
+   `/api/ai/parse` ucu, `src/lib/ai.ts` istemcisi, `MealForm.tsx`'te "AI ile" modu (mevcut "basket"
+   sistemine entegre, yeni bir sonuç ekranı gerekmedi). **Backend prod'a deploy edildi ve
+   doğrulandı** (`/home/emrullah/nutri-api/` üzerinde `nutri-api.service` çalışıyor).
+3. **CAL AI görsel klonu (plan dışı)** — kullanıcının **bu Claude oturumu dışında, kendi başına**
+   çalıştırdığı ayrı bir agy oturumu, CAL AI ekran görüntülerine bakarak `BottomNav`, `FAB`,
+   `HeroCalorieCard`, `MacroCardGrid`, `WeekStrip` + yeni renk paleti getirdi. `feat/calai-redesign`
+   branch'inde birikti, Faz 2'nin commit'siz çalışması da bu branch'in commit'lerine (`3c61750`/
+   `76ec49b`) sorunsuz karıştı (doğrulandı, kayıp yok). Kullanıcı geri bildirimiyle Claude 3 cila
+   geçirdi: halka sadeleştirme (gömülü modda sade 🔥), FAB 2x2 ızgara menüsü, `HistoryPage`'in
+   ayrık "Haftalar"/"Trend" sekmeleri yerine tek sürekli akışa (üstte yeni `StreakCard`) geçirilmesi.
+4. **Branch birleştirme** — `feat/calai-redesign` (`master`'ın strict ancestor'ıydı) `master`'a
+   `--ff-only` ile birleştirildi. `master` şu an `7e3b948`'de, tüm bu işi içeriyor.
+5. **Proje toparlama** — CLAUDE.md tazelendi, 2 kaçak plan dokümanı `docs/analysis/`'a taşındı,
+   eksik `.env.example` eklendi, `ScanSheet.tsx`'teki sahte "Gemini API hazır" mesajı dürüst bir
+   "henüz eklenmedi" mesajına çevrildi.
+
+Açık iş: orijinal 5 fazlık planın **Faz 3'ün kalanı (kilo takibi), Faz 4 (öğün kategorileri,
+pull-to-refresh) ve Faz 5'in tamamı (gerçek fotoğraf/etiket OCR)** henüz başlanmadı.
+
+### Key Decisions
+
+- **`server/index.js` "donmuş" kuralına yeni bir istisna deseni kondu**: yeni backend işi ayrı,
+  izole bir modülde (`server/ai.js` gibi) yazılır, `index.js`'e yalnızca `require` + tek `if` route
+  bloğu eklenir. İzole modül **asla throw etmez**, her zaman `{status, body}` döner — çünkü
+  `index.js`'in paylaşılan `catch`'i `instanceof HttpError` kontrolü yapıyor ve o sınıf export
+  edilmiyor; throw edilen her şey sessizce 500'e düşerdi.
+- **AI için yeni bir "sonuç onay ekranı" YAPILMADI** — `MealForm.tsx`'in zaten var olan "basket"
+  sistemi (`BasketItem[]`, `BasketSection`) AI sonuçlarını da aynı şekilde alıyor; kullanıcı aynı
+  UI ile düzenliyor/siliyor.
+- **Confidence eşiği sunucuda hesaplanır** (`NUTRIMIND_CONFIDENCE_THRESHOLD`, varsayılan 0.8),
+  istemciye yalnızca `needsReview:true/false` sızar — eşik değeri hiç gitmiyor.
+- **Prod'da backend deploy'u `deploy.sh`'ten TAMAMEN AYRI** — `deploy.sh`/`pnpm run deploy`
+  yalnızca frontend'i (`dist/`) kopyalıyor. Backend (`server/ai.js` + `index.js`) elle SSH ile
+  `/home/emrullah/nutri-api/`'ye kopyalandı, `.env` orada `chmod 600` ile oluşturuldu, servis
+  `sudo systemctl restart nutri-api` ile yeniden başlatıldı. Bu adım hiçbir script'e otomatikleşmedi.
+- **`server/ai.js`'in `.env` yol çözümlemesi İKİ aday dener** (yanında / bir üst dizinde) çünkü
+  yerel repo (`server/` alt klasörlü) ile prod'un dosya yerleşimi (`/home/emrullah/nutri-api/`
+  altında `index.js`+`ai.js` düz, alt klasörsüz) farklı. Bunu ilk deploy'da bir bug olarak
+  yakaladık (kill-switch hep 503 dönüyordu, anahtar hiç okunamıyordu) — düzeltildi, tekrar
+  deploy edildi, doğrulandı.
+- **`pnpm-workspace.yaml` gerçekten TRACKED bir dosya** — daha önceki (Faz 1) oturumlarda "pnpm'in
+  ürettiği geçici bir dosya, silinmeli" diye yanlış bir varsayımla defalarca silindi. Aslında repoda
+  kayıtlı, pnpm onu `esbuild` build-onayı istemini çözerken üzerine yazıyor (placeholder → `true`).
+  **Bundan sonra silme, gerekirse `git restore pnpm-workspace.yaml` ile eski haline döndür.**
+- **Branch birleştirme sonrası `feat/calai-redesign` SİLİNMEDİ** — hâlâ duruyor, `master`'ın bir
+  commit gerisinde (`ce0c907`). Silmek istenirse `git branch -d feat/calai-redesign` güvenli
+  (tamamen merge edilmiş).
+
+### Modified Files (bu oturumun bütünü, özet)
+
+- `server/ai.js` — YENİ, Gemini proxy (jeton kovası, `.env` yükleyici, confidence gating).
+- `server/index.js` — `/api/ai/parse` köprüsü (2 küçük ekleme).
+- `src/lib/ai.ts`, `src/lib/ai.test.ts` — YENİ, istemci (off.ts deseni).
+- `src/types.ts` — `AIParseItem`/`AIParseResult`.
+- `src/components/MealForm.tsx` — "AI ile" modu.
+- `src/components/CalorieRing.tsx`, `FAB.tsx` — CAL AI cilası (bkz. yukarı).
+- `src/lib/streak.ts`, `streak.test.ts`, `src/components/StreakCard.tsx` — YENİ.
+- `src/pages/HistoryPage.tsx` — İlerleme tek-akış birleşimi.
+- `src/App.tsx` — `computeStreak` → `calculateStreak` (lib/streak.ts).
+- `CLAUDE.md`, `.env.example` (YENİ), `docs/analysis/2026-08-02-*.md` (taşındı),
+  `src/components/ScanSheet.tsx` (sahte mesaj düzeltmesi) — toparlama turu.
+- CAL AI klonunun kendi dosyaları (bu Claude oturumu tarafından YAZILMADI, yalnızca
+  incelendi/üzerine cila yapıldı): `BottomNav.tsx`, `HeroCalorieCard.tsx`, `MacroCardGrid.tsx`,
+  `WeekStrip.tsx`, `tailwind.config.js`, `Card.tsx`, `MealRow.tsx` (1 satır), `DayView.tsx`,
+  `ScanSheet.tsx`'in kamera-modu kısmı.
+
+### Blockers / Open Questions
+
+- **Gemini API anahtarının Google Cloud projesinde kota 0** (`RESOURCE_EXHAUSTED`, tüm free-tier
+  metrikleri `limit:0`). Kod tarafında yapılacak bir şey yok — kullanıcının Google AI Studio /
+  Cloud Console'da faturalandırma/API etkinleştirme ayarını kontrol etmesi gerekiyor. Açılınca
+  özellik hiçbir ek deploy olmadan çalışacak (prod zaten hazır).
+- `feat/calai-redesign` branch'i silinsin mi, yoksa dursun mu — kullanıcıya soruldu, henüz net
+  yanıt yok (şu an "dursun" varsayımıyla bırakıldı, zararsız).
+
+### Next Steps
+
+1. Kullanıcı Gemini kotasını açtığında `/api/ai/parse`'ı prod'da gerçek bir istekle doğrula
+   (SSH'siz, uygulama üzerinden "AI ile" sekmesinden).
+2. Faz 3'ün kalanı: Kilo takibi (`WeightCard`, yeni `/api/weight` uçları — server/index.js'e
+   dokunmak yerine yine `server/*.js` izole modül deseni düşünülebilir, ya da config bag
+   (`PUT /api/config/:key`) yeterli mi değerlendirilmeli).
+3. Faz 4: Öğün kategorileri (Kahvaltı/Öğle/Akşam/Atıştırmalık, saat bazlı otomatik atama —
+   öğünlerde şu an saat/timestamp YOK, önce `MealPayload`'a eklenmesi gerekecek), pull-to-refresh.
+4. Faz 5: Gerçek `/api/ai/vision` (fotoğraf/etiket OCR) — `ScanSheet.tsx`'teki "Food Label"/
+   "Gallery" modları şu an kozmetik, bu uca bağlanacak.
+5. `feat/calai-redesign` branch'i için karar: sil (`git branch -d`) ya da bırak.
+
+### Critical Context
+
+- **İki terminal gerekir** (`node server/index.js` + `pnpm dev`) — `127.0.0.1:5173` ÇALIŞMAZ,
+  `http://localhost:5173` kullan.
+- **Prod backend dosya yerleşimi yerelden FARKLI**: yerelde `server/index.js`+`server/ai.js` bir
+  alt klasörde, prod'da (`/home/emrullah/nutri-api/`) düz duruyor. Yeni bir `server/*.js` modülü
+  eklenirse aynı "iki aday dene" desenini kullanmayı unutma.
+- **`nutri-api.service`** (systemd, Oracle sunucusu) `Environment=` satırlarında yalnızca
+  `NUTRI_PORT`/`NUTRI_DB`/`NODE_NO_WARNINGS` var — Gemini değişkenleri `EnvironmentFile` DEĞİL,
+  doğrudan `/home/emrullah/nutri-api/.env` dosyasından (`chmod 600`) `ai.js`'in kendi yükleyicisiyle
+  okunuyor.
+- Sunucudaki eski `index.js.bak-YYYY-MM-DD-HHMM` dosyaları elle tutulan bir yedekleme kuralı —
+  yeni bir deploy öncesi aynı desenle yedekle.
+- `pnpm-workspace.yaml`'ı ASLA silme (yukarıdaki Key Decisions'a bak).
+
+### Model Summary
+
+- Faz 1 (UI polish, 6 adım) ve Faz 2 (Gemini AI metin entegrasyonu) tamamlandı, doğrulandı, prod'a
+  deploy edildi.
+- Kullanıcının ayrıca çalıştırdığı bağımsız bir agy oturumu CAL AI görsel klonu yaptı
+  (`feat/calai-redesign` branch) — plan dışı ama meşru, üzerine 3 cila geçirildi.
+- `feat/calai-redesign` → `master` fast-forward merge edildi (`7e3b948`), tek uzak repo yok
+  (tamamen yerel), her şey `pnpm typecheck`+`test`(314/314)+`build` yeşil.
+- Backend Oracle sunucusuna SSH ile elle deploy edildi; bu sırada bir gerçek bug (`.env` yol
+  çözümlemesi) bulunup düzeltildi ve yeniden deploy edildi.
+- Gemini özelliği kod olarak tam çalışır durumda ama API anahtarının Google Cloud kotası 0 —
+  dış/hesap engeli, kullanıcı tarafında.
+- Proje toparlama turu: CLAUDE.md tazelendi, kaçak dosyalar `docs/analysis/`'a taşındı,
+  `.env.example` eklendi, `ScanSheet.tsx`'teki sahte mesaj düzeltildi.
+- Faz 3 (kilo takibi hariç, streak zaten geldi), Faz 4, Faz 5 tamamı henüz başlanmadı.
+- `pnpm-workspace.yaml` gerçekten tracked bir dosya — yanlışlıkla silme alışkanlığı düzeltildi.
+
+### Handoff Context (paste into next session)
+
+Nutrimind artık `master`'da (`7e3b948`), tek branch olarak devam ediyor (`feat/calai-redesign`
+hâlâ duruyor ama artık gereksiz — silinebilir). CAL AI'ya benzeyen yeni bir görsel kabuk +
+`MealForm`'da çalışan bir "AI ile" (Gemini, metin) modu var. Devam etmeden önce:
+
+```bash
+cd "<USERPROFILE>\Desktop\Projeler\besin degerlerim"
+git status --short              # temiz olmalı
+PNPM_CONFIG_VERIFY_DEPS_BEFORE_RUN=false pnpm typecheck
+PNPM_CONFIG_VERIFY_DEPS_BEFORE_RUN=false pnpm test    # 314/314 beklenir
+```
+
+Yerel geliştirme: iki terminal — `node server/index.js` (8790) + `pnpm dev` (5173,
+`http://localhost:5173`, 127.0.0.1 ÇALIŞMAZ).
+
+AI özelliğini test etmeden önce Gemini kotasının açık olup olmadığını kontrol et — kapalıysa
+`/api/ai/parse` her zaman anlamlı bir hata döner (bug değil). Prod backend zaten deploy edilmiş
+durumda (`/home/emrullah/nutri-api/`, `nutri-api.service`) — kota açılınca EK BİR DEPLOY GEREKMEZ.
+
+Sıradaki iş büyük ihtimalle Faz 3 (kilo takibi) ya da Faz 4 (öğün kategorileri) — ikisi de yeni bir
+plan/keşif turu ister, `docs/analysis/2026-08-02-premium-upgrade-plan.md`'deki orijinal tasarımı
+oku ama mevcut CAL AI kabuğuna (özellikle `DayView.tsx`/`MacroCardGrid.tsx`) göre yeniden gözden
+geçir — o dosyalar bu oturumda büyük ölçüde değişti.
+
+---
