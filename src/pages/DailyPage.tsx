@@ -1,16 +1,38 @@
+import { useState } from "react";
 import { DayView } from "../components/DayView";
+import { WeekStrip } from "../components/WeekStrip";
 import { formatLongDate, todayISO } from "../lib/format";
 
-export function DailyPage() {
-  const date = todayISO();
+interface DailyPageProps {
+  triggerAddMeal?: boolean;
+  onResetTriggerAddMeal?: () => void;
+  triggerScan?: boolean;
+  onResetTriggerScan?: () => void;
+}
+
+export function DailyPage({
+  triggerAddMeal,
+  onResetTriggerAddMeal,
+  triggerScan,
+  onResetTriggerScan,
+}: DailyPageProps = {}) {
+  const [selectedDate, setSelectedDate] = useState<string>(todayISO());
 
   return (
     <div className="flex flex-col gap-4">
-      {/* "Bugün" başlığı yok: aktif sekme zaten öyle diyor. Tarih tek satır
-          kalıyor ki öğün listesi yukarıda dursun. */}
-      <p className="text-sm text-ink-tertiary">{formatLongDate(date)}</p>
+      <WeekStrip selectedDate={selectedDate} onSelectDate={setSelectedDate} />
 
-      <DayView date={date} emptyLabel="Bugün henüz bir şey yok." enableScan />
+      <p className="text-sm font-semibold text-ink-secondary">{formatLongDate(selectedDate)}</p>
+
+      <DayView
+        date={selectedDate}
+        emptyLabel="Bu gün henüz bir şey yok."
+        enableScan
+        triggerAddMeal={triggerAddMeal}
+        onResetTriggerAddMeal={onResetTriggerAddMeal}
+        triggerScan={triggerScan}
+        onResetTriggerScan={onResetTriggerScan}
+      />
     </div>
   );
 }

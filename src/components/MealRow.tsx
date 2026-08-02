@@ -46,7 +46,7 @@ export function MealRow({
 
   return (
     <li
-      className="anim-fadeup overflow-hidden rounded-chip bg-surface shadow-card"
+      className="anim-fadeup overflow-hidden rounded-[18px] border border-calBorder bg-calCard shadow-card backdrop-blur-sm"
       style={{ animationDelay: `${delay}ms` }}
     >
       <div className="flex">
