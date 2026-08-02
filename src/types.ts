@@ -43,11 +43,11 @@ export interface MealPayload {
   sources?: MealSource[];
 }
 
-/** Faz 2: Gemini'nin serbest metinden ayrıştırdığı tek bir öğe. */
+/** Faz 2: AI servisinin (Gemini veya NVIDIA NIM) serbest metinden ayrıştırdığı tek bir öğe. */
 export interface AIParseItem {
   name: string;
   nutrition: Nutrition;
-  /** 0-1 arası, sunucunun ne kadar emin olduğu. Yoksa Gemini vermemiştir. */
+  /** 0-1 arası, sunucunun ne kadar emin olduğu. Yoksa AI servisi vermemiştir. */
   confidence?: number;
   /** Sunucu tarafında `NUTRIMIND_CONFIDENCE_THRESHOLD` altında hesaplanır. */
   needsReview?: boolean;

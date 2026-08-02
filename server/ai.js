@@ -1,5 +1,5 @@
 // ============================================================================
-// Nutrimind — Gemini AI istemcisi (Faz 2: doğal dil öğün ayrıştırma).
+// Nutrimind — AI istemcisi (Gemini + NVIDIA NIM fallback).
 //
 // server/index.js "donmuş" kabul edildiği için bu mantık AYRI bir modülde
 // yaşıyor; index.js yalnızca /api/ai/parse isteğini buraya yönlendiren birkaç
@@ -56,10 +56,14 @@ loadDotEnvOnce();
 // --- Sabitler ----------------------------------------------------------------
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY || "";
 const GEMINI_MODEL = process.env.GEMINI_MODEL || "gemini-2.0-flash";
+const NVIDIA_NIM_API_KEY = process.env.NVIDIA_NIM_API_KEY || "";
+const NVIDIA_NIM_MODEL = process.env.NVIDIA_NIM_MODEL || "meta/llama-3.1-8b-instruct";
 const LLM_PROVIDER = process.env.NUTRIMIND_LLM_PROVIDER || "none";
 const CONFIDENCE_THRESHOLD = Number(process.env.NUTRIMIND_CONFIDENCE_THRESHOLD || 0.8);
 const AI_RATE_PARSE = Number(process.env.NUTRI_AI_RATE_PARSE || 10);
+const NIM_RATE_PARSE = Number(process.env.NUTRI_AI_RATE_NIM || 10);
 const AI_TIMEOUT_MS = Number(process.env.NUTRI_AI_TIMEOUT_MS || 15000);
+const NIM_URL = "https://integrate.api.nvidia.com/v1/chat/completions";
 
 const geminiUrl = () =>
   `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${GEMINI_API_KEY}`;
@@ -69,6 +73,7 @@ function makeBucket(perMin) {
   return { tokens: perMin, cap: perMin, perMs: perMin / 60000, last: Date.now() };
 }
 const aiBucket = makeBucket(AI_RATE_PARSE);
+const nimBucket = makeBucket(NIM_RATE_PARSE);
 
 function peekTokens(b) {
   const now = Date.now();
@@ -132,9 +137,27 @@ KULLANICININ GİRDİSİ:
 ${text}`;
 }
 
-// --- Gemini çağrısı ------------------------------------------------------------
-async function geminiFetch(prompt) {
-  const wait = takeToken(aiBucket);
+const NIM_JSON_INSTRUCTION = `
+
+SADECE aşağıdaki JSON şekline uygun yanıt ver. Başka hiçbir metin, açıklama veya markdown
+kod bloğu (\`\`\`) EKLEME — yanıtın TAMAMI geçerli JSON olmalı:
+{"items":[{"name":"string","kcal":number,"protein":number,"carbs":number,"fat":number,"fiber":number,"confidence":number}]}
+
+"confidence" alanını HER ZAMAN dahil et (0 ile 1 arası, ne kadar eminsin).`;
+
+function buildNimPrompt(basePrompt) {
+  return basePrompt + NIM_JSON_INSTRUCTION;
+}
+
+// --- Ortak LLM çağrı mantığı ---------------------------------------------------
+function stripMarkdownFence(s) {
+  const trimmed = s.trim();
+  const m = trimmed.match(/^```(?:json)?\s*([\s\S]*?)\s*```$/);
+  return m ? m[1] : trimmed;
+}
+
+async function callLLM({ bucket, url, headers, requestBody, extractText }) {
+  const wait = takeToken(bucket);
   if (wait > 0) {
     return {
       status: 429,
@@ -145,13 +168,10 @@ async function geminiFetch(prompt) {
   let r;
   let text;
   try {
-    r = await fetch(geminiUrl(), {
+    r = await fetch(url, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        contents: [{ parts: [{ text: prompt }] }],
-        generationConfig: { responseMimeType: "application/json", responseSchema: RESPONSE_SCHEMA },
-      }),
+      headers,
+      body: JSON.stringify(requestBody),
       signal: AbortSignal.timeout(AI_TIMEOUT_MS),
     });
     text = await r.text();
@@ -174,14 +194,14 @@ async function geminiFetch(prompt) {
     return { status: 502, body: { error: `AI servisi hatası (HTTP ${r.status})` } };
   }
 
-  const rawText = json?.candidates?.[0]?.content?.parts?.[0]?.text;
+  const rawText = extractText(json);
   if (typeof rawText !== "string") {
     return { status: 502, body: { error: "AI servisi beklenmeyen bir yanıt döndürdü" } };
   }
 
   let parsed;
   try {
-    parsed = JSON.parse(rawText);
+    parsed = JSON.parse(stripMarkdownFence(rawText));
   } catch {
     return { status: 502, body: { error: "AI yanıtı geçerli JSON değil" } };
   }
@@ -189,7 +209,52 @@ async function geminiFetch(prompt) {
   return { status: 200, body: parsed };
 }
 
-// --- Doğrulama (savunmacı — Gemini'nin responseSchema'sı garanti değildir) ---
+function geminiFetch(prompt) {
+  return callLLM({
+    bucket: aiBucket,
+    url: geminiUrl(),
+    headers: { "Content-Type": "application/json" },
+    requestBody: {
+      contents: [{ parts: [{ text: prompt }] }],
+      generationConfig: { responseMimeType: "application/json", responseSchema: RESPONSE_SCHEMA },
+    },
+    extractText: (j) => j?.candidates?.[0]?.content?.parts?.[0]?.text,
+  });
+}
+
+function nimFetch(prompt) {
+  return callLLM({
+    bucket: nimBucket,
+    url: NIM_URL,
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${NVIDIA_NIM_API_KEY}`,
+    },
+    requestBody: {
+      model: NVIDIA_NIM_MODEL,
+      messages: [{ role: "user", content: prompt }],
+      temperature: 0.2,
+      response_format: { type: "json_object" },
+    },
+    extractText: (j) => j?.choices?.[0]?.message?.content,
+  });
+}
+
+function attemptGemini(prompt) {
+  if (!GEMINI_API_KEY) {
+    return { status: 500, body: { error: "AI servisi yapılandırılmamış (GEMINI_API_KEY yok)" } };
+  }
+  return geminiFetch(prompt);
+}
+
+function attemptNim(prompt) {
+  if (!NVIDIA_NIM_API_KEY) {
+    return { status: 500, body: { error: "AI servisi yapılandırılmamış (NVIDIA_NIM_API_KEY yok)" } };
+  }
+  return nimFetch(prompt);
+}
+
+// --- Doğrulama (savunmacı — AI yanıtlarının yapısı garanti değildir) -----------
 function isFiniteNum(v) {
   return typeof v === "number" && Number.isFinite(v);
 }
@@ -222,18 +287,33 @@ function parseAiItem(raw) {
 /** @param {{text: string, aliases: unknown[]}} input
  *  @returns {Promise<{status:number, body:object}>} */
 async function parseMealText({ text, aliases }) {
-  if (LLM_PROVIDER !== "gemini") {
+  if (!["gemini", "nim", "auto"].includes(LLM_PROVIDER)) {
     return { status: 503, body: { error: "AI özelliği bu ortamda kapalı" } };
   }
   if (typeof text !== "string" || !text.trim()) {
     return { status: 400, body: { error: "text gerekli" } };
   }
-  if (!GEMINI_API_KEY) {
-    return { status: 500, body: { error: "AI servisi yapılandırılmamış (GEMINI_API_KEY yok)" } };
-  }
 
   const prompt = buildPrompt(text.trim(), Array.isArray(aliases) ? aliases : []);
-  const result = await geminiFetch(prompt);
+
+  let result;
+  if (LLM_PROVIDER === "gemini") {
+    result = await attemptGemini(prompt);
+  } else if (LLM_PROVIDER === "nim") {
+    result = await attemptNim(buildNimPrompt(prompt));
+  } else {
+    // "auto": önce Gemini, olmazsa NIM. İki sağlayıcı da başarısız olursa NIM'in
+    // (son denenenin) sonucu olduğu gibi döner — birleştirilmiş özel bir mesaj YOK
+    result = await attemptGemini(prompt);
+    if (result.status !== 200) {
+      const nimResult = await attemptNim(buildNimPrompt(prompt));
+      if (nimResult.status !== 200) {
+        console.error(`[ai] her iki sağlayıcı da başarısız: gemini=${result.status} nim=${nimResult.status}`);
+      }
+      result = nimResult;
+    }
+  }
+
   if (result.status !== 200) return result;
 
   const rawItems = Array.isArray(result.body?.items) ? result.body.items : [];
