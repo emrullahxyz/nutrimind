@@ -1,53 +1,23 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { useData } from "../lib/data";
 import { effectiveGoal } from "../lib/goals";
 import { formatNumber } from "../lib/format";
 import type { Week } from "../lib/weeks";
+import { useAnimatedValue } from "../lib/useAnimatedValue";
+import { easeShowcase } from "../lib/animation";
 
 const DOW = ["Pzt", "Sal", "Çar", "Per", "Cum", "Cmt", "Paz"];
 const BEAM_SPEEDS = ["3.0s", "3.6s", "2.8s", "4.0s", "3.4s", "3.2s", "3.8s"];
 
 /** Sona doğru erkenden yavaşlayan canlı kalori sayıcı komponenti */
 function AnimatedKcal({ value, delayMs }: { value: number; delayMs: number }) {
-  const [displayVal, setDisplayVal] = useState(0);
-
-  useEffect(() => {
-    let frameId: number;
-    let startTimestamp: number | null = null;
-    const durationMs = 2000;
-
-    const timer = setTimeout(() => {
-      const step = (timestamp: number) => {
-        if (!startTimestamp) startTimestamp = timestamp;
-        const rawProgress = Math.min((timestamp - startTimestamp) / durationMs, 1);
-
-        let easedProgress: number;
-        if (rawProgress < 0.25) {
-          easedProgress = (rawProgress / 0.25) * 0.7;
-        } else {
-          const remaining = (rawProgress - 0.25) / 0.75;
-          const slowEasing = 1 - Math.pow(1 - remaining, 2.5);
-          easedProgress = 0.7 + slowEasing * 0.3;
-        }
-
-        setDisplayVal(Math.floor(easedProgress * value));
-
-        if (rawProgress < 1) {
-          frameId = requestAnimationFrame(step);
-        } else {
-          setDisplayVal(value);
-        }
-      };
-      frameId = requestAnimationFrame(step);
-    }, delayMs);
-
-    return () => {
-      clearTimeout(timer);
-      if (frameId) cancelAnimationFrame(frameId);
-    };
-  }, [value, delayMs]);
-
-  return <>{formatNumber(displayVal)}</>;
+  const display = useAnimatedValue(value, {
+    durationMs: 2000,
+    delayMs,
+    ease: easeShowcase,
+    round: "floor",
+  });
+  return <>{formatNumber(display)}</>;
 }
 
 /** Haftanın 7 günü için 3D-görünümlü kalori bar grafiği + hedef çizgisi.

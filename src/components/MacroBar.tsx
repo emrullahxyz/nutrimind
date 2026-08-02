@@ -1,6 +1,6 @@
-import { useEffect, useState } from "react";
 import { formatNumber } from "../lib/format";
 import type { NutrientDef } from "../lib/nutrients";
+import { useAnimatedValue, useAnimatedPct } from "../lib/useAnimatedValue";
 
 interface MacroBarProps {
   /** Besin kaydındaki tanım — etiket, birim, renk sınıfları ve `direction`. */
@@ -80,46 +80,6 @@ export function barState(def: NutrientDef, value: number, target: number): BarSt
   return { hasTarget, pct, isOver, isMet, tone, status };
 }
 
-/** Synchronized count-up animation hook for numeric values. */
-function useAnimatedValue(targetVal: number, durationMs: number = 750): number {
-  const [displayVal, setDisplayVal] = useState(0);
-
-  useEffect(() => {
-    let startTimestamp: number | null = null;
-
-    const step = (timestamp: number) => {
-      if (!startTimestamp) startTimestamp = timestamp;
-      const progress = Math.min((timestamp - startTimestamp) / durationMs, 1);
-      // Cubic ease-out curve matching CSS ease-out
-      const easeProgress = 1 - Math.pow(1 - progress, 3);
-      setDisplayVal(Math.round(targetVal * easeProgress));
-
-      if (progress < 1) {
-        requestAnimationFrame(step);
-      }
-    };
-
-    const handle = requestAnimationFrame(step);
-    return () => cancelAnimationFrame(handle);
-  }, [targetVal, durationMs]);
-
-  return displayVal;
-}
-
-/** Hook to trigger initial mount CSS width transition from 0 to targetPct. */
-function useAnimatedPct(targetPct: number): number {
-  const [currentPct, setCurrentPct] = useState(0);
-
-  useEffect(() => {
-    // Micro-delay ensures browser paints initial 0% before transitioning to targetPct
-    const timer = setTimeout(() => {
-      setCurrentPct(targetPct);
-    }, 50);
-    return () => clearTimeout(timer);
-  }, [targetPct]);
-
-  return currentPct;
-}
 
 /** Labeled nutrient progress bar (protein/carb/fat/fiber) with count-up number animation & smooth bar fill. */
 export function MacroBar({ def, value, target }: MacroBarProps) {

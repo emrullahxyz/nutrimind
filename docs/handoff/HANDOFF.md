@@ -507,3 +507,143 @@ için **önce backend elle senkronlanmalı, sonra `pnpm run deploy`.** Tersi yap
 3. Opsiyonel: `server/data.db`'yi git'ten çıkarma kararı; `pnpm approve-builds`.
 
 ---
+---
+
+## Handoff: 2026-07-31T15:51:49Z (auto-saved before compaction)
+
+### Compaction Metadata
+- Trigger: (unknown)
+- Custom instructions: (none)
+- Transcript: (unknown)
+- CWD: (unknown)
+
+### Last User Message (transcript tail)
+(unavailable - transcript missing)
+
+### Last Assistant Message (transcript tail)
+(unavailable - transcript missing)
+
+### Git Snapshot
+- Branch: master
+- Status:
+- Recent commits:
+eaf98f2 refactor(ui): Hafiza aramasi, aranabilir ogun secici, tekrar temizligi (S4+S5+S6)
+04faf01 feat(ui): barkod "tara -> yedim" akisi — 7 dokunus 2'ye indi (S3)
+f69bb3e refactor(ui): Bugun ekrani sadelesti, ogun listesi ekrana girdi (S2)
+d2f8088 refactor(ui): 4 sekme -> 3 sekme + tek ayar girisi (S1)
+a4cd9b5 chore: agy delegasyonu icin Bash(agy:*) izni
+
+### Model Summary
+(TODO: fill after compaction — 8–12 bullets)
+
+### Handoff Context (paste into next session)
+(TODO: fill after compaction — 10–20 lines of concrete resume instructions)
+
+---
+---
+
+## Handoff: 2026-07-31T21:16:52Z (auto-saved before compaction)
+
+### Compaction Metadata
+- Trigger: (unknown)
+- Custom instructions: (none)
+- Transcript: (unknown)
+- CWD: (unknown)
+
+### Last User Message (transcript tail)
+(unavailable - transcript missing)
+
+### Last Assistant Message (transcript tail)
+(unavailable - transcript missing)
+
+### Git Snapshot
+- Branch: master
+- Status:
+ M docs/handoff/HANDOFF.md
+?? pnpm-workspace.yaml
+- Recent commits:
+99d28c1 feat(ui): auto-select search text on focus and click in AliasPicker
+eaf98f2 refactor(ui): Hafiza aramasi, aranabilir ogun secici, tekrar temizligi (S4+S5+S6)
+04faf01 feat(ui): barkod "tara -> yedim" akisi — 7 dokunus 2'ye indi (S3)
+f69bb3e refactor(ui): Bugun ekrani sadelesti, ogun listesi ekrana girdi (S2)
+d2f8088 refactor(ui): 4 sekme -> 3 sekme + tek ayar girisi (S1)
+
+### Model Summary
+(TODO: fill after compaction — 8–12 bullets)
+
+### Handoff Context (paste into next session)
+(TODO: fill after compaction — 10–20 lines of concrete resume instructions)
+
+---
+---
+
+## Handoff: 2026-08-02T09:04:37Z (auto-saved before compaction)
+
+### Compaction Metadata
+- Trigger: (unknown)
+- Custom instructions: (none)
+- Transcript: (unknown)
+- CWD: (unknown)
+
+### Last User Message (transcript tail)
+(unavailable - transcript missing)
+
+### Last Assistant Message (transcript tail)
+(unavailable - transcript missing)
+
+### Git Snapshot
+- Branch: master
+- Status:
+ M docs/handoff/HANDOFF.md
+?? pnpm-workspace.yaml
+- Recent commits:
+99d28c1 feat(ui): auto-select search text on focus and click in AliasPicker
+eaf98f2 refactor(ui): Hafiza aramasi, aranabilir ogun secici, tekrar temizligi (S4+S5+S6)
+04faf01 feat(ui): barkod "tara -> yedim" akisi — 7 dokunus 2'ye indi (S3)
+f69bb3e refactor(ui): Bugun ekrani sadelesti, ogun listesi ekrana girdi (S2)
+d2f8088 refactor(ui): 4 sekme -> 3 sekme + tek ayar girisi (S1)
+
+### Model Summary
+(TODO: fill after compaction — 8–12 bullets)
+
+### Handoff Context (paste into next session)
+(TODO: fill after compaction — 10–20 lines of concrete resume instructions)
+
+---
+---
+
+## Handoff: 2026-08-02T14:01:48Z (auto-saved before compaction)
+
+### Compaction Metadata
+- Trigger: (unknown)
+- Custom instructions: (none)
+- Transcript: (unknown)
+- CWD: (unknown)
+
+### Last User Message (transcript tail)
+(unavailable - transcript missing)
+
+### Last Assistant Message (transcript tail)
+(unavailable - transcript missing)
+
+### Git Snapshot
+- Branch: master
+- Status:
+ M docs/handoff/HANDOFF.md
+?? NutriMind_Premium_Upgrade_Plan.md
+?? Nutrimind_vs_CAL_AI_Rapor.md
+?? pnpm-workspace.yaml
+- Recent commits:
+eb99141 fix: uzun besin/şablon adları kart genişliğini taşıyor, rozetle çakışıyordu
+95c50dc feat: bağlamsal besin sıralaması, genel config uçu, takviye takibi, öğün şablonları
+99d28c1 feat(ui): auto-select search text on focus and click in AliasPicker
+eaf98f2 refactor(ui): Hafiza aramasi, aranabilir ogun secici, tekrar temizligi (S4+S5+S6)
+04faf01 feat(ui): barkod "tara -> yedim" akisi — 7 dokunus 2'ye indi (S3)
+
+### Model Summary
+(TODO: fill after compaction — 8–12 bullets)
+
+### Handoff Context (paste into next session)
+(TODO: fill after compaction — 10–20 lines of concrete resume instructions)
+
+---
