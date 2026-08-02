@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { formatNumber } from "../lib/format";
 import type { Nutrition } from "../types";
 
@@ -50,6 +51,12 @@ function SmallDonut({ pct, color, emoji }: { pct: number; color: string; emoji: 
 }
 
 export function MacroCardGrid({ total, goal }: { total: Nutrition; goal: Nutrition }) {
+  const [toggledKeys, setToggledKeys] = useState<Record<string, boolean>>({});
+
+  const toggleKey = (key: string) => {
+    setToggledKeys((prev) => ({ ...prev, [key]: !prev[key] }));
+  };
+
   const items: MacroItem[] = [
     {
       key: "protein",
@@ -83,21 +90,36 @@ export function MacroCardGrid({ total, goal }: { total: Nutrition; goal: Nutriti
   return (
     <div className="grid grid-cols-3 gap-2.5 sm:gap-3">
       {items.map((item) => {
+        const isToggled = !!toggledKeys[item.key];
         const remaining = Math.max(0, item.target - item.consumed);
-        const displayVal = item.target > 0 ? remaining : item.consumed;
         const pct = item.target > 0 ? item.consumed / item.target : 0;
+
+        let displayVal: string;
+        let subText: string;
+
+        if (isToggled) {
+          displayVal = item.target > 0 
+            ? `${formatNumber(item.consumed, 0)}/${formatNumber(item.target, 0)}g`
+            : `${formatNumber(item.consumed, 0)}g`;
+          subText = "Alınan / Hedef";
+        } else {
+          displayVal = `${formatNumber(item.target > 0 ? remaining : item.consumed, 0)}g`;
+          subText = item.sublabel;
+        }
 
         return (
           <div
             key={item.key}
-            className="flex flex-col justify-between rounded-[20px] border border-calBorder bg-calCard p-3 sm:p-4 min-h-[130px] shadow-card backdrop-blur-sm transition hover:border-white/15"
+            onClick={() => toggleKey(item.key)}
+            className="flex flex-col justify-between rounded-[20px] border border-calBorder bg-calCard p-3 sm:p-4 min-h-[130px] shadow-card backdrop-blur-sm transition-all duration-200 hover:border-white/20 cursor-pointer select-none active:scale-[0.98]"
+            title="Tıklayarak görünümü değiştir"
           >
             <div>
-              <div className="font-mono text-lg sm:text-xl font-extrabold text-white leading-tight">
-                {formatNumber(displayVal, 0)}g
+              <div className="font-mono text-base sm:text-lg font-extrabold text-white leading-tight transition-all">
+                {displayVal}
               </div>
               <div className="mt-0.5 text-[11px] font-medium text-ink-secondary truncate">
-                {item.sublabel}
+                {subText}
               </div>
             </div>
 
@@ -110,3 +132,4 @@ export function MacroCardGrid({ total, goal }: { total: Nutrition; goal: Nutriti
     </div>
   );
 }
+

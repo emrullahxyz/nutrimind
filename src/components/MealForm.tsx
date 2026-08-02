@@ -15,6 +15,8 @@ import {
   toDraft,
 } from "./FormBits";
 import type { NutritionDraft } from "./FormBits";
+import { Skeleton } from "./Skeleton";
+import { AiError, aiErrorMessage, parseWithAI } from "../lib/ai";
 import { useData } from "../lib/data";
 import { mealsOf, sumMeals, toPayload } from "../lib/days";
 import { NUTRIENTS } from "../lib/nutrients";
@@ -22,17 +24,19 @@ import { GRAM_UNIT, parseNum, scaleNutrition, toGrams, unitOptions } from "../li
 import { formatKcal, todayISO, weekdayIndex } from "../lib/format";
 import { effectiveProfile } from "../lib/goals";
 import { buildUsageIndex, rankAliases } from "../lib/aliasRank";
-import type { MealPayload, MealSource, Nutrition } from "../types";
+import type { AIParseItem, MealPayload, MealSource, Nutrition } from "../types";
 import { usualQuantity } from "../lib/quantity";
 import { AliasPicker } from "./AliasPicker";
 
-type Mode = "alias" | "manual";
+type Mode = "alias" | "manual" | "ai";
 
 interface BasketItem {
   id: string;
   name: string;
   nutrition: Nutrition;
   sources?: MealSource[];
+  /** Faz 2: AI'nin bu değerden emin olmadığı anlamına gelir (görsel işaret için). */
+  needsReview?: boolean;
 }
 
 function ModeTab({ active, onClick, label }: { active: boolean; onClick: () => void; label: string }) {
@@ -132,7 +136,15 @@ function BasketSection({
               className="flex items-center justify-between gap-3 rounded bg-white/[0.04] px-2.5 py-2 text-xs"
             >
               <div className="flex flex-col min-w-0">
-                <ExpandableMealName name={item.name} className="font-semibold text-ink-primary" />
+                <span className="flex items-center gap-1.5">
+                  <ExpandableMealName name={item.name} className="font-semibold text-ink-primary" />
+                  {item.needsReview && (
+                    <span
+                      title="AI bu değerden emin değil, kontrol et"
+                      className="h-1.5 w-1.5 flex-none rounded-full bg-warn"
+                    />
+                  )}
+                </span>
                 <NutrientSummaryLine
                   as="span"
                   nutrition={item.nutrition}
@@ -219,6 +231,11 @@ export function MealForm({
 
   // Elle modunda girilen münferit kalem adı
   const [manualItemName, setManualItemName] = useState("");
+
+  // AI modu (Faz 2): serbest metin → Gemini → sepete otomatik ekleme.
+  const [aiText, setAiText] = useState("");
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiError, setAiError] = useState<string | null>(null);
 
   // Çoklu kalem (sepet) desteği — düzenleme modundaysa mevcut öğünü varsayılan ilk kalem yap
   const [basket, setBasket] = useState<BasketItem[]>(() =>
@@ -442,6 +459,54 @@ export function MealForm({
     }
   }
 
+  function addAIItemsToBasket(items: AIParseItem[]) {
+    if (items.length === 0) return;
+
+    let currentBasket = basket;
+    if (existing && currentBasket.length === 0) {
+      currentBasket = [
+        {
+          id: `existing-${Date.now()}`,
+          name: existing.label,
+          nutrition: existing.computed,
+          sources: existing.sources,
+        },
+      ];
+    }
+
+    const newItems: BasketItem[] = items.map((it, i) => ({
+      id: `ai-${Date.now()}-${i}-${Math.random()}`,
+      name: it.name,
+      nutrition: it.nutrition,
+      ...(it.needsReview ? { needsReview: true } : {}),
+    }));
+
+    const nextBasket = [...currentBasket, ...newItems];
+    setBasket(nextBasket);
+    setName(nextBasket.length > 1 ? nextBasket.map((b) => b.name).join(" + ") : nextBasket[0].name);
+  }
+
+  async function analyzeWithAI() {
+    if (!aiText.trim() || aiLoading) return;
+    setAiLoading(true);
+    setAiError(null);
+    try {
+      const result = await parseWithAI(aiText.trim());
+      if (result.items.length === 0) {
+        setAiError("AI bu metinden bir besin çıkaramadı. Daha açık yazmayı dene.");
+      } else {
+        addAIItemsToBasket(result.items);
+        setAiText("");
+      }
+    } catch (e) {
+      setAiError(
+        e instanceof AiError ? aiErrorMessage(e.status, e.message, e.retryAfter) : String((e as Error)?.message ?? e),
+      );
+    } finally {
+      setAiLoading(false);
+    }
+  }
+
   function removeFromBasket(index: number) {
     if (editingBasketIndex === index) {
       setEditingBasketIndex(null);
@@ -500,6 +565,7 @@ export function MealForm({
       <div className="mb-4 flex gap-2">
         <ModeTab active={mode === "alias"} onClick={() => switchMode("alias")} label="Hafızadan" />
         <ModeTab active={mode === "manual"} onClick={() => switchMode("manual")} label="Elle" />
+        <ModeTab active={mode === "ai"} onClick={() => switchMode("ai")} label="AI ile" />
       </div>
 
       {mode === "alias" ? (
@@ -625,7 +691,7 @@ export function MealForm({
             />
           </div>
         )
-      ) : (
+      ) : mode === "manual" ? (
         <div className="flex flex-col gap-3">
           <div className="flex flex-col gap-3 rounded-chip border border-line bg-white/[0.02] p-3">
             {basket.length > 0 && (
@@ -675,6 +741,61 @@ export function MealForm({
             value={name}
             onChange={setName}
             placeholder={basket.length > 0 ? basket.map((b) => b.name).join(" + ") : "örn. Yulaf + protein + süt"}
+          />
+        </div>
+      ) : (
+        <div className="flex flex-col gap-3">
+          <label className="block">
+            <Label>Ne yedin?</Label>
+            <textarea
+              className={`${fieldCls} min-h-[88px] resize-none`}
+              value={aiText}
+              onChange={(e) => setAiText(e.target.value)}
+              placeholder="örn. 200g tavuk göğsü ve 1 kase pilav"
+            />
+          </label>
+
+          <div className="flex justify-end">
+            <button
+              type="button"
+              onClick={analyzeWithAI}
+              disabled={aiLoading || !aiText.trim()}
+              className="rounded-chip bg-memory px-3 py-1.5 text-xs font-bold text-memory-ink transition hover:opacity-90 disabled:opacity-40"
+            >
+              {aiLoading ? "Analiz ediliyor…" : "Analiz Et"}
+            </button>
+          </div>
+
+          {aiError && <ErrorText>{aiError}</ErrorText>}
+
+          {aiLoading ? (
+            <div className="flex flex-col gap-2">
+              <Skeleton className="h-16 w-full rounded-chip" />
+              <Skeleton className="h-16 w-full rounded-chip" />
+            </div>
+          ) : (
+            <BasketSection
+              basket={basket}
+              editingIndex={editingBasketIndex}
+              onStartEdit={startEditingBasketItem}
+              onSaveEdit={saveBasketItemEdit}
+              onCancelEdit={cancelBasketItemEdit}
+              onRemove={removeFromBasket}
+              onClear={() => {
+                setEditingBasketIndex(null);
+                setBasket([]);
+              }}
+              editDraft={basketEditDraft}
+              setEditDraft={setBasketEditDraft}
+              basketTotal={basketTotal}
+            />
+          )}
+
+          <TextField
+            label={basket.length > 0 ? "Birleşik Öğün Adı" : "Öğün adı"}
+            value={name}
+            onChange={setName}
+            placeholder={basket.length > 0 ? basket.map((b) => b.name).join(" + ") : ""}
           />
         </div>
       )}
