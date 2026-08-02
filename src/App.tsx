@@ -8,24 +8,8 @@ import { BottomNav, TabType } from "./components/BottomNav";
 import { FAB } from "./components/FAB";
 import { MealForm } from "./components/MealForm";
 import { ScanSheet } from "./components/ScanSheet";
-import { addDaysISO, todayISO } from "./lib/format";
-
-function computeStreak(days: Record<string, any[]>): number {
-  const today = todayISO();
-  let count = 0;
-  let currentDate = today;
-
-  if (!days[today] || days[today].length === 0) {
-    currentDate = addDaysISO(today, -1);
-  }
-
-  while (days[currentDate] && days[currentDate].length > 0) {
-    count++;
-    currentDate = addDaysISO(currentDate, -1);
-  }
-
-  return count;
-}
+import { todayISO } from "./lib/format";
+import { calculateStreak } from "./lib/streak";
 
 function MainContent() {
   const [tab, setTab] = useState<TabType>("daily");
@@ -36,7 +20,7 @@ function MainContent() {
   const [globalAddMealOpen, setGlobalAddMealOpen] = useState(false);
 
   const { days } = useData();
-  const streak = computeStreak(days);
+  const streak = calculateStreak(days);
 
   const handleAddMeal = () => {
     if (tab === "daily") {

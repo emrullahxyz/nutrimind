@@ -35,3 +35,7 @@ apps/web/dist/
 # misc
 coverage/
 .codegraph/
+
+# CAL AI referans ekran görüntüleri (commit'lenmez)
+CAL_AI_screenshots/
+

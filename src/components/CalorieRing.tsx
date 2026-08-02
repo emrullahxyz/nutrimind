@@ -42,27 +42,23 @@ export function CalorieRing({ consumed, target, size }: CalorieRingProps) {
         className="flex h-full w-full flex-col items-center justify-center rounded-full bg-[#13131C]"
         aria-hidden="true"
       >
-        <span
-          className={`${bigNumCls} leading-none text-ink-primary ${
-            size ? "" : "text-[44px] sm:text-[52px]"
-          }`}
-          style={size ? { fontSize: `${Math.round(size * 0.22)}px` } : undefined}
-        >
-          {displayNum}
-        </span>
-        <span
-          className={`mt-1 text-ink-secondary ${size ? "" : "text-xs"}`}
-          style={size ? { fontSize: `${Math.round(size * 0.075)}px` } : undefined}
-        >
-          {state.caption}
-        </span>
-        {state.ratioText && (
-          <span
-            className={`mt-0.5 font-mono text-ink-faint ${size ? "" : "text-[11px]"}`}
-            style={size ? { fontSize: `${Math.round(size * 0.065)}px` } : undefined}
-          >
-            {state.ratioText}
-          </span>
+        {size ? (
+          // Küçük/gömülü halka (ör. HeroCalorieCard içinde): sade alev ikonu.
+          // Sayı zaten kartın sol tarafında büyük olarak gösteriliyor — halkanın
+          // İÇİNDE tekrar göstermek gereksiz tekrar yaratıyordu (kullanıcı geri
+          // bildirimi). aria-label yine de TAM bilgiyi taşır, ekran okuyucu
+          // kaybı yok — sadece GÖRSEL sadeleşme.
+          <span style={{ fontSize: `${Math.round(size * 0.32)}px` }}>🔥</span>
+        ) : (
+          <>
+            <span className={`${bigNumCls} text-[44px] leading-none text-ink-primary sm:text-[52px]`}>
+              {displayNum}
+            </span>
+            <span className="mt-1 text-xs text-ink-secondary">{state.caption}</span>
+            {state.ratioText && (
+              <span className="mt-0.5 font-mono text-[11px] text-ink-faint">{state.ratioText}</span>
+            )}
+          </>
         )}
       </div>
     </div>
