@@ -80,6 +80,7 @@ const mockAppData: AppData = {
     "2026-07-31": mockMeals,
   },
   aliases: mockAliases,
+  config: {},
 };
 
 describe("exporters — CSV & JSON", () => {
@@ -181,6 +182,7 @@ describe("exporters — CSV & JSON", () => {
         "2026-07-01": [{ id: "old", label: "Eski", computed: { kcal: 100, protein: 5, carbs: 10, fat: 2, fiber: 1 } }],
       },
       aliases: [{ id: "old_alias", triggers: ["eski"], name: "Eski Alias", brand: null, serving_g: 100, nutrition: { kcal: 100, protein: 5, carbs: 10, fat: 2, fiber: 1 } }],
+      config: {},
     };
 
     await executeRestore(validation, currentData, mockRefresh, progressFn);

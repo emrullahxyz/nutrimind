@@ -1,6 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import type { ReactNode } from "react";
-import { deleteAlias, deleteDay, fetchData, saveAlias, saveDay, saveGoals } from "./api";
+import { deleteAlias, deleteDay, fetchData, saveAlias, saveConfig, saveDay, saveGoals } from "./api";
 import type { AliasPayload, AppData } from "./api";
 import type { GoalConfig, MealPayload } from "../types";
 
@@ -17,6 +17,8 @@ export interface Actions {
    *  backend id'yi biz istemeden üretiyor, geri dönmezse kaybolur). */
   upsertAlias: (alias: AliasPayload) => Promise<string>;
   removeAlias: (id: string) => Promise<void>;
+  /** Genel config anahtarı yazar (Faz 2a) — su/takviye/şablon fazları bunu kullanacak. */
+  updateConfig: (key: string, value: Record<string, unknown>) => Promise<void>;
 }
 
 type Ctx = AppData & Actions;
@@ -101,6 +103,10 @@ export function DataProvider({ children }: { children: ReactNode }) {
       removeAlias: (id) =>
         runWriteThenRefresh(async () => {
           await deleteAlias(id);
+        }),
+      updateConfig: (key, value) =>
+        runWriteThenRefresh(async () => {
+          await saveConfig(key, value);
         }),
     }),
     [refresh, runWriteThenRefresh],

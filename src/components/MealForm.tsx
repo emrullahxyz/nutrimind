@@ -19,7 +19,9 @@ import { useData } from "../lib/data";
 import { mealsOf, sumMeals, toPayload } from "../lib/days";
 import { NUTRIENTS } from "../lib/nutrients";
 import { GRAM_UNIT, parseNum, scaleNutrition, toGrams, unitOptions } from "../lib/nutrition";
-import { formatKcal } from "../lib/format";
+import { formatKcal, todayISO, weekdayIndex } from "../lib/format";
+import { effectiveProfile } from "../lib/goals";
+import { buildUsageIndex, rankAliases } from "../lib/aliasRank";
 import type { MealPayload, MealSource, Nutrition } from "../types";
 import { usualQuantity } from "../lib/quantity";
 import { AliasPicker } from "./AliasPicker";
@@ -180,21 +182,35 @@ export function MealForm({
   editIndex: number | null;
   onClose: () => void;
 }) {
-  const { aliases, days, setDayMeals } = useData();
+  const { aliases, days, goals, setDayMeals } = useData();
   const existing = editIndex === null ? undefined : mealsOf(days, date)[editIndex];
+
+  const mealIndex = editIndex !== null ? editIndex : mealsOf(days, date).length;
+
+  const initialRankedAliases = useMemo(() => {
+    const usageIndex = buildUsageIndex(days, goals);
+    const today = todayISO();
+    const ctx = {
+      today,
+      weekday: weekdayIndex(today),
+      profileId: effectiveProfile(goals, today).id,
+      mealIndex,
+    };
+    return rankAliases(aliases, usageIndex, ctx);
+  }, [aliases, days, goals, mealIndex]);
 
   // Varsayılan olarak "Hafızadan" seçili gelsin
   const [mode, setMode] = useState<Mode>("alias");
   const [name, setName] = useState(existing?.label ?? "");
   const [draft, setDraft] = useState<NutritionDraft>(existing ? toDraft(existing.computed) : EMPTY_DRAFT);
-  const [aliasId, setAliasId] = useState(aliases[0]?.id ?? "");
+  const [aliasId, setAliasId] = useState(() => initialRankedAliases[0]?.id ?? aliases[0]?.id ?? "");
 
   // Tembel başlangıç: `usualQuantity` 10 örnek toplayana kadar TÜM geçmişi
   // tarıyor. Doğrudan çağrılsaydı her render'da (miktar kutusuna yazılan her
   // harfte) yeniden taranırdı; useState'in fonksiyon biçimi yalnızca ilk
   // render'da çalıştırır.
   const [grams, setGrams] = useState(() => {
-    const first = aliases[0];
+    const first = initialRankedAliases[0] ?? aliases[0];
     if (!first) return "100";
     const est = usualQuantity(days, first.id, GRAM_UNIT.name, aliases);
     return String(est !== null ? est.value : first.serving_g);
@@ -497,6 +513,7 @@ export function MealForm({
                 selectedAliasId={aliasId}
                 onSelectAlias={pickAlias}
                 label="Hafızadan besin seç"
+                mealIndex={mealIndex}
               />
 
               <div className="flex items-end gap-2">

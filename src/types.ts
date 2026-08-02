@@ -120,3 +120,9 @@ export interface GoalConfig {
 /** Sıfır besin: yalnızca çekirdek 5 alan, hepsi 0. Mikro alanlar bilinçli olarak
  *  YOK — "hiç veri girilmedi" ile "0 mg sodyum" aynı şey değil. */
 export const ZERO_NUTRITION: Nutrition = zeroCore();
+
+/** Genel yapılandırma deposu (Faz 2a) — anahtar başına serbest JSON nesnesi.
+ *  Su/takviye/şablon gibi özellikler kendi anahtarında saklanır (bkz. `server/index.js`
+ *  `/api/config/:key`). Ayrılmış anahtarlar (`goals`, `seeded`) burada YER ALMAZ. */
+export type AppConfig = Record<string, Record<string, unknown>>;
+

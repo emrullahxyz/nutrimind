@@ -8,10 +8,11 @@ import { formatNumber } from "../lib/format";
 import { scaleNutrition } from "../lib/nutrition";
 import { filterAliases } from "../lib/aliasFilter";
 import { useData } from "../lib/data";
+import { parseTemplatesConfig } from "../lib/templates";
 import type { Alias } from "../types";
 
 export function AliasPage() {
-  const { aliases, removeAlias } = useData();
+  const { aliases, removeAlias, config, updateConfig } = useData();
   // form kapalıyken undefined; yeni kayıt için null; düzenleme için Alias.
   const [editingAlias, setEditingAlias] = useState<Alias | null | undefined>(undefined);
   const [editingRecipe, setEditingRecipe] = useState<Alias | null | undefined>(undefined);
@@ -21,6 +22,7 @@ export function AliasPage() {
   const [busy, setBusy] = useState(false);
 
   const filteredAliases = filterAliases(aliases, searchQuery);
+  const templates = parseTemplatesConfig(config);
 
   async function remove(id: string) {
     if (busy) return;
@@ -28,6 +30,21 @@ export function AliasPage() {
     setBusy(true);
     try {
       await removeAlias(id);
+    } catch (e) {
+      setErr(String((e as Error)?.message ?? e));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function removeTemplate(id: string) {
+    if (busy) return;
+    setErr(null);
+    setBusy(true);
+    try {
+      await updateConfig("templates", {
+        list: templates.list.filter((x) => x.id !== id),
+      });
     } catch (e) {
       setErr(String((e as Error)?.message ?? e));
     } finally {
@@ -143,6 +160,44 @@ export function AliasPage() {
           })}
         </div>
       )}
+
+      <div className="mt-4 flex flex-col gap-3 border-t border-line/40 pt-4">
+        <div>
+          <h2 className="text-lg font-bold text-ink-primary">Şablonlar</h2>
+          <p className="text-sm text-ink-tertiary">
+            Sık tükettiğin öğünleri tek dokunuşla eklemek için kaydedilmiş şablonlar.
+          </p>
+        </div>
+
+        {templates.list.length === 0 ? (
+          <p className="text-sm text-ink-tertiary">
+            Henüz şablon yok. Bir öğünü Bugün ekranında 'Şablon yap' ile kaydedebilirsin.
+          </p>
+        ) : (
+          <div className="grid gap-3 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
+            {templates.list.map((t, i) => (
+              <Card key={t.id} className="anim-fadeup flex flex-col justify-between gap-2.5 p-3.5" style={{ animationDelay: `${i * 30}ms` }}>
+                <div>
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0 flex-1">
+                      <span className="truncate text-sm font-bold text-ink-primary" title={t.name}>
+                        {t.name}
+                      </span>
+                    </div>
+                    <div className="shrink-0 font-mono text-xs font-semibold text-ink-secondary">
+                      {t.items.length} kalem
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-end gap-2 border-t border-line/40 pt-2">
+                  <ConfirmButton onConfirm={() => removeTemplate(t.id)} disabled={busy} />
+                </div>
+              </Card>
+            ))}
+          </div>
+        )}
+      </div>
 
       {editingAlias !== undefined && <AliasForm initial={editingAlias} onClose={() => setEditingAlias(undefined)} />}
       {editingRecipe !== undefined && <RecipeBuilder initial={editingRecipe} onClose={() => setEditingRecipe(undefined)} />}

@@ -4,6 +4,7 @@
 import type {
   Alias,
   AliasUnit,
+  AppConfig,
   GoalConfig,
   GoalProfile,
   MealItem,
@@ -22,6 +23,7 @@ export interface AppData {
   goals: GoalConfig;
   days: Record<string, MealItem[]>;
   aliases: Alias[];
+  config: AppConfig;
 }
 
 /** Backend'den gelen ham besin nesnesi: alanlar eksik ya da `null` olabilir. */
@@ -31,7 +33,7 @@ type RawNutrition = Partial<Record<NutrientKey, number | null>>;
  *  Çekirdek 5 alan eksikse 0'a düşer (eski `?? 0` davranışı, `makeNutrition`
  *  tabanı). Mikro alanlarda "bilinmiyor" ≠ "sıfır": eksik ya da `null` mikro
  *  `undefined` KALIR, 0'a çevrilmez. */
-function fill(n: RawNutrition | undefined): Nutrition {
+export function fill(n: RawNutrition | undefined): Nutrition {
   const out: Partial<Record<NutrientKey, number>> = {};
   for (const key of NUTRIENT_KEYS) {
     const v = n?.[key];
@@ -219,6 +221,7 @@ interface RawData {
   goals: unknown;
   days: Record<string, RawMeal[]>;
   aliases?: RawAlias[];
+  config?: Record<string, unknown>;
 }
 
 /** Backend'den { goals, days, aliases } çeker; öğünleri MealItem'a dönüştürür. */
@@ -253,7 +256,7 @@ export async function fetchData(): Promise<AppData> {
     ...withOptional("recipe", parseRecipe(a.recipe)),
   }));
 
-  return { goals: parseGoals(raw.goals), days, aliases };
+  return { goals: parseGoals(raw.goals), days, aliases, config: parseConfig(raw.config) };
 }
 
 // --- Yazma uçları -----------------------------------------------------------
@@ -312,4 +315,22 @@ export function saveAlias(alias: AliasPayload): Promise<{ ok: true; id: string }
 
 export function deleteAlias(id: string): Promise<{ ok: true }> {
   return mutate(`/api/alias/${encodeURIComponent(id)}`, "DELETE");
+}
+
+/** Faz 2a: `/api/data`'nın `config` alanını doğrular. Anahtar başına değer düz nesne
+ *  değilse o anahtar atlanır — bozuk bir config satırı tüm uygulamayı düşürmemeli. */
+function parseConfig(raw: unknown): AppConfig {
+  if (typeof raw !== "object" || raw === null || Array.isArray(raw)) return {};
+  const out: AppConfig = {};
+  for (const [k, v] of Object.entries(raw as Record<string, unknown>)) {
+    if (typeof v === "object" && v !== null && !Array.isArray(v)) {
+      out[k] = v as Record<string, unknown>;
+    }
+  }
+  return out;
+}
+
+/** Genel config anahtarı yazar (Faz 2a). `goals`/`seeded` sunucu tarafında reddedilir. */
+export function saveConfig(key: string, value: Record<string, unknown>): Promise<{ ok: true; key: string }> {
+  return mutate(`/api/config/${encodeURIComponent(key)}`, "PUT", value);
 }

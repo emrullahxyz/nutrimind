@@ -1,7 +1,11 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { KeyboardEvent } from "react";
 import type { Alias } from "../types";
 import { filterAliases } from "../lib/aliasFilter";
+import { buildUsageIndex, rankAliases } from "../lib/aliasRank";
+import { useData } from "../lib/data";
+import { todayISO, weekdayIndex } from "../lib/format";
+import { effectiveProfile } from "../lib/goals";
 import { Label, fieldCls } from "./FormBits";
 
 export interface AliasPickerProps {
@@ -9,6 +13,7 @@ export interface AliasPickerProps {
   selectedAliasId: string;
   onSelectAlias: (id: string) => void;
   label?: string;
+  mealIndex?: number;
 }
 
 export function AliasPicker({
@@ -16,7 +21,11 @@ export function AliasPicker({
   selectedAliasId,
   onSelectAlias,
   label = "Hafızadan besin seç",
+  mealIndex = 0,
 }: AliasPickerProps) {
+  const { days, goals } = useData();
+  const usageIndex = useMemo(() => buildUsageIndex(days, goals), [days, goals]);
+
   const selectedAlias = aliases.find((a) => a.id === selectedAliasId);
   const [isOpen, setIsOpen] = useState(false);
   const [query, setQuery] = useState(selectedAlias?.name ?? "");
@@ -34,6 +43,16 @@ export function AliasPicker({
   }, [selectedAliasId, selectedAlias?.name, isOpen]);
 
   const filtered = filterAliases(aliases, query);
+  const ranked = useMemo(() => {
+    const today = todayISO();
+    const ctx = {
+      today,
+      weekday: weekdayIndex(today),
+      profileId: effectiveProfile(goals, today).id,
+      mealIndex,
+    };
+    return rankAliases(filtered, usageIndex, ctx, query);
+  }, [filtered, usageIndex, goals, mealIndex, query]);
 
   // Arama sorgusu değiştiğinde vurgulanan elemanı sıfırla
   useEffect(() => {
@@ -82,14 +101,14 @@ export function AliasPicker({
 
     if (e.key === "ArrowDown") {
       e.preventDefault();
-      setHighlightedIndex((prev) => (filtered.length > 0 ? (prev + 1) % filtered.length : 0));
+      setHighlightedIndex((prev) => (ranked.length > 0 ? (prev + 1) % ranked.length : 0));
     } else if (e.key === "ArrowUp") {
       e.preventDefault();
-      setHighlightedIndex((prev) => (filtered.length > 0 ? (prev - 1 + filtered.length) % filtered.length : 0));
+      setHighlightedIndex((prev) => (ranked.length > 0 ? (prev - 1 + ranked.length) % ranked.length : 0));
     } else if (e.key === "Enter") {
       e.preventDefault();
-      if (filtered[highlightedIndex]) {
-        handleSelect(filtered[highlightedIndex]);
+      if (ranked[highlightedIndex]) {
+        handleSelect(ranked[highlightedIndex]);
       }
     } else if (e.key === "Escape") {
       e.preventDefault();
@@ -146,10 +165,10 @@ export function AliasPicker({
           tabIndex={-1}
           className="absolute z-20 mt-1 max-h-60 w-full overflow-y-auto rounded-chip border border-line bg-elevated-2 p-1 shadow-lg backdrop-blur-md"
         >
-          {filtered.length === 0 ? (
+          {ranked.length === 0 ? (
             <li className="px-3 py-2 text-xs text-ink-tertiary">Sonuç bulunamadı</li>
           ) : (
-            filtered.map((alias, idx) => {
+            ranked.map((alias, idx) => {
               const isSelected = alias.id === selectedAliasId;
               const isHighlighted = idx === highlightedIndex;
 

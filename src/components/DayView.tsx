@@ -7,11 +7,14 @@ import { MealForm } from "./MealForm";
 import { ConfirmButton, ErrorText, ExpandableMealName, FormActions, NutrientSummaryLine, TextField } from "./FormBits";
 import { Modal } from "./Modal";
 import { ScanSheet } from "./ScanSheet";
+import { SupplementCard } from "./SupplementCard";
 import { formatKcal } from "../lib/format";
 import { useData } from "../lib/data";
 import { effectiveGoal } from "../lib/goals";
 import { MACROS, MICROS } from "../lib/nutrients";
 import { coverage, dayTotal, mealsOf, sumMeals, toPayload } from "../lib/days";
+import { newTemplateId, parseTemplatesConfig } from "../lib/templates";
+import type { MealTemplate } from "../lib/templates";
 import type { MealItem, MealPayload } from "../types";
 
 function MergeModal({
@@ -83,13 +86,14 @@ export function DayView({
   emptyLabel?: string;
   enableScan?: boolean;
 }) {
-  const { goals, days, setDayMeals } = useData();
+  const { goals, days, setDayMeals, config, updateConfig } = useData();
   // Faz 8: hedef artık GÜNE bağlı. Geçmiş bir gün de (Geçmiş sekmesinin gün
   // detayı bu bileşeni yeniden kullanıyor) kendi hedefiyle karşılaştırılır.
   const goal = effectiveGoal(goals, date);
   const meals = mealsOf(days, date);
   const total = dayTotal(days, date);
   const hasData = meals.length > 0;
+  const templates = parseTemplatesConfig(config);
 
   // editIndex: null = yeni öğün, sayı = o indeksli öğünü düzenle. form kapalıysa undefined.
   const [editIndex, setEditIndex] = useState<number | null | undefined>(undefined);
@@ -118,6 +122,42 @@ export function DayView({
         toPayload(meals.filter((_, i) => i !== index)),
       );
       setSelectedIndices(selectedIndices.filter((i) => i !== index));
+    } catch (e) {
+      setErr(String((e as Error)?.message ?? e));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function saveAsTemplate(meal: MealItem) {
+    if (busy) return;
+    setErr(null);
+    setBusy(true);
+    try {
+      const newTemplate: MealTemplate = {
+        id: newTemplateId(),
+        name: meal.label,
+        items: [{ name: meal.label, nutrition: meal.computed, ...(meal.sources ? { sources: meal.sources } : {}) }],
+      };
+      await updateConfig("templates", { list: [...templates.list, newTemplate] });
+    } catch (e) {
+      setErr(String((e as Error)?.message ?? e));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function applyTemplate(t: MealTemplate) {
+    if (busy) return;
+    setErr(null);
+    setBusy(true);
+    try {
+      const newPayloads: MealPayload[] = t.items.map((it) => ({
+        name: it.name,
+        nutrition: it.nutrition,
+        ...(it.sources ? { sources: it.sources } : {}),
+      }));
+      await setDayMeals(date, [...toPayload(meals), ...newPayloads]);
     } catch (e) {
       setErr(String((e as Error)?.message ?? e));
     } finally {
@@ -188,6 +228,8 @@ export function DayView({
       <Card className="flex items-center justify-center p-4">
         <CalorieRing consumed={total.kcal} target={goal.kcal} size={168} />
       </Card>
+
+      <SupplementCard date={date} />
 
       {!hasData && (
         <Card className="flex items-center justify-center p-4 text-center text-sm text-ink-tertiary">
@@ -301,6 +343,22 @@ export function DayView({
 
         {err && <ErrorText>{err}</ErrorText>}
 
+        {enableScan && templates.list.length > 0 && (
+          <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1">
+            {templates.list.map((t) => (
+              <button
+                key={t.id}
+                type="button"
+                disabled={busy}
+                onClick={() => applyTemplate(t)}
+                className="flex-none rounded-pill border border-line bg-white/[0.06] px-3 py-1.5 text-xs font-semibold text-ink-secondary transition hover:border-memory/40 hover:bg-white/[0.09] hover:text-ink-primary disabled:opacity-40"
+              >
+                {t.name}
+              </button>
+            ))}
+          </div>
+        )}
+
         {hasData ? (
           <ul className="flex flex-col gap-2.5">
             {meals.map((m, i) => {
@@ -335,6 +393,14 @@ export function DayView({
                         className="rounded-pill bg-white/[0.06] px-2.5 py-1 text-[11px] font-semibold text-ink-tertiary transition hover:text-ink-primary disabled:opacity-40"
                       >
                         Düzenle
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => saveAsTemplate(m)}
+                        disabled={busy}
+                        className="rounded-pill bg-white/[0.06] px-2.5 py-1 text-[11px] font-semibold text-ink-tertiary transition hover:text-ink-primary disabled:opacity-40"
+                      >
+                        Şablon yap
                       </button>
                       <ConfirmButton onConfirm={() => removeMeal(i)} disabled={busy} />
                     </span>
