@@ -124,7 +124,7 @@ export function AliasPage() {
                   <div className="flex items-start justify-between gap-2">
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-1.5">
-                        <span className="truncate text-sm font-bold text-ink-primary" title={a.name}>
+                        <span className="min-w-0 block truncate text-sm font-bold text-ink-primary" title={a.name}>
                           {a.name}
                         </span>
                         {a.recipe && (
@@ -180,7 +180,7 @@ export function AliasPage() {
                 <div>
                   <div className="flex items-start justify-between gap-2">
                     <div className="min-w-0 flex-1">
-                      <span className="truncate text-sm font-bold text-ink-primary" title={t.name}>
+                      <span className="block truncate text-sm font-bold text-ink-primary" title={t.name}>
                         {t.name}
                       </span>
                     </div>
