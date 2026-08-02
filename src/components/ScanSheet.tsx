@@ -228,12 +228,11 @@ export function ScanSheet({ onClose }: { onClose: () => void }) {
   const handleGallerySelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
+      // Fotoğraftan besin tanıma (Gemini Vision, /api/ai/vision) henüz YOK —
+      // bu yalnızca dürüst bir "henüz yok" mesajı. Var olan bir özelliği
+      // ima eden yanlış bir "hazır" iddiası kullanıcıyı yanıltırdı.
       setScanMode("gallery");
-      setStatus({ kind: "loading" });
-      // Simulating image upload readiness / notification
-      setTimeout(() => {
-        setStatus({ kind: "error", message: `${file.name} seçildi. Görsel analizi için Gemini API hazır.` });
-      }, 500);
+      setStatus({ kind: "error", message: `${file.name} seçildi — fotoğraftan besin tanıma henüz eklenmedi.` });
     }
   };
 
