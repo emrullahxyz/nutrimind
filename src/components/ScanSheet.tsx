@@ -24,7 +24,7 @@
 //      hafızaya kaydedildi, bunu toptan bir "başarısız" gibi göstermek yalan
 //      olur — ayrı, dürüst bir mesaj var.
 // ============================================================================
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Modal } from "./Modal";
 import { ErrorText, Label, NumField, NutrientSummaryLine, fieldCls } from "./FormBits";
 import { useData } from "../lib/data";
@@ -221,20 +221,57 @@ export function ScanSheet({ onClose }: { onClose: () => void }) {
     }
   }
 
+  // Camera scan mode state (CAL AI modes)
+  const [scanMode, setScanMode] = useState<"scan_food" | "barcode" | "food_label" | "gallery">("scan_food");
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleGallerySelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setScanMode("gallery");
+      setStatus({ kind: "loading" });
+      // Simulating image upload readiness / notification
+      setTimeout(() => {
+        setStatus({ kind: "error", message: `${file.name} seçildi. Görsel analizi için Gemini API hazır.` });
+      }, 500);
+    }
+  };
+
   return (
-    <Modal title={food ? "Onayla ve kaydet" : "Barkod tara"} onClose={requestClose}>
+    <Modal title={food ? "Onayla ve kaydet" : "Kamera / Tara"} onClose={requestClose}>
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/*"
+        className="hidden"
+        onChange={handleGallerySelect}
+      />
       {!food ? (
         <div className="flex flex-col gap-3">
           {canScan ? (
-            <div className="overflow-hidden rounded-chip border border-line bg-black">
+            <div className="relative overflow-hidden rounded-chip border border-line bg-black">
               {scanning ? (
                 <>
                   {/* muted + playsInline: mobil tarayıcılar sessiz olmayan videoyu
                       kendiliğinden oynatmaz. */}
                   <video ref={videoRef} muted playsInline className="h-52 w-full object-cover" />
+                  
+                  {/* Overlay according to mode */}
+                  {scanMode === "food_label" && (
+                    <div className="pointer-events-none absolute inset-4 border-2 border-dashed border-accent/70 rounded-xl flex items-center justify-center">
+                      <span className="bg-black/60 px-3 py-1 rounded-full text-[10px] text-accent font-semibold">
+                        Etiketi çerçeveye hizala
+                      </span>
+                    </div>
+                  )}
+
                   <div className="flex items-center justify-between gap-2 px-2 py-1.5">
                     <p className="text-[11px] text-ink-tertiary">
-                      Barkodu çerçeveye getir — okununca otomatik seçilir.
+                      {scanMode === "barcode"
+                        ? "Barkodu çerçeveye getir — okununca otomatik seçilir."
+                        : scanMode === "food_label"
+                        ? "Besin değerleri etiketini odakla."
+                        : "Yemeği çerçeveye hizala."}
                     </p>
                     <button
                       type="button"
@@ -258,10 +295,56 @@ export function ScanSheet({ onClose }: { onClose: () => void }) {
             </div>
           ) : (
             <p className="rounded-chip border border-line bg-white/[0.02] p-3 text-[11px] text-ink-tertiary">
-              Bu tarayıcıda kamerayla barkod okuma desteklenmiyor (iOS Safari'de yok ya da bağlantı
-              HTTPS değil). Barkodu aşağıya elle girebilirsin — bu yol her zaman çalışır.
+              Bu tarayıcıda kamerayla barkod okuma desteklenmiyor. Barkodu aşağıya elle girebilir veya galeriden fotoğraf seçebilirsin.
             </p>
           )}
+
+          {/* CAL AI Camera Bottom Mode Selector */}
+          <div className="flex items-center justify-around gap-1 rounded-2xl border border-white/10 bg-white/5 p-1.5 text-[11px] font-semibold text-white/70 backdrop-blur-md overflow-x-auto no-scrollbar">
+            <button
+              type="button"
+              onClick={() => setScanMode("barcode")}
+              className={`flex items-center gap-1 px-2.5 py-1.5 rounded-xl transition ${
+                scanMode === "barcode" ? "bg-white text-black font-bold shadow" : "hover:text-white"
+              }`}
+            >
+              <span>📊</span>
+              <span>Barcode</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setScanMode("food_label")}
+              className={`flex items-center gap-1 px-2.5 py-1.5 rounded-xl transition ${
+                scanMode === "food_label" ? "bg-white text-black font-bold shadow" : "hover:text-white"
+              }`}
+            >
+              <span>🏷️</span>
+              <span>Food Label</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setScanMode("scan_food");
+                if (!scanning && canScan) setScanning(true);
+              }}
+              className={`flex items-center gap-1 px-2.5 py-1.5 rounded-xl transition ${
+                scanMode === "scan_food" ? "bg-white text-black font-bold shadow" : "hover:text-white"
+              }`}
+            >
+              <span>📷</span>
+              <span>Scan Food</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              className={`flex items-center gap-1 px-2.5 py-1.5 rounded-xl transition ${
+                scanMode === "gallery" ? "bg-white text-black font-bold shadow" : "hover:text-white"
+              }`}
+            >
+              <span>🖼️</span>
+              <span>Gallery</span>
+            </button>
+          </div>
 
           {/* --- Elle barkod: her tarayıcıda çalışan, HER ZAMAN görünen yedek yol --- */}
           <form

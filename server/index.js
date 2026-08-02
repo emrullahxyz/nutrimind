@@ -18,6 +18,7 @@ const http = require("node:http");
 const path = require("node:path");
 const { randomBytes } = require("node:crypto");
 const { DatabaseSync } = require("node:sqlite");
+const { parseMealText } = require("./ai.js");
 
 const PORT = Number(process.env.NUTRI_PORT || 8790);
 const DB_PATH = process.env.NUTRI_DB || path.join(__dirname, "data.db");
@@ -532,6 +533,12 @@ const server = http.createServer(async (req, res) => {
   try {
     if (req.method === "GET" && p === "/api/data")
       return send(res, 200, { goals: getGoals(), days: getDays(), aliases: getAliases(), config: getConfig() });
+
+    if (req.method === "POST" && p === "/api/ai/parse") {
+      const b = await readBody(req);
+      const { status, body } = await parseMealText({ text: b.text, aliases: getAliases() });
+      return send(res, status, body);
+    }
     if (req.method === "GET" && p === "/api/health")
       return send(res, 200, {
         ok: true,

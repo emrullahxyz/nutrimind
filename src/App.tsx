@@ -87,7 +87,11 @@ function MainContent() {
         )}
       </main>
 
-      <FAB onAddMeal={handleAddMeal} onScan={handleScan} />
+      <FAB
+        onAddMeal={handleAddMeal}
+        onScan={handleScan}
+        onSavedFoods={() => setTab("aliases")}
+      />
 
       <BottomNav
         activeTab={tab}

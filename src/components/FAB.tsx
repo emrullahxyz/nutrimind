@@ -3,9 +3,10 @@ import { useEffect, useRef, useState } from "react";
 interface FABProps {
   onAddMeal: () => void;
   onScan: () => void;
+  onSavedFoods?: () => void;
 }
 
-export function FAB({ onAddMeal, onScan }: FABProps) {
+export function FAB({ onAddMeal, onScan, onSavedFoods }: FABProps) {
   const [open, setOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -27,17 +28,30 @@ export function FAB({ onAddMeal, onScan }: FABProps) {
     <div ref={containerRef} className="fixed bottom-20 right-5 z-50 sm:right-8">
       {/* Menu overlay above FAB */}
       {open && (
-        <div className="anim-zoom absolute bottom-16 right-0 mb-2 flex w-44 flex-col gap-1.5 rounded-2xl border border-calBorder bg-[#181824]/95 p-2 shadow-float backdrop-blur-xl">
+        <div className="anim-zoom absolute bottom-16 right-0 mb-2 flex w-48 flex-col gap-1 rounded-2xl border border-calBorder bg-[#181824]/95 p-2 shadow-float backdrop-blur-xl">
+          {onSavedFoods && (
+            <button
+              type="button"
+              onClick={() => {
+                setOpen(false);
+                onSavedFoods();
+              }}
+              className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-xs font-semibold text-white transition hover:bg-white/10"
+            >
+              <span className="text-base">💾</span>
+              <span>Saved foods</span>
+            </button>
+          )}
           <button
             type="button"
             onClick={() => {
               setOpen(false);
               onAddMeal();
             }}
-            className="flex items-center gap-2.5 rounded-xl px-3 py-2.5 text-xs font-semibold text-white transition hover:bg-white/10"
+            className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-xs font-semibold text-white transition hover:bg-white/10"
           >
-            <span className="text-base">📝</span>
-            <span>Öğün ekle</span>
+            <span className="text-base">🔍</span>
+            <span>Food Database</span>
           </button>
           <button
             type="button"
@@ -45,10 +59,10 @@ export function FAB({ onAddMeal, onScan }: FABProps) {
               setOpen(false);
               onScan();
             }}
-            className="flex items-center gap-2.5 rounded-xl px-3 py-2.5 text-xs font-semibold text-white transition hover:bg-white/10"
+            className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-xs font-semibold text-white transition hover:bg-white/10"
           >
             <span className="text-base">📷</span>
-            <span>Tara</span>
+            <span>Scan Food</span>
           </button>
         </div>
       )}
@@ -67,3 +81,4 @@ export function FAB({ onAddMeal, onScan }: FABProps) {
     </div>
   );
 }
+
