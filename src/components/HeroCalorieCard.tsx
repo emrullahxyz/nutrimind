@@ -1,4 +1,3 @@
-import { useState } from "react";
 import { CalorieRing } from "./CalorieRing";
 import { ringState } from "../lib/ring";
 import { formatNumber } from "../lib/format";
@@ -6,10 +5,11 @@ import { formatNumber } from "../lib/format";
 interface HeroCalorieCardProps {
   consumed: number;
   target: number;
+  showRatio: boolean;
+  onToggleRatio: () => void;
 }
 
-export function HeroCalorieCard({ consumed, target }: HeroCalorieCardProps) {
-  const [showRatio, setShowRatio] = useState(false);
+export function HeroCalorieCard({ consumed, target, showRatio, onToggleRatio }: HeroCalorieCardProps) {
   const state = ringState(consumed, target);
   
   const subtitleLabel = showRatio
@@ -30,9 +30,9 @@ export function HeroCalorieCard({ consumed, target }: HeroCalorieCardProps) {
 
   return (
     <div
-      onClick={() => setShowRatio(!showRatio)}
+      onClick={onToggleRatio}
       className="relative overflow-hidden rounded-[20px] border border-calBorder bg-calCard p-5 shadow-card backdrop-blur-md cursor-pointer select-none transition-all duration-200 hover:border-white/20 active:scale-[0.99]"
-      title="Tıklayarak görünümü değiştir"
+      title="Tıklayarak tüm değerleri dönüştür"
     >
       {/* Background soft radial glow inside card */}
       <div className="pointer-events-none absolute -left-10 -top-10 h-40 w-40 rounded-full bg-accent/10 blur-2xl" />
@@ -72,4 +72,3 @@ export function HeroCalorieCard({ consumed, target }: HeroCalorieCardProps) {
     </div>
   );
 }
-
