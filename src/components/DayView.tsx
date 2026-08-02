@@ -362,26 +362,36 @@ export function DayView({
         )}
 
         {hasData ? (
-          <ul className="flex flex-col gap-2.5 sm:gap-3">
-            {meals.map((m, i) => {
-              const pct = total.kcal ? (m.computed.kcal / total.kcal) * 100 : 0;
-              return (
-                <MealRow
-                  key={m.id}
-                  meal={m}
-                  pct={pct}
-                  index={i}
-                  selectMode={selectMode}
-                  isSelected={selectedIndices.includes(i)}
-                  onToggleSelect={() => toggleSelect(i)}
-                  onEdit={() => setEditIndex(i)}
-                  onSaveTemplate={() => saveAsTemplate(m)}
-                  onRemove={() => removeMeal(i)}
-                  busy={busy}
-                />
-              );
-            })}
-          </ul>
+          <>
+            <button
+              type="button"
+              onClick={() => setEditIndex(null)}
+              disabled={busy}
+              className="self-start rounded-pill bg-accent px-3 py-1.5 text-xs font-extrabold text-accent-ink transition hover:opacity-90 disabled:opacity-40"
+            >
+              + Öğün ekle
+            </button>
+            <ul className="flex flex-col gap-2.5 sm:gap-3">
+              {meals.map((m, i) => {
+                const pct = total.kcal ? (m.computed.kcal / total.kcal) * 100 : 0;
+                return (
+                  <MealRow
+                    key={m.id}
+                    meal={m}
+                    pct={pct}
+                    index={i}
+                    selectMode={selectMode}
+                    isSelected={selectedIndices.includes(i)}
+                    onToggleSelect={() => toggleSelect(i)}
+                    onEdit={() => setEditIndex(i)}
+                    onSaveTemplate={() => saveAsTemplate(m)}
+                    onRemove={() => removeMeal(i)}
+                    busy={busy}
+                  />
+                );
+              })}
+            </ul>
+          </>
         ) : (
           <button
             type="button"
