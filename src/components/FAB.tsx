@@ -6,6 +6,32 @@ interface FABProps {
   onSavedFoods?: () => void;
 }
 
+function FabMenuItem({
+  icon,
+  label,
+  onClick,
+  disabled,
+}: {
+  icon: string;
+  label: string;
+  onClick?: () => void;
+  disabled?: boolean;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      className="flex flex-col items-center justify-center gap-2 rounded-2xl border border-calBorder bg-calCard p-4 text-center shadow-card backdrop-blur-sm transition hover:border-white/20 disabled:opacity-40 disabled:hover:border-calBorder"
+    >
+      <span className="flex h-11 w-11 items-center justify-center rounded-full bg-white/90 text-lg text-black">
+        {icon}
+      </span>
+      <span className="text-xs font-bold text-white">{label}</span>
+    </button>
+  );
+}
+
 export function FAB({ onAddMeal, onScan, onSavedFoods }: FABProps) {
   const [open, setOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -26,48 +52,40 @@ export function FAB({ onAddMeal, onScan, onSavedFoods }: FABProps) {
 
   return (
     <div ref={containerRef} className="fixed bottom-20 right-5 z-50 sm:right-8">
-      {/* Menu overlay above FAB */}
+      {/* 2x2 kart ızgarası (CAL AI ekran görüntüsündeki gibi) */}
       {open && (
-        <div className="anim-zoom absolute bottom-16 right-0 mb-2 flex w-48 flex-col gap-1 rounded-2xl border border-calBorder bg-[#181824]/95 p-2 shadow-float backdrop-blur-xl">
-          {onSavedFoods && (
-            <button
-              type="button"
-              onClick={() => {
-                setOpen(false);
-                onSavedFoods();
-              }}
-              className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-xs font-semibold text-white transition hover:bg-white/10"
-            >
-              <span className="text-base">💾</span>
-              <span>Saved foods</span>
-            </button>
-          )}
-          <button
-            type="button"
+        <div className="anim-zoom absolute bottom-16 right-0 mb-2 grid w-64 grid-cols-2 gap-2.5">
+          {/* Egzersiz takibi henüz yok (bu brief'in kapsamı dışında) —
+              kart görsel bütünlük için var ama devre dışı. */}
+          <FabMenuItem icon="👟" label="Egzersiz Kaydet" disabled />
+          <FabMenuItem
+            icon="💾"
+            label="Kayıtlı Besinler"
+            onClick={() => {
+              setOpen(false);
+              onSavedFoods?.();
+            }}
+          />
+          <FabMenuItem
+            icon="🔍"
+            label="Besin Veritabanı"
             onClick={() => {
               setOpen(false);
               onAddMeal();
             }}
-            className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-xs font-semibold text-white transition hover:bg-white/10"
-          >
-            <span className="text-base">🔍</span>
-            <span>Food Database</span>
-          </button>
-          <button
-            type="button"
+          />
+          <FabMenuItem
+            icon="📷"
+            label="Tara"
             onClick={() => {
               setOpen(false);
               onScan();
             }}
-            className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-xs font-semibold text-white transition hover:bg-white/10"
-          >
-            <span className="text-base">📷</span>
-            <span>Scan Food</span>
-          </button>
+          />
         </div>
       )}
 
-      {/* Main + FAB Button */}
+      {/* Ana + FAB butonu */}
       <button
         type="button"
         onClick={() => setOpen(!open)}
@@ -81,4 +99,3 @@ export function FAB({ onAddMeal, onScan, onSavedFoods }: FABProps) {
     </div>
   );
 }
-
