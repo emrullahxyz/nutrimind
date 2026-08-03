@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { Dumbbell, Flame, Plus, Trash2, X, Activity, Footprints, Waves, Bike, Sparkles } from "lucide-react";
 import type { Exercise, ExerciseCategory } from "../types";
 import { useData } from "../lib/data";
+import { useBodyScrollLock } from "../hooks/useBodyScrollLock";
 
 interface Props {
   isOpen: boolean;
@@ -26,6 +27,8 @@ const PRESETS: Preset[] = [
 ];
 
 export function ExerciseModal({ isOpen, onClose, date }: Props) {
+  // Lock background body scroll when modal is open
+  useBodyScrollLock(isOpen);
   const { config, updateConfig } = useData();
 
   const configKey = `exercise_${date}`;

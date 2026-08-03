@@ -37,6 +37,8 @@ function round1(value: number): number {
   return Math.round(value * 10) / 10;
 }
 
+import { useBodyScrollLock } from "../hooks/useBodyScrollLock";
+
 /** Tarif oluşturma & düzenleme full-screen modal */
 export function RecipeBuilder({
   initial,
@@ -46,6 +48,9 @@ export function RecipeBuilder({
   onClose: () => void;
 }) {
   const isPoppedRef = useRef(false);
+
+  // Lock background body scroll when modal is open
+  useBodyScrollLock(true);
 
   useEffect(() => {
     isPoppedRef.current = false;
