@@ -1,15 +1,13 @@
-import { useState } from "react";
-import { Modal } from "./Modal";
+import { useState, useEffect, useRef } from "react";
+import { ArrowLeft, Check, Plus, Trash2, Tag, Utensils, Scale, Sparkles } from "lucide-react";
 import {
   EMPTY_DRAFT,
   ErrorText,
-  FormActions,
   Label,
   NumField,
   NutrientSummaryLine,
   NutritionFields,
   TextField,
-  fieldCls,
   fromDraft,
   toDraft,
 } from "./FormBits";
@@ -39,6 +37,7 @@ function round1(value: number): number {
   return Math.round(value * 10) / 10;
 }
 
+/** Tarif oluşturma & düzenleme full-screen modal */
 export function RecipeBuilder({
   initial,
   onClose,
@@ -46,6 +45,35 @@ export function RecipeBuilder({
   initial: Alias | null;
   onClose: () => void;
 }) {
+  const isPoppedRef = useRef(false);
+
+  useEffect(() => {
+    isPoppedRef.current = false;
+    window.history.pushState({ isModal: true, modalType: "recipe_builder" }, "");
+
+    const handlePopState = () => {
+      isPoppedRef.current = true;
+      onClose();
+    };
+
+    window.addEventListener("popstate", handlePopState);
+
+    return () => {
+      window.removeEventListener("popstate", handlePopState);
+      if (!isPoppedRef.current && window.history.state?.isModal) {
+        window.history.back();
+      }
+    };
+  }, [onClose]);
+
+  const handleUserClose = () => {
+    if (!isPoppedRef.current && window.history.state?.isModal) {
+      window.history.back();
+    } else {
+      onClose();
+    }
+  };
+
   const { aliases, upsertAlias } = useData();
 
   const [triggers, setTriggers] = useState(initial ? initial.triggers.join(", ") : "");
@@ -53,7 +81,6 @@ export function RecipeBuilder({
   const [brand, setBrand] = useState(initial?.brand ?? "");
   const [totalG, setTotalG] = useState(String(initial?.recipe?.totalG ?? ""));
 
-  // Porsiyon birimini tespit et
   const initialPortionUnit = initial?.units?.find((u) => u.name === "porsiyon");
   const initialPortionCount =
     initialPortionUnit && initial?.recipe?.totalG
@@ -87,7 +114,6 @@ export function RecipeBuilder({
         };
       });
     }
-    // Varsayılan ilk satır
     return [
       {
         id: `ing-0-${Date.now()}`,
@@ -104,17 +130,15 @@ export function RecipeBuilder({
   const [saving, setSaving] = useState(false);
   const [err, setErr] = useState<string | null>(null);
 
-  // Yinelenen ifadeleri tekilleştir
   const triggerList = [
     ...new Set(
       triggers
         .split(",")
         .map((t) => t.trim().toLowerCase())
-        .filter(Boolean),
+        .filter(Boolean)
     ),
   ];
 
-  // Malzeme taslaklarını tipli RecipeIngredient yapısına çevir
   const parsedIngredients: RecipeIngredient[] = ingredients
     .map((ing) => {
       const qtyNum = parseNum(ing.qty);
@@ -182,13 +206,8 @@ export function RecipeBuilder({
     setIngredients((prev) => prev.filter((row) => row.id !== id));
   }
 
-  function requestClose() {
-    if (saving) return;
-    onClose();
-  }
-
   async function save() {
-    if (!canSave) return;
+    if (!canSave || saving) return;
     setSaving(true);
     setErr(null);
 
@@ -214,7 +233,7 @@ export function RecipeBuilder({
           totalG: totalGNum,
         },
       });
-      onClose();
+      handleUserClose();
     } catch (e) {
       setErr(String((e as Error)?.message ?? e));
       setSaving(false);
@@ -222,52 +241,70 @@ export function RecipeBuilder({
   }
 
   return (
-    <Modal
-      title={initial ? "Tarifi düzenle" : "Yeni Tarif Oluştur"}
-      onClose={requestClose}
-      footer={
-        <FormActions
-          onCancel={requestClose}
-          onSave={save}
-          saving={saving}
-          disabled={!canSave}
-          saveLabel="Besin olarak kaydet"
-        />
-      }
+    <div
+      data-modal="true"
+      className="fixed inset-0 z-[9999] flex flex-col bg-[#13121b] text-white h-[100dvh] w-full overflow-hidden animate-fadeIn pad-safe"
     >
-      <div className="flex flex-col gap-3">
-        <label className="block">
-          <Label>Tetikleyici ifadeler (virgülle ayır)</Label>
+      {/* Header Bar */}
+      <div className="flex items-center justify-between px-4 py-3.5 sm:px-6 border-b border-white/10 flex-none bg-[#13121b]">
+        <button
+          type="button"
+          onClick={handleUserClose}
+          className="w-10 h-10 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white transition active:scale-95"
+          aria-label="Geri"
+        >
+          <ArrowLeft className="w-5 h-5" />
+        </button>
+
+        <h2 className="text-lg font-extrabold text-white tracking-wide">
+          {initial ? "Tarifi Düzenle" : "Yeni Tarif Oluştur"}
+        </h2>
+
+        <div className="w-10 h-10" />
+      </div>
+
+      {/* Main Form Body */}
+      <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-6">
+        {/* Triggers Card */}
+        <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-4 text-white space-y-3">
+          <div className="flex items-center gap-2">
+            <Tag className="w-4 h-4 text-amber-400" />
+            <span className="text-xs font-bold text-white/90">Tetikleyici İfadeler</span>
+          </div>
           <input
-            className={fieldCls}
+            className="w-full px-3.5 py-2.5 rounded-xl bg-black/40 border border-white/15 text-sm font-semibold text-white focus:border-amber-400 focus:outline-none placeholder:text-white/30"
             value={triggers}
-            placeholder="mercimek çorbası, ev yapımı çorba"
+            placeholder="mercimek çorbası, ev çorbası (virgülle ayır)"
             onChange={(e) => setTriggers(e.target.value)}
           />
-        </label>
 
-        {triggerList.length > 0 && (
-          <div className="flex flex-wrap gap-1.5">
-            {triggerList.map((t) => (
-              <span
-                key={t}
-                className="rounded-pill bg-memory/15 px-2.5 py-1 text-[11px] font-semibold text-memory"
-              >
-                {t}
-              </span>
-            ))}
-          </div>
-        )}
+          {triggerList.length > 0 && (
+            <div className="flex flex-wrap gap-1.5 pt-1">
+              {triggerList.map((t) => (
+                <span
+                  key={t}
+                  className="px-3 py-1 rounded-full text-xs font-bold bg-amber-400/15 text-amber-300 border border-amber-400/30"
+                >
+                  {t}
+                </span>
+              ))}
+            </div>
+          )}
+        </div>
 
-        <TextField label="Besin / Tarif adı" value={name} onChange={setName} placeholder="örn. Mercimek Çorbası" />
-        <TextField label="Marka (opsiyonel)" value={brand} onChange={setBrand} placeholder="örn. Ev yapımı" />
+        {/* Basic Info */}
+        <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-4 text-white space-y-3">
+          <TextField label="Tarif / Yemek Adı" value={name} onChange={setName} placeholder="örn. Ev Yapımı Mercimek Çorbası" />
+          <TextField label="Marka / Açıklama (opsiyonel)" value={brand} onChange={setBrand} placeholder="örn. Ev yapımı" />
+        </div>
 
-        {/* Malzemeler Bölümü */}
-        <div className="flex flex-col gap-3.5 rounded-chip border border-line bg-white/[0.02] p-3">
+        {/* Ingredients Section Card */}
+        <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-4 text-white space-y-4">
           <div className="flex items-center justify-between">
-            <span className="font-mono text-[11px] uppercase tracking-mono text-ink-tertiary">
-              Malzemeler ({parsedIngredients.length})
-            </span>
+            <div className="flex items-center gap-2">
+              <Utensils className="w-4 h-4 text-purple-400" />
+              <span className="text-xs font-bold text-white/90">Malzemeler ({parsedIngredients.length})</span>
+            </div>
           </div>
 
           {ingredients.map((ing, index) => {
@@ -275,9 +312,9 @@ export function RecipeBuilder({
             const units = unitOptions(alias?.units);
 
             return (
-              <div key={ing.id} className="flex flex-col gap-2 rounded-chip border border-line/60 bg-white/[0.02] p-3">
-                <div className="flex items-center justify-between gap-2 border-b border-line/40 pb-2">
-                  <span className="font-mono text-[11px] font-bold text-ink-secondary">
+              <div key={ing.id} className="p-3.5 rounded-2xl border border-white/10 bg-black/40 space-y-3">
+                <div className="flex items-center justify-between border-b border-white/10 pb-2">
+                  <span className="text-xs font-extrabold text-amber-300 font-mono">
                     Malzeme #{index + 1}
                   </span>
                   <div className="flex items-center gap-2">
@@ -293,7 +330,7 @@ export function RecipeBuilder({
                               : {}),
                           }))
                         }
-                        className="rounded-pill bg-white/[0.06] px-2 py-0.5 text-[10px] font-semibold text-ink-tertiary transition hover:text-ink-primary"
+                        className="px-2.5 py-1 rounded-full bg-white/10 hover:bg-white/20 text-[10px] font-bold text-white transition"
                       >
                         {ing.mode === "alias" ? "Elle gir" : "Hafızadan seç"}
                       </button>
@@ -302,21 +339,21 @@ export function RecipeBuilder({
                       <button
                         type="button"
                         onClick={() => removeRow(ing.id)}
-                        className="rounded-chip p-1 text-xs text-ink-tertiary transition hover:text-danger"
+                        className="p-1 rounded-full text-white/40 hover:text-red-400 transition"
                         title="Malzemeyi sil"
                       >
-                        ✕
+                        <Trash2 className="w-4 h-4" />
                       </button>
                     )}
                   </div>
                 </div>
 
                 {ing.mode === "alias" ? (
-                  <div className="flex flex-col gap-2">
+                  <div className="space-y-3">
                     <label className="block">
-                      <Label>Hafızadaki Besin</Label>
+                      <span className="text-xs font-semibold text-white/70 block mb-1">Hafızadaki Besin</span>
                       <select
-                        className={fieldCls}
+                        className="w-full px-3 py-2.5 rounded-xl bg-[#191825] border border-white/15 text-xs font-bold text-white focus:outline-none focus:border-amber-400"
                         value={ing.aliasId}
                         onChange={(e) => {
                           const newAliasId = e.target.value;
@@ -330,7 +367,7 @@ export function RecipeBuilder({
                         }}
                       >
                         {aliases.map((a) => (
-                          <option key={a.id} value={a.id} className="bg-elevated-2 text-ink-primary">
+                          <option key={a.id} value={a.id} className="bg-[#191825] text-white">
                             {a.name} ({a.serving_g}g · {a.nutrition.kcal} kcal)
                           </option>
                         ))}
@@ -344,14 +381,14 @@ export function RecipeBuilder({
                         onChange={(val) => updateRow(ing.id, (prev) => ({ ...prev, qty: val }))}
                       />
                       <label className="block">
-                        <Label>Birim</Label>
+                        <span className="text-xs font-semibold text-white/70 block mb-1">Birim</span>
                         <select
-                          className={fieldCls}
+                          className="w-full px-3 py-2.5 rounded-xl bg-[#191825] border border-white/15 text-xs font-bold text-white focus:outline-none focus:border-amber-400"
                           value={ing.unit}
                           onChange={(e) => updateRow(ing.id, (prev) => ({ ...prev, unit: e.target.value }))}
                         >
                           {units.map((u) => (
-                            <option key={u.name} value={u.name} className="bg-elevated-2 text-ink-primary">
+                            <option key={u.name} value={u.name} className="bg-[#191825] text-white">
                               {u.name} {u.name !== "g" ? `(${u.grams}g)` : ""}
                             </option>
                           ))}
@@ -359,9 +396,8 @@ export function RecipeBuilder({
                       </label>
                     </div>
 
-                    {/* Malzeme Makro Özeti */}
                     {alias && parseNum(ing.qty) > 0 && (
-                      <div className="rounded bg-white/[0.03] px-2.5 py-1.5 font-mono text-[11px] text-ink-tertiary">
+                      <div className="rounded-xl bg-white/[0.04] p-2.5 font-mono text-xs text-white/80">
                         {(() => {
                           const unitObj = units.find((u) => u.name === ing.unit) ?? units[0];
                           const grams = toGrams(parseNum(ing.qty), unitObj);
@@ -378,7 +414,7 @@ export function RecipeBuilder({
                     )}
                   </div>
                 ) : (
-                  <div className="flex flex-col gap-2">
+                  <div className="space-y-3">
                     <TextField
                       label="Malzeme Adı"
                       value={ing.name}
@@ -416,63 +452,59 @@ export function RecipeBuilder({
           <button
             type="button"
             onClick={addRow}
-            className="w-full rounded-chip border border-line bg-white/[0.03] py-2 text-center text-xs font-semibold text-ink-secondary transition hover:text-ink-primary"
+            className="w-full py-3 rounded-xl border border-white/15 bg-white/5 hover:bg-white/10 text-xs font-bold text-white transition active:scale-95 flex items-center justify-center gap-1.5"
           >
-            + Malzeme ekle
+            <Plus className="w-3.5 h-3.5 text-purple-400" /> Malzeme Ekle
           </button>
         </div>
 
-        {/* Pişmiş Toplam Ağırlık */}
-        <div className="flex flex-col gap-1">
+        {/* Total Weight & Portion Info */}
+        <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-4 text-white space-y-4">
+          <div className="flex items-center gap-2">
+            <Scale className="w-4 h-4 text-sky-400" />
+            <span className="text-xs font-bold text-white/90">Pişmiş Toplam Ağırlık & Porsiyon</span>
+          </div>
+
           <NumField
-            label="Pişmiş toplam ağırlık"
+            label="Pişmiş Toplam Ağırlık"
             suffix="g"
             value={totalG}
             onChange={setTotalG}
           />
-          <p className="text-[11px] text-ink-faint">
-            Pişerken su çekilir veya buharlaşır; çiğ malzemelerin toplamı ile pişmiş yemeğin ağırlığı aynı değildir.
-          </p>
-        </div>
-
-        {/* Porsiyon (opsiyonel) */}
-        <div className="flex flex-col gap-1">
           <NumField
-            label="Porsiyon sayısı (opsiyonel)"
+            label="Porsiyon Sayısı (opsiyonel)"
             value={portionCount}
             onChange={setPortionCount}
           />
-          <p className="text-[11px] text-ink-faint">
-            {portionCountNum > 0 && totalGNum > 0
-              ? `1 porsiyon = ${formatNumber(round1(totalGNum / portionCountNum))} g olarak özel birim eklenir.`
-              : "Örn. 4 yazarsan 1 porsiyon = (toplam ağırlık / 4) g olarak otomatik birim eklenir."}
-          </p>
         </div>
 
-        {/* Canlı Önizleme Card */}
+        {/* Live Preview Card */}
         {totalGNum > 0 && parsedIngredients.length > 0 && (
-          <div className="flex flex-col gap-2 rounded-chip border border-accent/30 bg-accent/5 p-3">
-            <span className="font-mono text-[11px] font-bold uppercase tracking-mono text-accent">
-              Canlı Önizleme
-            </span>
-            <div className="flex flex-col gap-1 text-xs">
-              <NutrientSummaryLine
-                nutrition={totalNutrition}
-                kcal="total"
-                className="font-mono text-ink-primary"
-              />
-              <NutrientSummaryLine
-                nutrition={per100g}
-                kcal="inline"
-                prefix="100 g · "
-                className="font-mono text-ink-secondary"
-              />
+          <div className="rounded-2xl border border-amber-400/20 bg-amber-400/5 p-4 text-white space-y-2">
+            <div className="flex items-center gap-1.5 text-amber-300 font-extrabold text-xs">
+              <Sparkles className="w-4 h-4 text-amber-400" /> Canlı Tarif Önizleme
+            </div>
+            <div className="flex flex-col gap-1 text-xs font-mono">
+              <NutrientSummaryLine nutrition={totalNutrition} kcal="total" className="text-white font-bold" />
+              <NutrientSummaryLine nutrition={per100g} kcal="inline" prefix="100 g · " className="text-white/60" />
             </div>
           </div>
         )}
+
+        {err && <ErrorText>{err}</ErrorText>}
       </div>
 
-      {err && <ErrorText>{err}</ErrorText>}
-    </Modal>
+      {/* Bottom Save Button */}
+      <div className="p-4 sm:p-5 border-t border-white/10 bg-[#13121b] flex-none">
+        <button
+          type="button"
+          onClick={save}
+          disabled={!canSave || saving}
+          className="w-full py-4 rounded-full bg-white text-black font-extrabold text-base hover:bg-white/90 transition shadow-xl active:scale-[0.98] disabled:opacity-40 flex items-center justify-center gap-2"
+        >
+          <Check className="w-5 h-5" /> {saving ? "Kaydediliyor..." : "Besin Olarak Kaydet"}
+        </button>
+      </div>
+    </div>
   );
 }
