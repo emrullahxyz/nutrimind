@@ -101,6 +101,7 @@ export function DayView({
   triggerScan,
   onResetTriggerScan,
   showWeightCard = true,
+  resetKey = 0,
 }: {
   date: string;
   emptyLabel?: string;
@@ -110,6 +111,7 @@ export function DayView({
   triggerScan?: boolean;
   onResetTriggerScan?: () => void;
   showWeightCard?: boolean;
+  resetKey?: number;
 }) {
   const { goals, days, setDayMeals, config, updateConfig } = useData();
   const goal = effectiveGoal(goals, date);
@@ -129,6 +131,15 @@ export function DayView({
   const [selectedIndices, setSelectedIndices] = useState<number[]>([]);
   const [selectMode, setSelectMode] = useState(false);
   const [showMergeModal, setShowMergeModal] = useState(false);
+
+  useEffect(() => {
+    if (resetKey > 0) {
+      setSelectedMealForSheet(null);
+      setEditIndex(undefined);
+      setShowExerciseModal(false);
+      setShowMergeModal(false);
+    }
+  }, [resetKey]);
   const [showScan, setShowScan] = useState(false);
   const [pendingAIItems, setPendingAIItems] = useState<AIParseItem[] | undefined>(undefined);
   const [err, setErr] = useState<string | null>(null);

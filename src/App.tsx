@@ -15,6 +15,12 @@ import { calculateStreak } from "./lib/streak";
 
 function MainContent() {
   const [tab, setTab] = useState<TabType>("daily");
+  const [tabResetKey, setTabResetKey] = useState<Record<TabType, number>>({
+    daily: 0,
+    history: 0,
+    aliases: 0,
+    settings: 0,
+  });
   const [triggerAddMeal, setTriggerAddMeal] = useState(false);
   const [triggerScan, setTriggerScan] = useState(false);
   const [globalScanOpen, setGlobalScanOpen] = useState(false);
@@ -26,12 +32,23 @@ function MainContent() {
   const { days } = useData();
   const streak = calculateStreak(days);
 
-  // Tab değiştirme sarmalayıcısı (history state ekler)
+  // Tab değiştirme sarmalayıcısı (history state ekler & aynı sekmede kök görünüme döndürür)
   const handleTabChange = (newTab: TabType) => {
+    setGlobalAddMealOpen(false);
+    setGlobalScanOpen(false);
+    setGlobalExerciseOpen(false);
+
+    setTabResetKey((prev) => ({
+      ...prev,
+      [newTab]: prev[newTab] + 1,
+    }));
+
     if (newTab !== tab) {
       window.history.pushState({ tab: newTab }, "");
       setTab(newTab);
     }
+
+    window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
   const tabRef = useRef(tab);
@@ -139,13 +156,14 @@ function MainContent() {
             onResetTriggerAddMeal={() => setTriggerAddMeal(false)}
             triggerScan={triggerScan}
             onResetTriggerScan={() => setTriggerScan(false)}
+            resetKey={tabResetKey.daily}
           />
         ) : tab === "history" ? (
           <HistoryPage />
         ) : tab === "aliases" ? (
-          <AliasPage />
+          <AliasPage resetKey={tabResetKey.aliases} />
         ) : (
-          <SettingsSheet onClose={() => handleTabChange("daily")} embedded />
+          <SettingsSheet onClose={() => handleTabChange("daily")} embedded resetKey={tabResetKey.settings} />
         )}
       </main>
 

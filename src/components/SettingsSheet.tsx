@@ -115,8 +115,22 @@ function SectionGroup({ title, children }: { title: string; children: React.Reac
   );
 }
 
-export function SettingsSheet({ onClose, embedded = false }: { onClose: () => void; embedded?: boolean }) {
+export function SettingsSheet({
+  onClose,
+  embedded = false,
+  resetKey = 0,
+}: {
+  onClose: () => void;
+  embedded?: boolean;
+  resetKey?: number;
+}) {
   const [subView, setSubView] = useState<SubView>(null);
+
+  useEffect(() => {
+    if (resetKey > 0) {
+      setSubView(null);
+    }
+  }, [resetKey]);
   const [cacheStatus, setCacheStatus] = useState<string | null>(null);
   const dataCtx = useData();
 
