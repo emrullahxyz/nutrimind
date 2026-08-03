@@ -160,27 +160,61 @@ body {
 .anim-slide-up {
   animation: slideUp 0.35s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
-/* ---- RollValue: dikey çark/odometer geçişi (bkz. RollValue.tsx) ---- */
+/* ---- RollValue: Mobil Uyumlu İpeksi Dikey Çark Geçişi ---- */
 .roll-viewport {
   display: inline-flex;
   overflow: hidden;
-  height: 1lh;
+  height: 1.25em;
+  line-height: 1.25em;
   vertical-align: bottom;
+  -webkit-mask-image: linear-gradient(to bottom, transparent 0%, black 12%, black 88%, transparent 100%);
+  mask-image: linear-gradient(to bottom, transparent 0%, black 12%, black 88%, transparent 100%);
 }
 .roll-track {
   display: inline-flex;
   flex-direction: column;
-  animation: rollTrack 380ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  animation: rollTrack 350ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  will-change: transform;
 }
 .roll-frame {
   white-space: nowrap;
+  line-height: 1.25em;
+  height: 1.25em;
+  display: inline-flex;
+  align-items: center;
+}
+.roll-frame-prev {
+  animation: rollFadeOut 350ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+.roll-frame-next {
+  animation: rollFadeIn 350ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 @keyframes rollTrack {
   from {
     transform: translateY(0);
   }
   to {
-    transform: translateY(-50%);
+    transform: translateY(-1.25em);
+  }
+}
+@keyframes rollFadeOut {
+  from {
+    opacity: 1;
+    transform: scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: scale(0.92);
+  }
+}
+@keyframes rollFadeIn {
+  0% {
+    opacity: 0;
+    transform: scale(0.92);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
   }
 }
 
