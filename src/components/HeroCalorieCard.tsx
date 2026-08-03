@@ -2,7 +2,6 @@ import { Flame } from "lucide-react";
 import { CalorieRing } from "./CalorieRing";
 import { ringState } from "../lib/ring";
 import { formatNumber } from "../lib/format";
-import { RollValue } from "./RollValue";
 
 interface HeroCalorieCardProps {
   consumed: number;
@@ -33,7 +32,7 @@ export function HeroCalorieCard({ consumed, target, showRatio, onToggleRatio }: 
   return (
     <div
       onClick={onToggleRatio}
-      className="relative overflow-hidden rounded-card border border-calBorder bg-calCard p-5 shadow-card backdrop-blur-md cursor-pointer select-none transition-all duration-200 hover:border-white/20 active:scale-[0.99] min-h-[176px] flex flex-col justify-center"
+      className="relative overflow-hidden rounded-card border border-calBorder bg-calCard p-5 shadow-card backdrop-blur-md cursor-pointer select-none transition-all duration-200 hover:border-white/20 active:scale-[0.98] min-h-[176px] flex flex-col justify-center"
       title="Tıklayarak tüm değerleri dönüştür"
     >
       {/* Arka plan yumuşak ışık efekti */}
@@ -41,23 +40,18 @@ export function HeroCalorieCard({ consumed, target, showRatio, onToggleRatio }: 
 
       <div className="flex items-center justify-between gap-4">
         {/* Sol Taraf: Kalori İstatistikleri */}
-        <div className="flex flex-col justify-center min-w-0 flex-1">
+        <div key={`stats-${showRatio}`} className="anim-spring-fade flex flex-col justify-center min-w-0 flex-1">
           <div className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-ink-secondary mb-1">
             <Flame className="h-4 w-4 text-accent" />
-            <span>
-              <RollValue value={subtitleLabel} />
-            </span>
+            <span>{subtitleLabel}</span>
           </div>
 
           <div className="text-3xl sm:text-4xl md:text-5xl font-extrabold text-white tracking-tight">
-            <RollValue value={displayBigVal} />
+            {displayBigVal}
           </div>
 
           {state.hasTarget && (
-            <div
-              key={`footer-${showRatio}-${consumed}-${target}`}
-              className="anim-slide-up mt-2 text-xs font-mono text-ink-secondary flex items-center gap-1"
-            >
+            <div className="mt-2 text-xs font-mono text-ink-secondary flex items-center gap-1">
               {showRatio ? (
                 <span className="text-accent font-semibold">Tıklayarak Kalan Kaloriyi Göster</span>
               ) : (

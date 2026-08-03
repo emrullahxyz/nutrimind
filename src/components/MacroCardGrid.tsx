@@ -2,7 +2,6 @@ import { Beef, Wheat, Droplet } from "lucide-react";
 import type { ComponentType } from "react";
 import { formatNumber } from "../lib/format";
 import type { Nutrition } from "../types";
-import { RollValue } from "./RollValue";
 
 interface MacroItem {
   key: keyof Nutrition;
@@ -83,12 +82,12 @@ function MacroCardItem({
       className="flex flex-col justify-between rounded-card border border-calBorder bg-calCard p-3 sm:p-4 min-h-[130px] shadow-card backdrop-blur-sm transition-all duration-200 hover:border-white/20 cursor-pointer select-none active:scale-[0.98]"
       title="Tıklayarak tüm değerleri dönüştür"
     >
-      <div>
+      <div key={`text-${showRatio}`} className="anim-spring-fade">
         <div className="text-xl sm:text-2xl font-extrabold text-white leading-tight">
-          <RollValue value={displayVal} />
+          {displayVal}
         </div>
         <div className="mt-0.5 text-[11px] font-medium text-ink-secondary truncate">
-          <RollValue value={subText} />
+          {subText}
         </div>
       </div>
 
