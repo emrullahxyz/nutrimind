@@ -1,10 +1,9 @@
-import { useMemo, useState } from "react";
-import { Modal } from "./Modal";
+import { useMemo, useState, useEffect, useRef } from "react";
+import { ArrowLeft, Sparkles, Plus, Check } from "lucide-react";
 import {
   EMPTY_DRAFT,
   ErrorText,
   ExpandableMealName,
-  FormActions,
   Label,
   NumField,
   NutrientSummaryLine,
@@ -18,8 +17,7 @@ import type { NutritionDraft } from "./FormBits";
 import { Skeleton } from "./Skeleton";
 import { AiError, aiErrorMessage, parseWithAI } from "../lib/ai";
 import { useData } from "../lib/data";
-import { mealsOf, sumMeals, toPayload } from "../lib/days";
-import { NUTRIENTS } from "../lib/nutrients";
+import { mealsOf, toPayload } from "../lib/days";
 import { GRAM_UNIT, parseNum, scaleNutrition, toGrams, unitOptions } from "../lib/nutrition";
 import { formatKcal, todayISO, weekdayIndex } from "../lib/format";
 import { effectiveProfile } from "../lib/goals";
@@ -36,22 +34,7 @@ interface BasketItem {
   name: string;
   nutrition: Nutrition;
   sources?: MealSource[];
-  /** Faz 2: AI'nin bu değerden emin olmadığı anlamına gelir (görsel işaret için). */
   needsReview?: boolean;
-}
-
-function ModeTab({ active, onClick, label }: { active: boolean; onClick: () => void; label: string }) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={`rounded-pill px-3 py-1.5 text-xs font-bold transition ${
-        active ? "bg-memory text-memory-ink" : "border border-line bg-white/[0.06] text-ink-secondary"
-      }`}
-    >
-      {label}
-    </button>
-  );
 }
 
 function BasketSection({
@@ -80,15 +63,15 @@ function BasketSection({
   if (basket.length === 0) return null;
 
   return (
-    <div className="flex flex-col gap-2 rounded-chip border border-line bg-white/[0.03] p-3">
+    <div className="flex flex-col gap-2.5 rounded-2xl border border-white/10 bg-white/[0.03] p-4">
       <div className="flex items-center justify-between">
-        <span className="font-mono text-xs font-bold text-ink-secondary">
+        <span className="font-bold text-xs text-white/80">
           Öğün Kalemleri ({basket.length})
         </span>
         <button
           type="button"
           onClick={onClear}
-          className="text-[11px] text-ink-tertiary hover:text-danger"
+          className="text-xs font-semibold text-red-400 hover:underline"
         >
           Temizle
         </button>
@@ -100,7 +83,7 @@ function BasketSection({
             return (
               <li
                 key={item.id}
-                className="flex flex-col gap-2.5 rounded-chip border border-memory/40 bg-white/[0.06] p-3"
+                className="flex flex-col gap-3 rounded-xl border border-white/20 bg-white/[0.06] p-3 text-white"
               >
                 <TextField
                   label="Kalem Adı"
@@ -115,14 +98,14 @@ function BasketSection({
                   <button
                     type="button"
                     onClick={onCancelEdit}
-                    className="rounded-pill border border-line px-3 py-1.5 text-xs text-ink-tertiary hover:text-ink-primary"
+                    className="rounded-full border border-white/20 px-3 py-1.5 text-xs text-white/70 hover:text-white"
                   >
                     Vazgeç
                   </button>
                   <button
                     type="button"
                     onClick={() => onSaveEdit(idx)}
-                    className="rounded-pill bg-memory px-3 py-1.5 text-xs font-bold text-memory-ink"
+                    className="rounded-full bg-white px-3 py-1.5 text-xs font-bold text-black"
                   >
                     Tamam
                   </button>
@@ -134,37 +117,37 @@ function BasketSection({
           return (
             <li
               key={item.id}
-              className="flex items-center justify-between gap-3 rounded bg-white/[0.04] px-2.5 py-2 text-xs"
+              className="flex items-center justify-between gap-3 rounded-xl bg-white/[0.04] px-3 py-2.5 text-xs text-white"
             >
               <div className="flex flex-col min-w-0">
-                <span className="flex items-center gap-1.5">
-                  <ExpandableMealName name={item.name} className="font-semibold text-ink-primary" />
+                <span className="flex items-center gap-1.5 font-bold">
+                  <ExpandableMealName name={item.name} className="text-white" />
                   {item.needsReview && (
                     <span
-                      title="AI bu değerden emin değil, kontrol et"
-                      className="h-1.5 w-1.5 flex-none rounded-full bg-warn"
+                      title="AI bu değerden emin değil"
+                      className="h-2 w-2 flex-none rounded-full bg-amber-400"
                     />
                   )}
                 </span>
                 <NutrientSummaryLine
                   as="span"
                   nutrition={item.nutrition}
-                  className="font-mono text-[10px] text-ink-tertiary"
+                  className="font-mono text-[10px] text-white/50"
                 />
               </div>
-              <div className="flex flex-none items-center gap-2 font-mono text-[11px] text-ink-secondary">
-                <span>{formatKcal(item.nutrition.kcal)}</span>
+              <div className="flex flex-none items-center gap-2 font-mono text-xs">
+                <span className="font-bold text-amber-400">{formatKcal(item.nutrition.kcal)}</span>
                 <button
                   type="button"
                   onClick={() => onStartEdit(idx)}
-                  className="font-sans text-xs font-semibold text-ink-tertiary transition hover:text-memory"
+                  className="text-xs text-white/60 hover:text-white font-sans"
                 >
                   Düzenle
                 </button>
                 <button
                   type="button"
                   onClick={() => onRemove(idx)}
-                  className="text-ink-tertiary transition hover:text-danger"
+                  className="text-white/40 hover:text-red-400 font-sans ml-1"
                 >
                   ✕
                 </button>
@@ -178,25 +161,59 @@ function BasketSection({
         <NutrientSummaryLine
           nutrition={basketTotal}
           kcal="total"
-          className="mt-1 border-t border-line pt-2 font-mono text-xs text-accent"
+          className="mt-1 border-t border-white/10 pt-2 font-mono text-xs text-amber-400 font-bold"
         />
       )}
     </div>
   );
 }
 
-/** Öğün ekleme/düzenleme. editIndex null ise ekleme, değilse o günün o indeksli öğünü. */
+/** Öğün ekleme/düzenleme full screen modal */
 export function MealForm({
   date,
   editIndex,
   onClose,
   initialAIItems,
+  initialCategory,
+  isOpen = true,
 }: {
   date: string;
   editIndex: number | null;
   onClose: () => void;
   initialAIItems?: AIParseItem[];
+  initialCategory?: MealCategory;
+  isOpen?: boolean;
 }) {
+  const isPoppedRef = useRef(false);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    isPoppedRef.current = false;
+    window.history.pushState({ isModal: true, modalType: "add_meal", tab: "daily" }, "");
+
+    const handlePopState = () => {
+      isPoppedRef.current = true;
+      onClose();
+    };
+
+    window.addEventListener("popstate", handlePopState);
+
+    return () => {
+      window.removeEventListener("popstate", handlePopState);
+      if (!isPoppedRef.current && window.history.state?.isModal) {
+        window.history.back();
+      }
+    };
+  }, [isOpen, onClose]);
+
+  const handleUserClose = () => {
+    if (!isPoppedRef.current && window.history.state?.isModal) {
+      window.history.back();
+    } else {
+      onClose();
+    }
+  };
+
   const { aliases, days, goals, setDayMeals } = useData();
   const existing = editIndex === null ? undefined : mealsOf(days, date)[editIndex];
 
@@ -214,10 +231,9 @@ export function MealForm({
     return rankAliases(aliases, usageIndex, ctx);
   }, [aliases, days, goals, mealIndex]);
 
-  // Varsayılan olarak "Hafızadan" seçili gelsin
   const [mode, setMode] = useState<Mode>("alias");
   const [category, setCategory] = useState<MealCategory>(
-    existing?.category ?? categoryForHour(new Date().getHours()),
+    initialCategory ?? existing?.category ?? categoryForHour(new Date().getHours())
   );
   const [name, setName] = useState(
     existing?.label ??
@@ -225,15 +241,11 @@ export function MealForm({
         ? initialAIItems.length > 1
           ? initialAIItems.map((it) => it.name).join(" + ")
           : initialAIItems[0].name
-        : ""),
+        : "")
   );
   const [draft, setDraft] = useState<NutritionDraft>(existing ? toDraft(existing.computed) : EMPTY_DRAFT);
   const [aliasId, setAliasId] = useState(() => initialRankedAliases[0]?.id ?? aliases[0]?.id ?? "");
 
-  // Tembel başlangıç: `usualQuantity` 10 örnek toplayana kadar TÜM geçmişi
-  // tarıyor. Doğrudan çağrılsaydı her render'da (miktar kutusuna yazılan her
-  // harfte) yeniden taranırdı; useState'in fonksiyon biçimi yalnızca ilk
-  // render'da çalıştırır.
   const [grams, setGrams] = useState(() => {
     const first = initialRankedAliases[0] ?? aliases[0];
     if (!first) return "100";
@@ -242,15 +254,12 @@ export function MealForm({
   });
   const [unitName, setUnitName] = useState(GRAM_UNIT.name);
 
-  // Elle modunda girilen münferit kalem adı
   const [manualItemName, setManualItemName] = useState("");
 
-  // AI modu (Faz 2): serbest metin → Gemini → sepete otomatik ekleme.
   const [aiText, setAiText] = useState("");
   const [aiLoading, setAiLoading] = useState(false);
   const [aiError, setAiError] = useState<string | null>(null);
 
-  // Çoklu kalem (sepet) desteği — düzenleme modundaysa mevcut öğünü varsayılan ilk kalem yap
   const [basket, setBasket] = useState<BasketItem[]>(() => {
     if (existing) {
       return [
@@ -268,7 +277,6 @@ export function MealForm({
     return [];
   });
 
-  // Sepetteki bir kalemi satır-içi (inline) düzenleme durumu
   const [editingBasketIndex, setEditingBasketIndex] = useState<number | null>(null);
   const [basketEditDraft, setBasketEditDraft] = useState<{ name: string; nutrition: NutritionDraft }>({
     name: "",
@@ -303,18 +311,23 @@ export function MealForm({
   }
 
   function saveBasketItemEdit(idx: number) {
-    if (editingBasketIndex === null) return;
-    const nextBasket = [...basket];
-    nextBasket[idx] = {
-      ...nextBasket[idx],
-      name: basketEditDraft.name.trim() || nextBasket[idx].name,
-      nutrition: fromDraft(basketEditDraft.nutrition),
-    };
-    setBasket(nextBasket);
+    const item = basket[idx];
+    if (!item) return;
+    const newNut = fromDraft(basketEditDraft.nutrition);
+    const updatedName = basketEditDraft.name.trim() || item.name;
+    setBasket(
+      basket.map((it, i) =>
+        i === idx
+          ? {
+              ...it,
+              name: updatedName,
+              nutrition: newNut,
+              needsReview: false,
+            }
+          : it
+      )
+    );
     setEditingBasketIndex(null);
-    if (existing && name === existing.label) {
-      setName(nextBasket.map((b) => b.name).join(" + "));
-    }
   }
 
   function cancelBasketItemEdit() {
@@ -322,87 +335,101 @@ export function MealForm({
   }
 
   const alias = aliases.find((a) => a.id === aliasId);
-  const availableUnits = unitOptions(alias?.units);
-  const selectedUnitObj = availableUnits.find((u) => u.name === unitName) ?? GRAM_UNIT;
-  const amountValue = parseNum(grams);
-  const calculatedGrams = toGrams(amountValue, selectedUnitObj);
-
-  const scaled: Nutrition | null =
-    alias && calculatedGrams > 0 ? scaleNutrition(alias.nutrition, alias.serving_g, calculatedGrams) : null;
-
-  const currentManualNutrition = fromDraft(draft);
-  // Formdaki alanlardan en az biri doldurulmuş mu — kayıt üzerinden yürür ki
-  // yeni bir besin eklenince burası da kendiliğinden kapsasın.
-  const hasManualNutrition = NUTRIENTS.some((def) => (currentManualNutrition[def.key] ?? 0) > 0);
-
-  // Sepette öğün var ise mevcuttan veya yeni eklenenlerden sumMeals
-  const basketTotal: Nutrition | null =
-    basket.length > 0
-      ? sumMeals(basket.map((b) => ({ id: b.id, label: b.name, computed: b.nutrition })))
-      : null;
-
-  const defaultName =
-    basket.length > 0
-      ? basket.length === 1
-        ? basket[0].name.replace(/\s*\([^)]*\)$/, "")
-        : basket.map((b) => b.name).join(" + ")
-      : mode === "alias"
-        ? name.trim() || alias?.name || ""
-        : name.trim();
-
-  const finalName = name.trim() || defaultName;
-  const finalNutrition =
-    basket.length > 0 ? basketTotal : mode === "alias" ? scaled : hasManualNutrition ? currentManualNutrition : null;
-
-  const canSave = finalName.length > 0 && finalNutrition !== null;
-
-  // Aynı sebeple memo'lu: yalnızca besin/birim/geçmiş değişince yeniden taranır,
-  // miktar kutusuna yazarken değil.
   const estimate = useMemo(
-    () => (alias ? usualQuantity(days, alias.id, unitName, aliases) : null),
-    [alias, days, unitName, aliases],
+    () => (aliasId ? usualQuantity(days, aliasId, unitName, aliases) : null),
+    [days, aliasId, unitName, aliases]
   );
-
-  // `✨ her zamanki` yalnızca kutudaki değer tahminden farklıyken görünsün
-  const isDifferentFromEstimate = estimate !== null && amountValue !== estimate.value;
-  const showServingReset = alias && (grams !== String(alias.serving_g) || unitName !== GRAM_UNIT.name);
-
-  function requestClose() {
-    if (saving) return;
-    onClose();
-  }
+  const availableUnits = useMemo(() => unitOptions(alias?.units), [alias]);
+  const isDifferentFromEstimate =
+    estimate !== null && parseNum(grams) > 0 && Math.abs(parseNum(grams) - estimate.value) > 0.01;
+  const showServingReset = alias !== undefined && parseNum(grams) !== alias.serving_g;
 
   function pickAlias(id: string) {
     setAliasId(id);
-    const a = aliases.find((x) => x.id === id);
-    const defaultUnit = GRAM_UNIT.name;
-    setUnitName(defaultUnit);
-    if (a) {
-      const est = usualQuantity(days, id, defaultUnit, aliases);
-      if (est !== null) {
-        setGrams(String(est.value));
-      } else {
-        setGrams(String(a.serving_g));
+    const picked = aliases.find((a) => a.id === id);
+    if (picked) {
+      setUnitName(GRAM_UNIT.name);
+      const est = usualQuantity(days, id, GRAM_UNIT.name, aliases);
+      setGrams(String(est !== null ? est.value : picked.serving_g));
+    }
+  }
+
+  function handleUnitChange(newUnitName: string) {
+    setUnitName(newUnitName);
+    const currentVal = parseNum(grams);
+    if (alias && currentVal > 0) {
+      const currentUnitObj = availableUnits.find((u) => u.name === unitName) ?? GRAM_UNIT;
+      const currentInGrams = toGrams(currentVal, currentUnitObj);
+      const targetOpt = availableUnits.find((u) => u.name === newUnitName);
+      if (targetOpt && targetOpt.grams > 0) {
+        const newVal = currentInGrams / targetOpt.grams;
+        const rounded = newVal >= 10 ? Math.round(newVal) : Number(newVal.toFixed(1));
+        setGrams(String(rounded));
       }
     }
   }
 
-  function handleUnitChange(newUnit: string) {
-    setUnitName(newUnit);
-    if (alias) {
-      const est = usualQuantity(days, alias.id, newUnit, aliases);
-      if (est !== null) {
-        setGrams(String(est.value));
-      } else if (newUnit === GRAM_UNIT.name) {
-        setGrams(String(alias.serving_g));
-      } else {
-        setGrams("1");
-      }
-    }
-  }
+  const scaled = useMemo(() => {
+    if (!alias) return null;
+    const val = parseNum(grams);
+    if (val <= 0) return null;
+    const selectedUnitObj = availableUnits.find((u) => u.name === unitName) ?? GRAM_UNIT;
+    const totalGrams = toGrams(val, selectedUnitObj);
+    if (totalGrams <= 0) return null;
+    return scaleNutrition(alias.nutrition, alias.serving_g, totalGrams);
+  }, [alias, grams, unitName, availableUnits]);
+
+  const currentManualNutrition = useMemo(() => fromDraft(draft), [draft]);
+  const hasManualNutrition = currentManualNutrition.kcal > 0 || currentManualNutrition.protein > 0;
+
+  const basketTotal = useMemo(() => {
+    if (basket.length === 0) return null;
+    return basket.reduce(
+      (acc, item) => ({
+        kcal: acc.kcal + item.nutrition.kcal,
+        protein: Number((acc.protein + item.nutrition.protein).toFixed(1)),
+        carbs: Number((acc.carbs + item.nutrition.carbs).toFixed(1)),
+        fat: Number((acc.fat + item.nutrition.fat).toFixed(1)),
+        fiber: Number((acc.fiber + item.nutrition.fiber).toFixed(1)),
+        sugar:
+          acc.sugar !== undefined || item.nutrition.sugar !== undefined
+            ? Number(((acc.sugar ?? 0) + (item.nutrition.sugar ?? 0)).toFixed(1))
+            : undefined,
+        satFat:
+          acc.satFat !== undefined || item.nutrition.satFat !== undefined
+            ? Number(((acc.satFat ?? 0) + (item.nutrition.satFat ?? 0)).toFixed(1))
+            : undefined,
+        sodium:
+          acc.sodium !== undefined || item.nutrition.sodium !== undefined
+            ? Math.round((acc.sodium ?? 0) + (item.nutrition.sodium ?? 0))
+            : undefined,
+      }),
+      { kcal: 0, protein: 0, carbs: 0, fat: 0, fiber: 0 } as Nutrition
+    );
+  }, [basket]);
+
+  const finalNutrition = useMemo<Nutrition | null>(() => {
+    if (basket.length > 0) return basketTotal;
+    if (mode === "alias") return scaled;
+    if (mode === "manual") return currentManualNutrition;
+    return null;
+  }, [basket.length, basketTotal, mode, scaled, currentManualNutrition]);
+
+  const finalName = useMemo(() => {
+    const trimmed = name.trim();
+    if (trimmed) return trimmed;
+    if (basket.length > 0) return basket.map((b) => b.name).join(" + ");
+    if (mode === "alias" && alias) return alias.name;
+    if (mode === "manual" && manualItemName.trim()) return manualItemName.trim();
+    return "";
+  }, [name, basket, mode, alias, manualItemName]);
+
+  const canSave = finalName.length > 0 && finalNutrition !== null && (finalNutrition.kcal > 0 || finalNutrition.protein > 0);
 
   function addAliasToBasket() {
-    if (!alias || !scaled || calculatedGrams <= 0) return;
+    if (!alias || !scaled) return;
+    const qtyVal = parseNum(grams);
+    if (qtyVal <= 0) return;
 
     let currentBasket = basket;
     if (existing && currentBasket.length === 0) {
@@ -416,24 +443,13 @@ export function MealForm({
       ];
     }
 
-    // Gramda eski biçim aynen korunur ("150g"); diğer birimlerde araya boşluk
-    // girer ("2 adet") — geçmiş kayıtlarla görsel tutarlılık için.
-    const unitSuffix =
-      selectedUnitObj.name === GRAM_UNIT.name
-        ? `${amountValue}g`
-        : `${amountValue} ${selectedUnitObj.name}`;
     const newItem: BasketItem = {
-      id: `${alias.id}-${Date.now()}-${Math.random()}`,
-      name: `${alias.name} (${unitSuffix})`,
+      id: `alias-${Date.now()}-${Math.random()}`,
+      name: alias.name,
       nutrition: scaled,
-      sources: [
-        {
-          aliasId: alias.id,
-          qty: amountValue,
-          unit: selectedUnitObj.name,
-        },
-      ],
+      sources: [{ aliasId: alias.id, qty: qtyVal, unit: unitName }],
     };
+
     const nextBasket = [...currentBasket, newItem];
     setBasket(nextBasket);
     if (nextBasket.length > 1) {
@@ -517,7 +533,7 @@ export function MealForm({
       }
     } catch (e) {
       setAiError(
-        e instanceof AiError ? aiErrorMessage(e.status, e.message, e.retryAfter) : String((e as Error)?.message ?? e),
+        e instanceof AiError ? aiErrorMessage(e.status, e.message, e.retryAfter) : String((e as Error)?.message ?? e)
       );
     } finally {
       setAiLoading(false);
@@ -528,14 +544,12 @@ export function MealForm({
     if (editingBasketIndex === index) {
       setEditingBasketIndex(null);
     }
-    const next = basket.filter((_, i) => i !== index);
-    setBasket(next);
-    if (next.length === 0) {
-      setName(existing?.label ?? "");
-    } else if (next.length === 1) {
-      setName(next[0].name.replace(/\s*\([^)]*\)$/, ""));
-    } else {
-      setName(next.map((b) => b.name).join(" + "));
+    const nextBasket = basket.filter((_, i) => i !== index);
+    setBasket(nextBasket);
+    if (nextBasket.length === 1) {
+      setName(nextBasket[0].name);
+    } else if (nextBasket.length > 1) {
+      setName(nextBasket.map((b) => b.name).join(" + "));
     }
   }
 
@@ -546,7 +560,6 @@ export function MealForm({
     try {
       const next: MealPayload[] = toPayload(mealsOf(days, date));
 
-      // Sanitize nutrition to prevent negative numbers or NaN
       const cleanNutrition: Nutrition = {
         kcal: Math.max(0, Math.round(finalNutrition.kcal || 0)),
         protein: Math.max(0, Number((finalNutrition.protein || 0).toFixed(1))),
@@ -562,12 +575,12 @@ export function MealForm({
       if (basket.length > 0) {
         const collected = basket.flatMap((b) => b.sources ?? []);
         if (collected.length > 0) entrySources = collected;
-      } else if (mode === "alias" && alias && scaled && calculatedGrams > 0) {
+      } else if (mode === "alias" && alias && scaled && parseNum(grams) > 0) {
         entrySources = [
           {
             aliasId: alias.id,
-            qty: amountValue,
-            unit: selectedUnitObj.name,
+            qty: parseNum(grams),
+            unit: unitName,
           },
         ];
       }
@@ -586,137 +599,206 @@ export function MealForm({
       else next[editIndex] = entry;
 
       await setDayMeals(date, next);
-      onClose();
+      handleUserClose();
     } catch (e) {
       setErr(String((e as Error)?.message ?? e));
       setSaving(false);
     }
   }
 
+  if (!isOpen) return null;
+
   return (
-    <Modal
-      title={editIndex === null ? "Öğün ekle" : "Öğünü düzenle"}
-      onClose={requestClose}
-      footer={<FormActions onCancel={requestClose} onSave={save} saving={saving} disabled={!canSave} />}
+    <div
+      data-modal="true"
+      className="fixed inset-0 z-[9999] flex flex-col bg-[#13121b] text-white h-[100dvh] w-full overflow-hidden animate-fadeIn pad-safe"
     >
-      <div className="mb-4 flex gap-2">
-        <ModeTab active={mode === "alias"} onClick={() => switchMode("alias")} label="Hafızadan" />
-        <ModeTab active={mode === "manual"} onClick={() => switchMode("manual")} label="Elle" />
-        <ModeTab active={mode === "ai"} onClick={() => switchMode("ai")} label="AI ile" />
+      {/* Top Header */}
+      <div className="flex items-center justify-between px-4 py-3.5 sm:px-6 border-b border-white/10 flex-none bg-[#13121b]">
+        <button
+          type="button"
+          onClick={handleUserClose}
+          className="w-10 h-10 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white transition active:scale-95"
+          aria-label="Geri"
+        >
+          <ArrowLeft className="w-5 h-5" />
+        </button>
+
+        <h2 className="text-lg font-extrabold text-white tracking-wide">
+          {editIndex === null ? "Öğün Ekle" : "Öğünü Düzenle"}
+        </h2>
+
+        <div className="w-10 h-10" />
       </div>
 
-      <div className="mb-4 flex gap-1.5 overflow-x-auto">
-        {MEAL_CATEGORIES.map((c) => (
+      {/* Main Scrollable Content */}
+      <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-6">
+        {/* Mode Selector Tabs (Hafızadan | Elle | AI ile) */}
+        <div className="flex rounded-full border border-white/15 bg-white/[0.04] p-1.5 gap-1">
           <button
-            key={c}
             type="button"
-            onClick={() => setCategory(c)}
-            className={`flex-none rounded-pill px-2.5 py-1 text-[11px] font-semibold transition ${
-              category === c ? "bg-accent text-accent-ink" : "border border-line bg-white/[0.06] text-ink-tertiary"
+            onClick={() => switchMode("alias")}
+            className={`flex-1 py-2.5 rounded-full text-xs font-extrabold transition-all active:scale-95 ${
+              mode === "alias" ? "bg-white text-black shadow-md" : "text-white/70 hover:text-white"
             }`}
           >
-            {MEAL_CATEGORY_LABELS[c]}
+            Hafızadan
           </button>
-        ))}
-      </div>
+          <button
+            type="button"
+            onClick={() => switchMode("manual")}
+            className={`flex-1 py-2.5 rounded-full text-xs font-extrabold transition-all active:scale-95 ${
+              mode === "manual" ? "bg-white text-black shadow-md" : "text-white/70 hover:text-white"
+            }`}
+          >
+            Elle
+          </button>
+          <button
+            type="button"
+            onClick={() => switchMode("ai")}
+            className={`flex-1 py-2.5 rounded-full text-xs font-extrabold transition-all active:scale-95 flex items-center justify-center gap-1 ${
+              mode === "ai" ? "bg-white text-black shadow-md" : "text-white/70 hover:text-white"
+            }`}
+          >
+            <Sparkles className="w-3.5 h-3.5 text-amber-400" /> AI ile
+          </button>
+        </div>
 
-      {mode === "alias" ? (
-        aliases.length === 0 ? (
-          <p className="text-sm text-ink-tertiary">Hafızada besin yok. "Elle" sekmesinden ekleyebilirsin.</p>
-        ) : (
-          <div className="flex flex-col gap-3">
-            <div className="flex flex-col gap-2 rounded-chip border border-line bg-white/[0.02] p-3">
-              <AliasPicker
-                aliases={aliases}
-                selectedAliasId={aliasId}
-                onSelectAlias={pickAlias}
-                label="Hafızadan besin seç"
-                mealIndex={mealIndex}
-              />
+        {/* Category Selector Pills (Kahvaltı, Öğle, Akşam, Atıştırmalık) */}
+        <div className="space-y-2">
+          <label className="text-xs font-semibold text-white/80 block">Öğün Kategorisi</label>
+          <div className="flex items-center gap-2 overflow-x-auto no-scrollbar pb-1">
+            {MEAL_CATEGORIES.map((c) => {
+              const isSelected = category === c;
+              return (
+                <button
+                  key={c}
+                  type="button"
+                  onClick={() => setCategory(c)}
+                  className={`px-4 py-2 rounded-full text-xs font-bold transition-all whitespace-nowrap active:scale-95 ${
+                    isSelected
+                      ? "bg-amber-400/20 text-amber-300 border border-amber-400/40 shadow-sm"
+                      : "border border-white/15 bg-white/[0.04] text-white/70 hover:bg-white/10"
+                  }`}
+                >
+                  {MEAL_CATEGORY_LABELS[c]}
+                </button>
+              );
+            })}
+          </div>
+        </div>
 
-              <div className="flex items-end gap-2">
-                <div className="flex-1">
-                  <NumField label="Miktar" value={grams} onChange={setGrams} />
-                </div>
-                <div className="w-28 flex-none">
-                  <label className="block">
-                    <Label>Birim</Label>
+        {/* Form Body depending on Mode */}
+        {mode === "alias" ? (
+          aliases.length === 0 ? (
+            <p className="text-sm text-white/60">Hafızada besin yok. "Elle" sekmesinden ekleyebilirsin.</p>
+          ) : (
+            <div className="space-y-4">
+              <div className="space-y-3 rounded-2xl border border-white/10 bg-white/[0.04] p-4 text-white">
+                <AliasPicker
+                  aliases={aliases}
+                  selectedAliasId={aliasId}
+                  onSelectAlias={pickAlias}
+                  label="Hafızadan besin seç"
+                  mealIndex={mealIndex}
+                />
+
+                <div className="flex items-end gap-2 pt-1">
+                  <div className="flex-1">
+                    <NumField label="Miktar" value={grams} onChange={setGrams} />
+                  </div>
+                  <div className="w-32 flex-none">
+                    <label className="block text-xs text-white/70 font-semibold mb-1">Birim</label>
                     <select
-                      className={fieldCls}
+                      className="w-full px-3 py-2.5 rounded-xl bg-black/40 border border-white/10 text-xs font-bold text-white focus:outline-none focus:border-amber-400"
                       value={unitName}
                       onChange={(e) => handleUnitChange(e.target.value)}
                     >
                       {availableUnits.map((u) => (
-                        <option key={u.name} value={u.name} className="bg-elevated-2">
+                        <option key={u.name} value={u.name} className="bg-[#191825] text-white">
                           {u.name}
                         </option>
                       ))}
                     </select>
-                  </label>
+                  </div>
                 </div>
-                {basket.length > 0 && (
-                  <button
-                    type="button"
-                    onClick={addAliasToBasket}
-                    disabled={!scaled}
-                    className="rounded-chip border border-memory bg-memory/10 px-3 py-2 text-xs font-bold text-memory transition hover:bg-memory hover:text-memory-ink disabled:opacity-40"
-                  >
-                    + Listeye ekle
-                  </button>
+
+                {(isDifferentFromEstimate || showServingReset) && (
+                  <div className="flex items-center justify-between text-xs pt-1">
+                    {isDifferentFromEstimate && estimate ? (
+                      <button
+                        type="button"
+                        onClick={() => setGrams(String(estimate.value))}
+                        className="flex items-center gap-1 text-amber-400 hover:underline font-medium"
+                      >
+                        <span>✨ her zamanki {estimate.value} {unitName}</span>
+                      </button>
+                    ) : (
+                      <span />
+                    )}
+                    {showServingReset && alias && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setUnitName(GRAM_UNIT.name);
+                          setGrams(String(alias.serving_g));
+                        }}
+                        className="text-[11px] text-white/40 hover:text-white font-mono"
+                      >
+                        porsiyon: {alias.serving_g}g
+                      </button>
+                    )}
+                  </div>
                 )}
               </div>
 
-              {(isDifferentFromEstimate || showServingReset) && (
-                <div className="flex items-center justify-between text-xs pt-0.5 px-0.5">
-                  {isDifferentFromEstimate && estimate ? (
-                    <button
-                      type="button"
-                      onClick={() => setGrams(String(estimate.value))}
-                      className="flex items-center gap-1.5 text-memory hover:underline font-medium text-left"
-                    >
-                      <span>✨</span>
-                      <span>
-                        her zamanki {estimate.value} {unitName} · son {estimate.sampleCount} kayıt
-                      </span>
-                    </button>
-                  ) : (
-                    <span />
-                  )}
-                  {showServingReset && alias && (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setUnitName(GRAM_UNIT.name);
-                        setGrams(String(alias.serving_g));
-                      }}
-                      className="text-[11px] text-ink-tertiary hover:text-ink-primary font-mono transition"
-                    >
-                      porsiyon: {alias.serving_g} g
-                    </button>
-                  )}
-                </div>
-              )}
+              <BasketSection
+                basket={basket}
+                editingIndex={editingBasketIndex}
+                onStartEdit={startEditingBasketItem}
+                onSaveEdit={saveBasketItemEdit}
+                onCancelEdit={cancelBasketItemEdit}
+                onRemove={removeFromBasket}
+                onClear={() => {
+                  setEditingBasketIndex(null);
+                  setBasket([]);
+                }}
+                editDraft={basketEditDraft}
+                setEditDraft={setBasketEditDraft}
+                basketTotal={basketTotal}
+              />
 
-              {scaled && basket.length === 0 && (
-                <NutrientSummaryLine
-                  nutrition={scaled}
-                  kcal="inline"
-                  className="font-mono text-[11px] text-ink-secondary"
+              <TextField
+                label={basket.length > 0 ? "Birleşik Öğün Adı" : "Öğün Adı"}
+                value={name}
+                onChange={setName}
+                placeholder={basket.length > 0 ? basket.map((b) => b.name).join(" + ") : alias?.name ?? ""}
+              />
+            </div>
+          )
+        ) : mode === "manual" ? (
+          <div className="space-y-4">
+            <div className="space-y-3 rounded-2xl border border-white/10 bg-white/[0.04] p-4 text-white">
+              {basket.length > 0 && (
+                <TextField
+                  label="Eklenecek Kalem Adı (opsiyonel)"
+                  value={manualItemName}
+                  onChange={setManualItemName}
+                  placeholder="örn. Ekstra Yoğurt"
                 />
               )}
+              <NutritionFields draft={draft} onChange={setDraft} />
 
-              {basket.length === 0 && (
-                <div className="flex justify-end pt-1">
-                  <button
-                    type="button"
-                    onClick={addAliasToBasket}
-                    disabled={!scaled}
-                    className="flex items-center gap-1 text-xs font-semibold text-memory hover:underline disabled:opacity-40"
-                  >
-                    + Kalem ekle (çoklu malzeme)
-                  </button>
-                </div>
-              )}
+              <div className="flex justify-end pt-1">
+                <button
+                  type="button"
+                  onClick={addManualToBasket}
+                  disabled={!hasManualNutrition}
+                  className="rounded-full bg-white/10 border border-white/20 px-4 py-2 text-xs font-bold text-white transition hover:bg-white/20 disabled:opacity-40"
+                >
+                  + {basket.length > 0 ? "Listeye ekle" : "Kalem ekle (çoklu malzeme)"}
+                </button>
+              </div>
             </div>
 
             <BasketSection
@@ -736,124 +818,86 @@ export function MealForm({
             />
 
             <TextField
-              label={basket.length > 0 ? "Birleşik Öğün Adı" : "Öğün adı"}
+              label={basket.length > 0 ? "Birleşik Öğün Adı" : "Öğün Adı"}
               value={name}
               onChange={setName}
-              placeholder={basket.length > 0 ? basket.map((b) => b.name).join(" + ") : alias?.name ?? ""}
+              placeholder={basket.length > 0 ? basket.map((b) => b.name).join(" + ") : "örn. Yulaf + protein + süt"}
             />
           </div>
-        )
-      ) : mode === "manual" ? (
-        <div className="flex flex-col gap-3">
-          <div className="flex flex-col gap-3 rounded-chip border border-line bg-white/[0.02] p-3">
-            {basket.length > 0 && (
-              <TextField
-                label="Eklenecek Kalem Adı (opsiyonel)"
-                value={manualItemName}
-                onChange={setManualItemName}
-                placeholder="örn. Ekstra Yoğurt"
+        ) : (
+          <div className="space-y-4">
+            <div className="space-y-3 rounded-2xl border border-white/10 bg-white/[0.04] p-4 text-white">
+              <label className="block space-y-1.5">
+                <span className="text-xs font-semibold text-white/80 block">Ne yedin? (AI Analiz)</span>
+                <textarea
+                  className="w-full min-h-[96px] p-3 rounded-xl bg-black/40 border border-white/10 text-sm text-white focus:outline-none focus:border-amber-400 resize-none"
+                  value={aiText}
+                  onChange={(e) => setAiText(e.target.value)}
+                  placeholder="örn. 200g tavuk göğsü ve 1 kase pilav"
+                />
+              </label>
+
+              <div className="flex justify-end pt-1">
+                <button
+                  type="button"
+                  onClick={analyzeWithAI}
+                  disabled={aiLoading || !aiText.trim()}
+                  className="rounded-full bg-amber-400 px-5 py-2 text-xs font-extrabold text-black transition hover:bg-amber-300 disabled:opacity-40 flex items-center gap-1.5"
+                >
+                  <Sparkles className="w-3.5 h-3.5" />
+                  {aiLoading ? "Analiz ediliyor…" : "Analiz Et"}
+                </button>
+              </div>
+
+              {aiError && <ErrorText>{aiError}</ErrorText>}
+            </div>
+
+            {aiLoading ? (
+              <div className="flex flex-col gap-2">
+                <Skeleton className="h-16 w-full rounded-2xl" />
+                <Skeleton className="h-16 w-full rounded-2xl" />
+              </div>
+            ) : (
+              <BasketSection
+                basket={basket}
+                editingIndex={editingBasketIndex}
+                onStartEdit={startEditingBasketItem}
+                onSaveEdit={saveBasketItemEdit}
+                onCancelEdit={cancelBasketItemEdit}
+                onRemove={removeFromBasket}
+                onClear={() => {
+                  setEditingBasketIndex(null);
+                  setBasket([]);
+                }}
+                editDraft={basketEditDraft}
+                setEditDraft={setBasketEditDraft}
+                basketTotal={basketTotal}
               />
             )}
-            <NutritionFields draft={draft} onChange={setDraft} />
 
-            <div className="flex justify-end">
-              <button
-                type="button"
-                onClick={addManualToBasket}
-                disabled={!hasManualNutrition}
-                className={
-                  basket.length > 0
-                    ? "rounded-chip border border-memory bg-memory/10 px-3 py-1.5 text-xs font-bold text-memory transition hover:bg-memory hover:text-memory-ink disabled:opacity-40"
-                    : "flex items-center gap-1 text-xs font-semibold text-memory hover:underline disabled:opacity-40"
-                }
-              >
-                + {basket.length > 0 ? "Listeye ekle" : "Kalem ekle (çoklu malzeme)"}
-              </button>
-            </div>
-          </div>
-
-          <BasketSection
-            basket={basket}
-            editingIndex={editingBasketIndex}
-            onStartEdit={startEditingBasketItem}
-            onSaveEdit={saveBasketItemEdit}
-            onCancelEdit={cancelBasketItemEdit}
-            onRemove={removeFromBasket}
-            onClear={() => {
-              setEditingBasketIndex(null);
-              setBasket([]);
-            }}
-            editDraft={basketEditDraft}
-            setEditDraft={setBasketEditDraft}
-            basketTotal={basketTotal}
-          />
-
-          <TextField
-            label={basket.length > 0 ? "Birleşik Öğün Adı" : "Öğün adı"}
-            value={name}
-            onChange={setName}
-            placeholder={basket.length > 0 ? basket.map((b) => b.name).join(" + ") : "örn. Yulaf + protein + süt"}
-          />
-        </div>
-      ) : (
-        <div className="flex flex-col gap-3">
-          <label className="block">
-            <Label>Ne yedin?</Label>
-            <textarea
-              className={`${fieldCls} min-h-[88px] resize-none`}
-              value={aiText}
-              onChange={(e) => setAiText(e.target.value)}
-              placeholder="örn. 200g tavuk göğsü ve 1 kase pilav"
+            <TextField
+              label={basket.length > 0 ? "Birleşik Öğün Adı" : "Öğün Adı"}
+              value={name}
+              onChange={setName}
+              placeholder={basket.length > 0 ? basket.map((b) => b.name).join(" + ") : ""}
             />
-          </label>
-
-          <div className="flex justify-end">
-            <button
-              type="button"
-              onClick={analyzeWithAI}
-              disabled={aiLoading || !aiText.trim()}
-              className="rounded-chip bg-memory px-3 py-1.5 text-xs font-bold text-memory-ink transition hover:opacity-90 disabled:opacity-40"
-            >
-              {aiLoading ? "Analiz ediliyor…" : "Analiz Et"}
-            </button>
           </div>
+        )}
 
-          {aiError && <ErrorText>{aiError}</ErrorText>}
+        {err && <ErrorText>{err}</ErrorText>}
+      </div>
 
-          {aiLoading ? (
-            <div className="flex flex-col gap-2">
-              <Skeleton className="h-16 w-full rounded-chip" />
-              <Skeleton className="h-16 w-full rounded-chip" />
-            </div>
-          ) : (
-            <BasketSection
-              basket={basket}
-              editingIndex={editingBasketIndex}
-              onStartEdit={startEditingBasketItem}
-              onSaveEdit={saveBasketItemEdit}
-              onCancelEdit={cancelBasketItemEdit}
-              onRemove={removeFromBasket}
-              onClear={() => {
-                setEditingBasketIndex(null);
-                setBasket([]);
-              }}
-              editDraft={basketEditDraft}
-              setEditDraft={setBasketEditDraft}
-              basketTotal={basketTotal}
-            />
-          )}
-
-          <TextField
-            label={basket.length > 0 ? "Birleşik Öğün Adı" : "Öğün adı"}
-            value={name}
-            onChange={setName}
-            placeholder={basket.length > 0 ? basket.map((b) => b.name).join(" + ") : ""}
-          />
-        </div>
-      )}
-
-      {err && <ErrorText>{err}</ErrorText>}
-    </Modal>
+      {/* Full Width Bottom Save Button */}
+      <div className="p-4 sm:p-5 border-t border-white/10 bg-[#13121b] flex-none">
+        <button
+          type="button"
+          onClick={save}
+          disabled={!canSave || saving}
+          className="w-full py-4 rounded-full bg-white text-black font-extrabold text-base hover:bg-white/90 transition shadow-xl active:scale-[0.98] disabled:opacity-40 flex items-center justify-center gap-2"
+        >
+          <Check className="w-5 h-5" /> {saving ? "Kaydediliyor…" : "Kaydet"}
+        </button>
+      </div>
+    </div>
   );
 }
-
