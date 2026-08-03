@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Search, Camera, Plus, Utensils, BookOpen, Trash2, Edit3, X } from "lucide-react";
 import { AliasForm } from "../components/AliasForm";
 import { RecipeBuilder } from "../components/RecipeBuilder";
@@ -11,12 +11,21 @@ import { useData } from "../lib/data";
 import { parseTemplatesConfig } from "../lib/templates";
 import type { Alias } from "../types";
 
-export function AliasPage() {
+export function AliasPage({ resetKey = 0 }: { resetKey?: number }) {
   const { aliases, removeAlias, config, updateConfig } = useData();
   const [editingAlias, setEditingAlias] = useState<Alias | null | undefined>(undefined);
   const [editingRecipe, setEditingRecipe] = useState<Alias | null | undefined>(undefined);
   const [showScan, setShowScan] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+
+  useEffect(() => {
+    if (resetKey > 0) {
+      setEditingAlias(undefined);
+      setEditingRecipe(undefined);
+      setShowScan(false);
+      setSearchQuery("");
+    }
+  }, [resetKey]);
   const [err, setErr] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
