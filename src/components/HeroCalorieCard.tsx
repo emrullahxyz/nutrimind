@@ -80,7 +80,7 @@ export function HeroCalorieCard({
   return (
     <div
       onClick={onToggleRatio}
-      className="relative overflow-hidden rounded-card border border-calBorder bg-calCard p-5 shadow-card backdrop-blur-md cursor-pointer select-none transition-all duration-200 hover:border-white/20 active:scale-[0.98] min-h-[176px] flex flex-col justify-center group"
+      className="relative overflow-hidden rounded-card border border-calBorder bg-calCard p-4 sm:p-5 shadow-card backdrop-blur-md cursor-pointer select-none transition-all duration-200 hover:border-white/20 active:scale-[0.98] h-[184px] sm:h-[188px] flex flex-col justify-center group"
       title="Tıklayarak Tüketilen/Kalan görünümünü değiştir"
     >
       {/* Background glow */}

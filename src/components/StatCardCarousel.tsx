@@ -67,7 +67,7 @@ export function StatCardCarousel({
         {/* Sayfa 2: Sağlık Skoru Kartı + Mikro Kartları */}
         <div className="w-full flex-none snap-center flex flex-col gap-4">
           <HealthScoreCard total={total} goal={goal} />
-          <MicroCardGrid total={total} goal={goal} />
+          <MicroCardGrid total={total} goal={goal} showRatio={showRatio} onToggleRatio={onToggleRatio} />
         </div>
       </div>
 

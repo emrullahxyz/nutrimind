@@ -13,7 +13,7 @@ export function HealthScoreCard({ total, goal }: HealthScoreCardProps) {
   const barColor = score < 4 ? "bg-danger" : score < 7 ? "bg-warn" : "bg-accent";
 
   return (
-    <div className="relative overflow-hidden rounded-card border border-calBorder bg-calCard p-5 shadow-card backdrop-blur-md min-h-[176px] flex flex-col justify-between select-none transition-all duration-200">
+    <div className="relative overflow-hidden rounded-card border border-calBorder bg-calCard p-4 sm:p-5 shadow-card backdrop-blur-md h-[184px] sm:h-[188px] flex flex-col justify-between select-none transition-all duration-200">
       {/* Background soft glow */}
       <div className="pointer-events-none absolute -left-10 -top-10 h-40 w-40 rounded-full bg-accent/10 blur-2xl" />
 

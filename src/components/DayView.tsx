@@ -134,7 +134,7 @@ export function DayView({
   const [err, setErr] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [microsOpen, setMicrosOpen] = usePersistedBool(PREF.microsOpen, false);
-  const [showRatio, setShowRatio] = useState(false);
+  const [showRatio, setShowRatio] = useState(true);
   const toggleRatio = () => setShowRatio(!showRatio);
 
   async function handleSaveFromNutritionSheet(updatedMeal: MealItem, index: number) {
