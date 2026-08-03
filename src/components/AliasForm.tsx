@@ -30,7 +30,7 @@ export function AliasForm({ initial, onClose }: { initial: Alias | null; onClose
 
   useEffect(() => {
     isPoppedRef.current = false;
-    window.history.pushState({ isModal: true, modalType: "alias_form" }, "");
+    window.history.pushState({ isModal: true, modalType: "alias_form", tab: "aliases" }, "");
 
     const handlePopState = () => {
       isPoppedRef.current = true;
@@ -42,17 +42,16 @@ export function AliasForm({ initial, onClose }: { initial: Alias | null; onClose
     return () => {
       window.removeEventListener("popstate", handlePopState);
       if (!isPoppedRef.current && window.history.state?.isModal) {
-        window.history.back();
+        window.history.replaceState({ tab: "aliases" }, "");
       }
     };
   }, [onClose]);
 
   const handleUserClose = () => {
     if (!isPoppedRef.current && window.history.state?.isModal) {
-      window.history.back();
-    } else {
-      onClose();
+      window.history.replaceState({ tab: "aliases" }, "");
     }
+    onClose();
   };
 
   const { upsertAlias } = useData();

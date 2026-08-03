@@ -201,17 +201,16 @@ export function MealForm({
     return () => {
       window.removeEventListener("popstate", handlePopState);
       if (!isPoppedRef.current && window.history.state?.isModal) {
-        window.history.back();
+        window.history.replaceState({ tab: "daily" }, "");
       }
     };
   }, [isOpen, onClose]);
 
   const handleUserClose = () => {
     if (!isPoppedRef.current && window.history.state?.isModal) {
-      window.history.back();
-    } else {
-      onClose();
+      window.history.replaceState({ tab: "daily" }, "");
     }
+    onClose();
   };
 
   const { aliases, days, goals, setDayMeals } = useData();

@@ -49,7 +49,7 @@ export function RecipeBuilder({
 
   useEffect(() => {
     isPoppedRef.current = false;
-    window.history.pushState({ isModal: true, modalType: "recipe_builder" }, "");
+    window.history.pushState({ isModal: true, modalType: "recipe_builder", tab: "aliases" }, "");
 
     const handlePopState = () => {
       isPoppedRef.current = true;
@@ -61,17 +61,16 @@ export function RecipeBuilder({
     return () => {
       window.removeEventListener("popstate", handlePopState);
       if (!isPoppedRef.current && window.history.state?.isModal) {
-        window.history.back();
+        window.history.replaceState({ tab: "aliases" }, "");
       }
     };
   }, [onClose]);
 
   const handleUserClose = () => {
     if (!isPoppedRef.current && window.history.state?.isModal) {
-      window.history.back();
-    } else {
-      onClose();
+      window.history.replaceState({ tab: "aliases" }, "");
     }
+    onClose();
   };
 
   const { aliases, upsertAlias } = useData();

@@ -39,17 +39,16 @@ export function NutritionSheet({ isOpen, onClose, meal, onSave, onDelete }: Prop
     return () => {
       window.removeEventListener("popstate", handlePopState);
       if (!isPoppedRef.current && window.history.state?.isModal) {
-        window.history.back();
+        window.history.replaceState({ tab: "daily" }, "");
       }
     };
   }, [isOpen, meal, onClose]);
 
   const handleUserClose = () => {
     if (!isPoppedRef.current && window.history.state?.isModal) {
-      window.history.back();
-    } else {
-      onClose();
+      window.history.replaceState({ tab: "daily" }, "");
     }
+    onClose();
   };
 
   if (!isOpen || !meal) return null;
