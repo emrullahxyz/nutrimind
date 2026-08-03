@@ -9,6 +9,10 @@ const THRESHOLD = 64;
  *  `onRefresh` kendi içinde try/catch'lenir — başarısız bir yenileme
  *  uygulamanın global `stale` durumuna düşürülmemeli, sadece burada kısa bir
  *  hata gösterilir. */
+function getScrollTop(): number {
+  return window.scrollY || window.pageYOffset || document.documentElement.scrollTop || document.body.scrollTop || 0;
+}
+
 export function usePullToRefresh(onRefresh: () => Promise<void>) {
   const [pulling, setPulling] = useState(false);
   const [distance, setDistance] = useState(0);
@@ -20,8 +24,7 @@ export function usePullToRefresh(onRefresh: () => Promise<void>) {
 
   useEffect(() => {
     function onTouchStart(e: TouchEvent) {
-      const scrollY = window.scrollY || document.documentElement.scrollTop || 0;
-      if (scrollY > 0 || refreshing) {
+      if (getScrollTop() > 2 || refreshing) {
         armed.current = false;
         return;
       }
@@ -32,8 +35,7 @@ export function usePullToRefresh(onRefresh: () => Promise<void>) {
     function onTouchMove(e: TouchEvent) {
       if (!armed.current || startY.current === null) return;
 
-      const scrollY = window.scrollY || document.documentElement.scrollTop || 0;
-      if (scrollY > 0) {
+      if (getScrollTop() > 2) {
         armed.current = false;
         setPulling(false);
         setDistance(0);
