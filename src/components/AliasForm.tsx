@@ -18,7 +18,7 @@ import { useData } from "../lib/data";
 import { parseNum } from "../lib/nutrition";
 import { OFF_SERVING_G } from "../lib/off";
 import type { OffFood } from "../lib/off";
-import type { Alias, AliasUnit } from "../types";
+import type { Alias, AliasUnit, Nutrition } from "../types";
 
 interface UnitDraft {
   id: string;
@@ -85,9 +85,21 @@ export function AliasForm({ initial, onClose }: { initial: Alias | null; onClose
   }
 
   async function save() {
-    if (!canSave) return;
+    if (!canSave || saving) return;
     setSaving(true);
     setErr(null);
+
+    const rawNut = fromDraft(draft);
+    const cleanNutrition: Nutrition = {
+      kcal: Math.max(0, Math.round(rawNut.kcal || 0)),
+      protein: Math.max(0, Number((rawNut.protein || 0).toFixed(1))),
+      carbs: Math.max(0, Number((rawNut.carbs || 0).toFixed(1))),
+      fat: Math.max(0, Number((rawNut.fat || 0).toFixed(1))),
+      fiber: Math.max(0, Number((rawNut.fiber || 0).toFixed(1))),
+      sugar: rawNut.sugar !== undefined ? Math.max(0, Number((rawNut.sugar || 0).toFixed(1))) : undefined,
+      satFat: rawNut.satFat !== undefined ? Math.max(0, Number((rawNut.satFat || 0).toFixed(1))) : undefined,
+      sodium: rawNut.sodium !== undefined ? Math.max(0, Math.round(rawNut.sodium || 0)) : undefined,
+    };
 
     const validUnits: AliasUnit[] = [];
     const seenNames = new Set<string>(["g"]);
@@ -107,10 +119,10 @@ export function AliasForm({ initial, onClose }: { initial: Alias | null; onClose
       await upsertAlias({
         ...(initial ? { id: initial.id } : {}),
         triggers: triggerList,
-        name: name.trim(),
-        brand: brand.trim() || null,
-        serving_g: parseNum(servingG),
-        nutrition: fromDraft(draft),
+        name: name.trim().slice(0, 100),
+        brand: brand.trim().slice(0, 100) || null,
+        serving_g: Math.max(1, parseNum(servingG)),
+        nutrition: cleanNutrition,
         units: validUnits,
         ...(barcode.trim() ? { barcode: barcode.trim() } : {}),
         ...(offId.trim() ? { off_id: offId.trim() } : {}),

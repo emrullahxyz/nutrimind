@@ -65,21 +65,35 @@ export function ExerciseModal({ isOpen, onClose, date }: Props) {
     }
   };
 
+  const [busy, setBusy] = useState(false);
+
   if (!isOpen) return null;
 
   const handleSaveExercise = async (newEx: Omit<Exercise, "id">) => {
-    const exWithId: Exercise = {
-      ...newEx,
-      id: `ex_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
-      loggedAt: new Date().toLocaleTimeString("tr-TR", { hour: "2-digit", minute: "2-digit" }),
-    };
-    const updated = [...currentExercises, exWithId];
-    await updateConfig(configKey, { exercises: updated });
+    if (busy) return;
+    setBusy(true);
+    try {
+      const exWithId: Exercise = {
+        ...newEx,
+        id: `ex_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+        loggedAt: new Date().toLocaleTimeString("tr-TR", { hour: "2-digit", minute: "2-digit" }),
+      };
+      const updated = [...currentExercises, exWithId];
+      await updateConfig(configKey, { exercises: updated });
+    } finally {
+      setBusy(false);
+    }
   };
 
   const handleDelete = async (id: string) => {
-    const updated = currentExercises.filter((e) => e.id !== id);
-    await updateConfig(configKey, { exercises: updated });
+    if (busy) return;
+    setBusy(true);
+    try {
+      const updated = currentExercises.filter((e) => e.id !== id);
+      await updateConfig(configKey, { exercises: updated });
+    } finally {
+      setBusy(false);
+    }
   };
 
   const handleCustomSubmit = (e: React.FormEvent) => {
@@ -130,6 +144,7 @@ export function ExerciseModal({ isOpen, onClose, date }: Props) {
                 return (
                   <button
                     key={p.name}
+                    disabled={busy}
                     onClick={() =>
                       handleSaveExercise({
                         name: p.name,
@@ -138,7 +153,7 @@ export function ExerciseModal({ isOpen, onClose, date }: Props) {
                         caloriesBurned: p.caloriesBurned,
                       })
                     }
-                    className="flex items-center gap-2.5 p-3 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/5 hover:border-orange-500/30 text-left transition-all group active:scale-95"
+                    className="flex items-center gap-2.5 p-3 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/5 hover:border-orange-500/30 text-left transition-all group active:scale-95 disabled:opacity-40"
                   >
                     <div className="w-8 h-8 rounded-xl bg-orange-500/10 group-hover:bg-orange-500/20 text-orange-400 flex items-center justify-center shrink-0">
                       <Icon className="w-4 h-4" />
@@ -208,7 +223,7 @@ export function ExerciseModal({ isOpen, onClose, date }: Props) {
 
             <button
               type="submit"
-              disabled={!name.trim() || calories <= 0}
+              disabled={!name.trim() || calories <= 0 || busy}
               className="w-full py-2.5 rounded-xl bg-orange-500 hover:bg-orange-600 disabled:opacity-50 font-semibold text-xs text-white flex items-center justify-center gap-1.5 transition-all shadow-lg shadow-orange-500/20 active:scale-95"
             >
               <Plus className="w-4 h-4" /> Egzersizi Kaydet
