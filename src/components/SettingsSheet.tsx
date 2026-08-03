@@ -1,4 +1,26 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import {
+  User,
+  Sliders,
+  Globe,
+  Target,
+  Clock,
+  Scale,
+  Pill,
+  Bell,
+  FileText,
+  LayoutGrid,
+  Download,
+  HelpCircle,
+  Mail,
+  ShieldCheck,
+  RefreshCw,
+  LogOut,
+  ChevronRight,
+  ArrowLeft,
+  Sparkles,
+  Check,
+} from "lucide-react";
 import { Modal } from "./Modal";
 import { GoalsForm } from "./GoalsForm";
 import { ExportModal } from "./ExportModal";
@@ -6,69 +28,635 @@ import { ReportView } from "./ReportView";
 import { SupplementSettings } from "./SupplementSettings";
 import { useData } from "../lib/data";
 
-type SettingsTab = "goals" | "supplements" | "data" | "report";
+type SubView =
+  | null
+  | "goals"
+  | "supplements"
+  | "data"
+  | "report"
+  | "profile"
+  | "preferences"
+  | "fasting"
+  | "weight"
+  | "reminders"
+  | "widgets"
+  | "feedback"
+  | "privacy";
 
-export function SettingsSheet({ onClose }: { onClose: () => void }) {
-  const [tab, setTab] = useState<SettingsTab>("goals");
+interface MenuItemProps {
+  icon: React.ComponentType<{ className?: string }>;
+  iconBg?: string;
+  iconColor?: string;
+  title: string;
+  subtitle?: string;
+  badge?: string;
+  onClick: () => void;
+  isDanger?: boolean;
+}
+
+function MenuItem({
+  icon: Icon,
+  iconBg = "bg-white/10",
+  iconColor = "text-white",
+  title,
+  subtitle,
+  badge,
+  onClick,
+  isDanger,
+}: MenuItemProps) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="group flex w-full items-center justify-between gap-3 px-4 py-3 text-left transition hover:bg-white/[0.04] active:bg-white/[0.08]"
+    >
+      <div className="flex items-center gap-3 min-w-0">
+        <div
+          className={`flex h-9 w-9 flex-none items-center justify-center rounded-xl ${iconBg} ${iconColor} transition-transform group-hover:scale-105`}
+        >
+          <Icon className="h-4 w-4" />
+        </div>
+        <div className="truncate">
+          <div
+            className={`text-xs sm:text-sm font-semibold truncate ${
+              isDanger ? "text-red-400" : "text-white"
+            }`}
+          >
+            {title}
+          </div>
+          {subtitle && (
+            <div className="text-[11px] text-white/50 truncate mt-0.5">{subtitle}</div>
+          )}
+        </div>
+      </div>
+
+      <div className="flex items-center gap-2 flex-none">
+        {badge && (
+          <span className="rounded-full bg-white/10 px-2.5 py-0.5 text-[10px] font-bold text-white/80">
+            {badge}
+          </span>
+        )}
+        <ChevronRight className="h-4 w-4 text-white/30 transition-transform group-hover:translate-x-0.5 group-hover:text-white/60" />
+      </div>
+    </button>
+  );
+}
+
+function SectionGroup({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <div className="flex flex-col gap-1.5">
+      <h4 className="px-1 text-[11px] font-bold tracking-wider text-white/40 uppercase">
+        {title}
+      </h4>
+      <div className="divide-y divide-white/[0.06] overflow-hidden rounded-2xl border border-white/10 bg-[#141520]">
+        {children}
+      </div>
+    </div>
+  );
+}
+
+export function SettingsSheet({ onClose, embedded = false }: { onClose: () => void; embedded?: boolean }) {
+  const [subView, setSubView] = useState<SubView>(null);
+  const [cacheStatus, setCacheStatus] = useState<string | null>(null);
   const dataCtx = useData();
 
-  return (
-    <Modal title="Ayarlar" onClose={onClose}>
-      <div className="flex flex-col gap-4">
-        {/* Pill Sekmeler */}
-        <div className="no-print -mx-1 flex gap-2 overflow-x-auto px-1 pb-1">
-          <button
-            type="button"
-            onClick={() => setTab("goals")}
-            className={`flex-none rounded-pill px-3.5 py-1.5 text-xs font-bold transition ${
-              tab === "goals"
-                ? "bg-memory text-memory-ink"
-                : "border border-line bg-white/[0.06] text-ink-secondary hover:text-ink-primary"
-            }`}
-          >
-            Hedefler
-          </button>
-          <button
-            type="button"
-            onClick={() => setTab("supplements")}
-            className={`flex-none rounded-pill px-3.5 py-1.5 text-xs font-bold transition ${
-              tab === "supplements"
-                ? "bg-memory text-memory-ink"
-                : "border border-line bg-white/[0.06] text-ink-secondary hover:text-ink-primary"
-            }`}
-          >
-            Takviyeler
-          </button>
-          <button
-            type="button"
-            onClick={() => setTab("data")}
-            className={`flex-none rounded-pill px-3.5 py-1.5 text-xs font-bold transition ${
-              tab === "data"
-                ? "bg-memory text-memory-ink"
-                : "border border-line bg-white/[0.06] text-ink-secondary hover:text-ink-primary"
-            }`}
-          >
-            Veri
-          </button>
-          <button
-            type="button"
-            onClick={() => setTab("report")}
-            className={`flex-none rounded-pill px-3.5 py-1.5 text-xs font-bold transition ${
-              tab === "report"
-                ? "bg-memory text-memory-ink"
-                : "border border-line bg-white/[0.06] text-ink-secondary hover:text-ink-primary"
-            }`}
-          >
-            Rapor
-          </button>
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const savedScrollTopRef = useRef<number>(0);
+
+  // Geri dönüldüğünde kaydırma yüksekliğini (scrollTop) hassas şekilde geri yükle
+  useEffect(() => {
+    if (subView === null && scrollRef.current && savedScrollTopRef.current > 0) {
+      const targetScroll = savedScrollTopRef.current;
+      requestAnimationFrame(() => {
+        if (scrollRef.current) {
+          scrollRef.current.scrollTop = targetScroll;
+        }
+      });
+    }
+  }, [subView]);
+
+  // Android Donanım Geri Butonu & Geri Kaydırma (Swipe Back) Entegrasyonu
+  useEffect(() => {
+    const handlePopState = (e: PopStateEvent) => {
+      const state = e.state;
+      if (state && state.tab === "settings") {
+        setSubView(state.subView || null);
+      }
+    };
+
+    window.addEventListener("popstate", handlePopState);
+    return () => {
+      window.removeEventListener("popstate", handlePopState);
+    };
+  }, []);
+
+  const openSubView = (target: SubView) => {
+    if (scrollRef.current) {
+      savedScrollTopRef.current = scrollRef.current.scrollTop;
+    }
+    window.history.pushState({ tab: "settings", subView: target }, "");
+    setSubView(target);
+    if (scrollRef.current) {
+      scrollRef.current.scrollTop = 0;
+    }
+  };
+
+  const goBack = () => {
+    window.history.back();
+  };
+
+  // Profil Bilgileri State
+  const [userName, setUserName] = useState(() => localStorage.getItem("nutrimind_username") || "Emrullah Bayram");
+  const [userAge, setUserAge] = useState(() => localStorage.getItem("nutrimind_userage") || "29");
+  const [userWeight, setUserWeight] = useState(() => localStorage.getItem("nutrimind_userweight") || "78");
+  const [userHeight, setUserHeight] = useState(() => localStorage.getItem("nutrimind_userheight") || "178");
+  const [savedProfileMsg, setSavedProfileMsg] = useState(false);
+
+  const handleSaveProfile = () => {
+    localStorage.setItem("nutrimind_username", userName);
+    localStorage.setItem("nutrimind_userage", userAge);
+    localStorage.setItem("nutrimind_userweight", userWeight);
+    localStorage.setItem("nutrimind_userheight", userHeight);
+    setSavedProfileMsg(true);
+    setTimeout(() => setSavedProfileMsg(false), 2000);
+  };
+
+  const handleClearCache = async () => {
+    if ("serviceWorker" in navigator) {
+      const registrations = await navigator.serviceWorker.getRegistrations();
+      for (const registration of registrations) {
+        await registration.unregister();
+      }
+    }
+    if ("caches" in window) {
+      const cacheNames = await caches.keys();
+      for (const name of cacheNames) {
+        await caches.delete(name);
+      }
+    }
+    setCacheStatus("Önbellek ve Service Worker temizlendi!");
+    setTimeout(() => {
+      window.location.reload();
+    }, 1200);
+  };
+
+  const mainBody = (
+    <div ref={scrollRef} className="flex flex-col gap-5">
+        {/* ==================== CAL AI ANA PROFİL & AYARLAR LAYOUT ==================== */}
+        <div className={subView === null ? "flex flex-col gap-5" : "hidden"}>
+          <>
+            {/* 1. ÜST KULLANICI PROFİL KARTI */}
+            <div
+              onClick={() => openSubView("profile")}
+              className="group relative flex cursor-pointer items-center justify-between overflow-hidden rounded-3xl border border-white/15 bg-gradient-to-br from-[#1b1c2b] via-[#141522] to-[#0e0f18] p-4 shadow-lg transition hover:border-white/25 hover:from-[#222436]"
+            >
+              <div className="flex items-center gap-3.5">
+                <div className="relative flex h-13 w-13 flex-none items-center justify-center rounded-2xl bg-gradient-to-tr from-accent via-purple-500 to-sky-400 text-lg font-extrabold text-white shadow-md">
+                  {userName
+                    .split(" ")
+                    .map((n) => n[0])
+                    .join("")
+                    .toUpperCase()
+                    .slice(0, 2) || "EB"}
+                  <span className="absolute -bottom-0.5 -right-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-emerald-500 ring-2 ring-[#0e0f18]">
+                    <Check className="h-2.5 w-2.5 text-white" />
+                  </span>
+                </div>
+                <div>
+                  <div className="text-base font-extrabold text-white group-hover:text-accent transition-colors">
+                    {userName}
+                  </div>
+                  <div className="text-xs text-white/50">
+                    {userAge ? `${userAge} yaşında` : "Nutrimind Üyesi"} • {userWeight} kg
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-1.5 rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs font-bold text-white/80 transition group-hover:bg-white/10">
+                <span>Düzenle</span>
+                <ChevronRight className="h-3.5 w-3.5 text-white/40" />
+              </div>
+            </div>
+
+            {/* 2. PROMO / SPOTLIGHT BANNER */}
+            <div className="relative overflow-hidden rounded-2xl border border-accent/30 bg-gradient-to-r from-accent/20 via-purple-500/10 to-transparent p-3.5 shadow-md">
+              <div className="flex items-start gap-3">
+                <div className="flex h-9 w-9 flex-none items-center justify-center rounded-xl bg-accent text-white shadow-sm">
+                  <Sparkles className="h-5 w-5 text-black" />
+                </div>
+                <div className="flex-1">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-extrabold text-white">
+                      Nutrimind Pro Hafıza
+                    </span>
+                    <span className="rounded-full bg-accent/20 px-2 py-0.5 text-[9px] font-black text-accent border border-accent/30">
+                      AKTİF
+                    </span>
+                  </div>
+                  <p className="mt-0.5 text-[11px] text-white/70">
+                    Tüm öğünleriniz ve besin alias'larınız SQLite yerel hafızasında anında senkronize olur.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* 3. GRUPLANDIRILMIŞ KARTLAR (CAL AI STİLİ) */}
+
+            {/* HESAP & KİŞİSEL */}
+            <SectionGroup title="Hesap & Profil">
+              <MenuItem
+                icon={User}
+                iconBg="bg-blue-500/15"
+                iconColor="text-blue-400"
+                title="Profil Bilgileri"
+                subtitle="İsim, yaş, boy ve kilo verileri"
+                onClick={() => openSubView("profile")}
+              />
+              <MenuItem
+                icon={Sliders}
+                iconBg="bg-purple-500/15"
+                iconColor="text-purple-400"
+                title="Uygulama Tercihleri"
+                subtitle="Koyu tema, makro görünümü"
+                onClick={() => openSubView("preferences")}
+              />
+              <MenuItem
+                icon={Globe}
+                iconBg="bg-emerald-500/15"
+                iconColor="text-emerald-400"
+                title="Dil / Language"
+                badge="Türkçe (TR)"
+                onClick={() => openSubView("preferences")}
+              />
+            </SectionGroup>
+
+            {/* HEDEFLER & TAKİP */}
+            <SectionGroup title="Hedefler & Takip">
+              <MenuItem
+                icon={Target}
+                iconBg="bg-accent/20"
+                iconColor="text-accent"
+                title="Beslenme Hedeflerini Düzenle"
+                subtitle="Günlük Kcal, Protein, Karbonhidrat, Yağ & Lif"
+                onClick={() => openSubView("goals")}
+              />
+              <MenuItem
+                icon={Pill}
+                iconBg="bg-amber-500/15"
+                iconColor="text-amber-400"
+                title="Takviye & Supplement Takibi"
+                subtitle="Protein tozu, kreatin, vitamin vb."
+                onClick={() => openSubView("supplements")}
+              />
+              <MenuItem
+                icon={Clock}
+                iconBg="bg-indigo-500/15"
+                iconColor="text-indigo-400"
+                title="Aralıklı Oruç (Intermittent Fasting)"
+                subtitle="16:8 oruç penceresi ve beslenme saati"
+                onClick={() => openSubView("fasting")}
+              />
+              <MenuItem
+                icon={Scale}
+                iconBg="bg-rose-500/15"
+                iconColor="text-rose-400"
+                title="Kilo & Vücut Geçmişi"
+                subtitle="Mevcut kilo ve hedef grafikler"
+                onClick={() => openSubView("weight")}
+              />
+              <MenuItem
+                icon={Bell}
+                iconBg="bg-sky-500/15"
+                iconColor="text-sky-400"
+                title="Takip Hatırlatıcıları"
+                subtitle="Öğün ve su içme bildirimleri"
+                onClick={() => openSubView("reminders")}
+              />
+            </SectionGroup>
+
+            {/* WIDGET'LAR & RAPORLAR */}
+            <SectionGroup title="Raporlar & Widget'lar">
+              <MenuItem
+                icon={FileText}
+                iconBg="bg-teal-500/15"
+                iconColor="text-teal-400"
+                title="Özet PDF Raporu Oluştur"
+                subtitle="Haftalık / aylık beslenme dökümü"
+                onClick={() => openSubView("report")}
+              />
+              <MenuItem
+                icon={LayoutGrid}
+                iconBg="bg-violet-500/15"
+                iconColor="text-violet-400"
+                title="Ana Ekran Widget Rehberi"
+                subtitle="Hızlı öğün ekleme widget'ları"
+                onClick={() => openSubView("widgets")}
+              />
+            </SectionGroup>
+
+            {/* VERİ & YASAL */}
+            <SectionGroup title="Veri & Destek">
+              <MenuItem
+                icon={Download}
+                iconBg="bg-cyan-500/15"
+                iconColor="text-cyan-400"
+                title="Veri Yedekleme & İçe/Dışa Aktar"
+                subtitle="JSON yedekleme, CSV veri aktarımı"
+                onClick={() => openSubView("data")}
+              />
+              <MenuItem
+                icon={HelpCircle}
+                iconBg="bg-yellow-500/15"
+                iconColor="text-yellow-400"
+                title="Özellik İste & Geri Bildirim"
+                subtitle="Geliştiriciye talep gönder"
+                onClick={() => openSubView("feedback")}
+              />
+              <MenuItem
+                icon={Mail}
+                iconBg="bg-pink-500/15"
+                iconColor="text-pink-400"
+                title="Destek & İletişim"
+                subtitle="support@emrullah.xyz"
+                onClick={() => window.open("mailto:support@emrullah.xyz")}
+              />
+              <MenuItem
+                icon={ShieldCheck}
+                iconBg="bg-emerald-500/15"
+                iconColor="text-emerald-400"
+                title="Gizlilik & Veri Güvenliği"
+                subtitle="SQLite yerel şifreli saklama"
+                onClick={() => openSubView("privacy")}
+              />
+            </SectionGroup>
+
+            {/* HESAP İŞLEMLERİ */}
+            <SectionGroup title="Hesap İşlemleri">
+              <MenuItem
+                icon={RefreshCw}
+                iconBg="bg-blue-500/15"
+                iconColor="text-blue-400"
+                title="Önbelleği & Uygulamayı Yenile"
+                subtitle="PWA service worker önbelleğini temizler"
+                onClick={handleClearCache}
+              />
+              <MenuItem
+                icon={LogOut}
+                iconBg="bg-red-500/15"
+                iconColor="text-red-400"
+                title="Oturumu Kapat & Temizle"
+                subtitle="Uygulamadan güvenli çıkış yap"
+                isDanger
+                onClick={() => {
+                  if (confirm("Uygulama yerel oturumu temizlenecek. Devam edilsin mi?")) {
+                    window.location.reload();
+                  }
+                }}
+              />
+            </SectionGroup>
+
+            {cacheStatus && (
+              <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-3 text-center text-xs font-bold text-emerald-400">
+                {cacheStatus}
+              </div>
+            )}
+
+            {/* FOOTER VERSİYON BİLGİSİ */}
+            <div className="mt-2 text-center pb-2">
+              <div className="text-[11px] font-bold text-white/30 tracking-widest uppercase">
+                NUTRIMIND VERSION 1.0.0 (PWA)
+              </div>
+              <div className="text-[10px] text-white/20 mt-0.5">
+                Emrullah Bayram • Oracle Cloud SQLite Backend
+              </div>
+            </div>
+          </>
         </div>
 
-        {/* Tab İçerikleri */}
-        {tab === "goals" && <GoalsForm onClose={onClose} embedded />}
-        {tab === "supplements" && <SupplementSettings />}
-        {tab === "data" && <ExportModal data={dataCtx} refresh={dataCtx.refresh} onClose={onClose} embedded />}
-        {tab === "report" && <ReportView data={dataCtx} />}
+        {/* ==================== SUB-VIEW BİLEŞENLERİ ==================== */}
+        {subView !== null && (
+          <div className="flex flex-col gap-4">
+            {/* Alt Ekran Başlığı & Geri Butonu */}
+            <div className="flex items-center gap-2 border-b border-white/10 pb-3">
+              <button
+                type="button"
+                onClick={goBack}
+                className="flex items-center gap-1.5 rounded-xl border border-white/15 bg-white/5 px-3 py-1.5 text-xs font-bold text-white transition hover:bg-white/10 active:scale-95"
+              >
+                <ArrowLeft className="h-4 w-4" />
+                <span>Geri</span>
+              </button>
+              <h3 className="text-sm font-bold text-white/90">
+                {subView === "goals" && "Beslenme Hedefleri"}
+                {subView === "supplements" && "Takviye & Supplementler"}
+                {subView === "data" && "Veri Yedekleme & İçe/Dışa Aktar"}
+                {subView === "report" && "Özet PDF Raporu"}
+                {subView === "profile" && "Profil Bilgileri"}
+                {subView === "preferences" && "Uygulama Tercihleri"}
+                {subView === "fasting" && "Aralıklı Oruç (IF)"}
+                {subView === "weight" && "Kilo & Vücut Takibi"}
+                {subView === "reminders" && "Hatırlatıcılar"}
+                {subView === "widgets" && "Ana Ekran Widget Rehberi"}
+                {subView === "feedback" && "Özellik İste & Geri Bildirim"}
+                {subView === "privacy" && "Gizlilik & Veri Güvenliği"}
+              </h3>
+            </div>
+
+        {/* 2. TAKVİYELER */}
+        {subView === "supplements" && <SupplementSettings />}
+
+        {/* 3. VERİ YEDEKLEME & YÜKLEME */}
+        {subView === "data" && (
+          <ExportModal
+            data={dataCtx}
+            refresh={dataCtx.refresh}
+            onClose={onClose}
+            embedded
+          />
+        )}
+
+        {/* 4. ÖZET PDF RAPORU */}
+        {subView === "report" && <ReportView data={dataCtx} />}
+
+        {/* 5. PROFİL BİLGİLERİ DÜZENLEME */}
+        {subView === "profile" && (
+          <div className="flex flex-col gap-4">
+            <div className="rounded-2xl border border-white/10 bg-[#141520] p-4 flex flex-col gap-3">
+              <div>
+                <label className="text-xs font-bold text-white/70 block mb-1">
+                  Ad Soyad
+                </label>
+                <input
+                  type="text"
+                  value={userName}
+                  onChange={(e) => setUserName(e.target.value)}
+                  className="w-full rounded-xl border border-white/15 bg-white/5 px-3.5 py-2.5 text-sm font-semibold text-white focus:border-accent focus:outline-none"
+                />
+              </div>
+
+              <div className="grid grid-cols-3 gap-2.5">
+                <div>
+                  <label className="text-xs font-bold text-white/70 block mb-1">
+                    Yaş
+                  </label>
+                  <input
+                    type="number"
+                    value={userAge}
+                    onChange={(e) => setUserAge(e.target.value)}
+                    className="w-full rounded-xl border border-white/15 bg-white/5 px-3 py-2 text-sm font-semibold text-white focus:border-accent focus:outline-none text-center"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs font-bold text-white/70 block mb-1">
+                    Kilo (kg)
+                  </label>
+                  <input
+                    type="number"
+                    value={userWeight}
+                    onChange={(e) => setUserWeight(e.target.value)}
+                    className="w-full rounded-xl border border-white/15 bg-white/5 px-3 py-2 text-sm font-semibold text-white focus:border-accent focus:outline-none text-center"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs font-bold text-white/70 block mb-1">
+                    Boy (cm)
+                  </label>
+                  <input
+                    type="number"
+                    value={userHeight}
+                    onChange={(e) => setUserHeight(e.target.value)}
+                    className="w-full rounded-xl border border-white/15 bg-white/5 px-3 py-2 text-sm font-semibold text-white focus:border-accent focus:outline-none text-center"
+                  />
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={handleSaveProfile}
+                className="mt-2 flex items-center justify-center gap-2 rounded-xl bg-accent py-2.5 text-sm font-extrabold text-black transition hover:bg-accent/90 active:scale-98"
+              >
+                <Check className="h-4 w-4" />
+                <span>Profili Kaydet</span>
+              </button>
+
+              {savedProfileMsg && (
+                <div className="text-center text-xs font-bold text-emerald-400">
+                  ✓ Profil bilgileri güncellendi!
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* 6. ARALIKLI ORUÇ (IF) */}
+        {subView === "fasting" && (
+          <div className="flex flex-col gap-3 rounded-2xl border border-white/10 bg-[#141520] p-4">
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-indigo-500/20 text-indigo-400">
+                <Clock className="h-5 w-5" />
+              </div>
+              <div>
+                <div className="text-sm font-extrabold text-white">16:8 Aralıklı Oruç Düzeni</div>
+                <div className="text-xs text-white/50">Beslenme Penceresi: 12:00 - 20:00</div>
+              </div>
+            </div>
+            <p className="text-xs text-white/70 leading-relaxed mt-1">
+              Oruç pencereniz boyunca (20:00 - 12:00) su, sade kahve ve kalorisiz çaylar serbesttir. Öğün takibinizi Nutrimind günlük akışından yapabilirsiniz.
+            </p>
+          </div>
+        )}
+
+        {/* 7. KİLO & VÜCUT TAKİBİ */}
+        {subView === "weight" && (
+          <div className="flex flex-col gap-3 rounded-2xl border border-white/10 bg-[#141520] p-4">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-bold text-white/70">Mevcut Kilo</span>
+              <span className="text-base font-extrabold text-white">{userWeight} kg</span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-bold text-white/70">Hedef Kilo</span>
+              <span className="text-base font-extrabold text-accent">75 kg</span>
+            </div>
+            <div className="h-2 w-full rounded-full bg-white/10 overflow-hidden mt-1">
+              <div className="h-full bg-accent w-3/4 rounded-full" />
+            </div>
+          </div>
+        )}
+
+        {/* 8. WIDGET REHBERİ */}
+        {subView === "widgets" && (
+          <div className="flex flex-col gap-3 rounded-2xl border border-white/10 bg-[#141520] p-4">
+            <div className="text-sm font-extrabold text-white">PWA Hızlı Erişim Widget'ı</div>
+            <p className="text-xs text-white/70 leading-relaxed">
+              Android cihazınızda Nutrimind PWA uygulamasını açıp ana ekrana eklediğinizde, telefon uygulamasını tek tıkla açıp hızlıca yemek taraması veya öğün eklemesi yapabilirsiniz.
+            </p>
+          </div>
+        )}
+
+        {/* 9. DESTEK & BİLDİRİM */}
+        {subView === "feedback" && (
+          <div className="flex flex-col gap-3 rounded-2xl border border-white/10 bg-[#141520] p-4">
+            <div className="text-sm font-extrabold text-white">Geri Bildirim & Özellik Talebi</div>
+            <p className="text-xs text-white/70">
+              Yeni bir besin hafızası veya uygulama özelliği talep etmek için doğrudan e-posta gönderebilirsiniz.
+            </p>
+            <a
+              href="mailto:support@emrullah.xyz?subject=Nutrimind%20Onerisi"
+              className="mt-1 flex items-center justify-center gap-2 rounded-xl bg-white/10 py-2.5 text-xs font-bold text-white hover:bg-white/20"
+            >
+              <Mail className="h-4 w-4" />
+              <span>Geliştiriciye E-Posta Gönder</span>
+            </a>
+          </div>
+        )}
+
+        {/* 10. GİZLİLİK & GÜVENLİK */}
+        {subView === "privacy" && (
+          <div className="flex flex-col gap-3 rounded-2xl border border-white/10 bg-[#141520] p-4 text-xs text-white/70 leading-relaxed">
+            <div className="text-sm font-extrabold text-white mb-1">Gizlilik ve Veri Saklama</div>
+            Nutrimind verileriniz doğrudan kendi Oracle Cloud sunucunuz üzerindeki şifreli SQLite veritabanında saklanır. 3. parti hiçbir izleyici veya reklam ağı kullanılmaz.
+          </div>
+        )}
+
+        {/* 11. UYGULAMA TERCİHLERİ */}
+        {subView === "preferences" && (
+          <div className="flex flex-col gap-3 rounded-2xl border border-white/10 bg-[#141520] p-4">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-bold text-white">Koyu Tema (Dark Mode)</span>
+              <span className="rounded-full bg-emerald-500/20 px-2.5 py-0.5 text-[10px] font-bold text-emerald-400">
+                Varsayılan
+              </span>
+            </div>
+            <div className="flex items-center justify-between border-t border-white/5 pt-3">
+              <span className="text-xs font-bold text-white">Otomatik Lif / Mikro Takibi</span>
+              <span className="rounded-full bg-accent/20 px-2.5 py-0.5 text-[10px] font-bold text-accent">
+                Aktif
+              </span>
+            </div>
+          </div>
+        )}
+
+        {/* 12. HATIRLATICILAR */}
+        {subView === "reminders" && (
+          <div className="flex flex-col gap-3 rounded-2xl border border-white/10 bg-[#141520] p-4">
+            <div className="text-sm font-extrabold text-white">Öğün Takip Hatırlatıcıları</div>
+            <p className="text-xs text-white/70">
+              Günlük hedefinizi tamamlamak için akşam saat 20:00'de hatırlatıcı bildirimler aktif haldedir.
+            </p>
+          </div>
+        )}
+          </div>
+        )}
       </div>
+  );
+
+  if (embedded) {
+    return mainBody;
+  }
+
+  return (
+    <Modal title={subView ? "Ayarlar" : "Ayarlar & Profil"} onClose={onClose} fullScreen contentRef={scrollRef}>
+      {mainBody}
     </Modal>
   );
 }

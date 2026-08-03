@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Flame } from "lucide-react";
 import { DailyPage } from "./pages/DailyPage";
 import { HistoryPage } from "./pages/HistoryPage";
@@ -14,15 +14,99 @@ import { calculateStreak } from "./lib/streak";
 
 function MainContent() {
   const [tab, setTab] = useState<TabType>("daily");
-  const [settingsOpen, setSettingsOpen] = useState(false);
   const [triggerAddMeal, setTriggerAddMeal] = useState(false);
   const [triggerScan, setTriggerScan] = useState(false);
   const [globalScanOpen, setGlobalScanOpen] = useState(false);
   const [globalAddMealOpen, setGlobalAddMealOpen] = useState(false);
   const [globalExerciseOpen, setGlobalExerciseOpen] = useState(false);
+  const [showExitToast, setShowExitToast] = useState(false);
+  const lastBackPressRef = useRef<number>(0);
 
   const { days } = useData();
   const streak = calculateStreak(days);
+
+  // Tab değiştirme sarmalayıcısı (history state ekler)
+  const handleTabChange = (newTab: TabType) => {
+    if (newTab !== tab) {
+      window.history.pushState({ tab: newTab }, "");
+      setTab(newTab);
+    }
+  };
+
+  const tabRef = useRef(tab);
+  tabRef.current = tab;
+
+  const modalsRef = useRef({ globalAddMealOpen, globalScanOpen, globalExerciseOpen });
+  modalsRef.current = { globalAddMealOpen, globalScanOpen, globalExerciseOpen };
+
+  // Sayfa ilk yüklendiğinde kök durumu YALNIZCA BİR KEZ tanımla (sekme değişiminde ezilmesini önler)
+  useEffect(() => {
+    window.history.replaceState({ tab: "daily", isRoot: true }, "");
+  }, []);
+
+  // Uygulama geneli Android Geri Tuşu & Geri Kaydırma (Double Back to Exit) Mantığı
+  useEffect(() => {
+    const handlePopState = (e: PopStateEvent) => {
+      const { globalAddMealOpen, globalScanOpen, globalExerciseOpen } = modalsRef.current;
+
+      // 1. Eğer açık bir global modal/sheet varsa kapat
+      if (globalAddMealOpen) {
+        setGlobalAddMealOpen(false);
+        return;
+      }
+      if (globalScanOpen) {
+        setGlobalScanOpen(false);
+        return;
+      }
+      if (globalExerciseOpen) {
+        setGlobalExerciseOpen(false);
+        return;
+      }
+
+      const state = e.state;
+      const currentTab = tabRef.current;
+
+      // 2. Tarayıcı geçmişinde hedef sekme bilgisi varsa o sekmeye geç
+      if (state && state.tab) {
+        // Yalnızca en kök (isRoot) olan daily durumuna gelinirse VE halihazırda daily sekmesindeysek çift basma uyarısı ver
+        if (state.tab === "daily" && state.isRoot && currentTab === "daily") {
+          const now = Date.now();
+          if (now - lastBackPressRef.current < 2000) {
+            // 2 saniye içinde 2. geri kaydırma! Çıkışa izin ver.
+          } else {
+            // 1. geri kaydırma! Toast uyarısı göster ve kök durumu yeniden push et
+            lastBackPressRef.current = now;
+            window.history.pushState({ tab: "daily", isRoot: true }, "");
+            setShowExitToast(true);
+            setTimeout(() => setShowExitToast(false), 2000);
+          }
+          return;
+        }
+
+        // Normal sekme geçişi: Sadece sekmeyi güncelle
+        setTab(state.tab);
+        return;
+      }
+
+      // 3. Geçmiş state bulunamazsa ve halihazırda "daily" sekmesindeysek
+      if (currentTab === "daily") {
+        const now = Date.now();
+        if (now - lastBackPressRef.current < 2000) {
+          // Çıkış
+        } else {
+          lastBackPressRef.current = now;
+          window.history.pushState({ tab: "daily", isRoot: true }, "");
+          setShowExitToast(true);
+          setTimeout(() => setShowExitToast(false), 2000);
+        }
+      } else {
+        setTab("daily");
+      }
+    };
+
+    window.addEventListener("popstate", handlePopState);
+    return () => window.removeEventListener("popstate", handlePopState);
+  }, []);
 
   const handleAddMeal = () => {
     if (tab === "daily") {
@@ -68,24 +152,22 @@ function MainContent() {
           />
         ) : tab === "history" ? (
           <HistoryPage />
-        ) : (
+        ) : tab === "aliases" ? (
           <AliasPage />
+        ) : (
+          <SettingsSheet onClose={() => handleTabChange("daily")} embedded />
         )}
       </main>
 
       <BottomNav
         activeTab={tab}
-        onTabChange={setTab}
-        onOpenSettings={() => setSettingsOpen(true)}
+        onTabChange={handleTabChange}
+        onOpenSettings={() => handleTabChange("settings")}
         onAddMeal={handleAddMeal}
         onScan={handleScan}
-        onSavedFoods={() => setTab("aliases")}
+        onSavedFoods={() => handleTabChange("aliases")}
         onOpenExercise={() => setGlobalExerciseOpen(true)}
       />
-
-      {settingsOpen && (
-        <SettingsSheet onClose={() => setSettingsOpen(false)} />
-      )}
 
       {globalAddMealOpen && (
         <MealForm date={todayISO()} editIndex={null} onClose={() => setGlobalAddMealOpen(false)} />
@@ -100,6 +182,13 @@ function MainContent() {
         onClose={() => setGlobalExerciseOpen(false)}
         date={todayISO()}
       />
+
+      {/* Çift Geri Basma / Çıkış Toast Uyarısı */}
+      {showExitToast && (
+        <div className="fixed bottom-20 left-1/2 z-[99999] -translate-x-1/2 rounded-full border border-white/20 bg-[#121319]/95 px-4 py-2.5 text-center text-xs font-extrabold text-white shadow-2xl backdrop-blur-md anim-fadeup">
+          Uygulamadan çıkmak için bir kez daha geri kaydırın / geri tuşuna basın
+        </div>
+      )}
     </>
   );
 }
