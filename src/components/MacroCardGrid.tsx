@@ -31,7 +31,7 @@ function SmallDonut({ pct, color, icon: Icon }: { pct: number; color: string; ic
           cy={size / 2}
           r={r}
           fill="none"
-          stroke="rgba(255,255,255,0.08)"
+          stroke="#2A283A"
           strokeWidth={stroke}
         />
         <circle
