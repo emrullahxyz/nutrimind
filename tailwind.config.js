@@ -4,31 +4,31 @@ export default {
   theme: {
     extend: {
       colors: {
-        // CAL AI design tokens
-        app: "#0D0D14",
-        calCard: "rgba(255,255,255,0.05)",
-        calBorder: "rgba(255,255,255,0.08)",
-        line: "rgba(255,255,255,0.08)",
-        "elevated-2": "#15161a",
+        // Cal AI Soft Velvet Dark design tokens (Screenshot Replica)
+        app: "#171622",
+        calCard: "#22202E",
+        calBorder: "rgba(255,255,255,0.06)",
+        line: "rgba(255,255,255,0.06)",
+        "elevated-2": "#22202E",
         ink: {
           primary: "#FFFFFF",
-          secondary: "#8E8E93",
-          tertiary: "#636366",
-          faint: "#52525b",
+          secondary: "#A5A2B8", // Soft lavender-gray muted label text
+          tertiary: "#7A7791",
+          faint: "#56546B",
         },
-        protein: "#FF6B8A", // pink-red
-        carb: "#FFB84D", // orange-gold
-        fat: "#5B8DEF", // blue
-        fab: "#4DD4E6", // cyan/turquoise
-        streak: { bg: "rgba(255,255,255,0.1)", text: "#FFFFFF" },
-        memory: "#a78bfa", // mor (lif / hafıza)
-        "memory-deep": "#8b6df2", // memory gradyanının koyu ucu
-        "memory-ink": "#1e1b4b", // memory zemin üstü koyu metin
-        micro: "#94a3b8", // mikro besinlerin ORTAK sessiz tonu
-        accent: "#4DD4E6",
-        "accent-ink": "#092e38",
-        warn: "#FFB84D",
-        danger: "#ff8080",
+        protein: "#E57373", // Soft pastel dusty rose
+        carb: "#FFB74D", // Soft pastel amber gold
+        fat: "#64B5F6", // Soft pastel ice blue
+        fab: "#FFFFFF",
+        streak: { bg: "#282537", text: "#FFFFFF" },
+        memory: "#B388FF",
+        "memory-deep": "#7C4DFF",
+        "memory-ink": "#1E1B4B",
+        micro: "#A5A2B8",
+        accent: "#FFB74D",
+        "accent-ink": "#1A1926",
+        warn: "#FFB74D",
+        danger: "#E57373",
       },
       fontFamily: {
         sans: ["Manrope", "system-ui", "sans-serif"],
@@ -39,7 +39,7 @@ export default {
       },
       borderRadius: {
         chip: "12px",
-        card: "20px",
+        card: "24px",
         pill: "22px",
         phone: "42px",
       },

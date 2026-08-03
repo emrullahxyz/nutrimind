@@ -614,10 +614,10 @@ export function MealForm({
   return (
     <div
       data-modal="true"
-      className="fixed inset-0 z-[9999] flex flex-col bg-[#13121b] text-white h-[100dvh] w-full overflow-hidden animate-fadeIn pad-safe"
+      className="fixed inset-0 z-[9999] flex flex-col bg-[#171622] text-white h-[100dvh] w-full overflow-hidden animate-fadeIn pad-safe"
     >
       {/* Top Header */}
-      <div className="flex items-center justify-between px-4 py-3.5 sm:px-6 border-b border-white/10 flex-none bg-[#13121b]">
+      <div className="flex items-center justify-between px-4 py-3.5 sm:px-6 border-b border-white/10 flex-none bg-[#171622]">
         <button
           type="button"
           onClick={handleUserClose}
@@ -903,7 +903,7 @@ export function MealForm({
       </div>
 
       {/* Full Width Bottom Save Button */}
-      <div className="p-4 sm:p-5 border-t border-white/10 bg-[#13121b] flex-none">
+      <div className="p-4 sm:p-5 border-t border-white/10 bg-[#171622] flex-none">
         <button
           type="button"
           onClick={save}

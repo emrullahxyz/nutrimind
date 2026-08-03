@@ -79,26 +79,23 @@ export function HeroCalorieCard({
   return (
     <div
       onClick={onToggleRatio}
-      className="relative overflow-hidden rounded-[24px] border border-white/10 bg-white/[0.04] p-4 sm:p-5 shadow-card backdrop-blur-md cursor-pointer select-none transition-all duration-200 hover:border-white/20 active:scale-[0.99] flex items-center justify-between gap-4 h-[180px] sm:h-[188px] group"
+      className="relative overflow-hidden rounded-[24px] bg-[#22202E] p-5 shadow-card backdrop-blur-md cursor-pointer select-none transition-all duration-200 hover:bg-[#282637] active:scale-[0.99] flex items-center justify-between gap-4 h-[180px] sm:h-[188px] group"
       title="Tıklayarak Tüketilen/Kalan görünümünü değiştir"
     >
-      {/* Background Glow */}
-      <div className="pointer-events-none absolute -left-10 -top-10 h-40 w-40 rounded-full bg-amber-400/10 blur-2xl" />
-
       {/* Left Column: Title, Compact Number, Subtext, Exercise Button */}
       <div className="flex flex-col justify-center min-w-0 flex-1">
         <DirectionalTextSwap
           mode={mode}
           layout="label-first"
           label={
-            <div className="flex items-center gap-1.5 text-xs font-extrabold uppercase tracking-wider text-white/70 mb-1">
-              <Flame className="h-4 w-4 text-amber-400 fill-amber-400/20" />
+            <div className="flex items-center gap-1.5 text-xs font-semibold text-[#A5A2B8] mb-1.5">
+              <Flame className="h-4 w-4 text-[#FFB74D]" />
               <span>{subtitleLabel}</span>
             </div>
           }
           value={
-            <div className="text-2xl sm:text-3xl font-black text-white tracking-tight tabular-nums leading-none">
-              {displayBigVal} <span className="text-xs font-bold text-white/50 font-mono">kcal</span>
+            <div className="text-3xl sm:text-4xl font-black text-white tracking-tight tabular-nums leading-none">
+              {displayBigVal} <span className="text-xs font-bold text-[#A5A2B8] font-mono">kcal</span>
             </div>
           }
           subtext={subtextNode}
@@ -112,9 +109,9 @@ export function HeroCalorieCard({
                 e.stopPropagation();
                 onOpenExercise();
               }}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/10 hover:bg-white/20 text-xs font-bold text-white border border-white/15 transition active:scale-95"
+              className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-[#2A283A] hover:bg-[#343248] text-xs font-bold text-white transition active:scale-95"
             >
-              <Dumbbell className="w-3.5 h-3.5 text-orange-400" />
+              <Dumbbell className="w-3.5 h-3.5 text-[#FFB74D]" />
               <span>Egzersiz Ekle</span>
             </button>
           </div>

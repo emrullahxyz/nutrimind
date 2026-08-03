@@ -100,12 +100,12 @@ export function BottomNav({
 
       <nav
         ref={containerRef}
-        className="fixed bottom-0 left-0 right-0 z-40 border-t border-calBorder bg-[#0D0D14]/90 backdrop-blur-xl"
+        className="fixed bottom-0 left-0 right-0 z-40 border-t border-white/10 bg-[#1A1926]/95 backdrop-blur-xl"
       >
         <div className="relative mx-auto flex max-w-md items-center justify-between px-3 py-2 sm:max-w-lg">
-          {/* 2x2 FAB Popup Menu - Geçerli Tailwind "bottom-20" pozisyonu */}
+          {/* 2x2 FAB Popup Menu */}
           {open && (
-            <div className="anim-zoom absolute bottom-20 right-3 mb-2 grid w-64 grid-cols-2 gap-2.5 rounded-3xl border border-white/15 bg-[#121319]/98 p-3 shadow-float backdrop-blur-2xl z-50">
+            <div className="anim-zoom absolute bottom-20 right-3 mb-2 grid w-64 grid-cols-2 gap-2.5 rounded-3xl border border-white/15 bg-[#1F1E2C]/98 p-3 shadow-float backdrop-blur-2xl z-50">
               <FabMenuItem
                 icon={Footprints}
                 label="Egzersiz Kaydet"
@@ -145,7 +145,6 @@ export function BottomNav({
           <div className="flex flex-1 items-center justify-around mr-2">
             {tabs.map((tab) => {
               const isActive = tab.id === activeTab;
-              const isSettings = tab.id === "settings";
               const Icon = tab.icon;
 
               return (
@@ -156,15 +155,16 @@ export function BottomNav({
                     setOpen(false);
                     onTabChange(tab.id as TabType);
                   }}
-                  className={`flex flex-col items-center justify-center py-1 px-3 transition-colors duration-200 ${
-                    isActive ? "text-white font-bold" : "text-[#8E8E93] hover:text-white/80 font-normal"
+                  className={`flex flex-col items-center justify-center py-1 px-3.5 transition-all duration-200 ${
+                    isActive
+                      ? "text-white font-extrabold bg-[#282638] rounded-full py-1.5"
+                      : "text-[#A5A2B8] hover:text-white font-medium"
                   }`}
                 >
-                  <Icon className="h-5 w-5" />
-                  <span className="mt-1 text-[10px] tracking-wide">{tab.label}</span>
-                  {isActive && (
-                    <span className="mt-0.5 h-1 w-1 rounded-full bg-[#4DD4E6] shadow-[0_0_6px_#4DD4E6]" />
-                  )}
+                  <div className="flex items-center gap-1.5">
+                    <Icon className="h-4.5 w-4.5" />
+                    <span className="text-xs font-bold tracking-wide">{tab.label}</span>
+                  </div>
                 </button>
               );
             })}

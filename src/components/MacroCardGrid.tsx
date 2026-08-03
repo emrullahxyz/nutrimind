@@ -96,7 +96,7 @@ function MacroCardItem({
   return (
     <div
       onClick={onToggleRatio}
-      className="flex flex-col justify-between rounded-card border border-calBorder bg-calCard p-2.5 sm:p-4 min-h-[125px] shadow-card backdrop-blur-sm transition-all duration-200 hover:border-white/20 cursor-pointer select-none active:scale-[0.98]"
+      className="flex flex-col justify-between rounded-[22px] bg-[#22202E] p-3 sm:p-4 min-h-[125px] shadow-card transition-all duration-200 hover:bg-[#282637] cursor-pointer select-none active:scale-[0.98]"
       title="Tıklayarak tüm değerleri dönüştür"
     >
       <div>
@@ -109,7 +109,7 @@ function MacroCardItem({
             </div>
           }
           label={
-            <div className="mt-0.5 text-[10px] sm:text-[11px] font-medium text-ink-secondary truncate">
+            <div className="mt-1 text-[11px] sm:text-xs font-semibold text-[#A5A2B8] truncate">
               {subText}
             </div>
           }
@@ -138,7 +138,7 @@ export function MacroCardGrid({ total, goal, showRatio, onToggleRatio }: MacroCa
       label: "Protein",
       sublabel: goal.protein > 0 ? "Kalan Protein" : "Protein",
       icon: Beef,
-      color: "#FF6B8A",
+      color: "#E57373",
       consumed: total.protein,
       target: goal.protein,
       unit: "g",
@@ -148,7 +148,7 @@ export function MacroCardGrid({ total, goal, showRatio, onToggleRatio }: MacroCa
       label: "Karb",
       sublabel: goal.carbs > 0 ? "Kalan Karb" : "Karbonhidrat",
       icon: Wheat,
-      color: "#FFB84D",
+      color: "#FFB74D",
       consumed: total.carbs,
       target: goal.carbs,
       unit: "g",
@@ -158,7 +158,7 @@ export function MacroCardGrid({ total, goal, showRatio, onToggleRatio }: MacroCa
       label: "Yağ",
       sublabel: goal.fat > 0 ? "Kalan Yağ" : "Yağ",
       icon: Droplet,
-      color: "#5B8DEF",
+      color: "#64B5F6",
       consumed: total.fat,
       target: goal.fat,
       unit: "g",
