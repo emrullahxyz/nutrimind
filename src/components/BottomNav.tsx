@@ -142,7 +142,7 @@ export function BottomNav({
           )}
 
           {/* Tab Buttons */}
-          <div className="flex flex-1 items-center justify-around mr-2">
+          <div className="flex flex-1 items-center justify-around mr-1">
             {tabs.map((tab) => {
               const isActive = tab.id === activeTab;
               const Icon = tab.icon;
@@ -155,29 +155,28 @@ export function BottomNav({
                     setOpen(false);
                     onTabChange(tab.id as TabType);
                   }}
-                  className={`flex flex-col items-center justify-center py-1 px-3.5 transition-all duration-200 ${
-                    isActive
-                      ? "text-white font-extrabold bg-[#282638] rounded-full py-1.5"
-                      : "text-[#A5A2B8] hover:text-white font-medium"
+                  className={`flex flex-col items-center justify-center py-1 px-2 transition-colors duration-200 ${
+                    isActive ? "text-white font-bold" : "text-[#A5A2B8] hover:text-white font-normal"
                   }`}
                 >
-                  <div className="flex items-center gap-1.5">
-                    <Icon className="h-4.5 w-4.5" />
-                    <span className="text-xs font-bold tracking-wide">{tab.label}</span>
-                  </div>
+                  <Icon className="h-5 w-5" />
+                  <span className="mt-1 text-[10px] tracking-wide font-medium">{tab.label}</span>
+                  {isActive && (
+                    <span className="mt-0.5 h-1 w-1 rounded-full bg-white shadow-[0_0_6px_#FFFFFF]" />
+                  )}
                 </button>
               );
             })}
           </div>
 
-          {/* Integrated Solid White + FAB Button - Büyütülmüş (h-14 w-14 = 56px) */}
+          {/* Integrated Solid White + FAB Button */}
           <button
             type="button"
             onClick={() => setOpen(!open)}
-            className="flex h-14 w-14 items-center justify-center rounded-full bg-white text-black shadow-card transition-transform duration-200 hover:scale-105 active:scale-95 flex-none z-50"
+            className="flex h-12 w-12 sm:h-14 sm:w-14 items-center justify-center rounded-full bg-white text-black shadow-card transition-transform duration-200 hover:scale-105 active:scale-95 flex-none z-50 ml-1"
             aria-label="Ekle"
           >
-            <Plus className={`h-7 w-7 transition-transform duration-200 ${open ? "rotate-45" : ""}`} />
+            <Plus className={`h-6 w-6 sm:h-7 sm:w-7 transition-transform duration-200 ${open ? "rotate-45" : ""}`} />
           </button>
         </div>
       </nav>
