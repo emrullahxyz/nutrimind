@@ -41,14 +41,14 @@ export function HeroCalorieCard({ consumed, target, showRatio, onToggleRatio }: 
 
       <div className="flex items-center justify-between gap-4">
         {/* Sol Taraf: Kalori İstatistikleri */}
-        <div className="flex flex-col justify-center min-w-0 flex-1">
+        <div key={`${showRatio}-${displayBigVal}`} className="anim-slide-up flex flex-col justify-center min-w-0 flex-1">
           <div className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-ink-secondary mb-1">
             <Flame className="h-4 w-4 text-accent" />
-            <SlideValue value={subtitleLabel} />
+            <span>{subtitleLabel}</span>
           </div>
 
           <div className="text-3xl sm:text-4xl md:text-5xl font-extrabold text-white tracking-tight">
-            <SlideValue value={displayBigVal} />
+            {displayBigVal}
           </div>
 
           {state.hasTarget && (
