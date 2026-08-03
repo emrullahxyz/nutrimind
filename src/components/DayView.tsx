@@ -133,7 +133,6 @@ export function DayView({
   const [pendingAIItems, setPendingAIItems] = useState<AIParseItem[] | undefined>(undefined);
   const [err, setErr] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-  const [microsOpen, setMicrosOpen] = usePersistedBool(PREF.microsOpen, false);
   const [showRatio, setShowRatio] = useState(true);
   const toggleRatio = () => setShowRatio(!showRatio);
 
@@ -281,12 +280,6 @@ export function DayView({
 
   const selectedMeals = selectedIndices.map((i) => meals[i]).filter(Boolean);
 
-  const microRows = MICROS.filter((def) => total[def.key] !== undefined).map((def) => ({
-    def,
-    value: total[def.key] ?? 0,
-    cover: coverage(meals, def.key),
-  }));
-
   return (
     <div className="flex flex-col gap-5 sm:gap-6">
       <DayTypeBadge date={date} />
@@ -299,32 +292,6 @@ export function DayView({
         onToggleRatio={toggleRatio}
         onOpenExercise={() => setShowExerciseModal(true)}
       />
-
-      {microRows.length > 0 && (
-        <Collapsible
-          title="Mikro besinler"
-          badge={
-            <span className="rounded-pill bg-micro/15 px-2 py-0.5 font-mono text-[10px] font-semibold text-micro">
-              {microRows.map(({ def }) => def.short).join(" \u00b7 ")}
-            </span>
-          }
-          open={microsOpen}
-          onToggle={() => setMicrosOpen(!microsOpen)}
-        >
-          <div className="flex flex-col gap-3">
-            {microRows.map(({ def, value, cover }) => (
-              <div key={def.key}>
-                <MacroBar def={def} value={value} target={goal[def.key] ?? 0} />
-                {cover.have < cover.of && (
-                  <p className="mt-1 font-mono text-[11px] text-ink-faint">
-                    {cover.have}/{cover.of} öğünde veri
-                  </p>
-                )}
-              </div>
-            ))}
-          </div>
-        </Collapsible>
-      )}
 
       <SupplementCard date={date} />
       {showWeightCard && <WeightCard date={date} />}
