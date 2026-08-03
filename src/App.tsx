@@ -50,8 +50,9 @@ function MainContent() {
     const handlePopState = (e: PopStateEvent) => {
       const state = e.state;
 
-      // Modal kapatma popstate'i ise Modal bileşeni yönetir
-      if (state?.isModal) {
+      // Modal kapatma popstate'i ise veya ekranda açık modal/sheet varsa Modal bileşeni yönetir
+      const isAnyModalOpen = !!document.querySelector('[data-modal="true"], .fixed.inset-0');
+      if (state?.isModal || isAnyModalOpen) {
         return;
       }
 
