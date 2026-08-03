@@ -1,4 +1,4 @@
-import { addDaysISO, todayISO, weekdayIndex, weekdayShort } from "../lib/format";
+import { addDaysISO, todayISO, weekdayShort } from "../lib/format";
 import { useData } from "../lib/data";
 import { effectiveGoal } from "../lib/goals";
 import { dayTotal } from "../lib/days";
@@ -8,62 +8,75 @@ interface WeekStripProps {
   onSelectDate: (date: string) => void;
 }
 
-function getMondayISO(iso: string): string {
-  const dow = weekdayIndex(iso);
-  const offset = dow === 0 ? -6 : 1 - dow;
-  return addDaysISO(iso, offset);
-}
-
 export function WeekStrip({ selectedDate, onSelectDate }: WeekStripProps) {
   const { days, goals } = useData();
   const today = todayISO();
-  const monday = getMondayISO(selectedDate);
-  const weekDays = Array.from({ length: 7 }, (_, i) => addDaysISO(monday, i));
+  const tomorrow = addDaysISO(today, 1);
+
+  // En sağda 'Yarın' olacak şekilde 7 günlük şerit
+  let endIso = tomorrow;
+  if (selectedDate > endIso) {
+    endIso = selectedDate;
+  } else if (selectedDate < addDaysISO(endIso, -6)) {
+    endIso = addDaysISO(selectedDate, 6);
+  }
+
+  // 7 gün: en solda geçmiş günler, en sağda Yarın (endIso)
+  const weekDays = Array.from({ length: 7 }, (_, i) => addDaysISO(endIso, i - 6));
 
   return (
     <div className="flex items-center justify-between gap-1 overflow-x-auto py-1 no-scrollbar sm:gap-2">
       {weekDays.map((dateIso) => {
         const isSelected = dateIso === selectedDate;
         const isToday = dateIso === today;
-        const isPast = dateIso < today;
         const dayNumber = dateIso.slice(8);
 
         const dayGoalKcal = effectiveGoal(goals, dateIso).kcal;
         const total = dayTotal(days, dateIso);
         const hasData = total.kcal > 0;
+        const isExceeded = hasData && dayGoalKcal > 0 && total.kcal > dayGoalKcal;
+        const isWithinGoal = hasData && dayGoalKcal > 0 && total.kcal <= dayGoalKcal;
+
+        // Dairesel çerçeve stilleri (Kesik çizgili - dashed)
+        let circleStyle = "border border-dashed border-white/30 text-white/70";
+        if (isExceeded) {
+          circleStyle = "border-2 border-dashed border-red-500 text-red-400 bg-red-500/10";
+        } else if (isWithinGoal) {
+          circleStyle = "border-2 border-dashed border-emerald-400 text-emerald-400 bg-emerald-500/10";
+        }
+
+        if (isSelected) {
+          if (isExceeded) {
+            circleStyle = "bg-black border-2 border-dashed border-red-500 text-red-400";
+          } else if (isWithinGoal) {
+            circleStyle = "bg-black border-2 border-dashed border-emerald-400 text-emerald-400";
+          } else {
+            circleStyle = "bg-black border border-dashed border-black/30 text-white";
+          }
+        }
 
         return (
           <button
             key={dateIso}
             type="button"
             onClick={() => onSelectDate(dateIso)}
-            className={`flex flex-1 min-w-[44px] max-w-[56px] flex-col items-center justify-center rounded-card py-2 px-1 transition-all duration-200 ${
+            className={`flex flex-1 min-w-[44px] max-w-[56px] flex-col items-center justify-center rounded-[22px] py-2 px-1 transition-all duration-200 ${
               isSelected
                 ? "bg-white text-black shadow-lg scale-105 font-bold"
                 : isToday
-                  ? "bg-white/15 text-white border border-white/30 font-semibold"
-                  : isPast
-                    ? "border border-dashed border-white/20 text-white/80 hover:bg-white/5"
-                    : "text-white/40 hover:text-white/70 hover:bg-white/5"
+                  ? "bg-white/10 text-white font-semibold"
+                  : "text-white/60 hover:text-white hover:bg-white/5"
             }`}
           >
             <span
-              className={`text-[11px] font-semibold uppercase tracking-wider ${
-                isSelected ? "text-black/70" : isToday ? "text-white/90" : "text-ink-secondary"
+              className={`text-[10px] font-extrabold uppercase tracking-wider ${
+                isSelected ? "text-black/80" : isToday ? "text-white" : "text-white/50"
               }`}
             >
               {weekdayShort(dateIso)}
             </span>
             <span
-              className={`mt-1 flex h-7 w-7 items-center justify-center rounded-full text-xs font-mono font-bold ${
-                isSelected ? "bg-black text-white" : ""
-              } ${
-                hasData && dayGoalKcal > 0
-                  ? total.kcal > dayGoalKcal
-                    ? "border-2 border-danger"
-                    : "border-2 border-accent"
-                  : ""
-              }`}
+              className={`mt-1.5 flex h-8 w-8 items-center justify-center rounded-full text-xs font-mono font-bold transition-all ${circleStyle}`}
             >
               {dayNumber}
             </span>
