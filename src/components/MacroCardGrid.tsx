@@ -86,7 +86,7 @@ function MacroCardItem({
       className="flex flex-col justify-between rounded-card border border-calBorder bg-calCard p-3 sm:p-4 min-h-[130px] shadow-card backdrop-blur-sm transition-all duration-200 hover:border-white/20 cursor-pointer select-none active:scale-[0.98]"
       title="Tıklayarak tüm değerleri dönüştür"
     >
-      <div key={`${item.key}-${showRatio}-${displayVal}`} className="anim-fadeup">
+      <div key={`${item.key}-${showRatio}-${displayVal}`} className="anim-flip">
         <div className="text-xl sm:text-2xl font-extrabold text-white leading-tight">
           {displayVal}
         </div>

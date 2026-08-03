@@ -121,6 +121,20 @@ body {
   }
 }
 
+@keyframes flipInX {
+  0% {
+    opacity: 0;
+    transform: perspective(400px) rotateX(-70deg) scale(0.92);
+  }
+  65% {
+    transform: perspective(400px) rotateX(10deg) scale(1.03);
+  }
+  100% {
+    opacity: 1;
+    transform: perspective(400px) rotateX(0deg) scale(1);
+  }
+}
+
 .anim-grow {
   transform-origin: bottom;
   animation: growUp 0.6s cubic-bezier(0.2, 0.8, 0.2, 1) both;
@@ -134,6 +148,11 @@ body {
 }
 .anim-fadeup {
   animation: fadeUp 0.45s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+.anim-flip {
+  animation: flipInX 0.38s cubic-bezier(0.16, 1, 0.3, 1) both;
+  transform-origin: center center;
+  backface-visibility: hidden;
 }
 .scene-3d {
   perspective: 1000px;

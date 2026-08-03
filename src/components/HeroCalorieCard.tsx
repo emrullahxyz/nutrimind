@@ -44,7 +44,7 @@ export function HeroCalorieCard({ consumed, target, showRatio, onToggleRatio }: 
 
       <div className="flex items-center justify-between gap-4">
         {/* Left Side: Calorie Stats */}
-        <div key={`${showRatio}-${displayBigVal}`} className="anim-fadeup flex flex-col justify-center min-w-0 flex-1">
+        <div key={`${showRatio}-${displayBigVal}`} className="anim-flip flex flex-col justify-center min-w-0 flex-1">
           <div className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-ink-secondary mb-1">
             <Flame className="h-4 w-4 text-accent" />
             <span>{subtitleLabel}</span>
