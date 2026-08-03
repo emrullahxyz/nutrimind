@@ -40,7 +40,7 @@ export function CalorieRing({ consumed, target, size }: CalorieRingProps) {
       }}
     >
       <div
-        className="flex h-full w-full flex-col items-center justify-center rounded-full bg-[#13131C]"
+        className="flex h-full w-full flex-col items-center justify-center rounded-full bg-[#2A283A]"
         aria-hidden="true"
       >
         {size ? (
