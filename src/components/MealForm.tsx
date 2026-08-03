@@ -190,10 +190,12 @@ export function MealForm({
   date,
   editIndex,
   onClose,
+  initialAIItems,
 }: {
   date: string;
   editIndex: number | null;
   onClose: () => void;
+  initialAIItems?: AIParseItem[];
 }) {
   const { aliases, days, goals, setDayMeals } = useData();
   const existing = editIndex === null ? undefined : mealsOf(days, date)[editIndex];
@@ -217,7 +219,14 @@ export function MealForm({
   const [category, setCategory] = useState<MealCategory>(
     existing?.category ?? categoryForHour(new Date().getHours()),
   );
-  const [name, setName] = useState(existing?.label ?? "");
+  const [name, setName] = useState(
+    existing?.label ??
+      (initialAIItems && initialAIItems.length > 0
+        ? initialAIItems.length > 1
+          ? initialAIItems.map((it) => it.name).join(" + ")
+          : initialAIItems[0].name
+        : ""),
+  );
   const [draft, setDraft] = useState<NutritionDraft>(existing ? toDraft(existing.computed) : EMPTY_DRAFT);
   const [aliasId, setAliasId] = useState(() => initialRankedAliases[0]?.id ?? aliases[0]?.id ?? "");
 
@@ -242,18 +251,22 @@ export function MealForm({
   const [aiError, setAiError] = useState<string | null>(null);
 
   // Çoklu kalem (sepet) desteği — düzenleme modundaysa mevcut öğünü varsayılan ilk kalem yap
-  const [basket, setBasket] = useState<BasketItem[]>(() =>
-    existing
-      ? [
-          {
-            id: `existing-${Date.now()}`,
-            name: existing.label,
-            nutrition: existing.computed,
-            sources: existing.sources,
-          },
-        ]
-      : []
-  );
+  const [basket, setBasket] = useState<BasketItem[]>(() => {
+    if (existing) {
+      return [
+        { id: `existing-${Date.now()}`, name: existing.label, nutrition: existing.computed, sources: existing.sources },
+      ];
+    }
+    if (initialAIItems && initialAIItems.length > 0) {
+      return initialAIItems.map((it, i) => ({
+        id: `vision-${Date.now()}-${i}-${Math.random()}`,
+        name: it.name,
+        nutrition: it.nutrition,
+        ...(it.needsReview ? { needsReview: true } : {}),
+      }));
+    }
+    return [];
+  });
 
   // Sepetteki bir kalemi satır-içi (inline) düzenleme durumu
   const [editingBasketIndex, setEditingBasketIndex] = useState<number | null>(null);

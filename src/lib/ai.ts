@@ -106,3 +106,16 @@ export async function parseWithAI(text: string, signal?: AbortSignal): Promise<A
   const items = rawItems.map(parseAIItem).filter((x): x is AIParseItem => x !== null);
   return { items };
 }
+
+export async function parseMealImage(
+  base64: string,
+  mimeType: string,
+  mode: "gallery" | "food_label",
+  signal?: AbortSignal,
+): Promise<AIParseResult> {
+  const raw = await aiPost<{ items?: unknown[] }>("/api/ai/vision", { image: base64, mimeType, mode }, signal);
+  const rawItems = Array.isArray(raw?.items) ? raw.items : [];
+  const items = rawItems.map(parseAIItem).filter((x): x is AIParseItem => x !== null);
+  return { items };
+}
+

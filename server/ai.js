@@ -74,6 +74,9 @@ function makeBucket(perMin) {
 }
 const aiBucket = makeBucket(AI_RATE_PARSE);
 const nimBucket = makeBucket(NIM_RATE_PARSE);
+const VISION_RATE = Number(process.env.NUTRI_AI_RATE_VISION || 5);
+const visionBucket = makeBucket(VISION_RATE);
+const VALID_IMAGE_MIME = new Set(["image/jpeg", "image/png", "image/webp"]);
 
 function peekTokens(b) {
   const now = Date.now();
@@ -135,6 +138,35 @@ ${aliasLines || "(hafızada henüz besin yok)"}
 
 KULLANICININ GİRDİSİ:
 ${text}`;
+}
+
+function buildFoodPhotoPrompt(aliases) {
+  const aliasLines = (aliases || [])
+    .map((a) => `${a.name}: ${a.serving_g}g başına ${a.nutrition?.kcal ?? "?"}kcal, ${a.nutrition?.protein ?? "?"}g protein`)
+    .join("\n");
+  return `Sen bir beslenme uzmanısın. Ekteki fotoğraftaki yemeği/yemekleri analiz et.
+
+KURALLAR:
+- Fotoğraftaki her yemek öğesini ayrı ayrı listele.
+- Görsel ipuçlarından (tabak boyutu, karşılaştırmalı ölçek) porsiyon miktarını gram cinsinden tahmin et, isimde belirt.
+- Besin değerlerini (kcal, protein, carbs, fat, fiber) hesapla.
+- Türk yemeklerini doğru tanı.
+- Her öğe için 0 ile 1 arasında bir "confidence" değeri ver.
+- Yanıtı Türkçe ver.
+
+KULLANICININ BESİN HAFIZASI (bu besinleri tanıyorsan bu değerleri birebir kullan):
+${aliasLines || "(hafızada henüz besin yok)"}`;
+}
+
+function buildLabelPrompt() {
+  return `Sen bir beslenme uzmanısın. Ekteki fotoğraf bir besin değerleri etiketi.
+
+KURALLAR:
+- Etiketteki besin değerlerini (kcal, protein, carbs, fat, fiber) BİREBİR, tahmin etmeden oku.
+- Etiket "100g başına" mı yoksa "porsiyon başına" mı gösteriyor, isimde belirt (ör. "Ürün Adı (100g)").
+- Genellikle TEK bir öğe olur.
+- Her öğe için 0 ile 1 arasında bir "confidence" değeri ver (etiket net değilse düşür).
+- Yanıtı Türkçe ver.`;
 }
 
 const NIM_JSON_INSTRUCTION = `
@@ -322,4 +354,40 @@ async function parseMealText({ text, aliases }) {
   return { status: 200, body: { items } };
 }
 
-module.exports = { parseMealText };
+async function parseMealImage({ imageBase64, mimeType, mode, aliases }) {
+  if (LLM_PROVIDER === "none") {
+    return { status: 503, body: { error: "AI özelliği bu ortamda kapalı" } };
+  }
+  if (!GEMINI_API_KEY) {
+    return { status: 500, body: { error: "AI servisi yapılandırılmamış (GEMINI_API_KEY yok)" } };
+  }
+  if (typeof imageBase64 !== "string" || !imageBase64.trim()) {
+    return { status: 400, body: { error: "image gerekli" } };
+  }
+  if (typeof mimeType !== "string" || !VALID_IMAGE_MIME.has(mimeType)) {
+    return { status: 400, body: { error: "geçersiz mimeType (image/jpeg, image/png, image/webp)" } };
+  }
+
+  const visionMode = mode === "food_label" ? "food_label" : "gallery";
+  const prompt =
+    visionMode === "food_label" ? buildLabelPrompt() : buildFoodPhotoPrompt(Array.isArray(aliases) ? aliases : []);
+
+  const result = await callLLM({
+    bucket: visionBucket,
+    url: geminiUrl(),
+    headers: { "Content-Type": "application/json" },
+    requestBody: {
+      contents: [{ parts: [{ text: prompt }, { inline_data: { mime_type: mimeType, data: imageBase64 } }] }],
+      generationConfig: { responseMimeType: "application/json", responseSchema: RESPONSE_SCHEMA },
+    },
+    extractText: (j) => j?.candidates?.[0]?.content?.parts?.[0]?.text,
+  });
+
+  if (result.status !== 200) return result;
+
+  const rawItems = Array.isArray(result.body?.items) ? result.body.items : [];
+  const items = rawItems.map(parseAiItem).filter((x) => x !== null);
+  return { status: 200, body: { items } };
+}
+
+module.exports = { parseMealText, parseMealImage };

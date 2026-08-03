@@ -12,13 +12,14 @@
 // GET    /api/off/product/:barcode   -> Open Food Facts ürün proxy'si (önbellekli)
 // GET    /api/off/search?q=&limit=   -> OFF ürün arama, Polonya kataloğu (önbellekli)
 // GET    /api/health                -> { ok, off:{…} }
+// POST   /api/ai/vision              -> { image, mimeType, mode } -> { items:[...] }
 // Veritabanı: SQLite dosyası (NUTRI_DB). nginx basic-auth ile korunur.
 // ============================================================================
 const http = require("node:http");
 const path = require("node:path");
 const { randomBytes } = require("node:crypto");
 const { DatabaseSync } = require("node:sqlite");
-const { parseMealText } = require("./ai.js");
+const { parseMealText, parseMealImage } = require("./ai.js");
 
 const PORT = Number(process.env.NUTRI_PORT || 8790);
 const DB_PATH = process.env.NUTRI_DB || path.join(__dirname, "data.db");
@@ -537,6 +538,16 @@ const server = http.createServer(async (req, res) => {
     if (req.method === "POST" && p === "/api/ai/parse") {
       const b = await readBody(req);
       const { status, body } = await parseMealText({ text: b.text, aliases: getAliases() });
+      return send(res, status, body);
+    }
+    if (req.method === "POST" && p === "/api/ai/vision") {
+      const b = await readBody(req);
+      const { status, body } = await parseMealImage({
+        imageBase64: b.image,
+        mimeType: b.mimeType,
+        mode: b.mode,
+        aliases: getAliases(),
+      });
       return send(res, status, body);
     }
     if (req.method === "GET" && p === "/api/health")

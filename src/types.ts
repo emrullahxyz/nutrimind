@@ -49,7 +49,7 @@ export interface MealPayload {
   category?: MealCategory;
 }
 
-/** Faz 2: AI servisinin (Gemini veya NVIDIA NIM) serbest metinden ayrıştırdığı tek bir öğe. */
+/** Faz 2: AI servisinin (Gemini veya NVIDIA NIM) serbest metin veya fotoğraftan ayrıştırdığı tek bir öğe. */
 export interface AIParseItem {
   name: string;
   nutrition: Nutrition;
