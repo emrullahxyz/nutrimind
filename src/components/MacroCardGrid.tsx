@@ -115,8 +115,8 @@ export function MacroCardGrid({ total, goal, showRatio, onToggleRatio }: MacroCa
             className="flex flex-col justify-between rounded-card border border-calBorder bg-calCard p-3 sm:p-4 min-h-[130px] shadow-card backdrop-blur-sm transition-all duration-200 hover:border-white/20 cursor-pointer select-none active:scale-[0.98]"
             title="Tıklayarak tüm değerleri dönüştür"
           >
-            <div>
-              <div className="text-xl sm:text-2xl font-extrabold text-white leading-tight transition-all">
+            <div key={`${item.key}-${showRatio}`} className="anim-fadeup">
+              <div className="text-xl sm:text-2xl font-extrabold text-white leading-tight">
                 {displayVal}
               </div>
               <div className="mt-0.5 text-[11px] font-medium text-ink-secondary truncate">

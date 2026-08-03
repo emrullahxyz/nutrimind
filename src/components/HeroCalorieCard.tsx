@@ -32,7 +32,7 @@ export function HeroCalorieCard({ consumed, target, showRatio, onToggleRatio }: 
   return (
     <div
       onClick={onToggleRatio}
-      className="relative overflow-hidden rounded-card border border-calBorder bg-calCard p-5 shadow-card backdrop-blur-md cursor-pointer select-none transition-all duration-200 hover:border-white/20 active:scale-[0.99]"
+      className="relative overflow-hidden rounded-card border border-calBorder bg-calCard p-5 shadow-card backdrop-blur-md cursor-pointer select-none transition-all duration-200 hover:border-white/20 active:scale-[0.99] min-h-[176px] flex flex-col justify-center"
       title="Tıklayarak tüm değerleri dönüştür"
     >
       {/* Background soft radial glow inside card */}
@@ -41,17 +41,17 @@ export function HeroCalorieCard({ consumed, target, showRatio, onToggleRatio }: 
       <div className="flex items-center justify-between gap-4">
         {/* Left Side: Calorie Stats */}
         <div className="flex flex-col justify-center min-w-0 flex-1">
-          <div className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-ink-secondary mb-1">
+          <div key={`sub-${showRatio}`} className="anim-fadeup flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-ink-secondary mb-1">
             <Flame className="h-4 w-4 text-accent" />
             <span>{subtitleLabel}</span>
           </div>
 
-          <div className="text-3xl sm:text-4xl md:text-5xl font-extrabold text-white tracking-tight transition-all">
+          <div key={`val-${showRatio}`} className="anim-fadeup text-3xl sm:text-4xl md:text-5xl font-extrabold text-white tracking-tight">
             {displayBigVal}
           </div>
 
           {state.hasTarget && (
-            <div className="mt-2 text-xs font-mono text-ink-secondary flex items-center gap-1">
+            <div key={`det-${showRatio}`} className="anim-fadeup mt-2 text-xs font-mono text-ink-secondary flex items-center gap-1">
               {showRatio ? (
                 <span className="text-accent font-semibold">Tıklayarak Kalan Kaloriyi Göster</span>
               ) : (
