@@ -46,6 +46,7 @@ export function HistoryPage() {
   const all = weeks(days);
   const [selectedWeek, setSelectedWeek] = useState<string | null>(null);
   const [selectedDay, setSelectedDay] = useState<string | null>(null);
+  const [visibleWeeksCount, setVisibleWeeksCount] = useState<number>(6);
 
   useEffect(() => {
     const handlePopState = (e: PopStateEvent) => {
@@ -81,6 +82,8 @@ export function HistoryPage() {
   };
 
   const week = selectedWeek ? all.find((w) => w.startDate === selectedWeek) : null;
+  const visibleWeeks = all.slice(0, visibleWeeksCount);
+  const hasMoreWeeks = all.length > visibleWeeksCount;
 
   // --- Kademe 3: gün detayı (günlük görünümle aynı) ---
   if (selectedDay) {
@@ -164,33 +167,64 @@ export function HistoryPage() {
       </div>
 
       <div className="flex flex-col gap-4">
-        <SectionLabel>Haftalar</SectionLabel>
+        <div className="flex items-center justify-between">
+          <SectionLabel>Haftalar</SectionLabel>
+          <span className="text-xs text-ink-tertiary font-mono">
+            {all.length} haftadan {visibleWeeks.length} tanesi gösteriliyor
+          </span>
+        </div>
         {all.length === 0 ? (
           <p className="text-sm text-ink-tertiary">Henüz geçmiş kaydı yok.</p>
         ) : (
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-            {all.map((w, i) => (
-              <button
-                key={w.startDate}
-                type="button"
-                onClick={() => handleSelectWeek(w.startDate)}
-                className="anim-fadeup text-left"
-                style={{ animationDelay: `${i * 60}ms` }}
-              >
-                <Card className="flex flex-col gap-3 p-4 transition hover:border-memory/40 hover:bg-white/[0.03]">
-                  <div className="flex items-baseline justify-between gap-2">
-                    <div className="text-sm font-bold text-ink-primary">{weekLabel(w)}</div>
-                    <div className="text-[11px] text-ink-tertiary">{w.activeDays} gün</div>
-                  </div>
-                  <div className="flex items-baseline justify-between gap-2">
-                    <div className="font-mono text-xl font-extrabold text-ink-primary">{formatKcal(w.total.kcal)}</div>
-                    <div className="font-mono text-[11px] text-ink-tertiary">ort {formatKcal(w.avgKcal)}/gün</div>
-                  </div>
-                  <WeekBars week={w} compact />
-                </Card>
-              </button>
-            ))}
-          </div>
+          <>
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+              {visibleWeeks.map((w, i) => (
+                <button
+                  key={w.startDate}
+                  type="button"
+                  onClick={() => handleSelectWeek(w.startDate)}
+                  className="anim-fadeup text-left"
+                  style={{ animationDelay: `${i * 60}ms` }}
+                >
+                  <Card className="flex flex-col gap-3 p-4 transition hover:border-memory/40 hover:bg-white/[0.03]">
+                    <div className="flex items-baseline justify-between gap-2">
+                      <div className="text-sm font-bold text-ink-primary">{weekLabel(w)}</div>
+                      <div className="text-[11px] text-ink-tertiary">{w.activeDays} gün</div>
+                    </div>
+                    <div className="flex items-baseline justify-between gap-2">
+                      <div className="font-mono text-xl font-extrabold text-ink-primary">{formatKcal(w.total.kcal)}</div>
+                      <div className="font-mono text-[11px] text-ink-tertiary">ort {formatKcal(w.avgKcal)}/gün</div>
+                    </div>
+                    <WeekBars week={w} compact />
+                  </Card>
+                </button>
+              ))}
+            </div>
+
+            {/* Pagination Controls */}
+            {hasMoreWeeks && (
+              <div className="flex justify-center pt-2">
+                <button
+                  type="button"
+                  onClick={() => setVisibleWeeksCount((prev) => prev + 6)}
+                  className="inline-flex items-center gap-2 rounded-full border border-line bg-white/5 px-4 py-2 text-xs font-bold text-ink-primary hover:bg-white/10 hover:border-white/20 transition-all active:scale-95"
+                >
+                  <span>Daha Fazla Hafta Göster (+{all.length - visibleWeeksCount})</span>
+                </button>
+              </div>
+            )}
+            {!hasMoreWeeks && all.length > 6 && (
+              <div className="flex justify-center pt-2">
+                <button
+                  type="button"
+                  onClick={() => setVisibleWeeksCount(6)}
+                  className="inline-flex items-center gap-2 rounded-full border border-line bg-white/5 px-4 py-2 text-xs font-semibold text-ink-secondary hover:text-ink-primary transition-all active:scale-95"
+                >
+                  <span>Daha Az Göster</span>
+                </button>
+              </div>
+            )}
+          </>
         )}
       </div>
 

@@ -109,11 +109,18 @@ export function MicroCardGrid({ total, goal, showRatio, onToggleRatio }: MicroCa
           subText = sublabel;
         }
 
+        const textSizeClass =
+          displayVal.length > 7
+            ? "text-xs sm:text-sm"
+            : displayVal.length > 5
+              ? "text-sm sm:text-base"
+              : "text-base sm:text-lg";
+
         return (
           <div
             key={def.key}
             onClick={onToggleRatio}
-            className="flex flex-col justify-between rounded-card border border-calBorder bg-calCard p-3 sm:p-4 min-h-[130px] shadow-card backdrop-blur-sm transition-all duration-200 hover:border-white/20 cursor-pointer select-none active:scale-[0.98]"
+            className="flex flex-col justify-between rounded-card border border-calBorder bg-calCard p-2.5 sm:p-4 min-h-[125px] shadow-card backdrop-blur-sm transition-all duration-200 hover:border-white/20 cursor-pointer select-none active:scale-[0.98]"
             title="Tıklayarak tüm değerleri dönüştür"
           >
             <div>
@@ -122,7 +129,7 @@ export function MicroCardGrid({ total, goal, showRatio, onToggleRatio }: MicroCa
                 layout="value-first"
                 value={
                   <div
-                    className={`text-lg sm:text-xl font-black leading-tight tabular-nums truncate ${
+                    className={`${textSizeClass} font-black leading-tight tabular-nums tracking-tight truncate ${
                       isUndefined ? "text-ink-tertiary" : "text-white"
                     }`}
                   >
@@ -130,7 +137,7 @@ export function MicroCardGrid({ total, goal, showRatio, onToggleRatio }: MicroCa
                   </div>
                 }
                 label={
-                  <div className="mt-0.5 text-[11px] font-medium text-ink-secondary truncate">
+                  <div className="mt-0.5 text-[10px] sm:text-[11px] font-medium text-ink-secondary truncate">
                     {subText}
                   </div>
                 }

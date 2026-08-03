@@ -9,6 +9,7 @@ import { BottomNav, TabType } from "./components/BottomNav";
 import { MealForm } from "./components/MealForm";
 import { ScanSheet } from "./components/ScanSheet";
 import { ExerciseModal } from "./components/ExerciseModal";
+import { ErrorBoundary } from "./components/ErrorBoundary";
 import { todayISO } from "./lib/format";
 import { calculateStreak } from "./lib/streak";
 
@@ -184,9 +185,11 @@ function MainContent() {
 export function App() {
   return (
     <div className="mx-auto min-h-screen w-full max-w-md px-4 py-5 pad-safe sm:px-6 md:max-w-5xl md:px-10 md:py-8">
-      <DataProvider>
-        <MainContent />
-      </DataProvider>
+      <ErrorBoundary>
+        <DataProvider>
+          <MainContent />
+        </DataProvider>
+      </ErrorBoundary>
     </div>
   );
 }

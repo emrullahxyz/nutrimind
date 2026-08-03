@@ -540,11 +540,23 @@ export function MealForm({
   }
 
   async function save() {
-    if (!canSave || !finalNutrition) return;
+    if (!canSave || !finalNutrition || saving) return;
     setSaving(true);
     setErr(null);
     try {
       const next: MealPayload[] = toPayload(mealsOf(days, date));
+
+      // Sanitize nutrition to prevent negative numbers or NaN
+      const cleanNutrition: Nutrition = {
+        kcal: Math.max(0, Math.round(finalNutrition.kcal || 0)),
+        protein: Math.max(0, Number((finalNutrition.protein || 0).toFixed(1))),
+        carbs: Math.max(0, Number((finalNutrition.carbs || 0).toFixed(1))),
+        fat: Math.max(0, Number((finalNutrition.fat || 0).toFixed(1))),
+        fiber: Math.max(0, Number((finalNutrition.fiber || 0).toFixed(1))),
+        sugar: finalNutrition.sugar !== undefined ? Math.max(0, Number((finalNutrition.sugar || 0).toFixed(1))) : undefined,
+        satFat: finalNutrition.satFat !== undefined ? Math.max(0, Number((finalNutrition.satFat || 0).toFixed(1))) : undefined,
+        sodium: finalNutrition.sodium !== undefined ? Math.max(0, Math.round(finalNutrition.sodium || 0)) : undefined,
+      };
 
       let entrySources: MealSource[] | undefined;
       if (basket.length > 0) {
@@ -563,8 +575,8 @@ export function MealForm({
       const loggedAt = editIndex === null ? new Date().toISOString() : existing?.loggedAt;
 
       const entry: MealPayload = {
-        name: finalName,
-        nutrition: finalNutrition,
+        name: finalName.slice(0, 100).trim(),
+        nutrition: cleanNutrition,
         ...(entrySources && entrySources.length > 0 ? { sources: entrySources } : {}),
         ...(loggedAt ? { loggedAt } : {}),
         category,
