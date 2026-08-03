@@ -15,6 +15,19 @@ const UNITS = ["g", "porsiyon", "adet", "dilim", "ölçek"];
 export function NutritionSheet({ isOpen, onClose, meal, onSave, onDelete }: Props) {
   const isPoppedRef = useRef(false);
 
+  const [label, setLabel] = useState(meal?.label ?? "");
+  const [multiplier, setMultiplier] = useState(1);
+  const [unit, setUnit] = useState("g");
+  const [showDetails, setShowDetails] = useState(true);
+
+  // Sync state when meal prop changes
+  useEffect(() => {
+    if (meal) {
+      setLabel(meal.label);
+      setMultiplier(1);
+    }
+  }, [meal]);
+
   useEffect(() => {
     if (!isOpen || !meal) return;
     window.history.pushState({ isModal: true, title: "Besin Detayı" }, "");
@@ -44,21 +57,16 @@ export function NutritionSheet({ isOpen, onClose, meal, onSave, onDelete }: Prop
 
   if (!isOpen || !meal) return null;
 
-  const [label, setLabel] = useState(meal.label);
-  const [multiplier, setMultiplier] = useState(1);
-  const [unit, setUnit] = useState("g");
-  const [showDetails, setShowDetails] = useState(true);
-
   // Scaled nutrition based on multiplier stepper
   const scaledNutrition: Nutrition = {
-    kcal: Math.round(meal.computed.kcal * multiplier),
-    protein: Number((meal.computed.protein * multiplier).toFixed(1)),
-    carbs: Number((meal.computed.carbs * multiplier).toFixed(1)),
-    fat: Number((meal.computed.fat * multiplier).toFixed(1)),
-    fiber: Number((meal.computed.fiber * multiplier).toFixed(1)),
-    sugar: meal.computed.sugar !== undefined ? Number((meal.computed.sugar * multiplier).toFixed(1)) : undefined,
-    satFat: meal.computed.satFat !== undefined ? Number((meal.computed.satFat * multiplier).toFixed(1)) : undefined,
-    sodium: meal.computed.sodium !== undefined ? Math.round(meal.computed.sodium * multiplier) : undefined,
+    kcal: Math.round((meal.computed?.kcal ?? 0) * multiplier),
+    protein: Number(((meal.computed?.protein ?? 0) * multiplier).toFixed(1)),
+    carbs: Number(((meal.computed?.carbs ?? 0) * multiplier).toFixed(1)),
+    fat: Number(((meal.computed?.fat ?? 0) * multiplier).toFixed(1)),
+    fiber: Number(((meal.computed?.fiber ?? 0) * multiplier).toFixed(1)),
+    sugar: meal.computed?.sugar !== undefined ? Number(((meal.computed.sugar) * multiplier).toFixed(1)) : undefined,
+    satFat: meal.computed?.satFat !== undefined ? Number(((meal.computed.satFat) * multiplier).toFixed(1)) : undefined,
+    sodium: meal.computed?.sodium !== undefined ? Math.round((meal.computed.sodium) * multiplier) : undefined,
   };
 
   const handleStep = (delta: number) => {
