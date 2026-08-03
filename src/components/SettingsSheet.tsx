@@ -139,8 +139,12 @@ export function SettingsSheet({ onClose, embedded = false }: { onClose: () => vo
   useEffect(() => {
     const handlePopState = (e: PopStateEvent) => {
       const state = e.state;
+      if (state?.isModal) return;
+
       if (state && state.tab === "settings") {
         setSubView(state.subView || null);
+      } else if (!state || state.tab !== "settings") {
+        setSubView(null);
       }
     };
 
