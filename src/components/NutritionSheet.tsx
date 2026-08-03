@@ -10,14 +10,14 @@ interface Props {
   onDelete?: (mealId: string) => void;
 }
 
-const UNITS = ["Tbsp", "Oz", "G", "Scoop", "porsiyon", "adet"];
+const UNITS = ["g", "porsiyon", "adet", "dilim", "ölçek"];
 
 export function NutritionSheet({ isOpen, onClose, meal, onSave, onDelete }: Props) {
   const isPoppedRef = useRef(false);
 
   const [label, setLabel] = useState(meal?.label ?? "");
   const [multiplier, setMultiplier] = useState(1);
-  const [unit, setUnit] = useState("G");
+  const [unit, setUnit] = useState("g");
 
   // Sync state when meal prop changes
   useEffect(() => {
@@ -29,7 +29,8 @@ export function NutritionSheet({ isOpen, onClose, meal, onSave, onDelete }: Prop
 
   useEffect(() => {
     if (!isOpen || !meal) return;
-    window.history.pushState({ isModal: true, title: "Nutrition" }, "");
+    isPoppedRef.current = false;
+    window.history.pushState({ isModal: true, modalType: "nutrition", tab: "daily" }, "");
 
     const handlePopState = () => {
       isPoppedRef.current = true;
@@ -80,7 +81,7 @@ export function NutritionSheet({ isOpen, onClose, meal, onSave, onDelete }: Prop
       computed: scaledNutrition,
     };
     onSave(updated);
-    onClose();
+    handleUserClose();
   };
 
   return (
@@ -111,7 +112,7 @@ export function NutritionSheet({ isOpen, onClose, meal, onSave, onDelete }: Prop
             type="button"
             onClick={() => {
               onDelete(meal.id);
-              onClose();
+              handleUserClose();
             }}
             className="w-10 h-10 rounded-full bg-red-500/10 hover:bg-red-500/20 text-red-400 flex items-center justify-center transition active:scale-95"
             title="Öğünü Sil"
@@ -128,7 +129,7 @@ export function NutritionSheet({ isOpen, onClose, meal, onSave, onDelete }: Prop
         {/* Serving Size Measurement (Porsiyon Birimi) */}
         <div className="space-y-2.5">
           <label className="text-xs font-semibold text-white/80 block">
-            Serving Size Measurement
+            Porsiyon Birimi
           </label>
           <div className="flex items-center gap-2 overflow-x-auto no-scrollbar pb-1">
             {UNITS.map((u) => {
@@ -154,7 +155,7 @@ export function NutritionSheet({ isOpen, onClose, meal, onSave, onDelete }: Prop
         {/* Serving Amount Stepper (Porsiyon Miktarı) */}
         <div className="flex items-center justify-between gap-4 py-1">
           <span className="text-sm font-semibold text-white/90">
-            Serving Amount
+            Porsiyon Miktarı
           </span>
           <div className="flex items-center gap-4 rounded-2xl border border-white/20 bg-white/[0.04] px-4 py-2 min-w-[130px] justify-between">
             <button
@@ -184,7 +185,7 @@ export function NutritionSheet({ isOpen, onClose, meal, onSave, onDelete }: Prop
               <Flame className="w-5 h-5" />
             </div>
             <div>
-              <div className="text-xs font-medium text-white/50">Calories</div>
+              <div className="text-xs font-medium text-white/50">Kalori</div>
               <div className="text-2xl font-black text-white tabular-nums tracking-tight">
                 {scaledNutrition.kcal}
               </div>
@@ -193,7 +194,7 @@ export function NutritionSheet({ isOpen, onClose, meal, onSave, onDelete }: Prop
           <div className="text-xs font-bold text-white/40 font-mono">kcal</div>
         </div>
 
-        {/* 3 Main Macros Grid (Protein, Carbs, Fats) */}
+        {/* 3 Main Macros Grid (Protein, Karbonhidrat, Yağ) */}
         <div className="grid grid-cols-3 gap-2.5">
           {/* Protein */}
           <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-3 flex flex-col justify-between min-h-[80px]">
@@ -206,22 +207,22 @@ export function NutritionSheet({ isOpen, onClose, meal, onSave, onDelete }: Prop
             </div>
           </div>
 
-          {/* Carbs */}
+          {/* Karbonhidrat */}
           <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-3 flex flex-col justify-between min-h-[80px]">
             <div className="flex items-center gap-1.5 text-xs font-semibold text-white/80">
               <Wheat className="w-3.5 h-3.5 text-[#FFB84D]" />
-              <span>Carbs</span>
+              <span>Karb</span>
             </div>
             <div className="text-base sm:text-lg font-black text-white tabular-nums tracking-tight mt-1">
               {scaledNutrition.carbs}g
             </div>
           </div>
 
-          {/* Fats */}
+          {/* Yağ */}
           <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-3 flex flex-col justify-between min-h-[80px]">
             <div className="flex items-center gap-1.5 text-xs font-semibold text-white/80">
               <Droplet className="w-3.5 h-3.5 text-[#5B8DEF]" />
-              <span>Fats</span>
+              <span>Yağ</span>
             </div>
             <div className="text-base sm:text-lg font-black text-white tabular-nums tracking-tight mt-1">
               {scaledNutrition.fat}g
@@ -229,28 +230,28 @@ export function NutritionSheet({ isOpen, onClose, meal, onSave, onDelete }: Prop
           </div>
         </div>
 
-        {/* Other Nutrition Facts List */}
+        {/* Other Nutrition Facts List (Diğer Besin Değerleri) */}
         <div className="space-y-2.5 pt-2">
-          <div className="text-sm font-bold text-white/90">Other nutrition facts</div>
+          <div className="text-sm font-bold text-white/90">Diğer besin değerleri</div>
           <div className="space-y-2">
-            {/* Saturated Fat */}
+            {/* Doymuş Yağ */}
             <div className="rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3.5 flex items-center justify-between text-xs sm:text-sm">
-              <span className="font-medium text-white/80">Saturated Fat</span>
+              <span className="font-medium text-white/80">Doymuş Yağ</span>
               <span className="font-extrabold text-white">{scaledNutrition.satFat ?? 0}g</span>
             </div>
-            {/* Sodium */}
+            {/* Sodyum */}
             <div className="rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3.5 flex items-center justify-between text-xs sm:text-sm">
-              <span className="font-medium text-white/80">Sodium</span>
+              <span className="font-medium text-white/80">Sodyum</span>
               <span className="font-extrabold text-white">{scaledNutrition.sodium ?? 0}mg</span>
             </div>
-            {/* Fiber */}
+            {/* Lif */}
             <div className="rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3.5 flex items-center justify-between text-xs sm:text-sm">
-              <span className="font-medium text-white/80">Fiber</span>
+              <span className="font-medium text-white/80">Lif</span>
               <span className="font-extrabold text-white">{scaledNutrition.fiber}g</span>
             </div>
-            {/* Sugar */}
+            {/* Şeker */}
             <div className="rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3.5 flex items-center justify-between text-xs sm:text-sm">
-              <span className="font-medium text-white/80">Sugar</span>
+              <span className="font-medium text-white/80">Şeker</span>
               <span className="font-extrabold text-white">{scaledNutrition.sugar ?? 0}g</span>
             </div>
           </div>
@@ -264,7 +265,7 @@ export function NutritionSheet({ isOpen, onClose, meal, onSave, onDelete }: Prop
           onClick={handleApplySave}
           className="w-full py-4 rounded-full bg-white text-black font-extrabold text-base hover:bg-white/90 transition shadow-xl active:scale-[0.98]"
         >
-          Save
+          Kaydet
         </button>
       </div>
     </div>
