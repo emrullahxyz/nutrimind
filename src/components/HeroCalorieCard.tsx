@@ -1,3 +1,4 @@
+import { Flame } from "lucide-react";
 import { CalorieRing } from "./CalorieRing";
 import { ringState } from "../lib/ring";
 import { formatNumber } from "../lib/format";
@@ -31,7 +32,7 @@ export function HeroCalorieCard({ consumed, target, showRatio, onToggleRatio }: 
   return (
     <div
       onClick={onToggleRatio}
-      className="relative overflow-hidden rounded-[20px] border border-calBorder bg-calCard p-5 shadow-card backdrop-blur-md cursor-pointer select-none transition-all duration-200 hover:border-white/20 active:scale-[0.99]"
+      className="relative overflow-hidden rounded-card border border-calBorder bg-calCard p-5 shadow-card backdrop-blur-md cursor-pointer select-none transition-all duration-200 hover:border-white/20 active:scale-[0.99]"
       title="Tıklayarak tüm değerleri dönüştür"
     >
       {/* Background soft radial glow inside card */}
@@ -41,11 +42,11 @@ export function HeroCalorieCard({ consumed, target, showRatio, onToggleRatio }: 
         {/* Left Side: Calorie Stats */}
         <div className="flex flex-col justify-center min-w-0 flex-1">
           <div className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-ink-secondary mb-1">
-            <span className="text-base">🔥</span>
+            <Flame className="h-4 w-4 text-accent" />
             <span>{subtitleLabel}</span>
           </div>
 
-          <div className="font-mono text-3xl sm:text-4xl md:text-5xl font-extrabold text-white tracking-tight transition-all">
+          <div className="text-3xl sm:text-4xl md:text-5xl font-extrabold text-white tracking-tight transition-all">
             {displayBigVal}
           </div>
 

@@ -1,0 +1,71 @@
+import { useRef, useState, type UIEvent } from "react";
+import type { Nutrition } from "../types";
+import { MacroCardGrid } from "./MacroCardGrid";
+import { MicroCardGrid } from "./MicroCardGrid";
+
+interface StatCardCarouselProps {
+  total: Nutrition;
+  goal: Nutrition;
+  showRatio: boolean;
+  onToggleRatio: () => void;
+}
+
+export function StatCardCarousel({ total, goal, showRatio, onToggleRatio }: StatCardCarouselProps) {
+  const [activePage, setActivePage] = useState<0 | 1>(0);
+  const scrollRef = useRef<HTMLDivElement>(null);
+
+  function handleScroll(e: UIEvent<HTMLDivElement>) {
+    const el = e.currentTarget;
+    if (el.clientWidth > 0) {
+      const page = Math.round(el.scrollLeft / el.clientWidth);
+      setActivePage(page === 1 ? 1 : 0);
+    }
+  }
+
+  function scrollToPage(page: 0 | 1) {
+    if (scrollRef.current) {
+      scrollRef.current.scrollTo({
+        left: page * scrollRef.current.clientWidth,
+        behavior: "smooth",
+      });
+      setActivePage(page);
+    }
+  }
+
+  return (
+    <div className="flex flex-col gap-2">
+      <div
+        ref={scrollRef}
+        onScroll={handleScroll}
+        className="flex overflow-x-auto snap-x snap-mandatory no-scrollbar [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden"
+        style={{ scrollbarWidth: "none" }}
+      >
+        <div className="w-full flex-none snap-center">
+          <MacroCardGrid total={total} goal={goal} showRatio={showRatio} onToggleRatio={onToggleRatio} />
+        </div>
+        <div className="w-full flex-none snap-center">
+          <MicroCardGrid total={total} goal={goal} />
+        </div>
+      </div>
+
+      <div className="flex items-center justify-center gap-1.5 py-1">
+        <button
+          type="button"
+          onClick={() => scrollToPage(0)}
+          aria-label="Sayfa 1"
+          className={`transition-all duration-200 ${
+            activePage === 0 ? "h-1.5 w-4 rounded-full bg-white" : "h-1.5 w-1.5 rounded-full bg-white/25"
+          }`}
+        />
+        <button
+          type="button"
+          onClick={() => scrollToPage(1)}
+          aria-label="Sayfa 2"
+          className={`transition-all duration-200 ${
+            activePage === 1 ? "h-1.5 w-4 rounded-full bg-white" : "h-1.5 w-1.5 rounded-full bg-white/25"
+          }`}
+        />
+      </div>
+    </div>
+  );
+}

@@ -1,3 +1,4 @@
+import { Flame } from "lucide-react";
 import { ringState, ringGradient } from "../lib/ring";
 import { useAnimatedValue } from "../lib/useAnimatedValue";
 import { formatNumber } from "../lib/format";
@@ -48,7 +49,7 @@ export function CalorieRing({ consumed, target, size }: CalorieRingProps) {
           // İÇİNDE tekrar göstermek gereksiz tekrar yaratıyordu (kullanıcı geri
           // bildirimi). aria-label yine de TAM bilgiyi taşır, ekran okuyucu
           // kaybı yok — sadece GÖRSEL sadeleşme.
-          <span style={{ fontSize: `${Math.round(size * 0.32)}px` }}>🔥</span>
+          <Flame size={Math.round(size * 0.32)} className="text-accent" />
         ) : (
           <>
             <span className={`${bigNumCls} text-[44px] leading-none text-ink-primary sm:text-[52px]`}>

@@ -8,10 +8,7 @@ export default {
         app: "#0D0D14",
         calCard: "rgba(255,255,255,0.05)",
         calBorder: "rgba(255,255,255,0.08)",
-        surface: "rgba(255,255,255,0.05)",
-        "surface-strong": "rgba(255,255,255,0.08)",
         line: "rgba(255,255,255,0.08)",
-        elevated: "#0c0d10",
         "elevated-2": "#15161a",
         ink: {
           primary: "#FFFFFF",

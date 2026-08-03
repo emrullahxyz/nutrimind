@@ -11,7 +11,7 @@ export const fieldCls =
   "w-full rounded-chip border border-line bg-white/[0.04] px-3 py-2 text-base sm:text-sm text-ink-primary outline-none transition placeholder:text-ink-faint focus:border-memory/60";
 
 export const sectionLabelCls = "font-mono text-[11px] uppercase tracking-mono text-ink-tertiary";
-export const bigNumCls = "font-mono font-extrabold tabular-nums tracking-tight";
+export const bigNumCls = "font-extrabold tabular-nums tracking-tight";
 
 export function Label({ children }: { children: ReactNode }) {
   return <span className={`mb-1 block ${sectionLabelCls}`}>{children}</span>;
