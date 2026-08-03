@@ -4,12 +4,12 @@
 
 :root {
   color-scheme: dark;
-  --ring-deep: #0891b2;
-  --ring-mid: #4DD4E6;
-  --ring-bright: #67e8f9;
-  --ring-over: #ff8080;
-  --ring-over-deep: #b91c1c;
-  --ring-track: rgba(255, 255, 255, 0.06);
+  --ring-deep: #2A283A;
+  --ring-mid: #FFB74D;
+  --ring-bright: #E57373;
+  --ring-over: #E57373;
+  --ring-over-deep: #38222B;
+  --ring-track: #2A283A;
 }
 
 html {

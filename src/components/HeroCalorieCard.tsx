@@ -56,20 +56,27 @@ export function HeroCalorieCard({
       : `${formatNumber(animConsumed)}`
     : `${formatNumber(bigNum)}`;
 
+  const textSizeClass =
+    displayBigVal.length > 11
+      ? "text-xl sm:text-2xl font-extrabold"
+      : displayBigVal.length > 7
+        ? "text-2xl sm:text-3xl font-black"
+        : "text-3xl sm:text-4xl font-black";
+
   const subtextNode = state.hasTarget ? (
-    <div className="mt-1.5 flex items-center flex-wrap gap-2 text-xs font-mono text-white/60">
+    <div className="mt-1.5 flex items-center flex-wrap gap-2 text-xs font-mono text-[#A5A2B8]">
       {showRatio ? (
-        <span className="text-amber-400 font-bold">Kalanı göster →</span>
+        <span className="text-[#A5A2B8] hover:text-white font-medium transition-colors">Kalanı göster →</span>
       ) : (
         <>
           <span>{formatNumber(animConsumed)}</span>
-          <span className="text-white/40">/</span>
-          <span className="text-white/40">{formatNumber(animTarget)} kcal</span>
+          <span className="text-[#A5A2B8]/40">/</span>
+          <span className="text-[#A5A2B8]/60">{formatNumber(animTarget)} kcal</span>
         </>
       )}
 
       {burnedKcal > 0 && (
-        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-orange-500/20 text-orange-400 text-[10px] font-bold border border-orange-500/30">
+        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-[#38222B] text-[#E57373] text-[10px] font-bold">
           🔥 +{burnedKcal} yakıldı
         </span>
       )}
@@ -94,7 +101,7 @@ export function HeroCalorieCard({
             </div>
           }
           value={
-            <div className="text-3xl sm:text-4xl font-black text-white tracking-tight tabular-nums leading-none">
+            <div className={`${textSizeClass} text-white tracking-tight tabular-nums leading-none`}>
               {displayBigVal} <span className="text-xs font-bold text-[#A5A2B8] font-mono">kcal</span>
             </div>
           }
