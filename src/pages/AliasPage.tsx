@@ -121,14 +121,18 @@ export function AliasPage() {
             return (
               <Card
                 key={a.id}
-                className="anim-fadeup flex w-full min-w-0 max-w-full flex-col justify-between gap-2 p-3 overflow-hidden"
+                onClick={() => {
+                  if (a.recipe) setEditingRecipe(a);
+                  else setEditingAlias(a);
+                }}
+                className="anim-fadeup flex w-full min-w-0 max-w-full flex-col justify-between gap-2.5 p-3 overflow-hidden cursor-pointer hover:border-memory/50 transition group"
                 style={{ animationDelay: `${i * 30}ms` }}
               >
                 <div>
                   <div className="flex items-start justify-between gap-1.5">
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-1">
-                        <span className="min-w-0 block truncate text-xs font-bold text-ink-primary" title={a.name}>
+                        <span className="min-w-0 block truncate text-xs font-bold text-ink-primary group-hover:text-memory transition-colors" title={a.name}>
                           {a.name}
                         </span>
                         {a.recipe && (
@@ -137,7 +141,23 @@ export function AliasPage() {
                           </span>
                         )}
                       </div>
-                      {a.brand && <div className="truncate text-[10px] text-ink-tertiary">{a.brand}</div>}
+
+                      {/* Besin Adının Altında İfadeler (İlk 3 İfade) */}
+                      {a.triggers && a.triggers.length > 0 && (
+                        <div className="mt-1 flex flex-wrap items-center gap-1">
+                          {a.triggers.slice(0, 3).map((tr, idx) => (
+                            <span
+                              key={idx}
+                              className="inline-block max-w-[110px] truncate rounded-md bg-white/[0.06] px-1.5 py-0.5 text-[10px] font-medium text-ink-secondary border border-white/5"
+                              title={tr}
+                            >
+                              {tr}
+                            </span>
+                          ))}
+                        </div>
+                      )}
+
+                      {a.brand && <div className="mt-0.5 truncate text-[10px] text-ink-tertiary">{a.brand}</div>}
                     </div>
                     <div className="shrink-0 font-mono text-[11px] font-semibold text-ink-secondary whitespace-nowrap">
                       {formatNumber(kcal100g)} kcal/100g
@@ -145,10 +165,14 @@ export function AliasPage() {
                   </div>
                 </div>
 
-                <div className="flex flex-wrap items-center justify-end gap-1.5 border-t border-line/40 pt-2">
+                <div
+                  className="flex flex-wrap items-center justify-end gap-1.5 border-t border-line/40 pt-2"
+                  onClick={(e) => e.stopPropagation()}
+                >
                   <button
                     type="button"
-                    onClick={() => {
+                    onClick={(e) => {
+                      e.stopPropagation();
                       if (a.recipe) setEditingRecipe(a);
                       else setEditingAlias(a);
                     }}

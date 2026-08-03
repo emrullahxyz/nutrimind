@@ -9,11 +9,15 @@ export function Modal({
   onClose,
   children,
   footer,
+  fullScreen = false,
+  contentRef,
 }: {
   title: string;
   onClose: () => void;
   children: ReactNode;
   footer?: ReactNode;
+  fullScreen?: boolean;
+  contentRef?: React.Ref<HTMLDivElement>;
 }) {
   const dialogRef = useRef<HTMLDivElement>(null);
   const mouseDownTargetRef = useRef<EventTarget | null>(null);
@@ -73,9 +77,13 @@ export function Modal({
         aria-label={title}
         tabIndex={-1}
         onClick={(e) => e.stopPropagation()}
-        className="anim-fadeup flex max-h-[85dvh] w-full flex-col overflow-hidden rounded-t-card border border-line bg-elevated-2 shadow-float sm:max-w-lg sm:max-h-[85vh] sm:rounded-card"
+        className={`anim-fadeup flex w-full flex-col overflow-hidden bg-elevated-2 shadow-float ${
+          fullScreen
+            ? "h-[100dvh] max-h-[100dvh] rounded-none border-none sm:max-w-xl sm:h-[92vh] sm:max-h-[92vh] sm:rounded-card sm:border sm:border-line"
+            : "max-h-[85dvh] rounded-t-card border border-line sm:max-w-lg sm:max-h-[85vh] sm:rounded-card"
+        }`}
       >
-        <div className="flex-none p-3.5 sm:p-4 flex items-center justify-between gap-3 border-b border-line/40 bg-[#16171e]">
+        <div className="flex-none p-3.5 sm:p-4 flex items-center justify-between gap-3 border-b border-line/40 bg-[#16171e] pad-safe-top">
           <h3 className="text-base font-extrabold text-ink-primary">{title}</h3>
           <button
             type="button"
@@ -86,7 +94,7 @@ export function Modal({
             ✕
           </button>
         </div>
-        <div className="flex-1 overflow-y-auto min-h-0 p-4 sm:p-5">
+        <div ref={contentRef} className="flex-1 overflow-y-auto min-h-0 p-4 sm:p-5">
           {children}
         </div>
         {footer && (

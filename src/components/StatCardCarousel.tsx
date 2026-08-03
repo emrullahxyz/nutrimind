@@ -76,16 +76,16 @@ export function StatCardCarousel({
           type="button"
           onClick={() => scrollToPage(0)}
           aria-label="Sayfa 1"
-          className={`transition-all duration-200 ${
-            activePage === 0 ? "h-1.5 w-4 rounded-full bg-white" : "h-1.5 w-1.5 rounded-full bg-white/25"
+          className={`h-1.5 rounded-full transition-all duration-300 ${
+            activePage === 0 ? "w-6 bg-accent" : "w-1.5 bg-white/20 hover:bg-white/40"
           }`}
         />
         <button
           type="button"
           onClick={() => scrollToPage(1)}
           aria-label="Sayfa 2"
-          className={`transition-all duration-200 ${
-            activePage === 1 ? "h-1.5 w-4 rounded-full bg-white" : "h-1.5 w-1.5 rounded-full bg-white/25"
+          className={`h-1.5 rounded-full transition-all duration-300 ${
+            activePage === 1 ? "w-6 bg-accent" : "w-1.5 bg-white/20 hover:bg-white/40"
           }`}
         />
       </div>
