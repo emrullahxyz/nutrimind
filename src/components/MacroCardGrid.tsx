@@ -52,8 +52,6 @@ function SmallDonut({ pct, color, icon: Icon }: { pct: number; color: string; ic
   );
 }
 
-import { SlideValue } from "./SlideValue";
-
 function MacroCardItem({
   item,
   showRatio,

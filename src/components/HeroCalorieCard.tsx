@@ -2,7 +2,6 @@ import { Flame } from "lucide-react";
 import { CalorieRing } from "./CalorieRing";
 import { ringState } from "../lib/ring";
 import { formatNumber } from "../lib/format";
-import { SlideValue } from "./SlideValue";
 
 interface HeroCalorieCardProps {
   consumed: number;
