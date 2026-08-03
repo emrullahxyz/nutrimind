@@ -3,6 +3,7 @@ import { CalorieRing } from "./CalorieRing";
 import { ringState } from "../lib/ring";
 import { formatNumber } from "../lib/format";
 import { useAnimatedNumber } from "../hooks/useAnimatedNumber";
+import { DirectionalTextSwap, type SwapMode } from "./DirectionalTextSwap";
 
 interface HeroCalorieCardProps {
   consumed: number;
@@ -30,6 +31,8 @@ export function HeroCalorieCard({
   const animRemaining = useAnimatedNumber(Math.max(0, adjustedTarget - consumed), 700);
   const animOver = useAnimatedNumber(Math.max(0, consumed - adjustedTarget), 700);
 
+  const mode: SwapMode = showRatio ? "EATEN" : "LEFT";
+
   const subtitleLabel = showRatio
     ? "Tüketilen / Hedef"
     : state.isOver
@@ -54,6 +57,26 @@ export function HeroCalorieCard({
       : `${formatNumber(animConsumed)}`
     : `${formatNumber(bigNum)}`;
 
+  const subtextNode = state.hasTarget ? (
+    <div className="mt-2 text-xs font-mono text-ink-secondary flex items-center flex-wrap gap-2">
+      {showRatio ? (
+        <span className="text-accent font-semibold">Tıklayarak Kalan Kaloriyi Göster</span>
+      ) : (
+        <>
+          <span>{formatNumber(animConsumed)}</span>
+          <span className="text-ink-tertiary">/</span>
+          <span className="text-ink-tertiary">{formatNumber(animTarget)} kcal</span>
+        </>
+      )}
+
+      {burnedKcal > 0 && (
+        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-orange-500/20 text-orange-400 text-[10px] font-bold border border-orange-500/30">
+          🔥 +{burnedKcal} yakıldı
+        </span>
+      )}
+    </div>
+  ) : null;
+
   return (
     <div
       onClick={onToggleRatio}
@@ -64,36 +87,25 @@ export function HeroCalorieCard({
       <div className="pointer-events-none absolute -left-10 -top-10 h-40 w-40 rounded-full bg-accent/10 blur-2xl" />
 
       <div className="flex items-center justify-between gap-4">
-        {/* Left Stats */}
-        <div key={`stats-${showRatio}`} className="anim-spring-fade flex flex-col justify-center min-w-0 flex-1">
-          <div className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-ink-secondary mb-1">
-            <Flame className="h-4 w-4 text-accent" />
-            <span>{subtitleLabel}</span>
-          </div>
-
-          <div className="text-3xl sm:text-4xl md:text-5xl font-extrabold text-white tracking-tight tabular-nums">
-            {displayBigVal}
-          </div>
-
-          {state.hasTarget && (
-            <div className="mt-2 text-xs font-mono text-ink-secondary flex items-center flex-wrap gap-2">
-              {showRatio ? (
-                <span className="text-accent font-semibold">Tıklayarak Kalan Kaloriyi Göster</span>
-              ) : (
-                <>
-                  <span>{formatNumber(animConsumed)}</span>
-                  <span className="text-ink-tertiary">/</span>
-                  <span className="text-ink-tertiary">{formatNumber(animTarget)} kcal</span>
-                </>
-              )}
-
-              {burnedKcal > 0 && (
-                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-orange-500/20 text-orange-400 text-[10px] font-bold border border-orange-500/30">
-                  🔥 +{burnedKcal} yakıldı
-                </span>
-              )}
-            </div>
-          )}
+        {/* Left Stats with Directional Text Swap Animation */}
+        <div className="flex flex-col justify-center min-w-0 flex-1">
+          <DirectionalTextSwap
+            mode={mode}
+            layout="label-first"
+            label={
+              <div className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-ink-secondary mb-1">
+                <Flame className="h-4 w-4 text-accent" />
+                <span>{subtitleLabel}</span>
+              </div>
+            }
+            value={
+              <div className="text-3xl sm:text-4xl md:text-5xl font-extrabold text-white tracking-tight tabular-nums">
+                {displayBigVal}
+              </div>
+            }
+            subtext={subtextNode}
+            durationMs={300}
+          />
 
           {onOpenExercise && (
             <button
@@ -110,7 +122,7 @@ export function HeroCalorieCard({
         </div>
 
         {/* Right Ring */}
-        <div key={`ring-${showRatio}`} className="anim-ring-pulse flex-none flex items-center justify-center">
+        <div className="flex-none flex items-center justify-center">
           <CalorieRing consumed={consumed} target={adjustedTarget} size={140} />
         </div>
       </div>
