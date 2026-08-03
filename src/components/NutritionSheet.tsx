@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { X, Plus, Minus, Flame, Sparkles, Scale, Trash2, Check } from "lucide-react";
+import { ArrowLeft, Flame, Beef, Wheat, Droplet, Trash2 } from "lucide-react";
 import type { MealItem, Nutrition } from "../types";
 
 interface Props {
@@ -10,15 +10,14 @@ interface Props {
   onDelete?: (mealId: string) => void;
 }
 
-const UNITS = ["g", "porsiyon", "adet", "dilim", "ölçek"];
+const UNITS = ["Tbsp", "Oz", "G", "Scoop", "porsiyon", "adet"];
 
 export function NutritionSheet({ isOpen, onClose, meal, onSave, onDelete }: Props) {
   const isPoppedRef = useRef(false);
 
   const [label, setLabel] = useState(meal?.label ?? "");
   const [multiplier, setMultiplier] = useState(1);
-  const [unit, setUnit] = useState("g");
-  const [showDetails, setShowDetails] = useState(true);
+  const [unit, setUnit] = useState("G");
 
   // Sync state when meal prop changes
   useEffect(() => {
@@ -30,7 +29,7 @@ export function NutritionSheet({ isOpen, onClose, meal, onSave, onDelete }: Prop
 
   useEffect(() => {
     if (!isOpen || !meal) return;
-    window.history.pushState({ isModal: true, title: "Besin Detayı" }, "");
+    window.history.pushState({ isModal: true, title: "Nutrition" }, "");
 
     const handlePopState = () => {
       isPoppedRef.current = true;
@@ -85,167 +84,188 @@ export function NutritionSheet({ isOpen, onClose, meal, onSave, onDelete }: Prop
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/80 p-0 sm:p-4 backdrop-blur-sm animate-fadeIn">
-      <div className="w-full max-w-lg rounded-t-3xl sm:rounded-3xl bg-[#151421] border border-white/10 p-5 text-white shadow-2xl max-h-[90vh] flex flex-col overflow-hidden">
-        {/* Header */}
-        <div className="flex items-center justify-between pb-4 border-b border-white/10">
-          <div className="flex items-center gap-2.5">
-            <div className="w-10 h-10 rounded-2xl bg-accent/10 border border-accent/20 flex items-center justify-center text-accent">
-              <Scale className="w-5 h-5" />
+    <div className="fixed inset-0 z-[9999] flex flex-col bg-[#13121b] text-white h-[100dvh] w-full overflow-hidden animate-fadeIn pad-safe">
+      {/* Top Header */}
+      <div className="flex items-center justify-between px-4 py-3.5 sm:px-6 border-b border-white/10 flex-none bg-[#13121b]">
+        <button
+          type="button"
+          onClick={handleUserClose}
+          className="w-10 h-10 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white transition active:scale-95"
+          aria-label="Geri"
+        >
+          <ArrowLeft className="w-5 h-5" />
+        </button>
+
+        <div className="flex flex-col items-center min-w-0 flex-1 px-3">
+          <input
+            type="text"
+            value={label}
+            onChange={(e) => setLabel(e.target.value)}
+            className="bg-transparent text-center font-bold text-lg sm:text-xl text-white focus:outline-none focus:border-b focus:border-white/30 truncate max-w-[240px]"
+            placeholder="Besin Adı"
+          />
+        </div>
+
+        {onDelete ? (
+          <button
+            type="button"
+            onClick={() => {
+              onDelete(meal.id);
+              onClose();
+            }}
+            className="w-10 h-10 rounded-full bg-red-500/10 hover:bg-red-500/20 text-red-400 flex items-center justify-center transition active:scale-95"
+            title="Öğünü Sil"
+          >
+            <Trash2 className="w-4.5 h-4.5" />
+          </button>
+        ) : (
+          <div className="w-10 h-10" />
+        )}
+      </div>
+
+      {/* Main Scrollable Content Area */}
+      <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-6">
+        {/* Serving Size Measurement (Porsiyon Birimi) */}
+        <div className="space-y-2.5">
+          <label className="text-xs font-semibold text-white/80 block">
+            Serving Size Measurement
+          </label>
+          <div className="flex items-center gap-2 overflow-x-auto no-scrollbar pb-1">
+            {UNITS.map((u) => {
+              const isSelected = unit.toLowerCase() === u.toLowerCase();
+              return (
+                <button
+                  key={u}
+                  type="button"
+                  onClick={() => setUnit(u)}
+                  className={`px-5 py-2.5 rounded-full text-xs font-bold transition-all whitespace-nowrap active:scale-95 ${
+                    isSelected
+                      ? "bg-white text-black shadow-md"
+                      : "border border-white/20 bg-transparent text-white/70 hover:bg-white/5 hover:text-white"
+                  }`}
+                >
+                  {u}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Serving Amount Stepper (Porsiyon Miktarı) */}
+        <div className="flex items-center justify-between gap-4 py-1">
+          <span className="text-sm font-semibold text-white/90">
+            Serving Amount
+          </span>
+          <div className="flex items-center gap-4 rounded-2xl border border-white/20 bg-white/[0.04] px-4 py-2 min-w-[130px] justify-between">
+            <button
+              type="button"
+              onClick={() => handleStep(-0.25)}
+              className="text-white/70 hover:text-white text-lg font-bold transition active:scale-90 w-6 h-6 flex items-center justify-center"
+            >
+              —
+            </button>
+            <span className="font-extrabold text-white text-base min-w-[28px] text-center tabular-nums">
+              {multiplier}
+            </span>
+            <button
+              type="button"
+              onClick={() => handleStep(0.25)}
+              className="text-white/70 hover:text-white text-lg font-bold transition active:scale-90 w-6 h-6 flex items-center justify-center"
+            >
+              +
+            </button>
+          </div>
+        </div>
+
+        {/* Calories Hero Card */}
+        <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-4 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center text-white">
+              <Flame className="w-5 h-5" />
             </div>
             <div>
-              <h2 className="text-base font-bold">Besin & Makro Detayı</h2>
-              <p className="text-xs text-white/50">Miktarı düzenle & değerleri incele</p>
+              <div className="text-xs font-medium text-white/50">Calories</div>
+              <div className="text-2xl font-black text-white tabular-nums tracking-tight">
+                {scaledNutrition.kcal}
+              </div>
             </div>
           </div>
-          <button
-            onClick={handleUserClose}
-            className="w-8 h-8 rounded-full bg-white/5 hover:bg-white/10 flex items-center justify-center text-white/70 transition-colors"
-          >
-            <X className="w-5 h-5" />
-          </button>
+          <div className="text-xs font-bold text-white/40 font-mono">kcal</div>
         </div>
 
-        <div className="flex-1 overflow-y-auto py-4 space-y-5">
-          {/* Meal Label Input */}
-          <div>
-            <label className="text-[10px] text-white/40 mb-1 block font-semibold uppercase tracking-wider">
-              Yemek / Besin Adı
-            </label>
-            <input
-              type="text"
-              value={label}
-              onChange={(e) => setLabel(e.target.value)}
-              className="w-full px-3.5 py-2.5 rounded-xl bg-black/40 border border-white/10 text-sm font-semibold text-white focus:outline-none focus:border-accent"
-            />
-          </div>
-
-          {/* Quantity & Unit Stepper */}
-          <div className="p-4 rounded-2xl bg-white/[0.03] border border-white/5 space-y-3">
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-semibold text-white/70">Porsiyon Çarpanı / Miktar</span>
-              <div className="flex gap-1">
-                {UNITS.map((u) => (
-                  <button
-                    key={u}
-                    onClick={() => setUnit(u)}
-                    className={`px-2.5 py-1 rounded-lg text-[10px] font-semibold transition-all ${
-                      unit === u ? "bg-accent text-black font-bold" : "bg-white/5 text-white/60 hover:bg-white/10"
-                    }`}
-                  >
-                    {u}
-                  </button>
-                ))}
-              </div>
+        {/* 3 Main Macros Grid (Protein, Carbs, Fats) */}
+        <div className="grid grid-cols-3 gap-2.5">
+          {/* Protein */}
+          <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-3 flex flex-col justify-between min-h-[80px]">
+            <div className="flex items-center gap-1.5 text-xs font-semibold text-white/80">
+              <Beef className="w-3.5 h-3.5 text-[#FF6B8A]" />
+              <span>Protein</span>
             </div>
-
-            <div className="flex items-center justify-between gap-4 pt-1">
-              <button
-                onClick={() => handleStep(-0.25)}
-                className="w-12 h-12 rounded-2xl bg-white/10 hover:bg-white/20 active:scale-95 flex items-center justify-center text-white font-bold transition-all"
-              >
-                <Minus className="w-5 h-5" />
-              </button>
-
-              <div className="text-center">
-                <div className="text-2xl font-black tracking-tight text-accent">
-                  {multiplier}x <span className="text-xs font-normal text-white/50">{unit}</span>
-                </div>
-                <div className="text-[10px] text-white/40">Hesaplanan Porsiyon</div>
-              </div>
-
-              <button
-                onClick={() => handleStep(0.25)}
-                className="w-12 h-12 rounded-2xl bg-white/10 hover:bg-white/20 active:scale-95 flex items-center justify-center text-white font-bold transition-all"
-              >
-                <Plus className="w-5 h-5" />
-              </button>
+            <div className="text-base sm:text-lg font-black text-white tabular-nums tracking-tight mt-1">
+              {scaledNutrition.protein}g
             </div>
           </div>
 
-          {/* Main Macro Cards Grid */}
-          <div className="grid grid-cols-4 gap-2">
-            <div className="p-3 rounded-2xl bg-white/5 border border-white/5 text-center">
-              <div className="text-xs text-white/40 font-medium">Kalori</div>
-              <div className="text-base font-black text-amber-400 mt-0.5">{scaledNutrition.kcal}</div>
-              <div className="text-[9px] text-white/30">kcal</div>
+          {/* Carbs */}
+          <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-3 flex flex-col justify-between min-h-[80px]">
+            <div className="flex items-center gap-1.5 text-xs font-semibold text-white/80">
+              <Wheat className="w-3.5 h-3.5 text-[#FFB84D]" />
+              <span>Carbs</span>
             </div>
-            <div className="p-3 rounded-2xl bg-protein/10 border border-protein/20 text-center">
-              <div className="text-xs text-protein font-medium">Protein</div>
-              <div className="text-base font-black text-protein mt-0.5">{scaledNutrition.protein}g</div>
-              <div className="text-[9px] text-protein/50">%{(scaledNutrition.protein * 4 / (scaledNutrition.kcal || 1) * 100).toFixed(0)}</div>
-            </div>
-            <div className="p-3 rounded-2xl bg-carbs/10 border border-carbs/20 text-center">
-              <div className="text-xs text-carbs font-medium">Karb</div>
-              <div className="text-base font-black text-carbs mt-0.5">{scaledNutrition.carbs}g</div>
-              <div className="text-[9px] text-carbs/50">%{(scaledNutrition.carbs * 4 / (scaledNutrition.kcal || 1) * 100).toFixed(0)}</div>
-            </div>
-            <div className="p-3 rounded-2xl bg-fat/10 border border-fat/20 text-center">
-              <div className="text-xs text-fat font-medium">Yağ</div>
-              <div className="text-base font-black text-fat mt-0.5">{scaledNutrition.fat}g</div>
-              <div className="text-[9px] text-fat/50">%{(scaledNutrition.fat * 9 / (scaledNutrition.kcal || 1) * 100).toFixed(0)}</div>
+            <div className="text-base sm:text-lg font-black text-white tabular-nums tracking-tight mt-1">
+              {scaledNutrition.carbs}g
             </div>
           </div>
 
-          {/* Secondary Nutrition Breakdown Drawer */}
-          <div className="rounded-2xl bg-white/[0.02] border border-white/5 p-4 space-y-2.5">
-            <div className="flex items-center justify-between text-xs font-semibold text-white/80">
-              <span className="flex items-center gap-1.5">
-                <Sparkles className="w-3.5 h-3.5 text-memory" /> Detaylı Besin Değerleri
-              </span>
-              <button
-                onClick={() => setShowDetails(!showDetails)}
-                className="text-[10px] text-accent hover:underline"
-              >
-                {showDetails ? "Gizle" : "Göster"}
-              </button>
+          {/* Fats */}
+          <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-3 flex flex-col justify-between min-h-[80px]">
+            <div className="flex items-center gap-1.5 text-xs font-semibold text-white/80">
+              <Droplet className="w-3.5 h-3.5 text-[#5B8DEF]" />
+              <span>Fats</span>
             </div>
-
-            {showDetails && (
-              <div className="grid grid-cols-2 gap-2 text-xs pt-1 border-t border-white/5">
-                <div className="flex items-center justify-between p-2 rounded-xl bg-white/5">
-                  <span className="text-white/50">🌾 Lif (Fiber)</span>
-                  <span className="font-semibold">{scaledNutrition.fiber} g</span>
-                </div>
-                <div className="flex items-center justify-between p-2 rounded-xl bg-white/5">
-                  <span className="text-white/50">🍬 Şeker (Sugar)</span>
-                  <span className="font-semibold">{scaledNutrition.sugar ?? "—"} g</span>
-                </div>
-                <div className="flex items-center justify-between p-2 rounded-xl bg-white/5">
-                  <span className="text-white/50">🥑 Doymuş Yağ</span>
-                  <span className="font-semibold">{scaledNutrition.satFat ?? "—"} g</span>
-                </div>
-                <div className="flex items-center justify-between p-2 rounded-xl bg-white/5">
-                  <span className="text-white/50">🧂 Sodyum</span>
-                  <span className="font-semibold">{scaledNutrition.sodium !== undefined ? `${scaledNutrition.sodium} mg` : "—"}</span>
-                </div>
-              </div>
-            )}
+            <div className="text-base sm:text-lg font-black text-white tabular-nums tracking-tight mt-1">
+              {scaledNutrition.fat}g
+            </div>
           </div>
         </div>
 
-        {/* Footer Action Buttons */}
-        <div className="flex items-center gap-2 pt-3 border-t border-white/10">
-          {onDelete && (
-            <button
-              onClick={() => {
-                onDelete(meal.id);
-                onClose();
-              }}
-              className="p-3 rounded-2xl bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/20 transition-all active:scale-95"
-              title="Öğünü Sil"
-            >
-              <Trash2 className="w-5 h-5" />
-            </button>
-          )}
-
-          <button
-            onClick={handleApplySave}
-            className="flex-1 py-3 rounded-2xl bg-white text-black font-bold text-sm flex items-center justify-center gap-2 hover:bg-white/90 transition-all shadow-lg active:scale-95"
-          >
-            <Check className="w-4 h-4" /> Değişiklikleri Kaydet
-          </button>
+        {/* Other Nutrition Facts List */}
+        <div className="space-y-2.5 pt-2">
+          <div className="text-sm font-bold text-white/90">Other nutrition facts</div>
+          <div className="space-y-2">
+            {/* Saturated Fat */}
+            <div className="rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3.5 flex items-center justify-between text-xs sm:text-sm">
+              <span className="font-medium text-white/80">Saturated Fat</span>
+              <span className="font-extrabold text-white">{scaledNutrition.satFat ?? 0}g</span>
+            </div>
+            {/* Sodium */}
+            <div className="rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3.5 flex items-center justify-between text-xs sm:text-sm">
+              <span className="font-medium text-white/80">Sodium</span>
+              <span className="font-extrabold text-white">{scaledNutrition.sodium ?? 0}mg</span>
+            </div>
+            {/* Fiber */}
+            <div className="rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3.5 flex items-center justify-between text-xs sm:text-sm">
+              <span className="font-medium text-white/80">Fiber</span>
+              <span className="font-extrabold text-white">{scaledNutrition.fiber}g</span>
+            </div>
+            {/* Sugar */}
+            <div className="rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3.5 flex items-center justify-between text-xs sm:text-sm">
+              <span className="font-medium text-white/80">Sugar</span>
+              <span className="font-extrabold text-white">{scaledNutrition.sugar ?? 0}g</span>
+            </div>
+          </div>
         </div>
+      </div>
+
+      {/* Full Width Bottom Save Button */}
+      <div className="p-4 sm:p-5 border-t border-white/10 bg-[#13121b] flex-none">
+        <button
+          type="button"
+          onClick={handleApplySave}
+          className="w-full py-4 rounded-full bg-white text-black font-extrabold text-base hover:bg-white/90 transition shadow-xl active:scale-[0.98]"
+        >
+          Save
+        </button>
       </div>
     </div>
   );
