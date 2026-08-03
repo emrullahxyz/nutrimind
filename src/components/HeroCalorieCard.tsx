@@ -25,7 +25,6 @@ export function HeroCalorieCard({
   const adjustedTarget = target + burnedKcal;
   const state = ringState(consumed, adjustedTarget);
 
-  // Animated numbers
   const animConsumed = useAnimatedNumber(consumed, 700);
   const animTarget = useAnimatedNumber(adjustedTarget, 700);
   const animRemaining = useAnimatedNumber(Math.max(0, adjustedTarget - consumed), 700);
@@ -58,14 +57,14 @@ export function HeroCalorieCard({
     : `${formatNumber(bigNum)}`;
 
   const subtextNode = state.hasTarget ? (
-    <div className="mt-2 text-xs font-mono text-ink-secondary flex items-center flex-wrap gap-2">
+    <div className="mt-1 flex items-center flex-wrap gap-2 text-[11px] font-mono text-white/60">
       {showRatio ? (
-        <span className="text-accent font-semibold">Tıklayarak Kalan Kaloriyi Göster</span>
+        <span className="text-amber-400 font-bold">Kalanı göster →</span>
       ) : (
         <>
           <span>{formatNumber(animConsumed)}</span>
-          <span className="text-ink-tertiary">/</span>
-          <span className="text-ink-tertiary">{formatNumber(animTarget)} kcal</span>
+          <span className="text-white/40">/</span>
+          <span className="text-white/40">{formatNumber(animTarget)} kcal</span>
         </>
       )}
 
@@ -80,51 +79,51 @@ export function HeroCalorieCard({
   return (
     <div
       onClick={onToggleRatio}
-      className="relative overflow-hidden rounded-card border border-calBorder bg-calCard p-4 sm:p-5 shadow-card backdrop-blur-md cursor-pointer select-none transition-all duration-200 hover:border-white/20 active:scale-[0.98] h-[184px] sm:h-[188px] flex flex-col justify-center group"
+      className="relative overflow-hidden rounded-[24px] border border-white/10 bg-white/[0.04] p-4 sm:p-5 shadow-card backdrop-blur-md cursor-pointer select-none transition-all duration-200 hover:border-white/20 active:scale-[0.99] flex items-center justify-between gap-4 h-[132px] sm:h-[136px] group"
       title="Tıklayarak Tüketilen/Kalan görünümünü değiştir"
     >
-      {/* Background glow */}
-      <div className="pointer-events-none absolute -left-10 -top-10 h-40 w-40 rounded-full bg-accent/10 blur-2xl" />
+      {/* Subtle Background Glow */}
+      <div className="pointer-events-none absolute -left-8 -top-8 h-32 w-32 rounded-full bg-amber-400/10 blur-xl" />
 
-      <div className="flex items-center justify-between gap-4">
-        {/* Left Stats with Directional Text Swap Animation */}
-        <div className="flex flex-col justify-center min-w-0 flex-1">
-          <DirectionalTextSwap
-            mode={mode}
-            layout="label-first"
-            label={
-              <div className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-ink-secondary mb-1">
-                <Flame className="h-4 w-4 text-accent" />
-                <span>{subtitleLabel}</span>
-              </div>
-            }
-            value={
-              <div className="text-3xl sm:text-4xl md:text-5xl font-extrabold text-white tracking-tight tabular-nums">
-                {displayBigVal}
-              </div>
-            }
-            subtext={subtextNode}
-            durationMs={300}
-          />
+      {/* Left Column: Label, Big Calorie Value, Subtext, Exercise Button */}
+      <div className="flex flex-col justify-center min-w-0 flex-1">
+        <DirectionalTextSwap
+          mode={mode}
+          layout="label-first"
+          label={
+            <div className="flex items-center gap-1.5 text-xs font-extrabold uppercase tracking-wider text-white/70 mb-0.5">
+              <Flame className="h-3.5 w-3.5 text-amber-400 fill-amber-400/20" />
+              <span>{subtitleLabel}</span>
+            </div>
+          }
+          value={
+            <div className="text-2xl sm:text-3xl font-black text-white tracking-tight tabular-nums leading-none">
+              {displayBigVal} <span className="text-xs font-bold text-white/50 font-mono">kcal</span>
+            </div>
+          }
+          subtext={subtextNode}
+          durationMs={300}
+        />
 
-          {onOpenExercise && (
+        {onOpenExercise && (
+          <div className="mt-2">
             <button
               onClick={(e) => {
                 e.stopPropagation();
                 onOpenExercise();
               }}
-              className="mt-3 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 text-[11px] font-semibold text-white/80 border border-white/10 w-fit transition-colors"
+              className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-white/10 hover:bg-white/20 text-[10px] font-bold text-white border border-white/15 transition active:scale-95"
             >
-              <Dumbbell className="w-3.5 h-3.5 text-orange-400" />
+              <Dumbbell className="w-3 h-3 text-orange-400" />
               <span>Egzersiz Ekle</span>
             </button>
-          )}
-        </div>
+          </div>
+        )}
+      </div>
 
-        {/* Right Ring */}
-        <div className="flex-none flex items-center justify-center">
-          <CalorieRing consumed={consumed} target={adjustedTarget} size={140} />
-        </div>
+      {/* Right Column: Sleek 92px Calorie Ring */}
+      <div className="flex-none flex items-center justify-center">
+        <CalorieRing consumed={consumed} target={adjustedTarget} size={92} />
       </div>
     </div>
   );
