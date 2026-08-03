@@ -9,6 +9,7 @@ import { ErrorText, ExpandableMealName, FormActions, NutrientSummaryLine, TextFi
 import { Modal } from "./Modal";
 import { ScanSheet } from "./ScanSheet";
 import { SupplementCard } from "./SupplementCard";
+import { WeightCard } from "./WeightCard";
 import { Collapsible } from "./Collapsible";
 import { MealRow } from "./MealRow";
 import { formatKcal } from "../lib/format";
@@ -21,6 +22,7 @@ import type { MealTemplate } from "../lib/templates";
 import type { MealItem, MealPayload } from "../types";
 import { PREF } from "../lib/prefs";
 import { usePersistedBool } from "../lib/usePersistedBool";
+import { categoryForLoggedAt, groupMealsByCategory, MEAL_CATEGORY_LABELS } from "../lib/mealCategory";
 
 function MergeModal({
   selectedMeals,
@@ -38,7 +40,19 @@ function MergeModal({
   const totalNutrition = sumMeals(selectedMeals);
 
   return (
-    <Modal title={`${selectedMeals.length} Öğünü Birleştir`} onClose={onClose}>
+    <Modal
+      title={`${selectedMeals.length} Öğünü Birleştir`}
+      onClose={onClose}
+      footer={
+        <FormActions
+          onCancel={onClose}
+          onSave={() => onConfirm(name.trim() || defaultName)}
+          saving={busy}
+          disabled={!name.trim()}
+          saveLabel="Birleştir"
+        />
+      }
+    >
       <div className="flex flex-col gap-4">
         <TextField label="Birleşik öğün adı" value={name} onChange={setName} placeholder="örn. Kahvaltı" />
         <div className="rounded-chip border border-line bg-white/[0.03] p-3">
@@ -60,13 +74,6 @@ function MergeModal({
             className="mt-3 border-t border-line pt-2 font-mono text-xs text-accent"
           />
         </div>
-        <FormActions
-          onCancel={onClose}
-          onSave={() => onConfirm(name.trim() || defaultName)}
-          saving={busy}
-          disabled={!name.trim()}
-          saveLabel="Birleştir"
-        />
       </div>
     </Modal>
   );
@@ -200,7 +207,17 @@ export function DayView({
     try {
       const selectedMeals = selectedIndices.map((i) => meals[i]);
       const mergedNutrition = sumMeals(selectedMeals);
-      const mergedMeal: MealPayload = { name: mergedName, nutrition: mergedNutrition };
+
+      const withLoggedAt = selectedMeals.filter((m) => m.loggedAt).sort((a, b) => a.loggedAt!.localeCompare(b.loggedAt!));
+      const earliestLoggedAt = withLoggedAt[0]?.loggedAt;
+      const mergedCategory = earliestLoggedAt ? categoryForLoggedAt(earliestLoggedAt) : undefined;
+
+      const mergedMeal: MealPayload = {
+        name: mergedName,
+        nutrition: mergedNutrition,
+        ...(earliestLoggedAt ? { loggedAt: earliestLoggedAt } : {}),
+        ...(mergedCategory ? { category: mergedCategory } : {}),
+      };
 
       const firstIndex = Math.min(...selectedIndices);
       const selectedSet = new Set(selectedIndices);
@@ -210,7 +227,7 @@ export function DayView({
         if (idx === firstIndex) {
           nextPayload.push(mergedMeal);
         } else if (!selectedSet.has(idx)) {
-          nextPayload.push({ name: m.label, nutrition: m.computed });
+          nextPayload.push(toPayload([m])[0]);
         }
       });
 
@@ -281,6 +298,7 @@ export function DayView({
       )}
 
       <SupplementCard date={date} />
+      <WeightCard date={date} />
 
       <section className="flex flex-col gap-3">
         <div className="flex items-center justify-between gap-3">
@@ -371,26 +389,35 @@ export function DayView({
             >
               + Öğün ekle
             </button>
-            <ul className="flex flex-col gap-2.5 sm:gap-3">
-              {meals.map((m, i) => {
-                const pct = total.kcal ? (m.computed.kcal / total.kcal) * 100 : 0;
-                return (
-                  <MealRow
-                    key={m.id}
-                    meal={m}
-                    pct={pct}
-                    index={i}
-                    selectMode={selectMode}
-                    isSelected={selectedIndices.includes(i)}
-                    onToggleSelect={() => toggleSelect(i)}
-                    onEdit={() => setEditIndex(i)}
-                    onSaveTemplate={() => saveAsTemplate(m)}
-                    onRemove={() => removeMeal(i)}
-                    busy={busy}
-                  />
-                );
-              })}
-            </ul>
+            <div className="flex flex-col gap-4">
+              {groupMealsByCategory(meals).map(({ category, items }) => (
+                <div key={category} className="flex flex-col gap-2.5 sm:gap-3">
+                  <h4 className="font-mono text-[11px] uppercase tracking-mono text-ink-tertiary">
+                    {category === "other" ? "Diğer" : MEAL_CATEGORY_LABELS[category]}
+                  </h4>
+                  <ul className="flex flex-col gap-2.5 sm:gap-3">
+                    {items.map(({ meal: m, index: i }) => {
+                      const pct = total.kcal ? (m.computed.kcal / total.kcal) * 100 : 0;
+                      return (
+                        <MealRow
+                          key={m.id}
+                          meal={m}
+                          pct={pct}
+                          index={i}
+                          selectMode={selectMode}
+                          isSelected={selectedIndices.includes(i)}
+                          onToggleSelect={() => toggleSelect(i)}
+                          onEdit={() => setEditIndex(i)}
+                          onSaveTemplate={() => saveAsTemplate(m)}
+                          onRemove={() => removeMeal(i)}
+                          busy={busy}
+                        />
+                      );
+                    })}
+                  </ul>
+                </div>
+              ))}
+            </div>
           </>
         ) : (
           <button

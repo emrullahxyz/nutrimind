@@ -24,7 +24,8 @@ import { GRAM_UNIT, parseNum, scaleNutrition, toGrams, unitOptions } from "../li
 import { formatKcal, todayISO, weekdayIndex } from "../lib/format";
 import { effectiveProfile } from "../lib/goals";
 import { buildUsageIndex, rankAliases } from "../lib/aliasRank";
-import type { AIParseItem, MealPayload, MealSource, Nutrition } from "../types";
+import { categoryForHour, MEAL_CATEGORIES, MEAL_CATEGORY_LABELS } from "../lib/mealCategory";
+import type { AIParseItem, MealCategory, MealPayload, MealSource, Nutrition } from "../types";
 import { usualQuantity } from "../lib/quantity";
 import { AliasPicker } from "./AliasPicker";
 
@@ -213,6 +214,9 @@ export function MealForm({
 
   // Varsayılan olarak "Hafızadan" seçili gelsin
   const [mode, setMode] = useState<Mode>("alias");
+  const [category, setCategory] = useState<MealCategory>(
+    existing?.category ?? categoryForHour(new Date().getHours()),
+  );
   const [name, setName] = useState(existing?.label ?? "");
   const [draft, setDraft] = useState<NutritionDraft>(existing ? toDraft(existing.computed) : EMPTY_DRAFT);
   const [aliasId, setAliasId] = useState(() => initialRankedAliases[0]?.id ?? aliases[0]?.id ?? "");
@@ -543,10 +547,14 @@ export function MealForm({
         ];
       }
 
+      const loggedAt = editIndex === null ? new Date().toISOString() : existing?.loggedAt;
+
       const entry: MealPayload = {
         name: finalName,
         nutrition: finalNutrition,
         ...(entrySources && entrySources.length > 0 ? { sources: entrySources } : {}),
+        ...(loggedAt ? { loggedAt } : {}),
+        category,
       };
 
       if (editIndex === null) next.push(entry);
@@ -561,11 +569,30 @@ export function MealForm({
   }
 
   return (
-    <Modal title={editIndex === null ? "Öğün ekle" : "Öğünü düzenle"} onClose={requestClose}>
+    <Modal
+      title={editIndex === null ? "Öğün ekle" : "Öğünü düzenle"}
+      onClose={requestClose}
+      footer={<FormActions onCancel={requestClose} onSave={save} saving={saving} disabled={!canSave} />}
+    >
       <div className="mb-4 flex gap-2">
         <ModeTab active={mode === "alias"} onClick={() => switchMode("alias")} label="Hafızadan" />
         <ModeTab active={mode === "manual"} onClick={() => switchMode("manual")} label="Elle" />
         <ModeTab active={mode === "ai"} onClick={() => switchMode("ai")} label="AI ile" />
+      </div>
+
+      <div className="mb-4 flex gap-1.5 overflow-x-auto">
+        {MEAL_CATEGORIES.map((c) => (
+          <button
+            key={c}
+            type="button"
+            onClick={() => setCategory(c)}
+            className={`flex-none rounded-pill px-2.5 py-1 text-[11px] font-semibold transition ${
+              category === c ? "bg-accent text-accent-ink" : "border border-line bg-white/[0.06] text-ink-tertiary"
+            }`}
+          >
+            {MEAL_CATEGORY_LABELS[c]}
+          </button>
+        ))}
       </div>
 
       {mode === "alias" ? (
@@ -801,7 +828,6 @@ export function MealForm({
       )}
 
       {err && <ErrorText>{err}</ErrorText>}
-      <FormActions onCancel={requestClose} onSave={save} saving={saving} disabled={!canSave} />
     </Modal>
   );
 }

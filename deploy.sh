@@ -8,7 +8,7 @@ SERVER="emrullah@92.5.42.0"
 WEBROOT="/var/www/nutri"
 
 echo "→ 1/3 build (tsc + vite)"
-pnpm build
+npx tsc && npx vite build
 
 echo "→ 2/3 paketle + yükle"
 tar czf nutri-dist.tar.gz -C dist .

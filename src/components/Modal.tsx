@@ -1,9 +1,20 @@
 import { useEffect, useRef } from "react";
 import type { ReactNode } from "react";
+import { createPortal } from "react-dom";
 
 /** Koyu tema modal kabuğu: masaüstünde ortalı, mobilde alttan sheet.
  *  Esc ya da zemine tıklama kapatır; açıkken arka plan kaydırması kilitlenir. */
-export function Modal({ title, onClose, children }: { title: string; onClose: () => void; children: ReactNode }) {
+export function Modal({
+  title,
+  onClose,
+  children,
+  footer,
+}: {
+  title: string;
+  onClose: () => void;
+  children: ReactNode;
+  footer?: ReactNode;
+}) {
   const dialogRef = useRef<HTMLDivElement>(null);
   const mouseDownTargetRef = useRef<EventTarget | null>(null);
 
@@ -41,9 +52,9 @@ export function Modal({ title, onClose, children }: { title: string; onClose: ()
     };
   }, []);
 
-  return (
+  const modalEl = (
     <div
-      className="fixed inset-0 z-50 flex items-end justify-center bg-black/70 backdrop-blur-sm sm:items-center sm:p-4"
+      className="fixed inset-0 z-[9999] flex items-end justify-center bg-black/85 backdrop-blur-md p-0 sm:items-center sm:p-4"
       onMouseDown={(e) => {
         mouseDownTargetRef.current = e.target;
       }}
@@ -62,9 +73,9 @@ export function Modal({ title, onClose, children }: { title: string; onClose: ()
         aria-label={title}
         tabIndex={-1}
         onClick={(e) => e.stopPropagation()}
-        className="anim-fadeup max-h-[92vh] w-full overflow-y-auto rounded-t-card border border-line bg-elevated-2 p-5 shadow-float sm:max-w-lg sm:rounded-card"
+        className="anim-fadeup flex max-h-[85dvh] w-full flex-col overflow-hidden rounded-t-card border border-line bg-elevated-2 shadow-float sm:max-w-lg sm:max-h-[85vh] sm:rounded-card"
       >
-        <div className="mb-4 flex items-center justify-between gap-3">
+        <div className="flex-none p-3.5 sm:p-4 flex items-center justify-between gap-3 border-b border-line/40 bg-[#16171e]">
           <h3 className="text-base font-extrabold text-ink-primary">{title}</h3>
           <button
             type="button"
@@ -75,8 +86,17 @@ export function Modal({ title, onClose, children }: { title: string; onClose: ()
             ✕
           </button>
         </div>
-        {children}
+        <div className="flex-1 overflow-y-auto min-h-0 p-4 sm:p-5">
+          {children}
+        </div>
+        {footer && (
+          <div className="flex-none border-t border-line/40 bg-[#16171e] px-4 py-3 sm:px-5 sm:py-3.5 pb-[calc(0.75rem+env(safe-area-inset-bottom,0px))]">
+            {footer}
+          </div>
+        )}
       </div>
     </div>
   );
+
+  return createPortal(modalEl, document.body);
 }

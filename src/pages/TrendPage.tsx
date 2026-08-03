@@ -13,6 +13,8 @@ import { Card } from "../components/Card";
 import { Stat } from "../components/Stat";
 import { TrendChart } from "../components/TrendChart";
 import { RangePicker } from "../components/RangePicker";
+import { WeightTrendCard } from "../components/WeightTrendCard";
+import { parseWeightConfig } from "../lib/weight";
 import { useData } from "../lib/data";
 import { formatNumber } from "../lib/format";
 import { effectiveGoal, weeklyAverageGoal } from "../lib/goals";
@@ -67,7 +69,8 @@ function changeTone(
 }
 
 export function TrendPage() {
-  const { days, goals } = useData();
+  const { days, goals, config } = useData();
+  const weightConfig = parseWeightConfig(config);
   const [key, setKey] = useState<NutrientKey>("kcal");
   const [range, setRange] = useState<TrendRange>(30);
 
@@ -187,6 +190,8 @@ export function TrendPage() {
           </p>
         )}
       </Card>
+
+      <WeightTrendCard entries={weightConfig.entries} range={range} />
     </div>
   );
 }

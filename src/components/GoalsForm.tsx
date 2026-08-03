@@ -314,15 +314,21 @@ export function GoalsForm({ onClose, embedded = false }: { onClose: () => void; 
           </p>
         )}
         {err && <ErrorText>{err}</ErrorText>}
-
-        <FormActions onCancel={requestClose} onSave={save} saving={saving} disabled={!canSave} />
       </div>
   );
 
-  if (embedded) return content;
+  const actions = <FormActions onCancel={requestClose} onSave={save} saving={saving} disabled={!canSave} />;
+
+  if (embedded)
+    return (
+      <div className="flex flex-col gap-4">
+        {content}
+        {actions}
+      </div>
+    );
 
   return (
-    <Modal title="Günlük hedefler" onClose={requestClose}>
+    <Modal title="Günlük hedefler" onClose={requestClose} footer={actions}>
       {content}
     </Modal>
   );
