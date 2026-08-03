@@ -149,10 +149,61 @@ body {
 .anim-fadeup {
   animation: fadeUp 0.45s cubic-bezier(0.2, 0.8, 0.2, 1) both;
 }
-.anim-flip {
-  animation: flipInX 0.38s cubic-bezier(0.16, 1, 0.3, 1) both;
-  transform-origin: center center;
-  backface-visibility: hidden;
+@keyframes slideInUp {
+  0% {
+    opacity: 0;
+    transform: translateY(100%);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slideOutUp {
+  0% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-100%);
+  }
+}
+
+@keyframes springRoll {
+  0% {
+    opacity: 0;
+    transform: translateY(16px) scale(0.94);
+  }
+  60% {
+    opacity: 1;
+    transform: translateY(-2px) scale(1.02);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes ringPulse {
+  0% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.08);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+.anim-spring-roll {
+  animation: springRoll 0.42s cubic-bezier(0.175, 0.885, 0.32, 1.275) both;
+}
+
+.anim-ring-pulse {
+  animation: ringPulse 0.4s ease-out;
 }
 .scene-3d {
   perspective: 1000px;
