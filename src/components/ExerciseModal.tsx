@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Dumbbell, Flame, Plus, Trash2, X, Activity, Footprints, Waves, Bike, Sparkles } from "lucide-react";
 import type { Exercise, ExerciseCategory } from "../types";
 import { useData } from "../lib/data";
@@ -36,6 +36,34 @@ export function ExerciseModal({ isOpen, onClose, date }: Props) {
   const [category, setCategory] = useState<ExerciseCategory>("run");
   const [duration, setDuration] = useState(30);
   const [calories, setCalories] = useState(200);
+  const isPoppedRef = useRef(false);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    window.history.pushState({ isModal: true, title: "Egzersiz" }, "");
+
+    const handlePopState = () => {
+      isPoppedRef.current = true;
+      onClose();
+    };
+
+    window.addEventListener("popstate", handlePopState);
+
+    return () => {
+      window.removeEventListener("popstate", handlePopState);
+      if (!isPoppedRef.current && window.history.state?.isModal) {
+        window.history.back();
+      }
+    };
+  }, [isOpen, onClose]);
+
+  const handleUserClose = () => {
+    if (!isPoppedRef.current && window.history.state?.isModal) {
+      window.history.back();
+    } else {
+      onClose();
+    }
+  };
 
   if (!isOpen) return null;
 
@@ -83,7 +111,7 @@ export function ExerciseModal({ isOpen, onClose, date }: Props) {
             </div>
           </div>
           <button
-            onClick={onClose}
+            onClick={handleUserClose}
             className="w-8 h-8 rounded-full bg-white/5 hover:bg-white/10 flex items-center justify-center text-white/70 transition-colors"
           >
             <X className="w-5 h-5" />

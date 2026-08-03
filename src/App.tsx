@@ -47,26 +47,16 @@ function MainContent() {
   // Uygulama geneli Android Geri Tuşu & Geri Kaydırma (Double Back to Exit) Mantığı
   useEffect(() => {
     const handlePopState = (e: PopStateEvent) => {
-      const { globalAddMealOpen, globalScanOpen, globalExerciseOpen } = modalsRef.current;
-
-      // 1. Eğer açık bir global modal/sheet varsa kapat
-      if (globalAddMealOpen) {
-        setGlobalAddMealOpen(false);
-        return;
-      }
-      if (globalScanOpen) {
-        setGlobalScanOpen(false);
-        return;
-      }
-      if (globalExerciseOpen) {
-        setGlobalExerciseOpen(false);
-        return;
-      }
-
       const state = e.state;
+
+      // Modal kapatma popstate'i ise Modal bileşeni yönetir
+      if (state?.isModal) {
+        return;
+      }
+
       const currentTab = tabRef.current;
 
-      // 2. Tarayıcı geçmişinde hedef sekme bilgisi varsa o sekmeye geç
+      // Tarayıcı geçmişinde hedef sekme bilgisi varsa o sekmeye geç
       if (state && state.tab) {
         // Yalnızca en kök (isRoot) olan daily durumuna gelinirse VE halihazırda daily sekmesindeysek çift basma uyarısı ver
         if (state.tab === "daily" && state.isRoot && currentTab === "daily") {
@@ -83,12 +73,12 @@ function MainContent() {
           return;
         }
 
-        // Normal sekme geçişi: Sadece sekmeyi güncelle
+        // Normal sekme geçişi: Sekmeyi güncelle
         setTab(state.tab);
         return;
       }
 
-      // 3. Geçmiş state bulunamazsa ve halihazırda "daily" sekmesindeysek
+      // Geçmiş state bulunamazsa ve halihazırda "daily" sekmesindeysek
       if (currentTab === "daily") {
         const now = Date.now();
         if (now - lastBackPressRef.current < 2000) {
@@ -99,8 +89,6 @@ function MainContent() {
           setShowExitToast(true);
           setTimeout(() => setShowExitToast(false), 2000);
         }
-      } else {
-        setTab("daily");
       }
     };
 

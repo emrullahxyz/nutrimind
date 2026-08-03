@@ -21,10 +21,39 @@ export function Modal({
 }) {
   const dialogRef = useRef<HTMLDivElement>(null);
   const mouseDownTargetRef = useRef<EventTarget | null>(null);
+  const isPoppedRef = useRef(false);
+
+  useEffect(() => {
+    // Modal açıldığında tarayıcı geçmişine push et
+    window.history.pushState({ isModal: true, title }, "");
+
+    const handlePopState = () => {
+      isPoppedRef.current = true;
+      onClose();
+    };
+
+    window.addEventListener("popstate", handlePopState);
+
+    return () => {
+      window.removeEventListener("popstate", handlePopState);
+      // Kullanıcı X veya buton ile kapattıysa (popstate harici), history stack'i temizlemek için back() yap
+      if (!isPoppedRef.current && window.history.state?.isModal) {
+        window.history.back();
+      }
+    };
+  }, [onClose, title]);
+
+  const handleUserClose = () => {
+    if (!isPoppedRef.current && window.history.state?.isModal) {
+      window.history.back();
+    } else {
+      onClose();
+    }
+  };
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
+      if (e.key === "Escape") handleUserClose();
     };
     document.addEventListener("keydown", onKey);
     const prev = document.body.style.overflow;
@@ -33,7 +62,7 @@ export function Modal({
       document.removeEventListener("keydown", onKey);
       document.body.style.overflow = prev;
     };
-  }, [onClose]);
+  }, []);
 
   // Odak yönetimi: açılışta odağı diyalog içine taşı, kapanışta açılmadan önceki
   // odaklı elemana geri döndür.
@@ -66,7 +95,7 @@ export function Modal({
         // Tıklama mousedown anında da tam olarak backdrop üzerinde başladıysa kapat.
         // Modal içerisinden başlayan fare sürüklemelerinde mousedownTarget modal içi olacağı için kapanmaz.
         if (mouseDownTargetRef.current === e.currentTarget && e.target === e.currentTarget) {
-          onClose();
+          handleUserClose();
         }
       }}
     >
@@ -87,7 +116,7 @@ export function Modal({
           <h3 className="text-base font-extrabold text-ink-primary">{title}</h3>
           <button
             type="button"
-            onClick={onClose}
+            onClick={handleUserClose}
             aria-label="Kapat"
             className="rounded-pill border border-line px-3 py-1 text-sm text-ink-secondary transition hover:text-ink-primary"
           >
