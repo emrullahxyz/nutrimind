@@ -236,8 +236,39 @@ export function ScanSheet({ onClose }: { onClose: () => void }) {
     }
   };
 
+  const footerContent = food ? (
+    <div className="flex flex-col gap-2">
+      <button
+        type="button"
+        onClick={saveAndLog}
+        disabled={!canLogToday || !!saving}
+        className="w-full rounded-pill bg-accent px-4 py-2.5 text-sm font-extrabold text-accent-ink transition disabled:opacity-40"
+      >
+        {saving === "today" ? "…" : "Kaydet ve bugüne ekle"}
+      </button>
+      <div className="flex items-center justify-between gap-2">
+        <button
+          type="button"
+          onClick={requestClose}
+          disabled={!!saving}
+          className="rounded-pill border border-line px-4 py-2 text-sm font-semibold text-ink-secondary transition hover:text-ink-primary disabled:opacity-40"
+        >
+          Vazgeç
+        </button>
+        <button
+          type="button"
+          onClick={saveOnly}
+          disabled={!canSaveAlias || !!saving || !!knownAlias}
+          className="rounded-pill border border-memory bg-memory/10 px-4 py-2 text-sm font-bold text-memory transition hover:bg-memory hover:text-memory-ink disabled:opacity-40"
+        >
+          {saving === "memory" ? "…" : knownAlias ? "Hafızada var" : "Sadece hafızaya"}
+        </button>
+      </div>
+    </div>
+  ) : undefined;
+
   return (
-    <Modal title={food ? "Onayla ve kaydet" : "Kamera / Tara"} onClose={requestClose}>
+    <Modal title={food ? "Onayla ve kaydet" : "Kamera / Tara"} onClose={requestClose} footer={footerContent}>
       <input
         ref={fileInputRef}
         type="file"
@@ -476,35 +507,6 @@ export function ScanSheet({ onClose }: { onClose: () => void }) {
           )}
 
           {err && <ErrorText>{err}</ErrorText>}
-
-          <div className="mt-2 flex flex-col gap-2">
-            <button
-              type="button"
-              onClick={saveAndLog}
-              disabled={!canLogToday || !!saving}
-              className="w-full rounded-pill bg-accent px-4 py-2.5 text-sm font-extrabold text-accent-ink transition disabled:opacity-40"
-            >
-              {saving === "today" ? "…" : "Kaydet ve bugüne ekle"}
-            </button>
-            <div className="flex items-center justify-between gap-2">
-              <button
-                type="button"
-                onClick={requestClose}
-                disabled={!!saving}
-                className="rounded-pill border border-line px-4 py-2 text-sm font-semibold text-ink-secondary transition hover:text-ink-primary disabled:opacity-40"
-              >
-                Vazgeç
-              </button>
-              <button
-                type="button"
-                onClick={saveOnly}
-                disabled={!canSaveAlias || !!saving || !!knownAlias}
-                className="rounded-pill border border-memory bg-memory/10 px-4 py-2 text-sm font-bold text-memory transition hover:bg-memory hover:text-memory-ink disabled:opacity-40"
-              >
-                {saving === "memory" ? "…" : knownAlias ? "Hafızada var" : "Sadece hafızaya"}
-              </button>
-            </div>
-          </div>
         </div>
       )}
     </Modal>

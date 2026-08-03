@@ -28,12 +28,16 @@ export interface MealSource {
   unit: string;
 }
 
+export type MealCategory = "breakfast" | "lunch" | "dinner" | "snack";
+
 /** Bir öğün kalemi (gösterim). */
 export interface MealItem {
   id: string;
   label: string;
   computed: Nutrition;
   sources?: MealSource[];
+  loggedAt?: string;
+  category?: MealCategory;
 }
 
 /** Backend'e gönderilen öğün biçimi (days[date] dizisindeki kayıt). */
@@ -41,6 +45,8 @@ export interface MealPayload {
   name: string;
   nutrition: Nutrition;
   sources?: MealSource[];
+  loggedAt?: string;
+  category?: MealCategory;
 }
 
 /** Faz 2: AI servisinin (Gemini veya NVIDIA NIM) serbest metinden ayrıştırdığı tek bir öğe. */

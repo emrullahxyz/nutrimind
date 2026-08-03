@@ -123,7 +123,11 @@ export function AliasForm({ initial, onClose }: { initial: Alias | null; onClose
   }
 
   return (
-    <Modal title={initial ? "Besini düzenle" : "Yeni besin"} onClose={requestClose}>
+    <Modal
+      title={initial ? "Besini düzenle" : "Yeni besin"}
+      onClose={requestClose}
+      footer={<FormActions onCancel={requestClose} onSave={save} saving={saving} disabled={!canSave} />}
+    >
       <div className="flex flex-col gap-3">
         {/* Open Food Facts arama girişi */}
         <div>
@@ -263,10 +267,8 @@ export function AliasForm({ initial, onClose }: { initial: Alias | null; onClose
           </p>
           <NutritionFields draft={draft} onChange={setDraft} />
         </div>
+        {err && <ErrorText>{err}</ErrorText>}
       </div>
-
-      {err && <ErrorText>{err}</ErrorText>}
-      <FormActions onCancel={requestClose} onSave={save} saving={saving} disabled={!canSave} />
     </Modal>
   );
 }

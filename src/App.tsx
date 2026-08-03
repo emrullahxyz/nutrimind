@@ -56,7 +56,7 @@ function MainContent() {
         </div>
       </header>
 
-      <main className="relative z-10 pb-24">
+      <main className="relative pb-28 sm:pb-24">
         {tab === "daily" ? (
           <DailyPage
             triggerAddMeal={triggerAddMeal}

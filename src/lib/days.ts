@@ -40,5 +40,7 @@ export function toPayload(meals: MealItem[]): MealPayload[] {
     name: m.label,
     nutrition: m.computed,
     ...(m.sources && m.sources.length > 0 ? { sources: m.sources } : {}),
+    ...(m.loggedAt ? { loggedAt: m.loggedAt } : {}),
+    ...(m.category ? { category: m.category } : {}),
   }));
 }

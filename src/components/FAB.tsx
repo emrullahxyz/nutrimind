@@ -22,12 +22,12 @@ function FabMenuItem({
       type="button"
       onClick={onClick}
       disabled={disabled}
-      className="flex flex-col items-center justify-center gap-2 rounded-2xl border border-calBorder bg-calCard p-4 text-center shadow-card backdrop-blur-sm transition hover:border-white/20 disabled:opacity-40 disabled:hover:border-calBorder"
+      className="flex flex-col items-center justify-center gap-2 rounded-2xl border border-white/15 bg-[#1e202a] p-3.5 text-center shadow-lg backdrop-blur-xl transition hover:border-white/30 hover:bg-[#262836] active:scale-95 disabled:opacity-40 disabled:hover:border-white/15 disabled:hover:bg-[#1e202a]"
     >
-      <span className="flex h-11 w-11 items-center justify-center rounded-full bg-white/90 text-lg text-black">
+      <span className="flex h-11 w-11 items-center justify-center rounded-full bg-white text-lg text-black shadow-md">
         {icon}
       </span>
-      <span className="text-xs font-bold text-white">{label}</span>
+      <span className="text-xs font-extrabold text-white">{label}</span>
     </button>
   );
 }
@@ -51,12 +51,10 @@ export function FAB({ onAddMeal, onScan, onSavedFoods }: FABProps) {
   }, [open]);
 
   return (
-    <div ref={containerRef} className="fixed bottom-20 right-5 z-50 sm:right-8">
-      {/* 2x2 kart ızgarası (CAL AI ekran görüntüsündeki gibi) */}
+    <div ref={containerRef} className="fixed bottom-20 right-5 z-50 sm:right-8 pb-[env(safe-area-inset-bottom,0px)]">
+      {/* 2x2 kart ızgarası */}
       {open && (
-        <div className="anim-zoom absolute bottom-16 right-0 mb-2 grid w-64 grid-cols-2 gap-2.5">
-          {/* Egzersiz takibi henüz yok (bu brief'in kapsamı dışında) —
-              kart görsel bütünlük için var ama devre dışı. */}
+        <div className="anim-zoom absolute bottom-16 right-0 mb-2 grid w-64 grid-cols-2 gap-2.5 rounded-3xl border border-white/15 bg-[#121319]/98 p-2.5 shadow-2xl backdrop-blur-2xl z-50">
           <FabMenuItem icon="👟" label="Egzersiz Kaydet" disabled />
           <FabMenuItem
             icon="💾"

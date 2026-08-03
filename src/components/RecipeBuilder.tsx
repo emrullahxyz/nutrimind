@@ -222,7 +222,19 @@ export function RecipeBuilder({
   }
 
   return (
-    <Modal title={initial ? "Tarifi düzenle" : "Tarif oluştur"} onClose={requestClose}>
+    <Modal
+      title={initial ? "Tarifi düzenle" : "Yeni Tarif Oluştur"}
+      onClose={requestClose}
+      footer={
+        <FormActions
+          onCancel={requestClose}
+          onSave={save}
+          saving={saving}
+          disabled={!canSave}
+          saveLabel="Besin olarak kaydet"
+        />
+      }
+    >
       <div className="flex flex-col gap-3">
         <label className="block">
           <Label>Tetikleyici ifadeler (virgülle ayır)</Label>
@@ -461,13 +473,6 @@ export function RecipeBuilder({
       </div>
 
       {err && <ErrorText>{err}</ErrorText>}
-      <FormActions
-        onCancel={requestClose}
-        onSave={save}
-        saving={saving}
-        disabled={!canSave}
-        saveLabel="Besin olarak kaydet"
-      />
     </Modal>
   );
 }

@@ -54,14 +54,14 @@ export function AliasPage() {
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex flex-wrap items-start justify-between gap-3">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <h2 className="text-lg font-bold text-ink-primary">Besin hafızası</h2>
-          <p className="text-sm text-ink-tertiary">
+          <p className="text-xs text-ink-tertiary">
             Öğrenilmiş ifadeler → belirli besin. "yoğurt" dediğinde bu besin ve makrosu kullanılır.
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="-mx-1 flex items-center gap-1.5 overflow-x-auto px-1 pb-1 sm:mx-0 sm:overflow-visible">
           <button
             type="button"
             onClick={() => setShowScan(true)}
@@ -115,33 +115,37 @@ export function AliasPage() {
       ) : filteredAliases.length === 0 ? (
         <p className="text-sm text-ink-tertiary">"{searchQuery}" için sonuç bulunamadı.</p>
       ) : (
-        <div className="grid gap-3 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
+        <div className="grid w-full min-w-0 max-w-full gap-2.5 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
           {filteredAliases.map((a, i) => {
             const kcal100g = scaleNutrition(a.nutrition, a.serving_g, 100).kcal;
             return (
-              <Card key={a.id} className="anim-fadeup flex flex-col justify-between gap-2.5 p-3.5" style={{ animationDelay: `${i * 30}ms` }}>
+              <Card
+                key={a.id}
+                className="anim-fadeup flex w-full min-w-0 max-w-full flex-col justify-between gap-2 p-3 overflow-hidden"
+                style={{ animationDelay: `${i * 30}ms` }}
+              >
                 <div>
-                  <div className="flex items-start justify-between gap-2">
+                  <div className="flex items-start justify-between gap-1.5">
                     <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-1.5">
-                        <span className="min-w-0 block truncate text-sm font-bold text-ink-primary" title={a.name}>
+                      <div className="flex items-center gap-1">
+                        <span className="min-w-0 block truncate text-xs font-bold text-ink-primary" title={a.name}>
                           {a.name}
                         </span>
                         {a.recipe && (
-                          <span className="shrink-0 rounded-pill bg-accent/15 px-1.5 py-0.5 font-mono text-[10px] font-semibold text-accent">
+                          <span className="shrink-0 rounded-pill bg-accent/15 px-1.5 py-0.5 font-mono text-[9px] font-semibold text-accent">
                             tarif
                           </span>
                         )}
                       </div>
-                      {a.brand && <div className="truncate text-[11px] text-ink-tertiary">{a.brand}</div>}
+                      {a.brand && <div className="truncate text-[10px] text-ink-tertiary">{a.brand}</div>}
                     </div>
-                    <div className="shrink-0 font-mono text-xs font-semibold text-ink-secondary">
+                    <div className="shrink-0 font-mono text-[11px] font-semibold text-ink-secondary whitespace-nowrap">
                       {formatNumber(kcal100g)} kcal/100g
                     </div>
                   </div>
                 </div>
 
-                <div className="flex items-center justify-end gap-2 border-t border-line/40 pt-2">
+                <div className="flex flex-wrap items-center justify-end gap-1.5 border-t border-line/40 pt-2">
                   <button
                     type="button"
                     onClick={() => {
@@ -149,7 +153,7 @@ export function AliasPage() {
                       else setEditingAlias(a);
                     }}
                     disabled={busy}
-                    className="rounded-pill bg-white/[0.06] px-2.5 py-1 text-[11px] font-semibold text-ink-tertiary transition hover:text-ink-primary disabled:opacity-40"
+                    className="rounded-pill bg-white/[0.06] px-2 py-0.5 text-[11px] font-semibold text-ink-tertiary transition hover:text-ink-primary disabled:opacity-40"
                   >
                     {a.recipe ? "Tarifi düzenle" : "Düzenle"}
                   </button>

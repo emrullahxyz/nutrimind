@@ -7,6 +7,7 @@ import type {
   AppConfig,
   GoalConfig,
   GoalProfile,
+  MealCategory,
   MealItem,
   MealPayload,
   MealSource,
@@ -214,6 +215,18 @@ interface RawMeal {
   name: string;
   nutrition: RawNutrition;
   sources?: unknown;
+  loggedAt?: unknown;
+  category?: unknown;
+}
+
+const VALID_MEAL_CATEGORIES = new Set(["breakfast", "lunch", "dinner", "snack"]);
+
+function parseLoggedAt(raw: unknown): string | undefined {
+  return typeof raw === "string" && raw.trim().length > 0 ? raw : undefined;
+}
+
+function parseMealCategory(raw: unknown): MealCategory | undefined {
+  return typeof raw === "string" && VALID_MEAL_CATEGORIES.has(raw) ? (raw as MealCategory) : undefined;
 }
 
 interface RawData {
@@ -234,11 +247,15 @@ export async function fetchData(): Promise<AppData> {
   for (const [date, meals] of Object.entries(raw.days ?? {})) {
     days[date] = (meals ?? []).map((m, i) => {
       const parsedSources = parseSources(m.sources);
+      const loggedAt = parseLoggedAt(m.loggedAt);
+      const category = parseMealCategory(m.category);
       return {
         id: `${date}_${i}`,
         label: m.name,
         computed: fill(m.nutrition),
         ...(parsedSources ? { sources: parsedSources } : {}),
+        ...(loggedAt ? { loggedAt } : {}),
+        ...(category ? { category } : {}),
       };
     });
   }
