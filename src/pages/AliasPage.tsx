@@ -148,7 +148,7 @@ export function AliasPage({ resetKey = 0 }: { resetKey?: number }) {
                   if (a.recipe) setEditingRecipe(a);
                   else setEditingAlias(a);
                 }}
-                className="anim-fadeup rounded-[22px] border border-white/10 bg-white/[0.04] p-3.5 sm:p-4 flex flex-col justify-between gap-3 transition-all hover:border-white/20 active:scale-[0.99] cursor-pointer shadow-card group w-full min-w-0 overflow-hidden"
+                className="anim-fadeup rounded-[24px] bg-[#22202E] p-3.5 sm:p-4 flex flex-col justify-between gap-3 transition-all hover:bg-[#282637] active:scale-[0.99] cursor-pointer shadow-card group w-full min-w-0 overflow-hidden"
                 style={{ animationDelay: `${i * 25}ms` }}
               >
                 <div className="space-y-2 min-w-0">
