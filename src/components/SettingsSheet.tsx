@@ -181,27 +181,39 @@ export function SettingsSheet({ onClose, embedded = false }: { onClose: () => vo
     localStorage.setItem("nutrimind_userage", userAge);
     localStorage.setItem("nutrimind_userweight", userWeight);
     localStorage.setItem("nutrimind_userheight", userHeight);
+
+    const weightNum = parseFloat(userWeight);
+    if (!isNaN(weightNum) && weightNum > 0) {
+      const today = new Date().toISOString().slice(0, 10);
+      void dataCtx.updateConfig(`weight_${today}`, { weight: weightNum });
+    }
+
     setSavedProfileMsg(true);
     setTimeout(() => setSavedProfileMsg(false), 2000);
   };
 
   const handleClearCache = async () => {
-    if ("serviceWorker" in navigator) {
-      const registrations = await navigator.serviceWorker.getRegistrations();
-      for (const registration of registrations) {
-        await registration.unregister();
+    try {
+      if ("serviceWorker" in navigator) {
+        const registrations = await navigator.serviceWorker.getRegistrations();
+        for (const registration of registrations) {
+          await registration.unregister();
+        }
       }
-    }
-    if ("caches" in window) {
-      const cacheNames = await caches.keys();
-      for (const name of cacheNames) {
-        await caches.delete(name);
+      if ("caches" in window) {
+        const cacheNames = await caches.keys();
+        for (const name of cacheNames) {
+          await caches.delete(name);
+        }
       }
+      setCacheStatus("Önbellek ve Service Worker temizlendi!");
+    } catch {
+      setCacheStatus("Önbellek temizlenirken hata oluştu.");
+    } finally {
+      setTimeout(() => {
+        window.location.reload();
+      }, 1200);
     }
-    setCacheStatus("Önbellek ve Service Worker temizlendi!");
-    setTimeout(() => {
-      window.location.reload();
-    }, 1200);
   };
 
   const mainBody = (
@@ -465,6 +477,9 @@ export function SettingsSheet({ onClose, embedded = false }: { onClose: () => vo
                 {subView === "privacy" && "Gizlilik & Veri Güvenliği"}
               </h3>
             </div>
+
+        {/* 1. HEDEFLER */}
+        {subView === "goals" && <GoalsForm onClose={goBack} embedded />}
 
         {/* 2. TAKVİYELER */}
         {subView === "supplements" && <SupplementSettings />}
