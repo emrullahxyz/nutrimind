@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Search, Camera, Plus, Utensils, BookOpen, Trash2, Edit3, X } from "lucide-react";
+import { Search, Camera, Plus, Utensils, BookOpen, Edit3, X } from "lucide-react";
 import { AliasForm } from "../components/AliasForm";
 import { RecipeBuilder } from "../components/RecipeBuilder";
 import { ScanSheet } from "../components/ScanSheet";
@@ -26,6 +26,7 @@ export function AliasPage({ resetKey = 0 }: { resetKey?: number }) {
       setSearchQuery("");
     }
   }, [resetKey]);
+
   const [err, setErr] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -61,35 +62,35 @@ export function AliasPage({ resetKey = 0 }: { resetKey?: number }) {
   }
 
   return (
-    <div className="flex flex-col gap-6 text-white">
+    <div className="flex flex-col gap-6 text-white w-full min-w-0 max-w-full overflow-hidden">
       {/* Header & Actions */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h2 className="text-xl font-extrabold text-white tracking-tight">Besin Hafızası</h2>
-          <p className="text-xs text-white/50 mt-0.5">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between w-full min-w-0">
+        <div className="min-w-0">
+          <h2 className="text-xl font-extrabold text-white tracking-tight truncate">Besin Hafızası</h2>
+          <p className="text-xs text-white/50 mt-0.5 truncate">
             Öğrenilmiş ifadeler → belirli besin & makrolar (örn. "yoğurt", "protein tozu")
           </p>
         </div>
 
-        <div className="flex items-center gap-2 overflow-x-auto no-scrollbar pb-1">
+        <div className="flex items-center gap-2 overflow-x-auto no-scrollbar pb-1 max-w-full">
           <button
             type="button"
             onClick={() => setShowScan(true)}
-            className="px-3.5 py-2 rounded-full border border-white/15 bg-white/5 hover:bg-white/10 text-xs font-bold text-white transition active:scale-95 flex items-center gap-1.5 whitespace-nowrap"
+            className="px-3.5 py-2 rounded-full border border-white/15 bg-white/5 hover:bg-white/10 text-xs font-bold text-white transition active:scale-95 flex items-center gap-1.5 whitespace-nowrap shrink-0"
           >
             <Camera className="w-3.5 h-3.5 text-sky-400" /> Barkod Tara
           </button>
           <button
             type="button"
             onClick={() => setEditingRecipe(null)}
-            className="px-3.5 py-2 rounded-full border border-purple-500/40 bg-purple-500/15 hover:bg-purple-500/25 text-xs font-bold text-purple-300 transition active:scale-95 flex items-center gap-1.5 whitespace-nowrap"
+            className="px-3.5 py-2 rounded-full border border-purple-500/40 bg-purple-500/15 hover:bg-purple-500/25 text-xs font-bold text-purple-300 transition active:scale-95 flex items-center gap-1.5 whitespace-nowrap shrink-0"
           >
             <Utensils className="w-3.5 h-3.5 text-purple-400" /> Tarif Oluştur
           </button>
           <button
             type="button"
             onClick={() => setEditingAlias(null)}
-            className="px-4 py-2 rounded-full bg-white hover:bg-white/90 text-xs font-extrabold text-black transition active:scale-95 flex items-center gap-1.5 whitespace-nowrap shadow-md"
+            className="px-4 py-2 rounded-full bg-white hover:bg-white/90 text-xs font-extrabold text-black transition active:scale-95 flex items-center gap-1.5 whitespace-nowrap shrink-0 shadow-md"
           >
             <Plus className="w-3.5 h-3.5" /> Yeni Besin
           </button>
@@ -98,14 +99,14 @@ export function AliasPage({ resetKey = 0 }: { resetKey?: number }) {
 
       {/* Search Input */}
       {aliases.length > 0 && (
-        <div className="relative">
-          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-white/40" />
+        <div className="relative w-full min-w-0">
+          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-white/40 pointer-events-none" />
           <input
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Besin adı, marka veya ifade ara..."
-            className="w-full pl-10 pr-9 py-3 rounded-2xl border border-white/10 bg-white/[0.04] text-xs font-semibold text-white placeholder:text-white/40 focus:border-amber-400 focus:outline-none transition shadow-sm"
+            className="w-full pl-10 pr-9 py-3 rounded-2xl border border-white/10 bg-white/[0.04] text-xs font-semibold text-white placeholder:text-white/40 focus:border-amber-400 focus:outline-none transition shadow-sm min-w-0"
           />
           {searchQuery && (
             <button
@@ -124,17 +125,17 @@ export function AliasPage({ resetKey = 0 }: { resetKey?: number }) {
 
       {/* Aliases Grid */}
       {aliases.length === 0 ? (
-        <div className="rounded-[24px] border border-white/10 bg-white/[0.03] p-8 text-center flex flex-col items-center gap-3">
+        <div className="rounded-[24px] border border-white/10 bg-white/[0.03] p-8 text-center flex flex-col items-center gap-3 w-full">
           <BookOpen className="w-8 h-8 text-white/30" />
           <p className="text-sm font-semibold text-white/60">Henüz hafızada besin yok.</p>
           <p className="text-xs text-white/40">"+ Tarif Oluştur" veya "+ Yeni Besin" butonları ile ekleyebilirsin.</p>
         </div>
       ) : filteredAliases.length === 0 ? (
-        <div className="rounded-[24px] border border-white/10 bg-white/[0.03] p-6 text-center text-sm text-white/50">
+        <div className="rounded-[24px] border border-white/10 bg-white/[0.03] p-6 text-center text-sm text-white/50 w-full">
           "{searchQuery}" aramasıyla eşleşen besin bulunamadı.
         </div>
       ) : (
-        <div className="grid gap-3 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
+        <div className="grid w-full min-w-0 grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
           {filteredAliases.map((a, i) => {
             const kcal100g = scaleNutrition(a.nutrition, a.serving_g, 100).kcal;
             return (
@@ -144,15 +145,15 @@ export function AliasPage({ resetKey = 0 }: { resetKey?: number }) {
                   if (a.recipe) setEditingRecipe(a);
                   else setEditingAlias(a);
                 }}
-                className="anim-fadeup rounded-[24px] border border-white/10 bg-white/[0.04] p-4 sm:p-5 flex flex-col justify-between gap-3 transition-all hover:border-white/20 active:scale-[0.99] cursor-pointer shadow-card group"
+                className="anim-fadeup rounded-[22px] border border-white/10 bg-white/[0.04] p-3.5 sm:p-4 flex flex-col justify-between gap-3 transition-all hover:border-white/20 active:scale-[0.99] cursor-pointer shadow-card group w-full min-w-0 overflow-hidden"
                 style={{ animationDelay: `${i * 25}ms` }}
               >
-                <div className="space-y-2">
-                  {/* Top Row: Name & Recipe badge */}
-                  <div className="flex items-start justify-between gap-2">
+                <div className="space-y-2 min-w-0">
+                  {/* Top Row: Name & Calorie Pill */}
+                  <div className="flex items-start justify-between gap-2 min-w-0">
                     <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-1.5">
-                        <h4 className="font-extrabold text-white text-base truncate group-hover:text-amber-300 transition-colors" title={a.name}>
+                      <div className="flex items-center gap-1.5 min-w-0">
+                        <h4 className="font-extrabold text-white text-sm sm:text-base truncate group-hover:text-amber-300 transition-colors" title={a.name}>
                           {a.name}
                         </h4>
                         {a.recipe && (
@@ -169,25 +170,25 @@ export function AliasPage({ resetKey = 0 }: { resetKey?: number }) {
                       )}
                     </div>
 
-                    <span className="shrink-0 font-mono text-xs font-bold text-amber-400 whitespace-nowrap">
+                    <span className="shrink-0 font-mono text-[10px] sm:text-[11px] font-bold text-amber-400 bg-amber-400/10 px-2 py-0.5 rounded-full border border-amber-400/20 whitespace-nowrap">
                       {formatNumber(kcal100g)} kcal/100g
                     </span>
                   </div>
 
                   {/* Trigger Chips */}
                   {a.triggers && a.triggers.length > 0 && (
-                    <div className="flex flex-wrap items-center gap-1.5 pt-1">
+                    <div className="flex flex-wrap items-center gap-1 pt-1 min-w-0 max-w-full overflow-hidden">
                       {a.triggers.slice(0, 3).map((tr, idx) => (
                         <span
                           key={idx}
-                          className="inline-block max-w-[120px] truncate px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-amber-400/10 text-amber-300 border border-amber-400/20"
+                          className="inline-block max-w-full truncate px-2 py-0.5 rounded-full text-[10px] sm:text-[11px] font-bold bg-amber-400/10 text-amber-300 border border-amber-400/20"
                           title={tr}
                         >
                           {tr}
                         </span>
                       ))}
                       {a.triggers.length > 3 && (
-                        <span className="text-[10px] text-white/40 font-mono font-bold">
+                        <span className="text-[10px] text-white/40 font-mono font-bold shrink-0">
                           +{a.triggers.length - 3}
                         </span>
                       )}
@@ -197,7 +198,7 @@ export function AliasPage({ resetKey = 0 }: { resetKey?: number }) {
 
                 {/* Bottom Actions */}
                 <div
-                  className="flex items-center justify-end gap-2 border-t border-white/10 pt-2.5"
+                  className="flex items-center justify-end gap-2 border-t border-white/10 pt-2.5 w-full min-w-0"
                   onClick={(e) => e.stopPropagation()}
                 >
                   <button
@@ -208,7 +209,7 @@ export function AliasPage({ resetKey = 0 }: { resetKey?: number }) {
                       else setEditingAlias(a);
                     }}
                     disabled={busy}
-                    className="px-3 py-1.5 rounded-full bg-white/10 hover:bg-white/20 text-xs font-bold text-white transition disabled:opacity-40 flex items-center gap-1"
+                    className="px-2.5 py-1.5 rounded-full bg-white/10 hover:bg-white/20 text-xs font-bold text-white transition disabled:opacity-40 flex items-center gap-1"
                   >
                     <Edit3 className="w-3 h-3 text-white/70" /> {a.recipe ? "Tarifi Düzenle" : "Düzenle"}
                   </button>
@@ -221,10 +222,10 @@ export function AliasPage({ resetKey = 0 }: { resetKey?: number }) {
       )}
 
       {/* Templates Section */}
-      <div className="space-y-3 border-t border-white/10 pt-6">
-        <div>
-          <h3 className="text-lg font-extrabold text-white tracking-tight">Şablonlar</h3>
-          <p className="text-xs text-white/50">
+      <div className="space-y-3 border-t border-white/10 pt-6 w-full min-w-0">
+        <div className="min-w-0">
+          <h3 className="text-lg font-extrabold text-white tracking-tight truncate">Şablonlar</h3>
+          <p className="text-xs text-white/50 truncate">
             Sık tükettiğin öğünleri tek dokunuşla eklemek için kaydedilmiş şablonlar
           </p>
         </div>
@@ -234,15 +235,15 @@ export function AliasPage({ resetKey = 0 }: { resetKey?: number }) {
             Henüz şablon yok. Bugün sekmesinde bir öğünü 'Şablon yap' diyerek kaydedebilirsin.
           </p>
         ) : (
-          <div className="grid gap-3 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
+          <div className="grid w-full min-w-0 grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
             {templates.list.map((t, i) => (
               <div
                 key={t.id}
-                className="anim-fadeup rounded-[24px] border border-white/10 bg-white/[0.04] p-4 flex flex-col justify-between gap-3 shadow-card"
+                className="anim-fadeup rounded-[22px] border border-white/10 bg-white/[0.04] p-3.5 sm:p-4 flex flex-col justify-between gap-3 shadow-card w-full min-w-0 overflow-hidden"
                 style={{ animationDelay: `${i * 30}ms` }}
               >
-                <div className="flex items-start justify-between gap-2">
-                  <h4 className="font-bold text-white text-sm truncate" title={t.name}>
+                <div className="flex items-start justify-between gap-2 min-w-0">
+                  <h4 className="font-bold text-white text-sm truncate flex-1 min-w-0" title={t.name}>
                     {t.name}
                   </h4>
                   <span className="shrink-0 font-mono text-xs font-bold text-white/60">
@@ -250,7 +251,7 @@ export function AliasPage({ resetKey = 0 }: { resetKey?: number }) {
                   </span>
                 </div>
 
-                <div className="flex items-center justify-end border-t border-white/10 pt-2">
+                <div className="flex items-center justify-end border-t border-white/10 pt-2 w-full">
                   <ConfirmButton onConfirm={() => removeTemplate(t.id)} disabled={busy} />
                 </div>
               </div>
