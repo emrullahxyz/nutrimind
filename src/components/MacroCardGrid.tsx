@@ -52,8 +52,6 @@ function SmallDonut({ pct, color, icon: Icon }: { pct: number; color: string; ic
   );
 }
 
-import { useAnimatedNumber } from "../lib/useAnimatedNumber";
-
 function MacroCardItem({
   item,
   showRatio,
@@ -102,6 +100,13 @@ function MacroCardItem({
       </div>
     </div>
   );
+}
+
+interface MacroCardGridProps {
+  total: Nutrition;
+  goal: Nutrition;
+  showRatio: boolean;
+  onToggleRatio: () => void;
 }
 
 export function MacroCardGrid({ total, goal, showRatio, onToggleRatio }: MacroCardGridProps) {
