@@ -72,27 +72,30 @@ export function AliasPage({ resetKey = 0 }: { resetKey?: number }) {
           </p>
         </div>
 
-        <div className="flex items-center gap-2 overflow-x-auto no-scrollbar pb-1 max-w-full">
+        <div className="grid grid-cols-3 gap-2 w-full sm:flex sm:w-auto shrink-0">
           <button
             type="button"
             onClick={() => setShowScan(true)}
-            className="px-3.5 py-2 rounded-full border border-white/15 bg-white/5 hover:bg-white/10 text-xs font-bold text-white transition active:scale-95 flex items-center gap-1.5 whitespace-nowrap shrink-0"
+            className="px-2.5 py-2 rounded-full border border-white/15 bg-white/5 hover:bg-white/10 text-[11px] sm:text-xs font-bold text-white transition active:scale-95 flex items-center justify-center gap-1.5 whitespace-nowrap"
           >
-            <Camera className="w-3.5 h-3.5 text-sky-400" /> Barkod Tara
+            <Camera className="w-3.5 h-3.5 text-sky-400 shrink-0" />
+            <span className="truncate">Barkod</span>
           </button>
           <button
             type="button"
             onClick={() => setEditingRecipe(null)}
-            className="px-3.5 py-2 rounded-full border border-purple-500/40 bg-purple-500/15 hover:bg-purple-500/25 text-xs font-bold text-purple-300 transition active:scale-95 flex items-center gap-1.5 whitespace-nowrap shrink-0"
+            className="px-2.5 py-2 rounded-full border border-purple-500/40 bg-purple-500/15 hover:bg-purple-500/25 text-[11px] sm:text-xs font-bold text-purple-300 transition active:scale-95 flex items-center justify-center gap-1.5 whitespace-nowrap"
           >
-            <Utensils className="w-3.5 h-3.5 text-purple-400" /> Tarif Oluştur
+            <Utensils className="w-3.5 h-3.5 text-purple-400 shrink-0" />
+            <span className="truncate">Tarif</span>
           </button>
           <button
             type="button"
             onClick={() => setEditingAlias(null)}
-            className="px-4 py-2 rounded-full bg-white hover:bg-white/90 text-xs font-extrabold text-black transition active:scale-95 flex items-center gap-1.5 whitespace-nowrap shrink-0 shadow-md"
+            className="px-2.5 py-2 rounded-full bg-white hover:bg-white/90 text-[11px] sm:text-xs font-extrabold text-black transition active:scale-95 flex items-center justify-center gap-1.5 whitespace-nowrap shadow-md"
           >
-            <Plus className="w-3.5 h-3.5" /> Yeni Besin
+            <Plus className="w-3.5 h-3.5 shrink-0" />
+            <span className="truncate">Yeni Besin</span>
           </button>
         </div>
       </div>
