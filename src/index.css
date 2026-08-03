@@ -146,8 +146,19 @@ body {
 .anim-zoom {
   animation: zoomIn 0.45s cubic-bezier(0.2, 0.85, 0.25, 1) both;
 }
-.anim-fadeup {
-  animation: fadeUp 0.45s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+@keyframes slideUp {
+  0% {
+    opacity: 0;
+    transform: translateY(14px) scale(0.96);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.anim-slide-up {
+  animation: slideUp 0.35s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 @keyframes slideInUp {
   0% {
