@@ -10,14 +10,11 @@ interface Props {
   onDelete?: (mealId: string) => void;
 }
 
-const UNITS = ["g", "porsiyon", "adet", "dilim", "ölçek"];
-
 export function NutritionSheet({ isOpen, onClose, meal, onSave, onDelete }: Props) {
   const isPoppedRef = useRef(false);
 
   const [label, setLabel] = useState(meal?.label ?? "");
   const [multiplier, setMultiplier] = useState(1);
-  const [unit, setUnit] = useState("g");
 
   // Sync state when meal prop changes
   useEffect(() => {
@@ -85,7 +82,10 @@ export function NutritionSheet({ isOpen, onClose, meal, onSave, onDelete }: Prop
   };
 
   return (
-    <div className="fixed inset-0 z-[9999] flex flex-col bg-[#13121b] text-white h-[100dvh] w-full overflow-hidden animate-fadeIn pad-safe">
+    <div
+      data-modal="true"
+      className="fixed inset-0 z-[9999] flex flex-col bg-[#13121b] text-white h-[100dvh] w-full overflow-hidden animate-fadeIn pad-safe"
+    >
       {/* Top Header */}
       <div className="flex items-center justify-between px-4 py-3.5 sm:px-6 border-b border-white/10 flex-none bg-[#13121b]">
         <button
@@ -97,15 +97,9 @@ export function NutritionSheet({ isOpen, onClose, meal, onSave, onDelete }: Prop
           <ArrowLeft className="w-5 h-5" />
         </button>
 
-        <div className="flex flex-col items-center min-w-0 flex-1 px-3">
-          <input
-            type="text"
-            value={label}
-            onChange={(e) => setLabel(e.target.value)}
-            className="bg-transparent text-center font-bold text-lg sm:text-xl text-white focus:outline-none focus:border-b focus:border-white/30 truncate max-w-[240px]"
-            placeholder="Besin Adı"
-          />
-        </div>
+        <h2 className="text-lg font-extrabold text-white tracking-wide">
+          Nutrition
+        </h2>
 
         {onDelete ? (
           <button
@@ -126,30 +120,18 @@ export function NutritionSheet({ isOpen, onClose, meal, onSave, onDelete }: Prop
 
       {/* Main Scrollable Content Area */}
       <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-6">
-        {/* Serving Size Measurement (Porsiyon Birimi) */}
-        <div className="space-y-2.5">
+        {/* Meal Name Input Field (Besin Adı) */}
+        <div className="space-y-2">
           <label className="text-xs font-semibold text-white/80 block">
-            Porsiyon Birimi
+            Besin Adı
           </label>
-          <div className="flex items-center gap-2 overflow-x-auto no-scrollbar pb-1">
-            {UNITS.map((u) => {
-              const isSelected = unit.toLowerCase() === u.toLowerCase();
-              return (
-                <button
-                  key={u}
-                  type="button"
-                  onClick={() => setUnit(u)}
-                  className={`px-5 py-2.5 rounded-full text-xs font-bold transition-all whitespace-nowrap active:scale-95 ${
-                    isSelected
-                      ? "bg-white text-black shadow-md"
-                      : "border border-white/20 bg-transparent text-white/70 hover:bg-white/5 hover:text-white"
-                  }`}
-                >
-                  {u}
-                </button>
-              );
-            })}
-          </div>
+          <input
+            type="text"
+            value={label}
+            onChange={(e) => setLabel(e.target.value)}
+            className="w-full px-4 py-3.5 rounded-2xl bg-white/[0.04] border border-white/20 text-sm font-semibold text-white focus:outline-none focus:border-white/40"
+            placeholder="Besin Adı"
+          />
         </div>
 
         {/* Serving Amount Stepper (Porsiyon Miktarı) */}
@@ -157,7 +139,7 @@ export function NutritionSheet({ isOpen, onClose, meal, onSave, onDelete }: Prop
           <span className="text-sm font-semibold text-white/90">
             Porsiyon Miktarı
           </span>
-          <div className="flex items-center gap-4 rounded-2xl border border-white/20 bg-white/[0.04] px-4 py-2 min-w-[130px] justify-between">
+          <div className="flex items-center gap-4 rounded-2xl border border-white/20 bg-white/[0.04] px-4 py-2.5 min-w-[130px] justify-between">
             <button
               type="button"
               onClick={() => handleStep(-0.25)}
