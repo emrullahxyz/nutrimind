@@ -2,7 +2,7 @@ import { Flame } from "lucide-react";
 import { CalorieRing } from "./CalorieRing";
 import { ringState } from "../lib/ring";
 import { formatNumber } from "../lib/format";
-import { useAnimatedNumber } from "../lib/useAnimatedNumber";
+import { SlideValue } from "./SlideValue";
 
 interface HeroCalorieCardProps {
   consumed: number;
@@ -12,11 +12,8 @@ interface HeroCalorieCardProps {
 }
 
 export function HeroCalorieCard({ consumed, target, showRatio, onToggleRatio }: HeroCalorieCardProps) {
-  const animConsumed = useAnimatedNumber(consumed);
-  const animTarget = useAnimatedNumber(target);
-
-  const state = ringState(animConsumed, animTarget);
-
+  const state = ringState(consumed, target);
+  
   const subtitleLabel = showRatio
     ? "Tüketilen / Hedef"
     : state.isOver
@@ -29,8 +26,8 @@ export function HeroCalorieCard({ consumed, target, showRatio, onToggleRatio }: 
 
   const displayBigVal = showRatio
     ? state.hasTarget
-      ? `${formatNumber(animConsumed)} / ${formatNumber(animTarget)}`
-      : `${formatNumber(animConsumed)}`
+      ? `${formatNumber(consumed)} / ${formatNumber(target)}`
+      : `${formatNumber(consumed)}`
     : state.headline;
 
   return (
@@ -39,19 +36,19 @@ export function HeroCalorieCard({ consumed, target, showRatio, onToggleRatio }: 
       className="relative overflow-hidden rounded-card border border-calBorder bg-calCard p-5 shadow-card backdrop-blur-md cursor-pointer select-none transition-all duration-200 hover:border-white/20 active:scale-[0.99] min-h-[176px] flex flex-col justify-center"
       title="Tıklayarak tüm değerleri dönüştür"
     >
-      {/* Background soft radial glow inside card */}
+      {/* Arka plan yumuşak ışık efekti */}
       <div className="pointer-events-none absolute -left-10 -top-10 h-40 w-40 rounded-full bg-accent/10 blur-2xl" />
 
       <div className="flex items-center justify-between gap-4">
-        {/* Left Side: Calorie Stats */}
-        <div key={`${showRatio}-${displayBigVal}`} className="anim-flip flex flex-col justify-center min-w-0 flex-1">
+        {/* Sol Taraf: Kalori İstatistikleri */}
+        <div className="flex flex-col justify-center min-w-0 flex-1">
           <div className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-ink-secondary mb-1">
             <Flame className="h-4 w-4 text-accent" />
-            <span>{subtitleLabel}</span>
+            <SlideValue value={subtitleLabel} />
           </div>
 
           <div className="text-3xl sm:text-4xl md:text-5xl font-extrabold text-white tracking-tight">
-            {displayBigVal}
+            <SlideValue value={displayBigVal} />
           </div>
 
           {state.hasTarget && (
@@ -60,18 +57,18 @@ export function HeroCalorieCard({ consumed, target, showRatio, onToggleRatio }: 
                 <span className="text-accent font-semibold">Tıklayarak Kalan Kaloriyi Göster</span>
               ) : (
                 <>
-                  <span>{formatNumber(animConsumed)}</span>
+                  <span>{formatNumber(consumed)}</span>
                   <span className="text-ink-tertiary">/</span>
-                  <span className="text-ink-tertiary">{formatNumber(animTarget)} kcal</span>
+                  <span className="text-ink-tertiary">{formatNumber(target)} kcal</span>
                 </>
               )}
             </div>
           )}
         </div>
 
-        {/* Right Side: Calorie Ring */}
-        <div className="flex-none flex items-center justify-center">
-          <CalorieRing consumed={animConsumed} target={animTarget} size={140} />
+        {/* Sağ Taraf: Kalori Halkası */}
+        <div key={`ring-${showRatio}`} className="anim-ring-pulse flex-none flex items-center justify-center">
+          <CalorieRing consumed={consumed} target={target} size={140} />
         </div>
       </div>
     </div>
