@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Card } from "../components/Card";
 import { Stat } from "../components/Stat";
 import { WeekBars } from "../components/WeekBars";
@@ -8,9 +8,7 @@ import { StreakCard } from "../components/StreakCard";
 import { WeightCard } from "../components/WeightCard";
 import { formatKcal, formatLongDate, formatNumber, formatRelativeDay, formatShortDate, todayISO } from "../lib/format";
 import { useData } from "../lib/data";
-import { effectiveGoal } from "../lib/goals";
 import { MACROS } from "../lib/nutrients";
-import type { NutrientDef } from "../lib/nutrients";
 import { weekStart, weeks } from "../lib/weeks";
 import type { Week } from "../lib/weeks";
 import { addDaysISO } from "../lib/format";
@@ -49,6 +47,39 @@ export function HistoryPage() {
   const [selectedWeek, setSelectedWeek] = useState<string | null>(null);
   const [selectedDay, setSelectedDay] = useState<string | null>(null);
 
+  useEffect(() => {
+    const handlePopState = (e: PopStateEvent) => {
+      const state = e.state;
+      if (state?.isModal) return;
+
+      if (state && state.tab === "history") {
+        setSelectedWeek(state.week || null);
+        setSelectedDay(state.day || null);
+      } else if (!state || state.tab !== "history") {
+        setSelectedWeek(null);
+        setSelectedDay(null);
+      }
+    };
+
+    window.addEventListener("popstate", handlePopState);
+    return () => window.removeEventListener("popstate", handlePopState);
+  }, []);
+
+  const handleSelectWeek = (weekStartStr: string) => {
+    window.history.pushState({ tab: "history", week: weekStartStr, day: null }, "");
+    setSelectedWeek(weekStartStr);
+    setSelectedDay(null);
+  };
+
+  const handleSelectDay = (dayStr: string) => {
+    window.history.pushState({ tab: "history", week: selectedWeek, day: dayStr }, "");
+    setSelectedDay(dayStr);
+  };
+
+  const handleGoBack = () => {
+    window.history.back();
+  };
+
   const week = selectedWeek ? all.find((w) => w.startDate === selectedWeek) : null;
 
   // --- Kademe 3: gün detayı (günlük görünümle aynı) ---
@@ -58,7 +89,7 @@ export function HistoryPage() {
         <div className="flex items-center justify-between gap-3">
           <BackButton
             label={week ? weekLabel(week) : weekLabelOf(selectedDay)}
-            onClick={() => setSelectedDay(null)}
+            onClick={handleGoBack}
           />
           <div className="text-right">
             <div className="text-base font-extrabold capitalize text-ink-primary">
@@ -81,11 +112,11 @@ export function HistoryPage() {
     return (
       <div key={week.startDate} className="anim-zoom flex flex-col gap-5">
         <div className="flex items-center justify-between gap-3">
-          <BackButton label="Haftalar" onClick={() => setSelectedWeek(null)} />
+          <BackButton label="Haftalar" onClick={handleGoBack} />
           <h2 className="text-lg font-extrabold text-ink-primary">{weekLabel(week)}</h2>
         </div>
 
-        <WeekBars week={week} onSelectDay={(d) => setSelectedDay(d)} />
+        <WeekBars week={week} onSelectDay={(d) => handleSelectDay(d)} />
 
         <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
           <Stat label="Haftalık toplam" value={formatKcal(week.total.kcal)} hint={`${week.activeDays} gün`} />
@@ -142,10 +173,7 @@ export function HistoryPage() {
               <button
                 key={w.startDate}
                 type="button"
-                onClick={() => {
-                  setSelectedWeek(w.startDate);
-                  setSelectedDay(null);
-                }}
+                onClick={() => handleSelectWeek(w.startDate)}
                 className="anim-fadeup text-left"
                 style={{ animationDelay: `${i * 60}ms` }}
               >
