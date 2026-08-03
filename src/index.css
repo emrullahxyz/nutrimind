@@ -193,24 +193,67 @@ body {
 }
 
 .anim-ring-pulse {
-  animation: ringElasticPulse 320ms cubic-bezier(0.175, 0.885, 0.32, 1.275) both;
-}
-
-@keyframes ringPulse {
-  0% {
-    transform: scale(1);
-  }
-  50% {
-    transform: scale(1.08);
-  }
-  100% {
-    transform: scale(1);
-  }
-}
-
-.anim-ring-pulse {
   animation: ringPulse 0.4s ease-out;
 }
+
+/* ---- Cal AI Directional Text Swap Keyframe Animations ---- */
+@keyframes swapSlideDownOut {
+  0% {
+    transform: translateY(0);
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(100%);
+    opacity: 0;
+  }
+}
+
+@keyframes swapSlideDownIn {
+  0% {
+    transform: translateY(-100%);
+    opacity: 0;
+  }
+  100% {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+@keyframes swapSlideUpOut {
+  0% {
+    transform: translateY(0);
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(-100%);
+    opacity: 0;
+  }
+}
+
+@keyframes swapSlideUpIn {
+  0% {
+    transform: translateY(100%);
+    opacity: 0;
+  }
+  100% {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+.anim-swap-down-out {
+  animation: swapSlideDownOut var(--swap-duration, 380ms) cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+.anim-swap-down-in {
+  animation: swapSlideDownIn var(--swap-duration, 380ms) cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+.anim-swap-up-out {
+  animation: swapSlideUpOut var(--swap-duration, 380ms) cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+.anim-swap-up-in {
+  animation: swapSlideUpIn var(--swap-duration, 380ms) cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
 .scene-3d {
   perspective: 1000px;
 }
@@ -308,22 +351,17 @@ body {
     transform: none !important;
   }
 
-  /* Yazdırmada skeleton hiç görünmemeli (yüklenirken yazdırma senaryosu yok,
-     ama shimmer'ın kağıda animasyonsuz "yarı saydam çizgi" olarak sızmasını
-     önle) */
   .skeleton::after {
     animation: none !important;
     display: none !important;
   }
 
-  /* SVG çizgilerinin animasyonsuz net çıkmasını sağla */
   path {
     stroke-dashoffset: 0 !important;
     animation: none !important;
     opacity: 1 !important;
   }
 
-  /* Okunabilirlik için açık arka plan & koyu metin sınıfları */
   .print-text-dark {
     color: #111827 !important;
   }

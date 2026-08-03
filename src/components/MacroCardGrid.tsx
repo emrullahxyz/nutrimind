@@ -5,6 +5,7 @@ import { formatNumber } from "../lib/format";
 import type { Nutrition } from "../types";
 import { computeHealthScore } from "../lib/healthScore";
 import { useAnimatedNumber } from "../hooks/useAnimatedNumber";
+import { DirectionalTextSwap, type SwapMode } from "./DirectionalTextSwap";
 
 interface MacroItem {
   key: keyof Nutrition;
@@ -67,10 +68,12 @@ function MacroCardItem({
   const remaining = Math.max(0, item.target - item.consumed);
   const pct = item.target > 0 ? item.consumed / item.target : 0;
 
-  // Animate the number that's being displayed
+  // Animate numbers
   const rawDisplay = item.target > 0 ? remaining : item.consumed;
   const animVal = useAnimatedNumber(showRatio ? item.consumed : rawDisplay, 650);
   const animTarget = useAnimatedNumber(item.target, 650);
+
+  const mode: SwapMode = showRatio ? "EATEN" : "LEFT";
 
   let displayVal: string;
   let subText: string;
@@ -89,15 +92,24 @@ function MacroCardItem({
     <div
       onClick={onToggleRatio}
       className="flex flex-col justify-between rounded-card border border-calBorder bg-calCard p-3 sm:p-4 min-h-[130px] shadow-card backdrop-blur-sm transition-all duration-200 hover:border-white/20 cursor-pointer select-none active:scale-[0.98]"
-      title="Tıklayarak tüm değerleri dönütür"
+      title="Tıklayarak tüm değerleri dönüştür"
     >
       <div>
-        <div className="text-lg sm:text-xl font-black text-white leading-tight tabular-nums">
-          {displayVal}
-        </div>
-        <div className="mt-0.5 text-[11px] font-medium text-ink-secondary truncate">
-          {subText}
-        </div>
+        <DirectionalTextSwap
+          mode={mode}
+          layout="value-first"
+          value={
+            <div className="text-lg sm:text-xl font-black text-white leading-tight tabular-nums truncate">
+              {displayVal}
+            </div>
+          }
+          label={
+            <div className="mt-0.5 text-[11px] font-medium text-ink-secondary truncate">
+              {subText}
+            </div>
+          }
+          durationMs={300}
+        />
       </div>
 
       <div className="mt-2 flex items-center justify-end">
