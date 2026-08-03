@@ -26,6 +26,7 @@ import { categoryForHour, MEAL_CATEGORIES, MEAL_CATEGORY_LABELS } from "../lib/m
 import type { AIParseItem, MealCategory, MealPayload, MealSource, Nutrition } from "../types";
 import { usualQuantity } from "../lib/quantity";
 import { AliasPicker } from "./AliasPicker";
+import { useBodyScrollLock } from "../hooks/useBodyScrollLock";
 
 type Mode = "alias" | "manual" | "ai";
 
@@ -185,6 +186,9 @@ export function MealForm({
   isOpen?: boolean;
 }) {
   const isPoppedRef = useRef(false);
+
+  // Lock background body scroll when modal is open
+  useBodyScrollLock(isOpen);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -749,6 +753,18 @@ export function MealForm({
                     )}
                   </div>
                 )}
+
+                <div className="pt-2">
+                  <button
+                    type="button"
+                    onClick={addAliasToBasket}
+                    disabled={!scaled}
+                    className="w-full py-3 px-4 rounded-full bg-amber-400/15 border border-amber-400/30 text-xs font-bold text-amber-300 hover:bg-amber-400/25 transition active:scale-95 flex items-center justify-center gap-1.5 disabled:opacity-40 shadow-sm"
+                  >
+                    <Plus className="w-4 h-4 text-amber-400" />
+                    <span>+ {basket.length > 0 ? "Öğüne Bir Kalem Daha Ekle" : "Bu Besini Öğüne Kalem Olarak Ekle (Çoklu Malzeme)"}</span>
+                  </button>
+                </div>
               </div>
 
               <BasketSection

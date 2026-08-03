@@ -32,7 +32,7 @@ function MainContent() {
   const { days } = useData();
   const streak = calculateStreak(days);
 
-  // Tab değiştirme sarmalayıcısı (history state ekler & aynı sekmede kök görünüme döndürür)
+  // Tab değiştirme sarmalayıcısı (Her sekme ana sekmedir, replaceState ile kök tutulur)
   const handleTabChange = (newTab: TabType) => {
     setGlobalAddMealOpen(false);
     setGlobalScanOpen(false);
@@ -44,7 +44,7 @@ function MainContent() {
     }));
 
     if (newTab !== tab) {
-      window.history.pushState({ tab: newTab }, "");
+      window.history.replaceState({ tab: newTab, isRoot: true }, "");
       setTab(newTab);
     }
 
@@ -57,17 +57,18 @@ function MainContent() {
   const modalsRef = useRef({ globalAddMealOpen, globalScanOpen, globalExerciseOpen });
   modalsRef.current = { globalAddMealOpen, globalScanOpen, globalExerciseOpen };
 
-  // Sayfa ilk yüklendiğinde kök durumu YALNIZCA BİR KEZ tanımla (sekme değişiminde ezilmesini önler)
+  // Sayfa ilk yüklendiğinde kök durumu YALNIZCA BİR KEZ tanımla
   useEffect(() => {
     window.history.replaceState({ tab: "daily", isRoot: true }, "");
   }, []);
 
-  // Uygulama geneli Android Geri Tuşu & Geri Kaydırma (Double Back to Exit) Mantığı
+  // Uygulama geneli Android Geri Tuşu & Geri Kaydırma (Double Back to Exit) Mantığı:
+  // Her sekmenin ana sayfasındayken (modal/subview kapalıyken) geri tuşu uygulamadan çıkış uyarısı verir.
   useEffect(() => {
     const handlePopState = (e: PopStateEvent) => {
       const state = e.state;
 
-      // Modal kapatma popstate'i ise veya ekranda açık modal/sheet varsa Modal bileşeni yönetir
+      // Modal kapatma popstate'i ise veya ekranda açık modal/sheet varsa Modal/SubView bileşeni yönetir
       const isAnyModalOpen = !!document.querySelector('[data-modal="true"], .fixed.inset-0');
       if (state?.isModal || isAnyModalOpen) {
         return;
@@ -75,39 +76,16 @@ function MainContent() {
 
       const currentTab = tabRef.current;
 
-      // Tarayıcı geçmişinde hedef sekme bilgisi varsa o sekmeye geç
-      if (state && state.tab) {
-        // Yalnızca en kök (isRoot) olan daily durumuna gelinirse VE halihazırda daily sekmesindeysek çift basma uyarısı ver
-        if (state.tab === "daily" && state.isRoot && currentTab === "daily") {
-          const now = Date.now();
-          if (now - lastBackPressRef.current < 2000) {
-            // 2 saniye içinde 2. geri kaydırma! Çıkışa izin ver.
-          } else {
-            // 1. geri kaydırma! Toast uyarısı göster ve kök durumu yeniden push et
-            lastBackPressRef.current = now;
-            window.history.pushState({ tab: "daily", isRoot: true }, "");
-            setShowExitToast(true);
-            setTimeout(() => setShowExitToast(false), 2000);
-          }
-          return;
-        }
-
-        // Normal sekme geçişi: Sekmeyi güncelle
-        setTab(state.tab);
-        return;
-      }
-
-      // Geçmiş state bulunamazsa ve halihazırda "daily" sekmesindeysek
-      if (currentTab === "daily") {
-        const now = Date.now();
-        if (now - lastBackPressRef.current < 2000) {
-          // Çıkış
-        } else {
-          lastBackPressRef.current = now;
-          window.history.pushState({ tab: "daily", isRoot: true }, "");
-          setShowExitToast(true);
-          setTimeout(() => setShowExitToast(false), 2000);
-        }
+      // Herhangi bir sekmenin ana sayfasındayken (hiyerarşi sekmeler arası geçiş yapmaz, çıkış teklif eder)
+      const now = Date.now();
+      if (now - lastBackPressRef.current < 2000) {
+        // 2 saniye içinde 2. geri basma: Çıkışa izin ver.
+      } else {
+        // 1. geri basma: Toast uyarısı göster ve sekmenin kök durumunu yenile
+        lastBackPressRef.current = now;
+        window.history.replaceState({ tab: currentTab, isRoot: true }, "");
+        setShowExitToast(true);
+        setTimeout(() => setShowExitToast(false), 2000);
       }
     };
 

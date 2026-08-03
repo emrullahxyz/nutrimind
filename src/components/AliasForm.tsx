@@ -18,6 +18,8 @@ import { OFF_SERVING_G } from "../lib/off";
 import type { OffFood } from "../lib/off";
 import type { Alias, AliasUnit, Nutrition } from "../types";
 
+import { useBodyScrollLock } from "../hooks/useBodyScrollLock";
+
 interface UnitDraft {
   id: string;
   name: string;
@@ -27,6 +29,9 @@ interface UnitDraft {
 /** Alias (besin hafızası) ekleme/düzenleme full-screen modal */
 export function AliasForm({ initial, onClose }: { initial: Alias | null; onClose: () => void }) {
   const isPoppedRef = useRef(false);
+
+  // Lock background body scroll when modal is open
+  useBodyScrollLock(true);
 
   useEffect(() => {
     isPoppedRef.current = false;

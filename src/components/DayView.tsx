@@ -488,6 +488,13 @@ export function DayView({
             removeMeal(selectedMealForSheet.index);
           }
         }}
+        onEditMealItems={() => {
+          if (selectedMealForSheet) {
+            const idx = selectedMealForSheet.index;
+            setSelectedMealForSheet(null);
+            setEditIndex(idx);
+          }
+        }}
       />
     </div>
   );

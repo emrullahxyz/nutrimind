@@ -46,6 +46,7 @@ import { todayISO } from "../lib/format";
 import type { AIParseItem, MealPayload, MealSource } from "../types";
 import { AiError, aiErrorMessage, parseMealImage } from "../lib/ai";
 import { compressImageToBase64 } from "../lib/image";
+import { useBodyScrollLock } from "../hooks/useBodyScrollLock";
 
 type Saving = "today" | "memory" | null;
 
@@ -56,6 +57,8 @@ export function ScanSheet({
   onClose: () => void;
   onVisionResult?: (items: AIParseItem[]) => void;
 }) {
+  // Lock background body scroll when modal is open
+  useBodyScrollLock(true);
   const { aliases, upsertAlias, setDayMeals } = useData();
 
   // --- Tarama adımı ---

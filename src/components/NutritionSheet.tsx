@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from "react";
-import { ArrowLeft, Flame, Beef, Wheat, Droplet, Trash2 } from "lucide-react";
+import { ArrowLeft, Flame, Beef, Wheat, Droplet, Trash2, Plus } from "lucide-react";
 import type { MealItem, Nutrition } from "../types";
+import { useBodyScrollLock } from "../hooks/useBodyScrollLock";
 
 interface Props {
   isOpen: boolean;
@@ -8,10 +9,14 @@ interface Props {
   meal: MealItem | null;
   onSave?: (updatedMeal: MealItem) => void;
   onDelete?: (mealId: string) => void;
+  onEditMealItems?: () => void;
 }
 
-export function NutritionSheet({ isOpen, onClose, meal, onSave, onDelete }: Props) {
+export function NutritionSheet({ isOpen, onClose, meal, onSave, onDelete, onEditMealItems }: Props) {
   const isPoppedRef = useRef(false);
+
+  // Lock background body scroll when modal is open
+  useBodyScrollLock(isOpen);
 
   const [label, setLabel] = useState(meal?.label ?? "");
   const [multiplier, setMultiplier] = useState(1);
@@ -132,6 +137,21 @@ export function NutritionSheet({ isOpen, onClose, meal, onSave, onDelete }: Prop
             placeholder="Besin Adı"
           />
         </div>
+
+        {/* Add Extra Item Button (Bu Öğüne Ekstra Kalem/Besin Ekle) */}
+        {onEditMealItems && (
+          <button
+            type="button"
+            onClick={() => {
+              handleUserClose();
+              onEditMealItems();
+            }}
+            className="w-full py-3 px-4 rounded-2xl border border-amber-400/30 bg-amber-400/10 hover:bg-amber-400/20 text-amber-300 font-extrabold text-xs transition active:scale-[0.98] flex items-center justify-center gap-2"
+          >
+            <Plus className="w-4 h-4 text-amber-400" />
+            <span>+ Bu Öğüne Ekstra Besin / Kalem Ekle</span>
+          </button>
+        )}
 
         {/* Serving Amount Stepper (Porsiyon Miktarı) */}
         <div className="flex items-center justify-between gap-4 py-1">
