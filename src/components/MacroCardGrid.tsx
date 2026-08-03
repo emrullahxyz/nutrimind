@@ -2,6 +2,7 @@ import { Beef, Wheat, Droplet } from "lucide-react";
 import type { ComponentType } from "react";
 import { formatNumber } from "../lib/format";
 import type { Nutrition } from "../types";
+import { useAnimatedNumber } from "../lib/useAnimatedNumber";
 
 interface MacroItem {
   key: keyof Nutrition;
@@ -51,11 +52,56 @@ function SmallDonut({ pct, color, icon: Icon }: { pct: number; color: string; ic
   );
 }
 
-interface MacroCardGridProps {
-  total: Nutrition;
-  goal: Nutrition;
+import { useAnimatedNumber } from "../lib/useAnimatedNumber";
+
+function MacroCardItem({
+  item,
+  showRatio,
+  onToggleRatio,
+}: {
+  item: MacroItem;
   showRatio: boolean;
   onToggleRatio: () => void;
+}) {
+  const animConsumed = useAnimatedNumber(item.consumed);
+  const animTarget = useAnimatedNumber(item.target);
+
+  const remaining = Math.max(0, animTarget - animConsumed);
+  const pct = animTarget > 0 ? animConsumed / animTarget : 0;
+
+  let displayVal: string;
+  let subText: string;
+
+  if (showRatio) {
+    displayVal = animTarget > 0 
+      ? `${formatNumber(animConsumed, 0)}/${formatNumber(animTarget, 0)}g`
+      : `${formatNumber(animConsumed, 0)}g`;
+    subText = "Alınan / Hedef";
+  } else {
+    displayVal = `${formatNumber(animTarget > 0 ? remaining : animConsumed, 0)}g`;
+    subText = item.sublabel;
+  }
+
+  return (
+    <div
+      onClick={onToggleRatio}
+      className="flex flex-col justify-between rounded-card border border-calBorder bg-calCard p-3 sm:p-4 min-h-[130px] shadow-card backdrop-blur-sm transition-all duration-200 hover:border-white/20 cursor-pointer select-none active:scale-[0.98]"
+      title="Tıklayarak tüm değerleri dönüştür"
+    >
+      <div key={`${item.key}-${showRatio}-${displayVal}`} className="anim-fadeup">
+        <div className="text-xl sm:text-2xl font-extrabold text-white leading-tight">
+          {displayVal}
+        </div>
+        <div className="mt-0.5 text-[11px] font-medium text-ink-secondary truncate">
+          {subText}
+        </div>
+      </div>
+
+      <div className="mt-2 flex items-center justify-end">
+        <SmallDonut pct={pct} color={item.color} icon={item.icon} />
+      </div>
+    </div>
+  );
 }
 
 export function MacroCardGrid({ total, goal, showRatio, onToggleRatio }: MacroCardGridProps) {
@@ -91,45 +137,9 @@ export function MacroCardGrid({ total, goal, showRatio, onToggleRatio }: MacroCa
 
   return (
     <div className="grid grid-cols-3 gap-2.5 sm:gap-3">
-      {items.map((item) => {
-        const remaining = Math.max(0, item.target - item.consumed);
-        const pct = item.target > 0 ? item.consumed / item.target : 0;
-
-        let displayVal: string;
-        let subText: string;
-
-        if (showRatio) {
-          displayVal = item.target > 0 
-            ? `${formatNumber(item.consumed, 0)}/${formatNumber(item.target, 0)}g`
-            : `${formatNumber(item.consumed, 0)}g`;
-          subText = "Alınan / Hedef";
-        } else {
-          displayVal = `${formatNumber(item.target > 0 ? remaining : item.consumed, 0)}g`;
-          subText = item.sublabel;
-        }
-
-        return (
-          <div
-            key={item.key}
-            onClick={onToggleRatio}
-            className="flex flex-col justify-between rounded-card border border-calBorder bg-calCard p-3 sm:p-4 min-h-[130px] shadow-card backdrop-blur-sm transition-all duration-200 hover:border-white/20 cursor-pointer select-none active:scale-[0.98]"
-            title="Tıklayarak tüm değerleri dönüştür"
-          >
-            <div key={`${item.key}-${showRatio}`} className="anim-fadeup">
-              <div className="text-xl sm:text-2xl font-extrabold text-white leading-tight">
-                {displayVal}
-              </div>
-              <div className="mt-0.5 text-[11px] font-medium text-ink-secondary truncate">
-                {subText}
-              </div>
-            </div>
-
-            <div className="mt-2 flex items-center justify-end">
-              <SmallDonut pct={pct} color={item.color} icon={item.icon} />
-            </div>
-          </div>
-        );
-      })}
+      {items.map((item) => (
+        <MacroCardItem key={item.key} item={item} showRatio={showRatio} onToggleRatio={onToggleRatio} />
+      ))}
     </div>
   );
 }

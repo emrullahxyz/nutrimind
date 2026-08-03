@@ -2,6 +2,7 @@ import { Flame } from "lucide-react";
 import { CalorieRing } from "./CalorieRing";
 import { ringState } from "../lib/ring";
 import { formatNumber } from "../lib/format";
+import { useAnimatedNumber } from "../lib/useAnimatedNumber";
 
 interface HeroCalorieCardProps {
   consumed: number;
@@ -11,8 +12,11 @@ interface HeroCalorieCardProps {
 }
 
 export function HeroCalorieCard({ consumed, target, showRatio, onToggleRatio }: HeroCalorieCardProps) {
-  const state = ringState(consumed, target);
-  
+  const animConsumed = useAnimatedNumber(consumed);
+  const animTarget = useAnimatedNumber(target);
+
+  const state = ringState(animConsumed, animTarget);
+
   const subtitleLabel = showRatio
     ? "Tüketilen / Hedef"
     : state.isOver
@@ -25,8 +29,8 @@ export function HeroCalorieCard({ consumed, target, showRatio, onToggleRatio }: 
 
   const displayBigVal = showRatio
     ? state.hasTarget
-      ? `${formatNumber(consumed)} / ${formatNumber(target)}`
-      : `${formatNumber(consumed)}`
+      ? `${formatNumber(animConsumed)} / ${formatNumber(animTarget)}`
+      : `${formatNumber(animConsumed)}`
     : state.headline;
 
   return (
@@ -40,25 +44,25 @@ export function HeroCalorieCard({ consumed, target, showRatio, onToggleRatio }: 
 
       <div className="flex items-center justify-between gap-4">
         {/* Left Side: Calorie Stats */}
-        <div className="flex flex-col justify-center min-w-0 flex-1">
-          <div key={`sub-${showRatio}`} className="anim-fadeup flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-ink-secondary mb-1">
+        <div key={`${showRatio}-${displayBigVal}`} className="anim-fadeup flex flex-col justify-center min-w-0 flex-1">
+          <div className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-ink-secondary mb-1">
             <Flame className="h-4 w-4 text-accent" />
             <span>{subtitleLabel}</span>
           </div>
 
-          <div key={`val-${showRatio}`} className="anim-fadeup text-3xl sm:text-4xl md:text-5xl font-extrabold text-white tracking-tight">
+          <div className="text-3xl sm:text-4xl md:text-5xl font-extrabold text-white tracking-tight">
             {displayBigVal}
           </div>
 
           {state.hasTarget && (
-            <div key={`det-${showRatio}`} className="anim-fadeup mt-2 text-xs font-mono text-ink-secondary flex items-center gap-1">
+            <div className="mt-2 text-xs font-mono text-ink-secondary flex items-center gap-1">
               {showRatio ? (
                 <span className="text-accent font-semibold">Tıklayarak Kalan Kaloriyi Göster</span>
               ) : (
                 <>
-                  <span>{formatNumber(consumed)}</span>
+                  <span>{formatNumber(animConsumed)}</span>
                   <span className="text-ink-tertiary">/</span>
-                  <span className="text-ink-tertiary">{formatNumber(target)} kcal</span>
+                  <span className="text-ink-tertiary">{formatNumber(animTarget)} kcal</span>
                 </>
               )}
             </div>
@@ -67,7 +71,7 @@ export function HeroCalorieCard({ consumed, target, showRatio, onToggleRatio }: 
 
         {/* Right Side: Calorie Ring */}
         <div className="flex-none flex items-center justify-center">
-          <CalorieRing consumed={consumed} target={target} size={140} />
+          <CalorieRing consumed={animConsumed} target={animTarget} size={140} />
         </div>
       </div>
     </div>
