@@ -37,19 +37,21 @@ export function WeekStrip({ selectedDate, onSelectDate }: WeekStripProps) {
         const isExceeded = hasData && dayGoalKcal > 0 && total.kcal > dayGoalKcal;
         const isWithinGoal = hasData && dayGoalKcal > 0 && total.kcal <= dayGoalKcal;
 
-        // Dairesel çerçeve stilleri (Kesik çizgili - dashed)
-        let circleStyle = "border border-dashed border-white/30 text-white/70";
+        // Dairesel çerçeve stilleri:
+        // - Boş günler: kesik çizgi (dashed)
+        // - Dolu/Kayıtlı günler: yumuşak tonlu düz çizgi (solid)
+        let circleStyle = "border border-dashed border-white/20 text-white/50 bg-transparent";
         if (isExceeded) {
-          circleStyle = "border-2 border-dashed border-red-500 text-red-400 bg-red-500/10";
+          circleStyle = "border border-solid border-rose-500/60 text-rose-400 bg-rose-500/10";
         } else if (isWithinGoal) {
-          circleStyle = "border-2 border-dashed border-emerald-400 text-emerald-400 bg-emerald-500/10";
+          circleStyle = "border border-solid border-emerald-500/60 text-emerald-400 bg-emerald-500/10";
         }
 
         if (isSelected) {
           if (isExceeded) {
-            circleStyle = "bg-black border-2 border-dashed border-red-500 text-red-400";
+            circleStyle = "bg-black border border-solid border-rose-500/80 text-rose-400";
           } else if (isWithinGoal) {
-            circleStyle = "bg-black border-2 border-dashed border-emerald-400 text-emerald-400";
+            circleStyle = "bg-black border border-solid border-emerald-500/80 text-emerald-400";
           } else {
             circleStyle = "bg-black border border-dashed border-black/30 text-white";
           }
