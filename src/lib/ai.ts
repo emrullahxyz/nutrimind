@@ -113,9 +113,10 @@ export async function parseMealImage(
   mode: "gallery" | "food_label",
   signal?: AbortSignal,
 ): Promise<AIParseResult> {
-  const raw = await aiPost<{ items?: unknown[] }>("/api/ai/vision", { image: base64, mimeType, mode }, signal);
+  const raw = await aiPost<{ items?: unknown[]; healthNote?: string }>("/api/ai/vision", { image: base64, mimeType, mode }, signal);
   const rawItems = Array.isArray(raw?.items) ? raw.items : [];
   const items = rawItems.map(parseAIItem).filter((x): x is AIParseItem => x !== null);
-  return { items };
+  const healthNote = typeof raw?.healthNote === "string" ? raw.healthNote : undefined;
+  return { items, ...(healthNote ? { healthNote } : {}) };
 }
 

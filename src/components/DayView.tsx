@@ -12,6 +12,8 @@ import { SupplementCard } from "./SupplementCard";
 import { WeightCard } from "./WeightCard";
 import { Collapsible } from "./Collapsible";
 import { MealRow } from "./MealRow";
+import { ExerciseModal } from "./ExerciseModal";
+import { NutritionSheet } from "./NutritionSheet";
 import { formatKcal } from "../lib/format";
 import { useData } from "../lib/data";
 import { effectiveGoal } from "../lib/goals";
@@ -19,7 +21,7 @@ import { MACROS, MICROS } from "../lib/nutrients";
 import { coverage, dayTotal, mealsOf, sumMeals, toPayload } from "../lib/days";
 import { newTemplateId, parseTemplatesConfig } from "../lib/templates";
 import type { MealTemplate } from "../lib/templates";
-import type { AIParseItem, MealItem, MealPayload } from "../types";
+import type { AIParseItem, Exercise, MealItem, MealPayload } from "../types";
 import { PREF } from "../lib/prefs";
 import { usePersistedBool } from "../lib/usePersistedBool";
 import { categoryForLoggedAt, groupMealsByCategory, MEAL_CATEGORY_LABELS } from "../lib/mealCategory";
@@ -116,6 +118,13 @@ export function DayView({
   const hasData = meals.length > 0;
   const templates = parseTemplatesConfig(config);
 
+  const exerciseData = (config[`exercise_${date}`] as { exercises?: Exercise[] }) ?? { exercises: [] };
+  const currentExercises: Exercise[] = exerciseData.exercises ?? [];
+  const burnedKcal = currentExercises.reduce((acc, curr) => acc + curr.caloriesBurned, 0);
+
+  const [showExerciseModal, setShowExerciseModal] = useState(false);
+  const [selectedMealForSheet, setSelectedMealForSheet] = useState<{ meal: MealItem; index: number } | null>(null);
+
   const [editIndex, setEditIndex] = useState<number | null | undefined>(undefined);
   const [selectedIndices, setSelectedIndices] = useState<number[]>([]);
   const [selectMode, setSelectMode] = useState(false);
@@ -127,6 +136,20 @@ export function DayView({
   const [microsOpen, setMicrosOpen] = usePersistedBool(PREF.microsOpen, false);
   const [showRatio, setShowRatio] = useState(false);
   const toggleRatio = () => setShowRatio(!showRatio);
+
+  async function handleSaveFromNutritionSheet(updatedMeal: MealItem, index: number) {
+    if (busy) return;
+    setBusy(true);
+    try {
+      const updatedMeals = [...meals];
+      updatedMeals[index] = updatedMeal;
+      await setDayMeals(date, toPayload(updatedMeals));
+    } catch (e) {
+      setErr(String((e as Error)?.message ?? e));
+    } finally {
+      setBusy(false);
+    }
+  }
 
   useEffect(() => {
     if (triggerAddMeal) {
@@ -258,9 +281,6 @@ export function DayView({
 
   const selectedMeals = selectedIndices.map((i) => meals[i]).filter(Boolean);
 
-  // Mikro barlar YALNIZCA gerçekten veri olan besinler için çizilir: kimsenin
-  // girmediği sodyumu "0 mg" göstermek besin hakkında yanlış bir beyandır.
-  // (`sumMeals` bir mikroyu ancak en az bir öğünde varsa üretir.)
   const microRows = MICROS.filter((def) => total[def.key] !== undefined).map((def) => ({
     def,
     value: total[def.key] ?? 0,
@@ -271,7 +291,14 @@ export function DayView({
     <div className="flex flex-col gap-5 sm:gap-6">
       <DayTypeBadge date={date} />
 
-      <StatCardCarousel total={total} goal={goal} showRatio={showRatio} onToggleRatio={toggleRatio} />
+      <StatCardCarousel
+        total={total}
+        goal={goal}
+        burnedKcal={burnedKcal}
+        showRatio={showRatio}
+        onToggleRatio={toggleRatio}
+        onOpenExercise={() => setShowExerciseModal(true)}
+      />
 
       {microRows.length > 0 && (
         <Collapsible
@@ -409,7 +436,7 @@ export function DayView({
                           selectMode={selectMode}
                           isSelected={selectedIndices.includes(i)}
                           onToggleSelect={() => toggleSelect(i)}
-                          onEdit={() => setEditIndex(i)}
+                          onEdit={() => setSelectedMealForSheet({ meal: m, index: i })}
                           onSaveTemplate={() => saveAsTemplate(m)}
                           onRemove={() => removeMeal(i)}
                           busy={busy}
@@ -462,6 +489,28 @@ export function DayView({
           }}
         />
       )}
+
+      <ExerciseModal
+        isOpen={showExerciseModal}
+        onClose={() => setShowExerciseModal(false)}
+        date={date}
+      />
+
+      <NutritionSheet
+        isOpen={!!selectedMealForSheet}
+        onClose={() => setSelectedMealForSheet(null)}
+        meal={selectedMealForSheet?.meal ?? null}
+        onSave={(updated) => {
+          if (selectedMealForSheet) {
+            handleSaveFromNutritionSheet(updated, selectedMealForSheet.index);
+          }
+        }}
+        onDelete={(id) => {
+          if (selectedMealForSheet) {
+            removeMeal(selectedMealForSheet.index);
+          }
+        }}
+      />
     </div>
   );
 }

@@ -30,9 +30,7 @@
     "vite": "^6.0.7",
     "vitest": "^4.1.10"
   },
-  "pnpm": {
-    "onlyBuiltDependencies": [
-      "esbuild"
-    ]
-  }
+  "onlyBuiltDependencies": [
+    "esbuild"
+  ]
 }

@@ -8,6 +8,7 @@ import { SettingsSheet } from "./components/SettingsSheet";
 import { BottomNav, TabType } from "./components/BottomNav";
 import { MealForm } from "./components/MealForm";
 import { ScanSheet } from "./components/ScanSheet";
+import { ExerciseModal } from "./components/ExerciseModal";
 import { todayISO } from "./lib/format";
 import { calculateStreak } from "./lib/streak";
 
@@ -18,6 +19,7 @@ function MainContent() {
   const [triggerScan, setTriggerScan] = useState(false);
   const [globalScanOpen, setGlobalScanOpen] = useState(false);
   const [globalAddMealOpen, setGlobalAddMealOpen] = useState(false);
+  const [globalExerciseOpen, setGlobalExerciseOpen] = useState(false);
 
   const { days } = useData();
   const streak = calculateStreak(days);
@@ -78,6 +80,7 @@ function MainContent() {
         onAddMeal={handleAddMeal}
         onScan={handleScan}
         onSavedFoods={() => setTab("aliases")}
+        onOpenExercise={() => setGlobalExerciseOpen(true)}
       />
 
       {settingsOpen && (
@@ -91,6 +94,12 @@ function MainContent() {
       {globalScanOpen && (
         <ScanSheet onClose={() => setGlobalScanOpen(false)} />
       )}
+
+      <ExerciseModal
+        isOpen={globalExerciseOpen}
+        onClose={() => setGlobalExerciseOpen(false)}
+        date={todayISO()}
+      />
     </>
   );
 }

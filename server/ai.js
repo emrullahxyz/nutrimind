@@ -95,6 +95,7 @@ function takeToken(b) {
 const RESPONSE_SCHEMA = {
   type: "object",
   properties: {
+    healthNote: { type: "string" },
     items: {
       type: "array",
       items: {
@@ -387,7 +388,8 @@ async function parseMealImage({ imageBase64, mimeType, mode, aliases }) {
 
   const rawItems = Array.isArray(result.body?.items) ? result.body.items : [];
   const items = rawItems.map(parseAiItem).filter((x) => x !== null);
-  return { status: 200, body: { items } };
+  const healthNote = typeof result.body?.healthNote === "string" ? result.body.healthNote : undefined;
+  return { status: 200, body: { items, ...(healthNote ? { healthNote } : {}) } };
 }
 
 module.exports = { parseMealText, parseMealImage };
