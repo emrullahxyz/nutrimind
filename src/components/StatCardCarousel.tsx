@@ -1,5 +1,7 @@
 import { useRef, useState, type UIEvent } from "react";
 import type { Nutrition } from "../types";
+import { HeroCalorieCard } from "./HeroCalorieCard";
+import { HealthScoreCard } from "./HealthScoreCard";
 import { MacroCardGrid } from "./MacroCardGrid";
 import { MicroCardGrid } from "./MicroCardGrid";
 
@@ -33,17 +35,22 @@ export function StatCardCarousel({ total, goal, showRatio, onToggleRatio }: Stat
   }
 
   return (
-    <div className="flex flex-col gap-2">
+    <div className="flex flex-col gap-3">
       <div
         ref={scrollRef}
         onScroll={handleScroll}
         className="flex overflow-x-auto snap-x snap-mandatory no-scrollbar [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden"
         style={{ scrollbarWidth: "none" }}
       >
-        <div className="w-full flex-none snap-center">
+        {/* Sayfa 1: Kalori Kartı + Makro Kartları */}
+        <div className="w-full flex-none snap-center flex flex-col gap-4">
+          <HeroCalorieCard consumed={total.kcal} target={goal.kcal} showRatio={showRatio} onToggleRatio={onToggleRatio} />
           <MacroCardGrid total={total} goal={goal} showRatio={showRatio} onToggleRatio={onToggleRatio} />
         </div>
-        <div className="w-full flex-none snap-center">
+
+        {/* Sayfa 2: Sağlık Skoru Kartı + Mikro Kartları */}
+        <div className="w-full flex-none snap-center flex flex-col gap-4">
+          <HealthScoreCard total={total} goal={goal} />
           <MicroCardGrid total={total} goal={goal} />
         </div>
       </div>

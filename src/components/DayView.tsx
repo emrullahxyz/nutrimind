@@ -1,8 +1,6 @@
 import { useEffect, useState } from "react";
 import { UtensilsCrossed } from "lucide-react";
-import { HeroCalorieCard } from "./HeroCalorieCard";
 import { StatCardCarousel } from "./StatCardCarousel";
-import { HealthScoreCard } from "./HealthScoreCard";
 import { MacroBar } from "./MacroBar";
 import { Card } from "./Card";
 import { DayTypeBadge } from "./DayTypeBadge";
@@ -273,10 +271,7 @@ export function DayView({
     <div className="flex flex-col gap-5 sm:gap-6">
       <DayTypeBadge date={date} />
 
-      <HeroCalorieCard consumed={total.kcal} target={goal.kcal} showRatio={showRatio} onToggleRatio={toggleRatio} />
-
       <StatCardCarousel total={total} goal={goal} showRatio={showRatio} onToggleRatio={toggleRatio} />
-      <HealthScoreCard total={total} goal={goal} />
 
       {microRows.length > 0 && (
         <Collapsible
