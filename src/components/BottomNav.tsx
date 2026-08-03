@@ -119,7 +119,7 @@ export function BottomNav({
         )}
 
         {/* Tab Buttons */}
-        <div className="flex items-center gap-1 sm:gap-2">
+        <div className="flex flex-1 items-center justify-around mr-2">
           {tabs.map((tab) => {
             const isActive = tab.id === activeTab;
             const isSettings = tab.id === "settings";
