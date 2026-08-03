@@ -1,3 +1,4 @@
+import { Flame } from "lucide-react";
 import { addDaysISO, todayISO } from "../lib/format";
 import { Card } from "./Card";
 import type { MealItem } from "../types";
@@ -18,8 +19,8 @@ export function StreakCard({ days, streak }: StreakCardProps) {
   return (
     <Card className="flex flex-col items-center gap-3 p-5">
       <div className="flex items-center gap-2">
-        <span className="text-3xl">🔥</span>
-        <span className="font-mono text-3xl font-extrabold text-white">{streak}</span>
+        <Flame className="h-7 w-7 text-accent" />
+        <span className="text-3xl font-extrabold text-white">{streak}</span>
       </div>
       <span className="text-xs font-semibold uppercase tracking-wider text-ink-secondary">Gün serisi</span>
 

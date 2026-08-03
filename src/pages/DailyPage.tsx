@@ -40,6 +40,7 @@ export function DailyPage({
         date={selectedDate}
         emptyLabel="Bu gün henüz bir şey yok."
         enableScan
+        showWeightCard={false}
         triggerAddMeal={triggerAddMeal}
         onResetTriggerAddMeal={onResetTriggerAddMeal}
         triggerScan={triggerScan}

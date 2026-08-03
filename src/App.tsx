@@ -1,11 +1,11 @@
 import { useState } from "react";
+import { Flame } from "lucide-react";
 import { DailyPage } from "./pages/DailyPage";
 import { HistoryPage } from "./pages/HistoryPage";
 import { AliasPage } from "./pages/AliasPage";
 import { DataProvider, useData } from "./lib/data";
 import { SettingsSheet } from "./components/SettingsSheet";
 import { BottomNav, TabType } from "./components/BottomNav";
-import { FAB } from "./components/FAB";
 import { MealForm } from "./components/MealForm";
 import { ScanSheet } from "./components/ScanSheet";
 import { todayISO } from "./lib/format";
@@ -44,14 +44,14 @@ function MainContent() {
 
       <header className="no-print relative z-10 mb-4 flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <span className="text-2xl">🍎</span>
+          <img src="/NutriMind_Logo.png" alt="NutriMind" className="h-7 w-7 rounded-lg" />
           <h1 className="text-xl font-extrabold text-white sm:text-2xl">
             NutriMind
           </h1>
         </div>
 
         <div className="flex items-center gap-1.5 rounded-full bg-white/10 px-3 py-1 text-xs font-bold text-white border border-white/15 backdrop-blur-md">
-          <span>🔥</span>
+          <Flame className="h-4 w-4 text-accent" />
           <span>{streak}</span>
         </div>
       </header>
@@ -71,16 +71,13 @@ function MainContent() {
         )}
       </main>
 
-      <FAB
-        onAddMeal={handleAddMeal}
-        onScan={handleScan}
-        onSavedFoods={() => setTab("aliases")}
-      />
-
       <BottomNav
         activeTab={tab}
         onTabChange={setTab}
         onOpenSettings={() => setSettingsOpen(true)}
+        onAddMeal={handleAddMeal}
+        onScan={handleScan}
+        onSavedFoods={() => setTab("aliases")}
       />
 
       {settingsOpen && (

@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
+import { UtensilsCrossed } from "lucide-react";
 import { HeroCalorieCard } from "./HeroCalorieCard";
-import { MacroCardGrid } from "./MacroCardGrid";
+import { StatCardCarousel } from "./StatCardCarousel";
+import { HealthScoreCard } from "./HealthScoreCard";
 import { MacroBar } from "./MacroBar";
 import { Card } from "./Card";
 import { DayTypeBadge } from "./DayTypeBadge";
@@ -98,6 +100,7 @@ export function DayView({
   onResetTriggerAddMeal,
   triggerScan,
   onResetTriggerScan,
+  showWeightCard = true,
 }: {
   date: string;
   emptyLabel?: string;
@@ -106,6 +109,7 @@ export function DayView({
   onResetTriggerAddMeal?: () => void;
   triggerScan?: boolean;
   onResetTriggerScan?: () => void;
+  showWeightCard?: boolean;
 }) {
   const { goals, days, setDayMeals, config, updateConfig } = useData();
   const goal = effectiveGoal(goals, date);
@@ -271,7 +275,8 @@ export function DayView({
 
       <HeroCalorieCard consumed={total.kcal} target={goal.kcal} showRatio={showRatio} onToggleRatio={toggleRatio} />
 
-      <MacroCardGrid total={total} goal={goal} showRatio={showRatio} onToggleRatio={toggleRatio} />
+      <StatCardCarousel total={total} goal={goal} showRatio={showRatio} onToggleRatio={toggleRatio} />
+      <HealthScoreCard total={total} goal={goal} />
 
       {microRows.length > 0 && (
         <Collapsible
@@ -300,7 +305,7 @@ export function DayView({
       )}
 
       <SupplementCard date={date} />
-      <WeightCard date={date} />
+      {showWeightCard && <WeightCard date={date} />}
 
       <section className="flex flex-col gap-3">
         <div className="flex items-center justify-between gap-3">
@@ -426,8 +431,11 @@ export function DayView({
             type="button"
             onClick={() => setEditIndex(null)}
             disabled={busy}
-            className="flex flex-col items-center justify-center gap-2 rounded-card border border-dashed border-line px-4 py-8 text-center transition hover:border-memory/40 hover:bg-white/[0.02] disabled:opacity-40"
+            className="flex flex-col items-center justify-center gap-3 rounded-card bg-calCard border border-calBorder shadow-card px-4 py-8 text-center transition hover:border-white/20 hover:bg-white/[0.07] disabled:opacity-40"
           >
+            <span className="flex h-12 w-12 items-center justify-center rounded-full bg-[#201f2e] text-white">
+              <UtensilsCrossed className="h-5 w-5" />
+            </span>
             <span className="text-sm text-ink-tertiary">{emptyLabel}</span>
             <span className="rounded-pill bg-accent px-3 py-1.5 text-xs font-extrabold text-accent-ink">
               + Öğün ekle

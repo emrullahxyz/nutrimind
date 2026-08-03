@@ -1,3 +1,5 @@
+import { Beef, Wheat, Droplet } from "lucide-react";
+import type { ComponentType } from "react";
 import { formatNumber } from "../lib/format";
 import type { Nutrition } from "../types";
 
@@ -5,13 +7,13 @@ interface MacroItem {
   key: keyof Nutrition;
   label: string;
   sublabel: string;
-  emoji: string;
+  icon: ComponentType<{ className?: string }>;
   color: string;
   consumed: number;
   target: number;
 }
 
-function SmallDonut({ pct, color, emoji }: { pct: number; color: string; emoji: string }) {
+function SmallDonut({ pct, color, icon: Icon }: { pct: number; color: string; icon: ComponentType<{ className?: string }> }) {
   const size = 52;
   const stroke = 5;
   const r = (size - stroke) / 2;
@@ -42,8 +44,8 @@ function SmallDonut({ pct, color, emoji }: { pct: number; color: string; emoji: 
           className="transition-all duration-700 ease-out"
         />
       </svg>
-      <span className="absolute inset-0 flex items-center justify-center text-base">
-        {emoji}
+      <span className="absolute inset-0 flex items-center justify-center">
+        <Icon className="w-4 h-4 text-white" />
       </span>
     </div>
   );
@@ -62,7 +64,7 @@ export function MacroCardGrid({ total, goal, showRatio, onToggleRatio }: MacroCa
       key: "protein",
       label: "Protein",
       sublabel: goal.protein > 0 ? "Kalan Protein" : "Protein",
-      emoji: "🥩",
+      icon: Beef,
       color: "#FF6B8A",
       consumed: total.protein,
       target: goal.protein,
@@ -71,7 +73,7 @@ export function MacroCardGrid({ total, goal, showRatio, onToggleRatio }: MacroCa
       key: "carbs",
       label: "Karb",
       sublabel: goal.carbs > 0 ? "Kalan Karb" : "Karbonhidrat",
-      emoji: "🌾",
+      icon: Wheat,
       color: "#FFB84D",
       consumed: total.carbs,
       target: goal.carbs,
@@ -80,7 +82,7 @@ export function MacroCardGrid({ total, goal, showRatio, onToggleRatio }: MacroCa
       key: "fat",
       label: "Yağ",
       sublabel: goal.fat > 0 ? "Kalan Yağ" : "Yağ",
-      emoji: "🫐",
+      icon: Droplet,
       color: "#5B8DEF",
       consumed: total.fat,
       target: goal.fat,
@@ -110,11 +112,11 @@ export function MacroCardGrid({ total, goal, showRatio, onToggleRatio }: MacroCa
           <div
             key={item.key}
             onClick={onToggleRatio}
-            className="flex flex-col justify-between rounded-[20px] border border-calBorder bg-calCard p-3 sm:p-4 min-h-[130px] shadow-card backdrop-blur-sm transition-all duration-200 hover:border-white/20 cursor-pointer select-none active:scale-[0.98]"
+            className="flex flex-col justify-between rounded-card border border-calBorder bg-calCard p-3 sm:p-4 min-h-[130px] shadow-card backdrop-blur-sm transition-all duration-200 hover:border-white/20 cursor-pointer select-none active:scale-[0.98]"
             title="Tıklayarak tüm değerleri dönüştür"
           >
             <div>
-              <div className="font-mono text-base sm:text-lg font-extrabold text-white leading-tight transition-all">
+              <div className="text-xl sm:text-2xl font-extrabold text-white leading-tight transition-all">
                 {displayVal}
               </div>
               <div className="mt-0.5 text-[11px] font-medium text-ink-secondary truncate">
@@ -123,7 +125,7 @@ export function MacroCardGrid({ total, goal, showRatio, onToggleRatio }: MacroCa
             </div>
 
             <div className="mt-2 flex items-center justify-end">
-              <SmallDonut pct={pct} color={item.color} emoji={item.emoji} />
+              <SmallDonut pct={pct} color={item.color} icon={item.icon} />
             </div>
           </div>
         );

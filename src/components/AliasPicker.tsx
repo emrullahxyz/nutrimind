@@ -163,7 +163,7 @@ export function AliasPicker({
         <ul
           ref={listRef}
           tabIndex={-1}
-          className="absolute z-50 mt-1 max-h-60 w-full overflow-y-auto rounded-chip border border-white/15 bg-[#191a22] p-1 shadow-2xl backdrop-blur-xl"
+          className="absolute z-50 mt-1 max-h-60 w-full overflow-y-auto rounded-chip border border-white/15 bg-[#191a22] p-1 shadow-float backdrop-blur-xl"
         >
           {ranked.length === 0 ? (
             <li className="px-3 py-2 text-xs text-ink-tertiary">Sonuç bulunamadı</li>

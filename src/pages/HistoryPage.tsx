@@ -5,7 +5,8 @@ import { WeekBars } from "../components/WeekBars";
 import { MacroDonut } from "../components/MacroDonut";
 import { DayView } from "../components/DayView";
 import { StreakCard } from "../components/StreakCard";
-import { formatKcal, formatLongDate, formatNumber, formatRelativeDay, formatShortDate } from "../lib/format";
+import { WeightCard } from "../components/WeightCard";
+import { formatKcal, formatLongDate, formatNumber, formatRelativeDay, formatShortDate, todayISO } from "../lib/format";
 import { useData } from "../lib/data";
 import { effectiveGoal } from "../lib/goals";
 import { MACROS } from "../lib/nutrients";
@@ -125,6 +126,11 @@ export function HistoryPage() {
   return (
     <div className="flex flex-col gap-6">
       <StreakCard days={days} streak={calculateStreak(days)} />
+
+      <div className="flex flex-col gap-3">
+        <SectionLabel>Kilo</SectionLabel>
+        <WeightCard date={todayISO()} />
+      </div>
 
       <div className="flex flex-col gap-4">
         <SectionLabel>Haftalar</SectionLabel>
