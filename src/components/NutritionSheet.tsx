@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { X, Plus, Minus, Flame, Sparkles, Scale, Trash2, Check } from "lucide-react";
 import type { MealItem, Nutrition } from "../types";
 
@@ -13,6 +13,35 @@ interface Props {
 const UNITS = ["g", "porsiyon", "adet", "dilim", "ölçek"];
 
 export function NutritionSheet({ isOpen, onClose, meal, onSave, onDelete }: Props) {
+  const isPoppedRef = useRef(false);
+
+  useEffect(() => {
+    if (!isOpen || !meal) return;
+    window.history.pushState({ isModal: true, title: "Besin Detayı" }, "");
+
+    const handlePopState = () => {
+      isPoppedRef.current = true;
+      onClose();
+    };
+
+    window.addEventListener("popstate", handlePopState);
+
+    return () => {
+      window.removeEventListener("popstate", handlePopState);
+      if (!isPoppedRef.current && window.history.state?.isModal) {
+        window.history.back();
+      }
+    };
+  }, [isOpen, meal, onClose]);
+
+  const handleUserClose = () => {
+    if (!isPoppedRef.current && window.history.state?.isModal) {
+      window.history.back();
+    } else {
+      onClose();
+    }
+  };
+
   if (!isOpen || !meal) return null;
 
   const [label, setLabel] = useState(meal.label);
@@ -62,7 +91,7 @@ export function NutritionSheet({ isOpen, onClose, meal, onSave, onDelete }: Prop
             </div>
           </div>
           <button
-            onClick={onClose}
+            onClick={handleUserClose}
             className="w-8 h-8 rounded-full bg-white/5 hover:bg-white/10 flex items-center justify-center text-white/70 transition-colors"
           >
             <X className="w-5 h-5" />
