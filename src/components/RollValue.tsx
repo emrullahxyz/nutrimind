@@ -34,8 +34,8 @@ export function RollValue({ value }: RollValueProps) {
   return (
     <span className="roll-viewport">
       <span key={idRef.current} className="roll-track" onAnimationEnd={() => setPrev(null)}>
-        <span className="roll-frame">{prev}</span>
-        <span className="roll-frame">{value}</span>
+        <span className="roll-frame roll-frame-prev">{prev}</span>
+        <span className="roll-frame roll-frame-next">{value}</span>
       </span>
     </span>
   );
