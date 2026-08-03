@@ -43,17 +43,26 @@ import {
 import type { OffFood } from "../lib/off";
 import { useOffCooldown, useOffScanner } from "../lib/offScanner";
 import { todayISO } from "../lib/format";
-import type { MealPayload, MealSource } from "../types";
+import type { AIParseItem, MealPayload, MealSource } from "../types";
+import { AiError, aiErrorMessage, parseMealImage } from "../lib/ai";
+import { compressImageToBase64 } from "../lib/image";
 
 type Saving = "today" | "memory" | null;
 
-export function ScanSheet({ onClose }: { onClose: () => void }) {
+export function ScanSheet({
+  onClose,
+  onVisionResult,
+}: {
+  onClose: () => void;
+  onVisionResult?: (items: AIParseItem[]) => void;
+}) {
   const { aliases, upsertAlias, setDayMeals } = useData();
 
   // --- Tarama adımı ---
   const [food, setFood] = useState<OffFood | null>(null);
   const [barcode, setBarcode] = useState("");
   const { status, setStatus, cooldownLeft, blocked, applyError } = useOffCooldown();
+  const [visionLoading, setVisionLoading] = useState(false);
 
   /** Bu barkod hafızada zaten var mı? Tarama-öncelikli bir akışta aynı ürün
    *  defalarca okutulur; her seferinde yeni bir besin yaratsaydık hafıza
@@ -225,14 +234,36 @@ export function ScanSheet({ onClose }: { onClose: () => void }) {
   const [scanMode, setScanMode] = useState<"scan_food" | "barcode" | "food_label" | "gallery">("scan_food");
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const handleGallerySelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleGallerySelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) {
-      // Fotoğraftan besin tanıma (Gemini Vision, /api/ai/vision) henüz YOK —
-      // bu yalnızca dürüst bir "henüz yok" mesajı. Var olan bir özelliği
-      // ima eden yanlış bir "hazır" iddiası kullanıcıyı yanıltırdı.
-      setScanMode("gallery");
-      setStatus({ kind: "error", message: `${file.name} seçildi — fotoğraftan besin tanıma henüz eklenmedi.` });
+    e.target.value = ""; // aynı dosya tekrar seçilebilsin diye input'u sıfırla
+    if (!file || !file.type.startsWith("image/")) return;
+
+    const visionMode: "gallery" | "food_label" = scanMode === "food_label" ? "food_label" : "gallery";
+    setStatus({ kind: "loading" });
+    setVisionLoading(true);
+    try {
+      const { base64, mimeType } = await compressImageToBase64(
+        file,
+        visionMode === "food_label" ? { maxDim: 1600, quality: 0.85 } : { maxDim: 1024, quality: 0.7 },
+      );
+      const result = await parseMealImage(base64, mimeType, visionMode);
+      if (result.items.length === 0) {
+        setStatus({ kind: "error", message: "Görselden bir besin çıkarılamadı. Daha net/yakın bir fotoğraf dene." });
+      } else {
+        setStatus({ kind: "idle" });
+        onVisionResult?.(result.items);
+      }
+    } catch (err) {
+      setStatus({
+        kind: "error",
+        message:
+          err instanceof AiError
+            ? aiErrorMessage(err.status, err.message, err.retryAfter)
+            : String((err as Error)?.message ?? err),
+      });
+    } finally {
+      setVisionLoading(false);
     }
   };
 
@@ -343,7 +374,10 @@ export function ScanSheet({ onClose }: { onClose: () => void }) {
             </button>
             <button
               type="button"
-              onClick={() => setScanMode("food_label")}
+              onClick={() => {
+                setScanMode("food_label");
+                fileInputRef.current?.click();
+              }}
               className={`flex items-center gap-1 px-2.5 py-1.5 rounded-xl transition ${
                 scanMode === "food_label" ? "bg-white text-black font-bold shadow" : "hover:text-white"
               }`}
@@ -366,7 +400,10 @@ export function ScanSheet({ onClose }: { onClose: () => void }) {
             </button>
             <button
               type="button"
-              onClick={() => fileInputRef.current?.click()}
+              onClick={() => {
+                setScanMode("gallery");
+                fileInputRef.current?.click();
+              }}
               className={`flex items-center gap-1 px-2.5 py-1.5 rounded-xl transition ${
                 scanMode === "gallery" ? "bg-white text-black font-bold shadow" : "hover:text-white"
               }`}

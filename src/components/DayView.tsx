@@ -19,7 +19,7 @@ import { MACROS, MICROS } from "../lib/nutrients";
 import { coverage, dayTotal, mealsOf, sumMeals, toPayload } from "../lib/days";
 import { newTemplateId, parseTemplatesConfig } from "../lib/templates";
 import type { MealTemplate } from "../lib/templates";
-import type { MealItem, MealPayload } from "../types";
+import type { AIParseItem, MealItem, MealPayload } from "../types";
 import { PREF } from "../lib/prefs";
 import { usePersistedBool } from "../lib/usePersistedBool";
 import { categoryForLoggedAt, groupMealsByCategory, MEAL_CATEGORY_LABELS } from "../lib/mealCategory";
@@ -119,6 +119,7 @@ export function DayView({
   const [selectMode, setSelectMode] = useState(false);
   const [showMergeModal, setShowMergeModal] = useState(false);
   const [showScan, setShowScan] = useState(false);
+  const [pendingAIItems, setPendingAIItems] = useState<AIParseItem[] | undefined>(undefined);
   const [err, setErr] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [microsOpen, setMicrosOpen] = usePersistedBool(PREF.microsOpen, false);
@@ -245,6 +246,7 @@ export function DayView({
   function closeForm() {
     setEditIndex(undefined);
     setErr(null);
+    setPendingAIItems(undefined);
   }
 
   function requestCloseMerge() {
@@ -434,7 +436,9 @@ export function DayView({
         )}
       </section>
 
-      {editIndex !== undefined && <MealForm date={date} editIndex={editIndex} onClose={closeForm} />}
+      {editIndex !== undefined && (
+        <MealForm date={date} editIndex={editIndex} onClose={closeForm} initialAIItems={pendingAIItems} />
+      )}
 
       {showMergeModal && (
         <MergeModal
@@ -445,7 +449,16 @@ export function DayView({
         />
       )}
 
-      {showScan && <ScanSheet onClose={() => setShowScan(false)} />}
+      {showScan && (
+        <ScanSheet
+          onClose={() => setShowScan(false)}
+          onVisionResult={(items) => {
+            setPendingAIItems(items);
+            setShowScan(false);
+            setEditIndex(null);
+          }}
+        />
+      )}
     </div>
   );
 }
