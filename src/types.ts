@@ -30,6 +30,17 @@ export interface MealSource {
 
 export type MealCategory = "breakfast" | "lunch" | "dinner" | "snack";
 
+export type ExerciseCategory = "run" | "weights" | "walk" | "swim" | "cycle" | "custom";
+
+export interface Exercise {
+  id: string;
+  name: string;
+  category: ExerciseCategory;
+  durationMinutes: number;
+  caloriesBurned: number;
+  loggedAt?: string;
+}
+
 /** Bir öğün kalemi (gösterim). */
 export interface MealItem {
   id: string;
@@ -61,6 +72,7 @@ export interface AIParseItem {
 
 export interface AIParseResult {
   items: AIParseItem[];
+  healthNote?: string;
 }
 
 export interface AliasUnit {

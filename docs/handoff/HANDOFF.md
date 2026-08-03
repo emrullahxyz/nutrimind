@@ -805,3 +805,181 @@ oku ama mevcut CAL AI kabuğuna (özellikle `DayView.tsx`/`MacroCardGrid.tsx`) g
 geçir — o dosyalar bu oturumda büyük ölçüde değişti.
 
 ---
+
+## Handoff: 2026-08-03T10:00Z — NVIDIA NIM fallback + Faz 3/4/5 (kilo, kategori, görsel/OCR) — HEPSİ BİTTİ ve CANLIDA
+
+### Current Task State
+
+**Bitti.** Bu oturumda dört ayrı iş tamamlandı, doğrulandı ve canlıya çıkıldı:
+
+1. **NVIDIA NIM'i Gemini'ye otomatik yedek sağlayıcı olarak ekleme** — `NUTRIMIND_LLM_PROVIDER`
+   artık `none|gemini|nim|auto` 4 değerini destekliyor; `auto` modda Gemini başarısız olunca
+   (kota/429/502/504) aynı istek içinde otomatik NIM'e düşülüyor.
+2. **"Öğün ekle" butonu düzeltmesi** — gün doluyken kaybolan buton geri getirildi (küçük,
+   ayrı bir düzeltme).
+3. **Orijinal 10 maddelik genişleme planının kalan 3 fazı**: Faz 3 (kilo takibi), Faz 4
+   (öğün kategorileri + pull-to-refresh), Faz 5 (gerçek görsel/OCR — `ScanSheet`'in kozmetik
+   "Gallery"/"Food Label" modları artık gerçek Gemini Vision'a bağlı).
+
+**Yürütme modeli:** Kullanıcının açık talebiyle TÜM implementasyon işi agy'ye delege edildi
+(NIM fallback dahil, Faz 5'in `server/index.js` dokunuşu dahil) — Claude yalnızca brief yazdı,
+doğruladı, gerekirse düzeltti. Bu, önceki fazların "hassas backend işi Claude'da kalır"
+emsalinden bilinçli bir sapma, kullanıcının doğrudan talimatıyla.
+
+### Key Decisions
+
+- **NIM fallback tasarımı:** `server/ai.js`'e `callLLM({bucket,url,headers,requestBody,
+  extractText})` ortak yardımcısı eklendi, `geminiFetch`/`nimFetch` onun ince sarmalayıcıları
+  oldu. `auto` modda önce Gemini denenir, `status!==200` ise NIM'e düşülür; ikisi de
+  başarısız olursa NIM'in (son denenenin) sonucu istemciye aynen döner — birleştirilmiş özel
+  mesaj YOK (frontend zaten status koduna göre sabit Türkçe mesaj gösteriyor).
+- **NIM model kataloğu güvenilmez çıktı:** agy'nin önceki oturumda çıkardığı "43 çalışan
+  model" benchmark'ı bu oturumda BAĞIMSIZ curl testleriyle doğrulanamadı — `google/gemma-3-*`
+  ailesi dahil çoğu model bu hesap için 404 "Not found for account" verdi. Yalnızca
+  `meta/llama-3.1-8b-instruct` (ve `meta/llama-3.1-70b-instruct`) doğrulandı çalışıyor.
+  Kod varsayılanı ve `.env.example` buna göre güncellendi — bkz. hafıza `nim-model-catalog-limited`.
+- **Kilo takibi (Faz A):** Yeni bir SQLite tablosu/uç YOK — mevcut genel config-bag
+  (`GET/PUT /api/config/:key`) kullanıldı, `{entries: Record<isoDate, number>}` şekli.
+  **Sıfır backend değişikliği.**
+- **Öğün kategorileri (Faz B):** `MealItem`/`MealPayload`'a `loggedAt?: string` (ISO 8601) +
+  `category?: MealCategory` eklendi. Kategori saatten otomatik türetilir
+  (`src/lib/mealCategory.ts`: 05-10 Kahvaltı, 11-14 Öğle, 15-20 Akşam, 21-04 Atıştırmalık),
+  kullanıcı `MealForm`'da elle değiştirebilir. Düzenlemede orijinal `loggedAt` KORUNUR
+  ("şimdi"ye güncellenmez). Kategorisiz eski öğünler "Diğer" grubuna düşer. `DayView`'daki
+  gruplu render, flat `index`'i (`{meal,index}` çiftleri) koruyarak seçim/birleştirme
+  mantığını bozmadan çalışıyor. **Sıfır backend değişikliği** (kanıt: `sources` alanı emsali).
+- **Görsel/OCR (Faz C):** `server/index.js`'e TEK yeni route (`/api/ai/vision`) — require
+  satırı + route bloğu + 1 yorum satırı, başka HİÇBİR ŞEY değişmedi. `server/ai.js`'e
+  `parseMealImage` eklendi (Gemini-only, NIM görsel YOK — hiç doğrulanmadı, riskli olurdu).
+  İstemci tarafı sıkıştırma (`src/lib/image.ts`, canvas tabanlı, yeni bağımlılık yok) mevcut
+  1MB `MAX_BODY_BYTES` sınırının altında kalacak şekilde tasarlandı (`gallery`: 1024px/q0.7,
+  `food_label`: 1600px/q0.85) — paylaşılan sınır DEĞİŞTİRİLMEDİ. Sonuç `MealForm`'un basket
+  sistemine `initialAIItems` prop'uyla aktarılıyor — YENİ bir onay ekranı YAPILMADI.
+- **agy brief boyutu sınırı keşfedildi:** `agy -p "$(cat brief.md)"` ~30KB'ı aşan brief'lerde
+  Windows komut satırı sınırından `Argument list too long` (exit 126) hatası verdi. Çözüm:
+  büyük referans dosyalarının TAMAMINI yapıştırmak yerine "önce bu dosyayı oku" demek — bkz.
+  hafıza `agy-brief-size-limit`.
+
+### Modified Files (bu oturumun bütünü)
+
+**NIM fallback** (commit `0c790ab`): `server/ai.js`, `.env.example`, `src/types.ts` (yorum).
+**Öğün ekle butonu** (commit `4021b36`, kullanıcının kendi ayrı agy oturumunda commitlendi):
+`src/components/DayView.tsx`.
+**Faz A+B** (kullanıcının `26988be`/`b551645` commit'lerine dahil oldu — kendi mobil UX
+düzeltmeleriyle birlikte bundled): `src/lib/weight.ts`, `weight.test.ts`, `WeightCard.tsx`,
+`WeightTrendCard.tsx`, `src/lib/mealCategory.ts`, `mealCategory.test.ts`,
+`src/lib/usePullToRefresh.ts`, `src/types.ts`, `src/lib/days.ts` (`toPayload`), `src/lib/api.ts`
+(**Claude'un kendi düzelttiği bug** — `fetchData`'nın `RawMeal` ayrıştırması `loggedAt`/
+`category`'yi okumuyordu), `MealForm.tsx`, `DayView.tsx`, `DailyPage.tsx`, `TrendPage.tsx`.
+**Faz C** (commit `6b01628`): YENİ `src/lib/image.ts`; DEĞİŞEN `server/ai.js`, `server/index.js`,
+`src/lib/ai.ts`, `src/types.ts`, `MealForm.tsx`, `DayView.tsx`, `ScanSheet.tsx`.
+
+### Blockers / Open Questions
+
+- **Yok — hepsi canlıda ve doğrulandı.** Tek dış/manuel doğrulama eksiği: gerçek bir Android
+  telefonda galeri/etiket taraması hiç denenmedi (bu ortamda gerçek kamera/dosya seçici yok,
+  yalnızca sentetik bir test görseliyle backend uçtan uca doğrulandı — gerçek yemek fotoğrafı/
+  etiket OKUMA KALİTESİ hâlâ bilinmiyor).
+- Repo kökünde iki başıboş dosya belirdi: `nutrimind_debugging_raporu.md`,
+  `nutrimind_vs_calai_tasarim_raporu.md` — bu Claude oturumu tarafından oluşturulmadı
+  (muhtemelen kullanıcının paralel agy oturumundan), henüz triyaj edilmedi.
+
+### Next Steps
+
+1. **Gerçek cihazda görsel/OCR testi** — Android telefonda "Gallery"/"Food Label" modlarını
+   gerçek fotoğraflarla dene, özellikle `food_label` modunun sıkıştırma ayarının (1600px/
+   q0.85) gerçek etiket fotoğraflarında 1MB sınırını aşıp aşmadığını gözlemle — aşıyorsa
+   Kademe 2 (ayrı, daha yüksek limitli bir `readImageBody` — plan dosyasında tasarlandı ama
+   uygulanmadı, bilinçli olarak) gerekebilir.
+2. NVIDIA NIM görsel modeli (`meta/llama-3.2-11b-vision-instruct` ya da eşdeğeri) gerçek
+   anahtarla curl doğrulandıktan sonra `parseMealImage`'e ikinci bir sağlayıcı olarak eklenebilir
+   — şu an kasıtlı olarak yok.
+3. `MealRow.tsx`'e kategori rozeti eklenmedi (plan'da opsiyonel/düşük öncelik olarak
+   işaretlenmişti, gruplama zaten kategoriyi görsel olarak taşıyor).
+4. Başıboş iki rapor dosyası (`nutrimind_debugging_raporu.md`,
+   `nutrimind_vs_calai_tasarim_raporu.md`) — sil, `docs/analysis/`'a taşı, ya da kullanıcıya
+   sor.
+5. `.claude/launch.json` (bu oturumda Claude'un browser-preview testi için eklediği,
+   commit'lenmemiş) — kalması faydalı, isterse commit'lenebilir.
+
+### Critical Context
+
+- **agy brief boyutu ~25KB altında tutulmalı** (Windows komut satırı sınırı, "Argument list
+  too long" exit 126). Büyük dosyaları brief'e yapıştırmak yerine "önce şu dosyayı oku" de —
+  agy zaten proje dizininde tam okuma izinli.
+- **agy'nin transient DNS hatası:** `Eligibility check failed... daily-cloudcode-pa.googleapis.com`
+  — bu oturumda 3 kez görüldü, her seferinde basit bir yeniden deneme (aynı komut) düzeltti.
+  agy'nin kendi hatası değil, geçici ağ sorunu.
+- **NIM model kataloğu hesaba göre değişebilir** — yeni bir model denemeden önce gerçek
+  anahtarla tek bir curl testi at, agy'nin eski benchmark raporuna güvenme (bkz. hafıza
+  `nim-model-catalog-limited`).
+- **Bu ortamda tarayıcı tıklama testleri güvenilmez** — `read_page`/`get_page_text` (salt-okuma)
+  tutarlı çalışıyor, ama `computer{action:"left_click", ref:...}` viewport dalgalanması
+  yüzünden bazen yanlış koordinata denk geliyor (ör. "Vazgeç" yerine alt navigasyona
+  tıklanması). Etkileşimli akışları doğrularken: mümkünse backend'e doğrudan curl/POST ile
+  test verisi gönder, sonra SADECE okuma araçlarıyla (get_page_text) sonucu doğrula — tıklama
+  zincirlerine güvenme.
+- **`server/data.db` git'te izleniyor, yerel testte ASLA doğrudan yazma** — `node
+  server/index.js` çalıştırırken `NUTRI_DB=<scratch-path>` env değişkeniyle geçici bir kopya
+  kullan (bu oturumda bir kez unutulup düzeltildi — `git checkout -- server/data.db` ile
+  geri alındı, ama önce dosyayı tutan node process'i durdurmak (`taskkill`) gerekti çünkü
+  Windows'ta açık dosya unlink edilemiyor).
+- **İki paralel agy/Claude oturumu aynı repoda çalışabiliyor** — bu oturumda kullanıcı hem bu
+  Claude oturumunu hem de ayrı bir agy oturumunu aynı anda kullandı, birbirinden habersiz
+  commit'ler attılar ama çakışma olmadan birleşti (şans eseri, dosya bazında ayrık
+  değişiklikler). Bir sonraki oturumda `git log`u kontrol etmeden büyük varsayımlar yapma.
+- **Prod backend dosya yerleşimi yerelden FARKLI** (tekrar hatırlatma): yerelde
+  `server/*.js`, prod'da (`/home/emrullah/nutri-api/`) düz. Yedekleme deseni:
+  `*.bak-YYYY-MM-DD-HHMM`, her deploy öncesi tekrarla.
+
+### Model Summary
+
+- NVIDIA NIM, Gemini'ye otomatik yedek sağlayıcı olarak eklendi (`auto` modu) — agy'ye delege
+  edildi, Claude bağımsız doğruladı, prod'a deploy edildi.
+- Orijinal genişleme planının kalan 3 fazı (kilo takibi, öğün kategorileri+pull-to-refresh,
+  gerçek görsel/OCR) tek bir plan dosyasında tasarlanıp sırayla agy'ye delege edildi.
+- Faz A (kilo): sıfır backend değişikliği, config-bag kullanıldı, tarayıcıda uçtan uca
+  doğrulandı (kayıt + trend sparkline).
+- Faz B (kategoriler): sıfır backend değişikliği, ama **gerçek bir bug bulundu ve düzeltildi**
+  — `src/lib/api.ts`'nin okuma yönü (`fetchData`) yeni alanları hiç ayrıştırmıyordu, tüm
+  öğünler "Diğer"e düşüyordu. Test verisiyle (curl POST + tarayıcıda okuma) doğrulandı.
+- Faz C (görsel/OCR): `server/index.js`'e tek route bloğu (kullanıcı onaylı minimum kapsam),
+  gerçek bir test görseliyle (PowerShell/System.Drawing ile üretildi) `/api/ai/vision`
+  uçtan uca doğrulandı — Gemini görseldeki metni gerçekten okudu.
+- Kullanıcı paralel bir agy oturumunda kendi mobil UX bug'larını (scroll lock, Modal footer,
+  viewport meta) buldu ve commitledi — bu Claude oturumunun işiyle çakışmadan birleşti.
+- Üç yeni hafıza kaydı eklendi: NIM model kataloğu güvenilmezliği, agy brief boyutu sınırı,
+  çift-yönlü veri parse kontrolü (read+write path).
+- Doğrulama kapısı her fazda: `pnpm typecheck` 0 hata, `pnpm test` 331/331, `git diff`
+  kapsamı temiz. Hepsi commit'lendi (`0c790ab`, `4021b36`, `6b01628` + kullanıcının
+  `26988be`/`b551645`'i) ve prod'a deploy edildi (hem backend hem frontend).
+- Açık iş yok — tek gerçek boşluk gerçek cihazda (Android) fotoğraf/etiket taraması testi,
+  bu ortamda hiç yapılamadı.
+
+### Handoff Context (paste into next session)
+
+Nutrimind (`<USERPROFILE>\Desktop\Projeler\besin degerlerim`) — NVIDIA NIM fallback +
+orijinal genişleme planının TÜMÜ (Faz 0-9, artık kilo takibi/kategoriler/görsel-OCR dahil)
+tamamlandı, prod'da (`https://nutri.emrullah.xyz` + `nutri-api.service`) yayında. Bu
+oturumda bekleyen iş YOK.
+
+```bash
+cd "<USERPROFILE>\Desktop\Projeler\besin degerlerim"
+git status --short              # temiz olmalı (2 başıboş .md dosyası hariç, triyaj bekliyor)
+PNPM_CONFIG_VERIFY_DEPS_BEFORE_RUN=false pnpm typecheck
+PNPM_CONFIG_VERIFY_DEPS_BEFORE_RUN=false pnpm test    # 331/331 beklenir
+```
+
+Yerel geliştirme: iki terminal — `node server/index.js` (8790, **NUTRI_DB=<scratch-path>
+KULLAN**, tracked `data.db`'ye yazma) + `pnpm dev` (5173, `http://localhost:5173`).
+
+Devam edilecekse muhtemel adaylar: (1) gerçek cihazda görsel/OCR + barkod testi, (2) NVIDIA
+NIM görsel modeli doğrulanıp `parseMealImage`'e ikinci sağlayıcı olarak eklenmesi, (3) başıboş
+iki rapor dosyasının triyajı. Yeni bir özellik/faz için önce kullanıcıya sor — orijinal 10
+maddelik plan artık tamamen bitti, yeni bir yön kullanıcı kararı gerektirir.
+
+Kod yazmadan önce oku: `src/lib/weight.ts`/`mealCategory.ts` (bu oturumun yeni desenleri),
+`server/ai.js` (artık 3 fonksiyon: `parseMealText`, `parseMealImage`, + `callLLM` ortak
+yardımcı), agy'ye brief yazarken hafıza `agy-brief-size-limit`'i uygula.
+
+---

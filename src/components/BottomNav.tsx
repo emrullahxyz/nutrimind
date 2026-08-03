@@ -21,6 +21,7 @@ interface BottomNavProps {
   onAddMeal?: () => void;
   onScan?: () => void;
   onSavedFoods?: () => void;
+  onOpenExercise?: () => void;
 }
 
 function FabMenuItem({
@@ -56,6 +57,7 @@ export function BottomNav({
   onAddMeal,
   onScan,
   onSavedFoods,
+  onOpenExercise,
 }: BottomNavProps) {
   const [open, setOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -90,7 +92,14 @@ export function BottomNav({
         {/* 2x2 FAB Popup Menu */}
         {open && (
           <div className="anim-zoom absolute bottom-16 right-3 mb-2 grid w-64 grid-cols-2 gap-2.5 rounded-3xl border border-white/15 bg-[#121319]/98 p-2.5 shadow-float backdrop-blur-2xl z-50">
-            <FabMenuItem icon={Footprints} label="Egzersiz Kaydet" disabled />
+            <FabMenuItem
+              icon={Footprints}
+              label="Egzersiz Kaydet"
+              onClick={() => {
+                setOpen(false);
+                onOpenExercise?.();
+              }}
+            />
             <FabMenuItem
               icon={Bookmark}
               label="Kayıtlı Besinler"
@@ -101,7 +110,7 @@ export function BottomNav({
             />
             <FabMenuItem
               icon={Search}
-              label="Besin Veritabanı"
+              label="Besin Arama"
               onClick={() => {
                 setOpen(false);
                 onAddMeal?.();
@@ -109,7 +118,7 @@ export function BottomNav({
             />
             <FabMenuItem
               icon={Camera}
-              label="Tara"
+              label="Yemek Taraması"
               onClick={() => {
                 setOpen(false);
                 onScan?.();

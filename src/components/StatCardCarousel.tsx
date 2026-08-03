@@ -8,11 +8,20 @@ import { MicroCardGrid } from "./MicroCardGrid";
 interface StatCardCarouselProps {
   total: Nutrition;
   goal: Nutrition;
+  burnedKcal?: number;
   showRatio: boolean;
   onToggleRatio: () => void;
+  onOpenExercise?: () => void;
 }
 
-export function StatCardCarousel({ total, goal, showRatio, onToggleRatio }: StatCardCarouselProps) {
+export function StatCardCarousel({
+  total,
+  goal,
+  burnedKcal = 0,
+  showRatio,
+  onToggleRatio,
+  onOpenExercise,
+}: StatCardCarouselProps) {
   const [activePage, setActivePage] = useState<0 | 1>(0);
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -44,7 +53,14 @@ export function StatCardCarousel({ total, goal, showRatio, onToggleRatio }: Stat
       >
         {/* Sayfa 1: Kalori Kartı + Makro Kartları */}
         <div className="w-full flex-none snap-center flex flex-col gap-4">
-          <HeroCalorieCard consumed={total.kcal} target={goal.kcal} showRatio={showRatio} onToggleRatio={onToggleRatio} />
+          <HeroCalorieCard
+            consumed={total.kcal}
+            target={goal.kcal}
+            burnedKcal={burnedKcal}
+            showRatio={showRatio}
+            onToggleRatio={onToggleRatio}
+            onOpenExercise={onOpenExercise}
+          />
           <MacroCardGrid total={total} goal={goal} showRatio={showRatio} onToggleRatio={onToggleRatio} />
         </div>
 
