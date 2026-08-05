@@ -417,24 +417,19 @@ export function DayView({
                     {category === "other" ? "Diğer" : MEAL_CATEGORY_LABELS[category]}
                   </h4>
                   <ul className="flex flex-col gap-2.5 sm:gap-3">
-                    {items.map(({ meal: m, index: i }) => {
-                      const pct = total.kcal ? (m.computed.kcal / total.kcal) * 100 : 0;
-                      return (
-                        <MealRow
-                          key={m.id}
-                          meal={m}
-                          pct={pct}
-                          index={i}
-                          selectMode={selectMode}
-                          isSelected={selectedIndices.includes(i)}
-                          onToggleSelect={() => toggleSelect(i)}
-                          onEdit={() => setSelectedMealForSheet({ meal: m, index: i })}
-                          onSaveTemplate={() => saveAsTemplate(m)}
-                          onRemove={() => removeMeal(i)}
-                          busy={busy}
-                        />
-                      );
-                    })}
+                    {items.map(({ meal: m, index: i }) => (
+                      <MealRow
+                        key={m.id}
+                        meal={m}
+                        index={i}
+                        selectMode={selectMode}
+                        isSelected={selectedIndices.includes(i)}
+                        onToggleSelect={() => toggleSelect(i)}
+                        onEdit={() => setSelectedMealForSheet({ meal: m, index: i })}
+                        onSaveTemplate={() => saveAsTemplate(m)}
+                        busy={busy}
+                      />
+                    ))}
                   </ul>
                 </div>
               ))}

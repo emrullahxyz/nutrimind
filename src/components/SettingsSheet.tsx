@@ -2,12 +2,9 @@ import { useEffect, useRef, useState } from "react";
 import {
   User,
   Sliders,
-  Globe,
   Target,
-  Clock,
   Scale,
   Pill,
-  Bell,
   FileText,
   LayoutGrid,
   Download,
@@ -15,7 +12,6 @@ import {
   Mail,
   ShieldCheck,
   RefreshCw,
-  LogOut,
   ChevronRight,
   ArrowLeft,
   Sparkles,
@@ -38,9 +34,7 @@ type SubView =
   | "report"
   | "profile"
   | "preferences"
-  | "fasting"
   | "weight"
-  | "reminders"
   | "widgets"
   | "feedback"
   | "privacy";
@@ -317,14 +311,6 @@ export function SettingsSheet({
                 subtitle="Koyu tema, makro görünümü"
                 onClick={() => openSubView("preferences")}
               />
-              <MenuItem
-                icon={Globe}
-                iconBg="bg-emerald-500/15"
-                iconColor="text-emerald-400"
-                title="Dil / Language"
-                badge="Türkçe (TR)"
-                onClick={() => openSubView("preferences")}
-              />
             </SectionGroup>
 
             {/* HEDEFLER & TAKİP */}
@@ -346,28 +332,12 @@ export function SettingsSheet({
                 onClick={() => openSubView("supplements")}
               />
               <MenuItem
-                icon={Clock}
-                iconBg="bg-indigo-500/15"
-                iconColor="text-indigo-400"
-                title="Aralıklı Oruç (Intermittent Fasting)"
-                subtitle="16:8 oruç penceresi ve beslenme saati"
-                onClick={() => openSubView("fasting")}
-              />
-              <MenuItem
                 icon={Scale}
                 iconBg="bg-rose-500/15"
                 iconColor="text-rose-400"
                 title="Kilo & Vücut Geçmişi"
                 subtitle="Mevcut kilo ve hedef grafikler"
                 onClick={() => openSubView("weight")}
-              />
-              <MenuItem
-                icon={Bell}
-                iconBg="bg-sky-500/15"
-                iconColor="text-sky-400"
-                title="Takip Hatırlatıcıları"
-                subtitle="Öğün ve su içme bildirimleri"
-                onClick={() => openSubView("reminders")}
               />
             </SectionGroup>
 
@@ -437,19 +407,6 @@ export function SettingsSheet({
                 subtitle="PWA service worker önbelleğini temizler"
                 onClick={handleClearCache}
               />
-              <MenuItem
-                icon={LogOut}
-                iconBg="bg-red-500/15"
-                iconColor="text-red-400"
-                title="Oturumu Kapat & Temizle"
-                subtitle="Uygulamadan güvenli çıkış yap"
-                isDanger
-                onClick={() => {
-                  if (confirm("Uygulama yerel oturumu temizlenecek. Devam edilsin mi?")) {
-                    window.location.reload();
-                  }
-                }}
-              />
             </SectionGroup>
 
             {cacheStatus && (
@@ -490,9 +447,7 @@ export function SettingsSheet({
                 {subView === "report" && "Özet PDF Raporu"}
                 {subView === "profile" && "Profil Bilgileri"}
                 {subView === "preferences" && "Uygulama Tercihleri"}
-                {subView === "fasting" && "Aralıklı Oruç (IF)"}
                 {subView === "weight" && "Kilo & Vücut Takibi"}
-                {subView === "reminders" && "Hatırlatıcılar"}
                 {subView === "widgets" && "Ana Ekran Widget Rehberi"}
                 {subView === "feedback" && "Özellik İste & Geri Bildirim"}
                 {subView === "privacy" && "Gizlilik & Veri Güvenliği"}
@@ -588,24 +543,6 @@ export function SettingsSheet({
           </div>
         )}
 
-        {/* 6. ARALIKLI ORUÇ (IF) */}
-        {subView === "fasting" && (
-          <div className="flex flex-col gap-3 rounded-2xl border border-white/10 bg-[#141520] p-4">
-            <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-indigo-500/20 text-indigo-400">
-                <Clock className="h-5 w-5" />
-              </div>
-              <div>
-                <div className="text-sm font-extrabold text-white">16:8 Aralıklı Oruç Düzeni</div>
-                <div className="text-xs text-white/50">Beslenme Penceresi: 12:00 - 20:00</div>
-              </div>
-            </div>
-            <p className="text-xs text-white/70 leading-relaxed mt-1">
-              Oruç pencereniz boyunca (20:00 - 12:00) su, sade kahve ve kalorisiz çaylar serbesttir. Öğün takibinizi Nutrimind günlük akışından yapabilirsiniz.
-            </p>
-          </div>
-        )}
-
         {/* 7. KİLO & VÜCUT TAKİBİ */}
         {subView === "weight" && (
           <div className="flex flex-col gap-3 rounded-2xl border border-white/10 bg-[#141520] p-4">
@@ -673,16 +610,6 @@ export function SettingsSheet({
                 Aktif
               </span>
             </div>
-          </div>
-        )}
-
-        {/* 12. HATIRLATICILAR */}
-        {subView === "reminders" && (
-          <div className="flex flex-col gap-3 rounded-2xl border border-white/10 bg-[#141520] p-4">
-            <div className="text-sm font-extrabold text-white">Öğün Takip Hatırlatıcıları</div>
-            <p className="text-xs text-white/70">
-              Günlük hedefinizi tamamlamak için akşam saat 20:00'de hatırlatıcı bildirimler aktif haldedir.
-            </p>
           </div>
         )}
           </div>

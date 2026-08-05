@@ -1,17 +1,15 @@
-import { Flame, Beef, Wheat, Droplet, Pencil } from "lucide-react";
+import { Flame, Beef, Wheat, Droplet, Pencil, BookmarkPlus } from "lucide-react";
 import { formatKcal } from "../lib/format";
 import type { MealItem } from "../types";
 
 interface MealRowProps {
   meal: MealItem;
-  pct: number;
   index: number;
   selectMode: boolean;
   isSelected: boolean;
   onToggleSelect: () => void;
   onEdit: () => void;
   onSaveTemplate: () => void;
-  onRemove: () => void;
   busy: boolean;
 }
 
@@ -22,6 +20,8 @@ export function MealRow({
   isSelected,
   onToggleSelect,
   onEdit,
+  onSaveTemplate,
+  busy,
 }: MealRowProps) {
   const delay = Math.min(index, 6) * 60;
   
@@ -79,7 +79,7 @@ export function MealRow({
             <span>{meal.computed.kcal} kalori</span>
           </div>
 
-          {/* Bottom Row: Macros & Edit Pencil */}
+          {/* Bottom Row: Macros & Actions */}
           <div className="flex items-center justify-between pt-1">
             <div className="flex items-center gap-1.5 text-[10px] sm:text-xs font-extrabold">
               <span className="flex items-center gap-1 bg-[#38222B] text-[#E57373] px-2.5 py-1 rounded-full">
@@ -96,17 +96,33 @@ export function MealRow({
               </span>
             </div>
 
-            <button
-              type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                onEdit();
-              }}
-              className="w-8 h-8 rounded-full bg-[#2A283A] hover:bg-[#343248] text-[#A5A2B8] hover:text-white flex items-center justify-center transition"
-              title="Düzenle"
-            >
-              <Pencil className="w-3.5 h-3.5" />
-            </button>
+            <div className="flex items-center gap-1.5">
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onSaveTemplate();
+                }}
+                disabled={busy}
+                className="w-8 h-8 rounded-full bg-[#2A283A] hover:bg-[#343248] text-[#A5A2B8] hover:text-white flex items-center justify-center transition disabled:opacity-40"
+                title="Şablon yap"
+                aria-label="Şablon yap"
+              >
+                <BookmarkPlus className="w-3.5 h-3.5" />
+              </button>
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onEdit();
+                }}
+                className="w-8 h-8 rounded-full bg-[#2A283A] hover:bg-[#343248] text-[#A5A2B8] hover:text-white flex items-center justify-center transition"
+                title="Düzenle"
+                aria-label="Düzenle"
+              >
+                <Pencil className="w-3.5 h-3.5" />
+              </button>
+            </div>
           </div>
         </div>
       )}
