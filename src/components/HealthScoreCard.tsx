@@ -10,7 +10,7 @@ interface HealthScoreCardProps {
 export function HealthScoreCard({ total, goal }: HealthScoreCardProps) {
   const { score, message } = computeHealthScore(total, goal);
 
-  const barColor = score < 4 ? "bg-danger" : score < 7 ? "bg-warn" : "bg-accent";
+  const barColor = score < 4 ? "bg-danger" : score < 7 ? "bg-warn" : "bg-emerald-500";
 
   return (
     <div className="relative overflow-hidden rounded-card border border-calBorder bg-calCard p-4 sm:p-5 shadow-card backdrop-blur-md h-[184px] sm:h-[188px] flex flex-col justify-between select-none transition-all duration-200">

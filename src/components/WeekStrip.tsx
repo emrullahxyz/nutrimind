@@ -3,6 +3,9 @@ import { useData } from "../lib/data";
 import { effectiveGoal } from "../lib/goals";
 import { dayTotal } from "../lib/days";
 
+// Hedef kalori tolerans eşiği (±250 kcal). Bu aralıktaki sapmalar hedef dâhilinde (yeşil) sayılır.
+const KCAL_TOLERANCE = 250;
+
 interface WeekStripProps {
   selectedDate: string;
   onSelectDate: (date: string) => void;
@@ -34,13 +37,18 @@ export function WeekStrip({ selectedDate, onSelectDate }: WeekStripProps) {
         const dayGoalKcal = effectiveGoal(goals, dateIso).kcal;
         const total = dayTotal(days, dateIso);
         const hasData = total.kcal > 0;
-        const isExceeded = hasData && dayGoalKcal > 0 && total.kcal > dayGoalKcal;
-        const isWithinGoal = hasData && dayGoalKcal > 0 && total.kcal <= dayGoalKcal;
+        const diff = total.kcal - dayGoalKcal;
+
+        const isExceeded = hasData && dayGoalKcal > 0 && diff > KCAL_TOLERANCE;
+        const isUnder = hasData && dayGoalKcal > 0 && diff < -KCAL_TOLERANCE;
+        const isWithinGoal = hasData && dayGoalKcal > 0 && Math.abs(diff) <= KCAL_TOLERANCE;
 
         // Dairesel çerçeve stilleri:
-        let circleStyle = "border border-dashed border-white/15 text-[#A5A2B8] bg-transparent";
+        let circleStyle = "border border-dashed border-white/15 text-ink-secondary bg-transparent";
         if (isExceeded) {
           circleStyle = "border border-solid border-rose-500/60 text-rose-400 bg-rose-500/10";
+        } else if (isUnder) {
+          circleStyle = "border border-solid border-under/60 text-under bg-under/10";
         } else if (isWithinGoal) {
           circleStyle = "border border-solid border-emerald-500/60 text-emerald-400 bg-emerald-500/10";
         }
@@ -48,6 +56,8 @@ export function WeekStrip({ selectedDate, onSelectDate }: WeekStripProps) {
         if (isSelected) {
           if (isExceeded) {
             circleStyle = "bg-transparent border border-solid border-rose-500 text-rose-400";
+          } else if (isUnder) {
+            circleStyle = "bg-transparent border border-solid border-under text-under";
           } else if (isWithinGoal) {
             circleStyle = "bg-transparent border border-solid border-emerald-400 text-emerald-300";
           } else {
@@ -65,12 +75,12 @@ export function WeekStrip({ selectedDate, onSelectDate }: WeekStripProps) {
                 ? "bg-[#282638] text-white border border-white/20 shadow-md scale-105 font-bold"
                 : isToday
                   ? "bg-white/10 text-white font-semibold"
-                  : "text-[#A5A2B8] hover:text-white hover:bg-white/5"
+                  : "text-ink-secondary hover:text-white hover:bg-white/5"
             }`}
           >
             <span
               className={`text-[10px] font-extrabold uppercase tracking-wider ${
-                isSelected ? "text-white" : isToday ? "text-white" : "text-[#A5A2B8]"
+                isSelected ? "text-white" : isToday ? "text-white" : "text-ink-secondary"
               }`}
             >
               {weekdayShort(dateIso)}

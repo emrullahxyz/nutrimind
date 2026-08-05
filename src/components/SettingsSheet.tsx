@@ -272,7 +272,7 @@ export function SettingsSheet({
             {/* 2. PROMO / SPOTLIGHT BANNER */}
             <div className="relative overflow-hidden rounded-2xl border border-accent/30 bg-gradient-to-r from-accent/20 via-purple-500/10 to-transparent p-3.5 shadow-md">
               <div className="flex items-start gap-3">
-                <div className="flex h-9 w-9 flex-none items-center justify-center rounded-xl bg-accent text-white shadow-sm">
+                <div className="flex h-9 w-9 flex-none items-center justify-center rounded-xl bg-accent text-accent-ink shadow-sm">
                   <Sparkles className="h-5 w-5 text-black" />
                 </div>
                 <div className="flex-1">
