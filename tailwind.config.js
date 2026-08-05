@@ -25,10 +25,11 @@ export default {
         "memory-deep": "#7C4DFF",
         "memory-ink": "#1E1B4B",
         micro: "#A5A2B8",
-        accent: "#FFB74D",
+        accent: "#E8E6F0",
         "accent-ink": "#1A1926",
-        warn: "#FFB74D",
+        warn: "#F5A623",
         danger: "#E57373",
+        under: "#8FB8F0",
       },
       fontFamily: {
         sans: ["Manrope", "system-ui", "sans-serif"],
