@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { prefersReducedMotion } from "../lib/animation";
 
 function easeOutExpo(t: number): number {
   return t === 1 ? 1 : 1 - Math.pow(2, -10 * t);
@@ -6,6 +7,7 @@ function easeOutExpo(t: number): number {
 
 /**
  * Animates a number from its previous value to the new value.
+ * Respects prefers-reduced-motion setting.
  * @param value  Target value
  * @param duration  Animation duration in ms (default 600)
  */
@@ -19,6 +21,12 @@ export function useAnimatedNumber(value: number, duration = 600): number {
     const from = fromRef.current;
     const to = value;
     if (from === to) return;
+
+    if (prefersReducedMotion()) {
+      fromRef.current = to;
+      setDisplay(to);
+      return;
+    }
 
     if (rafRef.current !== null) {
       cancelAnimationFrame(rafRef.current);

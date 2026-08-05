@@ -25,6 +25,7 @@ import { SupplementSettings } from "./SupplementSettings";
 import { useData } from "../lib/data";
 import { todayISO } from "../lib/format";
 import { parseWeightConfig, withWeightEntry } from "../lib/weight";
+import { useSubViewRegistration } from "../hooks/useSubViewRegistration";
 
 type SubView =
   | null
@@ -121,6 +122,11 @@ export function SettingsSheet({
   resetKey?: number;
 }) {
   const [subView, setSubView] = useState<SubView>(null);
+
+  // App.tsx'in global geri-tuşu dinleyicisinin bu alt-görünümden YENİ
+  // çıkıldığını anlayıp sahte "çıkmak için bir kez daha bas" toast'ını
+  // bastırabilmesi için — bkz. hooks/useSubViewRegistration.ts.
+  useSubViewRegistration(subView !== null);
 
   useEffect(() => {
     if (resetKey > 0) {

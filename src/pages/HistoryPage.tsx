@@ -14,6 +14,7 @@ import type { Week } from "../lib/weeks";
 import { addDaysISO } from "../lib/format";
 import { calculateStreak } from "../lib/streak";
 import { TrendPage } from "./TrendPage";
+import { useSubViewRegistration } from "../hooks/useSubViewRegistration";
 
 function weekLabel(w: Week): string {
   return `${formatShortDate(w.startDate)} – ${formatShortDate(w.endDate)}`;
@@ -47,6 +48,11 @@ export function HistoryPage() {
   const [selectedWeek, setSelectedWeek] = useState<string | null>(null);
   const [selectedDay, setSelectedDay] = useState<string | null>(null);
   const [visibleWeeksCount, setVisibleWeeksCount] = useState<number>(6);
+
+  // App.tsx'in global geri-tuşu dinleyicisinin bu hafta/gün drilldown'ından
+  // YENİ çıkıldığını anlayıp sahte "çıkmak için bir kez daha bas" toast'ını
+  // bastırabilmesi için — bkz. hooks/useSubViewRegistration.ts.
+  useSubViewRegistration(selectedWeek !== null || selectedDay !== null);
 
   useEffect(() => {
     const handlePopState = (e: PopStateEvent) => {

@@ -43,6 +43,39 @@ function Center({ children }: { children: ReactNode }) {
  */
 const REFRESH_AFTER_WRITE_FAILED_MESSAGE = "Kaydedildi, ancak veriler yenilenemedi — sayfayı yenileyin.";
 
+function StaleFallback({ refresh, onResolved }: { refresh: () => Promise<void>; onResolved: () => void }) {
+  const [retrying, setRetrying] = useState(false);
+
+  const handleRetry = async () => {
+    if (retrying) return;
+    setRetrying(true);
+    try {
+      await refresh();
+      onResolved();
+    } catch {
+      // Yenileme tekrar başarısız oldu, kullanıcı yeniden deneyebilir
+    } finally {
+      setRetrying(false);
+    }
+  };
+
+  return (
+    <Center>
+      <div className="flex flex-col items-center gap-3 p-4">
+        <p className="max-w-xs">{REFRESH_AFTER_WRITE_FAILED_MESSAGE}</p>
+        <button
+          type="button"
+          disabled={retrying}
+          onClick={handleRetry}
+          className="rounded-chip border border-line bg-white/[0.08] px-4 py-2 text-xs font-semibold text-ink-primary transition hover:bg-white/[0.12] active:scale-95 disabled:opacity-50 disabled:pointer-events-none"
+        >
+          {retrying ? "Yenileniyor..." : "Tekrar dene"}
+        </button>
+      </div>
+    </Center>
+  );
+}
+
 export function DataProvider({ children }: { children: ReactNode }) {
   const [data, setData] = useState<AppData | null>(null);
   const [err, setErr] = useState<string | null>(null);
@@ -115,7 +148,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
 
   const value = useMemo<Ctx | null>(() => (data ? { ...data, ...actions } : null), [data, actions]);
 
-  if (stale) return <Center>{REFRESH_AFTER_WRITE_FAILED_MESSAGE}</Center>;
+  if (stale) return <StaleFallback refresh={refresh} onResolved={() => setStale(false)} />;
   if (err) return <Center>Veri alınamadı ({err}). Sunucu çalışıyor mu?</Center>;
   if (!value) return <AppSkeleton />;
   return <DataCtx.Provider value={value}>{children}</DataCtx.Provider>;

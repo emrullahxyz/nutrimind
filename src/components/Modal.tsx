@@ -1,13 +1,8 @@
 import { useEffect, useRef } from "react";
 import type { ReactNode } from "react";
 import { createPortal } from "react-dom";
-
-/** Modal'ın KENDİ çağırdığı `history.back()`'in ürettiği `popstate`'i yut.
- *  Bu bayrak olmadan: temizlikteki `back()` asenkron bir `popstate` doğurur, o da
- *  (yeniden mount olmuşsa) yeni dinleyiciye düşer ve modalı kendi kendine kapatır.
- *  Modül düzeyinde, çünkü `popstate` global bir olay ve dinleyici o sırada
- *  unmount olmuş bileşene ait olabilir. */
-let pendingProgrammaticBacks = 0;
+import { useBodyScrollLock } from "../hooks/useBodyScrollLock";
+import { consumeProgrammaticBack, markProgrammaticBack } from "../lib/backStack";
 
 /** Koyu tema modal kabuğu: masaüstünde ortalı, mobilde alttan sheet.
  *  Esc ya da zemine tıklama kapatır; açıkken arka plan kaydırması kilitlenir. */
@@ -51,12 +46,7 @@ export function Modal({
 
     const handlePopState = () => {
       // Kendi temizliğimizin doğurduğu back() ise: yut, kapatma sayma.
-      // Sayaç (boolean değil): üst üste iki temizlik iki back() doğurursa ikisi de
-      // yutulmalı, yoksa bayrak takılı kalıp kullanıcının gerçek geri basışını yer.
-      if (pendingProgrammaticBacks > 0) {
-        pendingProgrammaticBacks -= 1;
-        return;
-      }
+      if (consumeProgrammaticBack()) return;
       isPoppedRef.current = true;
       onCloseRef.current();
     };
@@ -67,7 +57,7 @@ export function Modal({
       window.removeEventListener("popstate", handlePopState);
       // Kullanıcı X veya buton ile kapattıysa (popstate harici), history stack'i temizlemek için back() yap
       if (!isPoppedRef.current && window.history.state?.isModal) {
-        pendingProgrammaticBacks += 1;
+        markProgrammaticBack();
         window.history.back();
       }
     };
@@ -81,16 +71,20 @@ export function Modal({
     }
   };
 
+  // Body scroll kilidi artık paylaşılan, referans-sayaçlı mekanizmadan
+  // geliyor (bkz. `useBodyScrollLock`) — Modal her zaman yalnızca açıkken
+  // mount edildiği için koşulsuz `true` güvenli. ScanSheet gibi bileşenler
+  // KENDİLERİ de aynı hook'u çağırıyor; sayaç bu iç içe kilitlenmeyi doğru
+  // yönetir (bkz. dosya başındaki not / `useBodyScrollLock.ts`).
+  useBodyScrollLock(true);
+
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") handleUserClose();
     };
     document.addEventListener("keydown", onKey);
-    const prev = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
     return () => {
       document.removeEventListener("keydown", onKey);
-      document.body.style.overflow = prev;
     };
   }, []);
 

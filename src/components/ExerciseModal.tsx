@@ -4,6 +4,9 @@ import type { Exercise, ExerciseCategory } from "../types";
 import { useData } from "../lib/data";
 import { useBodyScrollLock } from "../hooks/useBodyScrollLock";
 
+import { EXERCISE_CONFIG_KEY, exercisesFor, parseExerciseEntries, withExercises } from "../lib/exercise";
+import { consumeProgrammaticBack, markProgrammaticBack } from "../lib/backStack";
+
 interface Props {
   isOpen: boolean;
   onClose: () => void;
@@ -31,9 +34,11 @@ export function ExerciseModal({ isOpen, onClose, date }: Props) {
   useBodyScrollLock(isOpen);
   const { config, updateConfig } = useData();
 
-  const configKey = `exercise_${date}`;
-  const exerciseData = (config[configKey] as { exercises?: Exercise[] }) ?? { exercises: [] };
-  const currentExercises: Exercise[] = exerciseData.exercises ?? [];
+  // Tek `exercise` anahtarı + gün bazlı entries — bkz. lib/exercise.ts'teki not.
+  // (Eski `exercise_${date}` anahtarı backend'in tire kabul etmeyen anahtar
+  // deseni yüzünden 400 dönüyordu; egzersiz kaydı hiç kalıcı olmuyordu.)
+  const entries = parseExerciseEntries(config[EXERCISE_CONFIG_KEY]);
+  const currentExercises: Exercise[] = exercisesFor(entries, date);
 
   const [name, setName] = useState("");
   const [category, setCategory] = useState<ExerciseCategory>("run");
@@ -41,13 +46,26 @@ export function ExerciseModal({ isOpen, onClose, date }: Props) {
   const [calories, setCalories] = useState(200);
   const isPoppedRef = useRef(false);
 
+  // `onClose` ref üzerinden okunuyor: bağımlılık dizisinde dursaydı (çağıran
+  // taraf inline bir arrow geçirdiği için her render'da yeni bir fonksiyon)
+  // efekt her render'da yeniden kurulur, temizliği `history.back()` çağırır ve
+  // geciken `popstate` yeni dinleyiciye düşüp modalı KENDİ KENDİNE kapatırdı.
+  // `Modal.tsx`'te aynı hata tarayıcı/kamera ekranını bozuyordu — bkz.
+  // `lib/backStack.ts`'teki yutma sayacı. Diziye yalnızca `isOpen` girer.
+  const onCloseRef = useRef(onClose);
+  useEffect(() => {
+    onCloseRef.current = onClose;
+  }, [onClose]);
+
   useEffect(() => {
     if (!isOpen) return;
     window.history.pushState({ isModal: true, title: "Egzersiz" }, "");
+    isPoppedRef.current = false;
 
     const handlePopState = () => {
+      if (consumeProgrammaticBack()) return;
       isPoppedRef.current = true;
-      onClose();
+      onCloseRef.current();
     };
 
     window.addEventListener("popstate", handlePopState);
@@ -55,10 +73,11 @@ export function ExerciseModal({ isOpen, onClose, date }: Props) {
     return () => {
       window.removeEventListener("popstate", handlePopState);
       if (!isPoppedRef.current && window.history.state?.isModal) {
+        markProgrammaticBack();
         window.history.back();
       }
     };
-  }, [isOpen, onClose]);
+  }, [isOpen]);
 
   const handleUserClose = () => {
     if (!isPoppedRef.current && window.history.state?.isModal) {
@@ -82,7 +101,7 @@ export function ExerciseModal({ isOpen, onClose, date }: Props) {
         loggedAt: new Date().toLocaleTimeString("tr-TR", { hour: "2-digit", minute: "2-digit" }),
       };
       const updated = [...currentExercises, exWithId];
-      await updateConfig(configKey, { exercises: updated });
+      await updateConfig(EXERCISE_CONFIG_KEY, { entries: withExercises(entries, date, updated) });
     } finally {
       setBusy(false);
     }
@@ -93,7 +112,7 @@ export function ExerciseModal({ isOpen, onClose, date }: Props) {
     setBusy(true);
     try {
       const updated = currentExercises.filter((e) => e.id !== id);
-      await updateConfig(configKey, { exercises: updated });
+      await updateConfig(EXERCISE_CONFIG_KEY, { entries: withExercises(entries, date, updated) });
     } finally {
       setBusy(false);
     }
