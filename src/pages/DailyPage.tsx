@@ -10,6 +10,8 @@ interface DailyPageProps {
   onResetTriggerAddMeal?: () => void;
   triggerScan?: boolean;
   onResetTriggerScan?: () => void;
+  triggerExercise?: boolean;
+  onResetTriggerExercise?: () => void;
   resetKey?: number;
 }
 
@@ -18,6 +20,8 @@ export function DailyPage({
   onResetTriggerAddMeal,
   triggerScan,
   onResetTriggerScan,
+  triggerExercise,
+  onResetTriggerExercise,
   resetKey = 0,
 }: DailyPageProps = {}) {
   const [selectedDate, setSelectedDate] = useState<string>(todayISO());
@@ -47,6 +51,8 @@ export function DailyPage({
         onResetTriggerAddMeal={onResetTriggerAddMeal}
         triggerScan={triggerScan}
         onResetTriggerScan={onResetTriggerScan}
+        triggerExercise={triggerExercise}
+        onResetTriggerExercise={onResetTriggerExercise}
         resetKey={resetKey}
       />
     </div>

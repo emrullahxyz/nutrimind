@@ -5,6 +5,7 @@ import {
   latestEntryBefore,
   parseWeightConfig,
   weightDelta,
+  withWeightEntry,
 } from "./weight";
 import type { AppConfig } from "../types";
 import { addDaysISO, todayISO } from "./format";
@@ -79,6 +80,43 @@ describe("weight", () => {
         weight: { entries: [75.5] as unknown as Record<string, unknown> },
       };
       expect(parseWeightConfig(config2)).toEqual(EMPTY_WEIGHT);
+    });
+  });
+
+  describe("withWeightEntry", () => {
+    // Bug: SettingsSheet > Profil kilosu, WeightCard'ın ("weight" / {entries})
+    // yazma desenini KULLANMIYOR, ayrı bir `weight_${tarih}` config anahtarına
+    // yazıyordu — kilo kartı/trendi bunu hiç görmüyordu. withWeightEntry ikisinin
+    // ortak, tek çekirdek fonksiyonu.
+    it("boş entries'e yeni bir tarih ekler", () => {
+      expect(withWeightEntry({}, "2026-08-05", 78)).toEqual({ "2026-08-05": 78 });
+    });
+
+    it("mevcut girdileri KORUYARAK sadece verilen tarihi ekler/günceller", () => {
+      const entries = { "2026-08-01": 79.5, "2026-08-03": 79.0 };
+      expect(withWeightEntry(entries, "2026-08-05", 78.2)).toEqual({
+        "2026-08-01": 79.5,
+        "2026-08-03": 79.0,
+        "2026-08-05": 78.2,
+      });
+    });
+
+    it("aynı tarihe ikinci yazım öncekini günceller (üzerine yazar)", () => {
+      const entries = { "2026-08-05": 80 };
+      expect(withWeightEntry(entries, "2026-08-05", 78)).toEqual({ "2026-08-05": 78 });
+    });
+
+    it("orijinal entries nesnesini mutasyona uğratmaz", () => {
+      const entries = { "2026-08-01": 79.5 };
+      withWeightEntry(entries, "2026-08-05", 78);
+      expect(entries).toEqual({ "2026-08-01": 79.5 });
+    });
+
+    it("geçersiz (<=0 veya finite olmayan) kg'de entries değişmeden döner", () => {
+      const entries = { "2026-08-01": 79.5 };
+      expect(withWeightEntry(entries, "2026-08-05", 0)).toBe(entries);
+      expect(withWeightEntry(entries, "2026-08-05", -5)).toBe(entries);
+      expect(withWeightEntry(entries, "2026-08-05", Number.NaN)).toBe(entries);
     });
   });
 

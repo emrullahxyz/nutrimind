@@ -13,6 +13,7 @@ import { ErrorBoundary } from "./components/ErrorBoundary";
 import type { AIParseItem } from "./types";
 import { todayISO } from "./lib/format";
 import { calculateStreak } from "./lib/streak";
+import { fabTarget } from "./lib/fabRouting";
 
 function MainContent() {
   const [tab, setTab] = useState<TabType>("daily");
@@ -24,6 +25,7 @@ function MainContent() {
   });
   const [triggerAddMeal, setTriggerAddMeal] = useState(false);
   const [triggerScan, setTriggerScan] = useState(false);
+  const [triggerExercise, setTriggerExercise] = useState(false);
   const [globalScanOpen, setGlobalScanOpen] = useState(false);
   const [globalAddMealOpen, setGlobalAddMealOpen] = useState(false);
   /** FAB > "Yemek Taraması" sonucunun öğün formuna taşındığı ara durum. */
@@ -106,7 +108,7 @@ function MainContent() {
   }, []);
 
   const handleAddMeal = () => {
-    if (tab === "daily") {
+    if (fabTarget(tab) === "daily-local") {
       setTriggerAddMeal(true);
     } else {
       setGlobalAddMealOpen(true);
@@ -114,10 +116,21 @@ function MainContent() {
   };
 
   const handleScan = () => {
-    if (tab === "daily") {
+    if (fabTarget(tab) === "daily-local") {
       setTriggerScan(true);
     } else {
       setGlobalScanOpen(true);
+    }
+  };
+
+  /** FAB > "Egzersiz Kaydet": Bugün sekmesindeyken WeekStrip'te seçili tarihe
+   *  bağlı DayView'un kendi (zaten doğru) egzersiz modalını tetikler; diğer
+   *  sekmelerde (WeekStrip bağlamı yoktur) bugüne yazan global modal açılır. */
+  const handleExercise = () => {
+    if (fabTarget(tab) === "daily-local") {
+      setTriggerExercise(true);
+    } else {
+      setGlobalExerciseOpen(true);
     }
   };
 
@@ -146,6 +159,8 @@ function MainContent() {
             onResetTriggerAddMeal={() => setTriggerAddMeal(false)}
             triggerScan={triggerScan}
             onResetTriggerScan={() => setTriggerScan(false)}
+            triggerExercise={triggerExercise}
+            onResetTriggerExercise={() => setTriggerExercise(false)}
             resetKey={tabResetKey.daily}
           />
         ) : tab === "history" ? (
@@ -164,7 +179,7 @@ function MainContent() {
         onAddMeal={handleAddMeal}
         onScan={handleScan}
         onSavedFoods={() => handleTabChange("aliases")}
-        onOpenExercise={() => setGlobalExerciseOpen(true)}
+        onOpenExercise={handleExercise}
       />
 
       {globalAddMealOpen && (

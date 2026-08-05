@@ -7,7 +7,7 @@
 // boş kutu HÂLÂ 0 demek — eski davranış aynen duruyor.
 // ============================================================================
 import { describe, expect, it } from "vitest";
-import { EMPTY_DRAFT, filledMicros, fromDraft, toDraft } from "./FormBits";
+import { EMPTY_DRAFT, filledMicros, fromDraft, hasUnsavedBasketEntry, toDraft } from "./FormBits";
 import type { NutritionDraft } from "./FormBits";
 import { CORE_KEYS } from "../lib/nutrients";
 import type { Nutrition } from "../types";
@@ -77,5 +77,106 @@ describe("filledMicros — katlanmış bölüm veri saklamasın", () => {
   });
   it("boşluk dolu sayılmaz", () => {
     expect(filledMicros(draft({ sodium: " " }))).toEqual([]);
+  });
+});
+
+// ============================================================================
+// hasUnsavedBasketEntry — MealForm'un Kaydet koruması (bkz. MealForm.tsx save())
+//
+// Bug: "Elle" sekmesine ad+kcal yazılıp Kaydet'e basıldığında, sepet zaten
+// dolu olduğu için (düzenlenen mevcut öğün ya da önceki "+ Ekle"ler) girdi
+// sessizce kayboluyordu — finalNutrition sepeti yazıyor, sekme alanlarını hiç
+// okumuyordu. Bu fonksiyon o kaybı Kaydet ANINDA yakalayıp engellemenin saf
+// mantığı.
+// ============================================================================
+describe("hasUnsavedBasketEntry", () => {
+  it("sepet boşken hiçbir zaman engellemez (alanlar zaten doğrudan kaydediliyor)", () => {
+    expect(
+      hasUnsavedBasketEntry({
+        basketLength: 0,
+        mode: "manual",
+        hasManualNutrition: true,
+        aliasPendingAdd: true,
+        aliasAddable: true,
+      }),
+    ).toBe(false);
+  });
+
+  it("Elle modunda: sepet doluyken listeye eklenmemiş makro varsa engeller", () => {
+    expect(
+      hasUnsavedBasketEntry({
+        basketLength: 1,
+        mode: "manual",
+        hasManualNutrition: true,
+        aliasPendingAdd: false,
+        aliasAddable: false,
+      }),
+    ).toBe(true);
+  });
+
+  it("Elle modunda: makro alanları boşsa (hasManualNutrition false) engellemez", () => {
+    expect(
+      hasUnsavedBasketEntry({
+        basketLength: 1,
+        mode: "manual",
+        hasManualNutrition: false,
+        aliasPendingAdd: false,
+        aliasAddable: false,
+      }),
+    ).toBe(false);
+  });
+
+  it("Hafızadan modunda: kullanıcı alias/miktarı değiştirip 'Ekle'ye basmazsa engeller", () => {
+    expect(
+      hasUnsavedBasketEntry({
+        basketLength: 1,
+        mode: "alias",
+        hasManualNutrition: false,
+        aliasPendingAdd: true,
+        aliasAddable: true,
+      }),
+    ).toBe(true);
+  });
+
+  it("Hafızadan modunda: varsayılan seçim (dokunulmadı) engellemez — düzenleme ekranını açar açmaz Kaydet'i bozmasın", () => {
+    // Regresyon kilidi: aliasId/grams her zaman bir varsayılana sahip (ilk
+    // sıralı alias + her-zamanki tahmini), yani "seçili + miktar > 0" tek
+    // başına HER edit açılışında true olurdu. aliasPendingAdd bunu önlüyor.
+    expect(
+      hasUnsavedBasketEntry({
+        basketLength: 1,
+        mode: "alias",
+        hasManualNutrition: false,
+        aliasPendingAdd: false,
+        aliasAddable: true,
+      }),
+    ).toBe(false);
+  });
+
+  it("Hafızadan modunda: 'Ekle'ye basıldıktan sonra (pendingAdd sıfırlanır) tekrar engellemez", () => {
+    // addAliasToBasket() eklendikten sonra aliasPendingAdd'i false'a döner;
+    // alanlar aynı (az önce eklenen) değerleri taşımaya devam etse bile
+    // Kaydet artık normal çalışmalı.
+    expect(
+      hasUnsavedBasketEntry({
+        basketLength: 2,
+        mode: "alias",
+        hasManualNutrition: false,
+        aliasPendingAdd: false,
+        aliasAddable: true,
+      }),
+    ).toBe(false);
+  });
+
+  it("AI ile modunda hiçbir zaman engellemez (kapsam dışı — items otomatik sepete düşer)", () => {
+    expect(
+      hasUnsavedBasketEntry({
+        basketLength: 1,
+        mode: "ai",
+        hasManualNutrition: true,
+        aliasPendingAdd: true,
+        aliasAddable: true,
+      }),
+    ).toBe(false);
   });
 });
