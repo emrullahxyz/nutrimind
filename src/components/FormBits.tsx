@@ -293,6 +293,38 @@ export function ConfirmButton({
   );
 }
 
+/** `MealForm`'un Kaydet koruması: aktif sekmede listeye eklenmemiş ama
+ *  kaydedilebilir bir girdi varsa `true` döner — sepet (basket) zaten dolu
+ *  olduğu için (`existing`'ten ya da önceki "+ Ekle"lerden) Kaydet o sepeti
+ *  yazar ve aktif sekmenin alanları sessizce göz ardı edilir; bu fonksiyon o
+ *  sessiz kaybı yakalar.
+ *
+ *  `basketLength === 0` iken hiçbir zaman `true` dönmez: o durumda aktif
+ *  sekmenin alanları zaten DOĞRUDAN kaydedilir (kayıp yok, engellemeye gerek
+ *  yok — bkz. `MealForm`'un `finalNutrition`'ı).
+ *
+ *  "alias" (Hafızadan) modu özel: `aliasId`/`grams` her zaman bir varsayılana
+ *  sahiptir (ilk sıralı alias + porsiyon/her-zamanki tahmini), yani sadece
+ *  "seçili ve miktar > 0" kontrolü mevcut düzenleme ekranını AÇAR AÇMAZ (hiç
+ *  dokunulmadan) Kaydet'i bloke ederdi. Bu yüzden `aliasPendingAdd` ayrı
+ *  izleniyor: yalnızca kullanıcı gerçekten bir alanı DEĞİŞTİRDİĞİNDE `true`
+ *  olur, "+ Ekle" ile sepete düştüğünde tekrar `false`'a döner. "manual"
+ *  (Elle) modunda böyle bir izleyiciye gerek yok: `hasManualNutrition` zaten
+ *  taslak sıfırdan başladığı ve eklendikten sonra sıfırlandığı için
+ *  "dokunuldu mu" sorusuna kendiliğinden doğru cevap veriyor. */
+export function hasUnsavedBasketEntry(params: {
+  basketLength: number;
+  mode: "alias" | "manual" | "ai";
+  hasManualNutrition: boolean;
+  aliasPendingAdd: boolean;
+  aliasAddable: boolean;
+}): boolean {
+  if (params.basketLength === 0) return false;
+  if (params.mode === "manual") return params.hasManualNutrition;
+  if (params.mode === "alias") return params.aliasPendingAdd && params.aliasAddable;
+  return false;
+}
+
 /** Uzun öğün adlarını varsayılan 2 satıra sıkan, dokununca tam açan/kapatan bileşen. */
 export function ExpandableMealName({
   name,

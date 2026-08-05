@@ -2,6 +2,8 @@ import { useState, useEffect, useRef } from "react";
 import { ArrowLeft, Flame, Beef, Wheat, Droplet, Trash2, Plus } from "lucide-react";
 import type { MealItem, Nutrition } from "../types";
 import { useBodyScrollLock } from "../hooks/useBodyScrollLock";
+import { scaleMealSources } from "../lib/nutrition";
+import { formatMicroOrDash } from "../lib/format";
 
 interface Props {
   isOpen: boolean;
@@ -76,10 +78,15 @@ export function NutritionSheet({ isOpen, onClose, meal, onSave, onDelete, onEdit
 
   const handleApplySave = () => {
     if (!onSave) return;
+    // Porsiyon çarpanı `sources[].qty`'yi de ölçeklemeli — aksi halde `computed`
+    // iki katına çıkar ama kaynak miktar eski değerde kalır, `usualQuantity`nin
+    // ("geçmişe dayalı miktar tahmini") temel aldığı veri bozulur.
+    const scaledSources = scaleMealSources(meal.sources, multiplier);
     const updated: MealItem = {
       ...meal,
       label,
       computed: scaledNutrition,
+      ...(scaledSources ? { sources: scaledSources } : {}),
     };
     onSave(updated);
     handleUserClose();
@@ -238,12 +245,16 @@ export function NutritionSheet({ isOpen, onClose, meal, onSave, onDelete, onEdit
             {/* Doymuş Yağ */}
             <div className="rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3.5 flex items-center justify-between text-xs sm:text-sm">
               <span className="font-medium text-white/80">Doymuş Yağ</span>
-              <span className="font-extrabold text-white">{scaledNutrition.satFat ?? 0}g</span>
+              <span className={`font-extrabold ${scaledNutrition.satFat !== undefined ? "text-white" : "text-white/30"}`}>
+                {formatMicroOrDash(scaledNutrition.satFat, "g")}
+              </span>
             </div>
             {/* Sodyum */}
             <div className="rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3.5 flex items-center justify-between text-xs sm:text-sm">
               <span className="font-medium text-white/80">Sodyum</span>
-              <span className="font-extrabold text-white">{scaledNutrition.sodium ?? 0}mg</span>
+              <span className={`font-extrabold ${scaledNutrition.sodium !== undefined ? "text-white" : "text-white/30"}`}>
+                {formatMicroOrDash(scaledNutrition.sodium, "mg")}
+              </span>
             </div>
             {/* Lif */}
             <div className="rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3.5 flex items-center justify-between text-xs sm:text-sm">
@@ -253,7 +264,9 @@ export function NutritionSheet({ isOpen, onClose, meal, onSave, onDelete, onEdit
             {/* Şeker */}
             <div className="rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3.5 flex items-center justify-between text-xs sm:text-sm">
               <span className="font-medium text-white/80">Şeker</span>
-              <span className="font-extrabold text-white">{scaledNutrition.sugar ?? 0}g</span>
+              <span className={`font-extrabold ${scaledNutrition.sugar !== undefined ? "text-white" : "text-white/30"}`}>
+                {formatMicroOrDash(scaledNutrition.sugar, "g")}
+              </span>
             </div>
           </div>
         </div>

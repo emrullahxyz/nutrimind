@@ -27,6 +27,8 @@ import { ExportModal } from "./ExportModal";
 import { ReportView } from "./ReportView";
 import { SupplementSettings } from "./SupplementSettings";
 import { useData } from "../lib/data";
+import { todayISO } from "../lib/format";
+import { parseWeightConfig, withWeightEntry } from "../lib/weight";
 
 type SubView =
   | null
@@ -198,8 +200,13 @@ export function SettingsSheet({
 
     const weightNum = parseFloat(userWeight);
     if (!isNaN(weightNum) && weightNum > 0) {
-      const today = new Date().toISOString().slice(0, 10);
-      void dataCtx.updateConfig(`weight_${today}`, { weight: weightNum });
+      // Kilo takibiyle AYNI anahtar/biçim (`weight` / `{entries}`) — WeightCard'ın
+      // kullandığı yapı. Ayrı bir `weight_${tarih}` anahtarına yazmak (eski
+      // davranış) kilo kartı/trendinin hiç görmediği yetim bir kayıt üretiyordu.
+      const currentEntries = parseWeightConfig(dataCtx.config).entries;
+      void dataCtx.updateConfig("weight", {
+        entries: withWeightEntry(currentEntries, todayISO(), weightNum),
+      });
     }
 
     setSavedProfileMsg(true);

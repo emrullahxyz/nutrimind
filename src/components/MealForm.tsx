@@ -11,6 +11,7 @@ import {
   TextField,
   fieldCls,
   fromDraft,
+  hasUnsavedBasketEntry,
   toDraft,
 } from "./FormBits";
 import type { NutritionDraft } from "./FormBits";
@@ -29,6 +30,10 @@ import { AliasPicker } from "./AliasPicker";
 import { useBodyScrollLock } from "../hooks/useBodyScrollLock";
 
 type Mode = "alias" | "manual" | "ai";
+
+/** Kaydet'te aktif sekmede listeye eklenmemiş kalem bulununca gösterilen mesaj. */
+const UNSAVED_ENTRY_ERROR =
+  "Girdiğin kalem henüz listeye eklenmedi. '+ Öğüne Bir Kalem Daha Ekle' ile ekle ya da alanları temizle.";
 
 interface BasketItem {
   id: string;
@@ -289,6 +294,12 @@ export function MealForm({
   const [saving, setSaving] = useState(false);
   const [err, setErr] = useState<string | null>(null);
 
+  /** "Hafızadan" sekmesinde kullanıcı aliası/miktarı/birimi son "+ Ekle"den beri
+   *  DEĞİŞTİRDİ mi? Bkz. `hasUnsavedBasketEntry`'nin JSDoc'u — varsayılan
+   *  seçim her zaman geçerli olduğu için yalnızca "seçili + miktar > 0" kontrolü
+   *  düzenleme ekranını açar açmaz Kaydet'i yanlışlıkla bloke ederdi. */
+  const [aliasPendingAdd, setAliasPendingAdd] = useState(false);
+
   function switchMode(newMode: Mode) {
     setMode(newMode);
     if (existing && basket.length === 0) {
@@ -348,6 +359,7 @@ export function MealForm({
   const showServingReset = alias !== undefined && parseNum(grams) !== alias.serving_g;
 
   function pickAlias(id: string) {
+    setAliasPendingAdd(true);
     setAliasId(id);
     const picked = aliases.find((a) => a.id === id);
     if (picked) {
@@ -357,7 +369,13 @@ export function MealForm({
     }
   }
 
+  function handleGramsChange(v: string) {
+    setAliasPendingAdd(true);
+    setGrams(v);
+  }
+
   function handleUnitChange(newUnitName: string) {
+    setAliasPendingAdd(true);
     setUnitName(newUnitName);
     const currentVal = parseNum(grams);
     if (alias && currentVal > 0) {
@@ -455,6 +473,7 @@ export function MealForm({
 
     const nextBasket = [...currentBasket, newItem];
     setBasket(nextBasket);
+    setAliasPendingAdd(false);
     if (nextBasket.length > 1) {
       setName(nextBasket.map((b) => b.name).join(" + "));
     } else {
@@ -558,6 +577,18 @@ export function MealForm({
 
   async function save() {
     if (!canSave || !finalNutrition || saving) return;
+    if (
+      hasUnsavedBasketEntry({
+        basketLength: basket.length,
+        mode,
+        hasManualNutrition,
+        aliasPendingAdd,
+        aliasAddable: scaled !== null,
+      })
+    ) {
+      setErr(UNSAVED_ENTRY_ERROR);
+      return;
+    }
     setSaving(true);
     setErr(null);
     try {
@@ -708,7 +739,7 @@ export function MealForm({
 
                 <div className="flex items-end gap-2 pt-1">
                   <div className="flex-1">
-                    <NumField label="Miktar" value={grams} onChange={setGrams} />
+                    <NumField label="Miktar" value={grams} onChange={handleGramsChange} />
                   </div>
                   <div className="w-32 flex-none">
                     <label className="block text-xs text-white/70 font-semibold mb-1">Birim</label>
@@ -731,7 +762,7 @@ export function MealForm({
                     {isDifferentFromEstimate && estimate ? (
                       <button
                         type="button"
-                        onClick={() => setGrams(String(estimate.value))}
+                        onClick={() => handleGramsChange(String(estimate.value))}
                         className="flex items-center gap-1 text-amber-400 hover:underline font-medium"
                       >
                         <span>✨ her zamanki {estimate.value} {unitName}</span>
@@ -743,6 +774,7 @@ export function MealForm({
                       <button
                         type="button"
                         onClick={() => {
+                          setAliasPendingAdd(true);
                           setUnitName(GRAM_UNIT.name);
                           setGrams(String(alias.serving_g));
                         }}

@@ -37,6 +37,20 @@ export function parseWeightConfig(config: AppConfig): WeightConfig {
   return { entries };
 }
 
+/** `entries`'e `date` için `kg`'yi ekler/günceller. `WeightCard`'ın (satır ~30)
+ *  yazma deseninin ortak, test edilebilir çekirdeği — `SettingsSheet`'in profil
+ *  kilosu da AYNI bu deseni kullanmalı (`config.weight_${tarih}` gibi ayrı bir
+ *  anahtara yazmak kilo takibinden kopuk, yetim bir kayıt üretiyordu).
+ *  Geçersiz (`kg` sonlu değil ya da <= 0) girişte `entries` değişmeden döner. */
+export function withWeightEntry(
+  entries: Record<string, number>,
+  date: string,
+  kg: number,
+): Record<string, number> {
+  if (!Number.isFinite(kg) || kg <= 0) return entries;
+  return { ...entries, [date]: kg };
+}
+
 /** `date`'ten KESİN ÖNCE en son girilmiş tarih/kg — yoksa null. */
 export function latestEntryBefore(
   entries: Record<string, number>,

@@ -1,10 +1,18 @@
 import { describe, expect, it } from "vitest";
-import { GRAM_UNIT, addNutrition, parseNum, scaleNutrition, toGrams, unitOptions } from "./nutrition";
+import {
+  GRAM_UNIT,
+  addNutrition,
+  parseNum,
+  scaleMealSources,
+  scaleNutrition,
+  toGrams,
+  unitOptions,
+} from "./nutrition";
 import { parseUnits } from "./api";
 import { coverage, sumMeals } from "./days";
 import { CORE_KEYS, MACROS, MICROS, NUTRIENTS, nutrientOf } from "./nutrients";
 import type { NutrientKey } from "./nutrients";
-import type { Alias, AliasUnit, MealItem, Nutrition } from "../types";
+import type { Alias, AliasUnit, MealItem, MealSource, Nutrition } from "../types";
 
 const BASE: Nutrition = { kcal: 100, protein: 10, carbs: 20, fat: 5, fiber: 2 };
 
@@ -97,6 +105,43 @@ describe("scaleNutrition", () => {
   it("verilmiş mikro besin de ölçeklenir (arayüze girmemiş olsa bile düşmez)", () => {
     const out = scaleNutrition({ ...BASE, sodium: 300 }, 100, 200);
     expect(out.sodium).toBe(600);
+  });
+});
+
+// ============================================================================
+// Bug: NutritionSheet'in porsiyon çarpanı (×2 vb.) `computed`'ı ölçekliyordu
+// ama `sources[].qty`'yi eski değerinde bırakıyordu — usualQuantity'nin
+// ("geçmişe dayalı miktar tahmini") temel aldığı veri bozuluyordu.
+// ============================================================================
+describe("scaleMealSources", () => {
+  it("her kaydın qty'sini çarpanla ölçekler, aliasId/unit'i değiştirmez", () => {
+    const sources: MealSource[] = [{ aliasId: "yumurta", qty: 100, unit: "g" }];
+    expect(scaleMealSources(sources, 2)).toEqual([{ aliasId: "yumurta", qty: 200, unit: "g" }]);
+  });
+
+  it("birden fazla kaynağı da (sepetten gelen çoklu malzeme) tek tek ölçekler", () => {
+    const sources: MealSource[] = [
+      { aliasId: "a", qty: 100, unit: "g" },
+      { aliasId: "b", qty: 2, unit: "adet" },
+    ];
+    expect(scaleMealSources(sources, 1.5)).toEqual([
+      { aliasId: "a", qty: 150, unit: "g" },
+      { aliasId: "b", qty: 3, unit: "adet" },
+    ]);
+  });
+
+  it("sonucu 1 ondalığa yuvarlar (scaleNutrition ile aynı hassasiyet)", () => {
+    const sources: MealSource[] = [{ aliasId: "a", qty: 100, unit: "g" }];
+    expect(scaleMealSources(sources, 0.25)?.[0].qty).toBe(25);
+    expect(scaleMealSources([{ aliasId: "a", qty: 33, unit: "g" }], 1 / 3)?.[0].qty).toBeCloseTo(11, 1);
+  });
+
+  it("sources yoksa (elle girilmiş kalem) undefined döner, uydurmaz", () => {
+    expect(scaleMealSources(undefined, 2)).toBeUndefined();
+  });
+
+  it("sources boş dizi ise undefined döner", () => {
+    expect(scaleMealSources([], 2)).toBeUndefined();
   });
 });
 

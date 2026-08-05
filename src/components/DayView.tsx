@@ -100,6 +100,8 @@ export function DayView({
   onResetTriggerAddMeal,
   triggerScan,
   onResetTriggerScan,
+  triggerExercise,
+  onResetTriggerExercise,
   showWeightCard = true,
   resetKey = 0,
 }: {
@@ -110,6 +112,8 @@ export function DayView({
   onResetTriggerAddMeal?: () => void;
   triggerScan?: boolean;
   onResetTriggerScan?: () => void;
+  triggerExercise?: boolean;
+  onResetTriggerExercise?: () => void;
   showWeightCard?: boolean;
   resetKey?: number;
 }) {
@@ -174,6 +178,16 @@ export function DayView({
       onResetTriggerScan?.();
     }
   }, [triggerScan, onResetTriggerScan]);
+
+  /** FAB > "Egzersiz Kaydet" (Bugün sekmesi): App.tsx'in `todayISO()`'ya
+   *  sabitlenmiş global modalı yerine bu bileşenin KENDİ (`date` prop'una,
+   *  yani WeekStrip'te seçili güne bağlı) egzersiz modalını açar. */
+  useEffect(() => {
+    if (triggerExercise) {
+      setShowExerciseModal(true);
+      onResetTriggerExercise?.();
+    }
+  }, [triggerExercise, onResetTriggerExercise]);
 
   function toggleSelect(index: number) {
     if (selectedIndices.includes(index)) {

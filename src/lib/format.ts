@@ -19,6 +19,16 @@ export function formatGrams(value: number, digits = 0): string {
   return `${formatNumber(value, digits)}g`;
 }
 
+/** Girilmemiş (`undefined`) bir mikro besin değeri "0g"/"0mg" gibi UYDURMA bir
+ *  sayı olarak DEĞİL, "—" ("bilinmiyor") olarak gösterilmeli — projenin
+ *  çekirdek kuralı ("Bilinmiyor ≠ sıfır"). Açıkça girilen `0` ise gerçek bir
+ *  veridir, "—" göstermez. `NutritionSheet`'in Doymuş Yağ/Sodyum/Şeker
+ *  satırları bunu kullanır (bkz. `MicroCardGrid`'in `isUndefined` deseni —
+ *  aynı kuralın başka bir gösterimi). */
+export function formatMicroOrDash(value: number | undefined, unit: string): string {
+  return value !== undefined ? `${value}${unit}` : "—";
+}
+
 /** ratio 0..1 -> "%96" */
 export function formatPercent(ratio: number): string {
   return `%${Math.round(ratio * 100)}`;

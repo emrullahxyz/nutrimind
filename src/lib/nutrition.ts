@@ -2,7 +2,7 @@
 // Nutrimind — saf besin hesapları (alias ölçekleme + tr-TR sayı ayrıştırma).
 // ============================================================================
 import { ZERO_NUTRITION } from "../types";
-import type { AliasUnit, Nutrition } from "../types";
+import type { AliasUnit, MealSource, Nutrition } from "../types";
 import { NUTRIENT_KEYS, makeNutrition } from "./nutrients";
 import type { NutrientKey } from "./nutrients";
 
@@ -83,6 +83,20 @@ export function scaleNutrition(n: Nutrition, servingG: number, grams: number): N
     out[key] = round1(v * f);
   }
   return makeNutrition(out);
+}
+
+/** `NutritionSheet`'in porsiyon çarpanı (±0,25 adımlı stepper) uygulanırken
+ *  `sources[].qty`'yi de AYNI çarpanla ölçekler. Aksi halde çarpan ×2 yapılınca
+ *  `computed` iki katına çıkar ama kaynak miktar eski değerde kalır — bu da
+ *  `usualQuantity`'nin ("geçmişe dayalı miktar tahmini") temel aldığı veriyi
+ *  bozar. `sources` yoksa/boşsa (elle girilmiş, kaynağı olmayan kalem)
+ *  `undefined` döner. */
+export function scaleMealSources(
+  sources: MealSource[] | undefined,
+  multiplier: number,
+): MealSource[] | undefined {
+  if (!sources || sources.length === 0) return undefined;
+  return sources.map((s) => ({ ...s, qty: round1(s.qty * multiplier) }));
 }
 
 /** İki besin değerini toplar — `sumMeals` ve haftalık toplamların ortak tabanı.
