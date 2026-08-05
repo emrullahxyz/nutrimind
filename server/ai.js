@@ -116,13 +116,48 @@ const RESPONSE_SCHEMA = {
   required: ["items"],
 };
 
+function formatAliasLines(aliases) {
+  const list = Array.isArray(aliases) ? aliases : [];
+  if (list.length === 0) return "";
+
+  const MAX_ALIASES = 80;
+  const sliced = list.slice(0, MAX_ALIASES);
+  const extraCount = list.length - MAX_ALIASES;
+
+  const lines = sliced.map((a) => {
+    const displayName = a.brand ? `${a.name} (${a.brand})` : a.name;
+    const nut = a.nutrition || {};
+
+    const parts = [
+      `${nut.kcal ?? "?"}kcal`,
+      `${nut.protein ?? "?"}g protein`,
+      `${nut.carbs ?? "?"}g karbonhidrat`,
+      `${nut.fat ?? "?"}g yağ`,
+      `${nut.fiber ?? "?"}g lif`,
+    ];
+
+    if (nut.sugar != null) parts.push(`${nut.sugar}g şeker`);
+    if (nut.satFat != null) parts.push(`${nut.satFat}g doymuş yağ`);
+    if (nut.sodium != null) parts.push(`${nut.sodium}mg sodyum`);
+
+    let line = `${displayName}: ${a.serving_g ?? "?"}g başına ${parts.join(", ")}`;
+
+    if (Array.isArray(a.triggers) && a.triggers.length > 0) {
+      line += ` (şu ifadelerle anılır: ${a.triggers.join(", ")})`;
+    }
+
+    return line;
+  });
+
+  if (extraCount > 0) {
+    lines.push(`(… ve ${extraCount} besin daha)`);
+  }
+
+  return lines.join("\n");
+}
+
 function buildPrompt(text, aliases) {
-  const aliasLines = (aliases || [])
-    .map(
-      (a) =>
-        `${a.name}: ${a.serving_g}g başına ${a.nutrition?.kcal ?? "?"}kcal, ${a.nutrition?.protein ?? "?"}g protein`,
-    )
-    .join("\n");
+  const aliasLines = formatAliasLines(aliases);
 
   return `Sen bir beslenme uzmanısın. Kullanıcının öğününü analiz et.
 
@@ -142,9 +177,7 @@ ${text}`;
 }
 
 function buildFoodPhotoPrompt(aliases) {
-  const aliasLines = (aliases || [])
-    .map((a) => `${a.name}: ${a.serving_g}g başına ${a.nutrition?.kcal ?? "?"}kcal, ${a.nutrition?.protein ?? "?"}g protein`)
-    .join("\n");
+  const aliasLines = formatAliasLines(aliases);
   return `Sen bir beslenme uzmanısın. Ekteki fotoğraftaki yemeği/yemekleri analiz et.
 
 KURALLAR:
