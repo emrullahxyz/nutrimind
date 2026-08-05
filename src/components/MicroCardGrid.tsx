@@ -44,6 +44,15 @@ function SmallDonut({ pct, color, icon: Icon }: { pct: number; color: string; ic
   );
 }
 
+interface MicroItem {
+  def: ReturnType<typeof nutrientOf>;
+  val: number | undefined;
+  goalVal: number;
+  sublabel: string;
+  icon: ComponentType<{ className?: string }>;
+  isUndefined: boolean;
+}
+
 interface MicroCardGridProps {
   total: Nutrition;
   goal: Nutrition;
@@ -51,8 +60,79 @@ interface MicroCardGridProps {
   onToggleRatio: () => void;
 }
 
+function MicroCard({ item, showRatio, onToggleRatio }: { item: MicroItem; showRatio: boolean; onToggleRatio: () => void }) {
+  const { def, val, goalVal, sublabel, icon, isUndefined } = item;
+  const consumed = val ?? 0;
+  const target = goalVal;
+  const remaining = Math.max(0, target - consumed);
+  const pct = !isUndefined && target > 0 ? consumed / target : 0;
+
+  const rawDisplay = target > 0 ? remaining : consumed;
+  const animVal = useAnimatedNumber(showRatio ? consumed : rawDisplay, 650);
+  const animTarget = useAnimatedNumber(target, 650);
+
+  const mode: SwapMode = showRatio ? "EATEN" : "LEFT";
+
+  let displayVal: string;
+  let subText: string;
+
+  if (isUndefined) {
+    displayVal = "—";
+    subText = def.label;
+  } else if (showRatio) {
+    displayVal = target > 0
+      ? `${formatNumber(animVal, 0)}/${formatNumber(animTarget, 0)}${def.unit}`
+      : `${formatNumber(animVal, 0)}${def.unit}`;
+    subText = "Alınan / Hedef";
+  } else {
+    displayVal = `${formatNumber(animVal, 0)}${def.unit}`;
+    subText = sublabel;
+  }
+
+  const textSizeClass =
+    displayVal.length > 7
+      ? "text-xs sm:text-sm"
+      : displayVal.length > 5
+        ? "text-sm sm:text-base"
+        : "text-base sm:text-lg";
+
+  return (
+    <div
+      onClick={onToggleRatio}
+      className="flex flex-col justify-between rounded-card border border-calBorder bg-calCard p-2.5 sm:p-4 min-h-[125px] shadow-card backdrop-blur-sm transition-all duration-200 hover:border-white/20 cursor-pointer select-none active:scale-[0.98]"
+      title="Tıklayarak tüm değerleri dönüştür"
+    >
+      <div>
+        <DirectionalTextSwap
+          mode={mode}
+          layout="value-first"
+          value={
+            <div
+              className={`${textSizeClass} font-black leading-tight tabular-nums tracking-tight truncate ${
+                isUndefined ? "text-ink-tertiary" : "text-white"
+              }`}
+            >
+              {displayVal}
+            </div>
+          }
+          label={
+            <div className="mt-0.5 text-[10px] sm:text-[11px] font-medium text-ink-secondary truncate">
+              {subText}
+            </div>
+          }
+          durationMs={300}
+        />
+      </div>
+
+      <div className="mt-2 flex items-center justify-end">
+        <SmallDonut pct={pct} color={isUndefined ? "rgba(255,255,255,0.08)" : def.hex} icon={icon} />
+      </div>
+    </div>
+  );
+}
+
 export function MicroCardGrid({ total, goal, showRatio, onToggleRatio }: MicroCardGridProps) {
-  const items = [
+  const items: MicroItem[] = [
     {
       def: nutrientOf("fiber"),
       val: total.fiber,
@@ -81,76 +161,9 @@ export function MicroCardGrid({ total, goal, showRatio, onToggleRatio }: MicroCa
 
   return (
     <div className="grid grid-cols-3 gap-2.5 sm:gap-3">
-      {items.map(({ def, val, goalVal, sublabel, icon, isUndefined }) => {
-        const consumed = val ?? 0;
-        const target = goalVal;
-        const remaining = Math.max(0, target - consumed);
-        const pct = !isUndefined && target > 0 ? consumed / target : 0;
-
-        const rawDisplay = target > 0 ? remaining : consumed;
-        const animVal = useAnimatedNumber(showRatio ? consumed : rawDisplay, 650);
-        const animTarget = useAnimatedNumber(target, 650);
-
-        const mode: SwapMode = showRatio ? "EATEN" : "LEFT";
-
-        let displayVal: string;
-        let subText: string;
-
-        if (isUndefined) {
-          displayVal = "—";
-          subText = def.label;
-        } else if (showRatio) {
-          displayVal = target > 0
-            ? `${formatNumber(animVal, 0)}/${formatNumber(animTarget, 0)}${def.unit}`
-            : `${formatNumber(animVal, 0)}${def.unit}`;
-          subText = "Alınan / Hedef";
-        } else {
-          displayVal = `${formatNumber(animVal, 0)}${def.unit}`;
-          subText = sublabel;
-        }
-
-        const textSizeClass =
-          displayVal.length > 7
-            ? "text-xs sm:text-sm"
-            : displayVal.length > 5
-              ? "text-sm sm:text-base"
-              : "text-base sm:text-lg";
-
-        return (
-          <div
-            key={def.key}
-            onClick={onToggleRatio}
-            className="flex flex-col justify-between rounded-card border border-calBorder bg-calCard p-2.5 sm:p-4 min-h-[125px] shadow-card backdrop-blur-sm transition-all duration-200 hover:border-white/20 cursor-pointer select-none active:scale-[0.98]"
-            title="Tıklayarak tüm değerleri dönüştür"
-          >
-            <div>
-              <DirectionalTextSwap
-                mode={mode}
-                layout="value-first"
-                value={
-                  <div
-                    className={`${textSizeClass} font-black leading-tight tabular-nums tracking-tight truncate ${
-                      isUndefined ? "text-ink-tertiary" : "text-white"
-                    }`}
-                  >
-                    {displayVal}
-                  </div>
-                }
-                label={
-                  <div className="mt-0.5 text-[10px] sm:text-[11px] font-medium text-ink-secondary truncate">
-                    {subText}
-                  </div>
-                }
-                durationMs={300}
-              />
-            </div>
-
-            <div className="mt-2 flex items-center justify-end">
-              <SmallDonut pct={pct} color={isUndefined ? "rgba(255,255,255,0.08)" : def.hex} icon={icon} />
-            </div>
-          </div>
-        );
-      })}
+      {items.map((item) => (
+        <MicroCard key={item.def.key} item={item} showRatio={showRatio} onToggleRatio={onToggleRatio} />
+      ))}
     </div>
   );
 }

@@ -14,6 +14,9 @@ import type { AIParseItem } from "./types";
 import { todayISO } from "./lib/format";
 import { calculateStreak } from "./lib/streak";
 import { fabTarget } from "./lib/fabRouting";
+import { classifyPopState, shouldExitOnSecondPress } from "./lib/backStack";
+import { hasOpenOverlay } from "./lib/overlayLock";
+import { hasActiveSubView } from "./lib/subViewRegistry";
 
 function MainContent() {
   const [tab, setTab] = useState<TabType>("daily");
@@ -77,23 +80,37 @@ function MainContent() {
   }, []);
 
   // Uygulama geneli Android Geri Tuşu & Geri Kaydırma (Double Back to Exit) Mantığı:
-  // Her sekmenin ana sayfasındayken (modal/subview kapalıyken) geri tuşu uygulamadan çıkış uyarısı verir.
+  // Her sekmenin ÇIPLAK kökündeyken (alt-görünüm/modal kapalıyken) geri tuşu
+  // uygulamadan çıkış uyarısı verir. Karar `classifyPopState`'e (saf fonksiyon,
+  // bkz. lib/backStack.ts) devredilmiş durumda — burada yalnızca DOM/React yan
+  // etkileri var. İki soru artık kırılgan bir DOM sorgusuna
+  // (`document.querySelector('.fixed.inset-0')`, FAB backdrop'unu da "modal
+  // açık" sanıyordu) değil, iki paylaşılan CANLI sayaca dayanıyor:
+  //  - "açık overlay var mı" → `hasOpenOverlay()` (bkz. lib/overlayLock.ts) —
+  //    FAB backdrop'u dahil HER overlay zaten bu sayacı kullanıyor.
+  //  - "açık alt-görünüm var mı" → `hasActiveSubView()` (bkz.
+  //    lib/subViewRegistry.ts) — Ayarlar>Profil, Geçmiş>hafta/gün gibi gömülü
+  //    alt-sayfalardan YENİ çıkılırken sahte çıkış toast'ını bastırır. İlk
+  //    denenen "bir önceki durumu ref'te tut" yaklaşımı tarayıcıda YANLIŞ
+  //    çıkmıştı (bkz. backStack.ts başındaki not) — SettingsSheet/HistoryPage
+  //    kendi `pushState`'lerini App'e hiç bildirmiyordu.
   useEffect(() => {
     const handlePopState = (e: PopStateEvent) => {
-      const state = e.state;
+      const state = e.state as { tab?: TabType; isRoot?: boolean; isModal?: boolean } | null;
+      const decision = classifyPopState({
+        newState: state,
+        hasOpenOverlay: hasOpenOverlay(),
+        hasActiveSubView: hasActiveSubView(),
+      });
 
-      // Modal kapatma popstate'i ise veya ekranda açık modal/sheet varsa Modal/SubView bileşeni yönetir
-      const isAnyModalOpen = !!document.querySelector('[data-modal="true"], .fixed.inset-0');
-      if (state?.isModal || isAnyModalOpen) {
+      if (decision !== "evaluate-exit") {
         return;
       }
 
       const currentTab = tabRef.current;
-
-      // Herhangi bir sekmenin ana sayfasındayken (hiyerarşi sekmeler arası geçiş yapmaz, çıkış teklif eder)
       const now = Date.now();
-      if (now - lastBackPressRef.current < 2000) {
-        // 2 saniye içinde 2. geri basma: Çıkışa izin ver.
+      if (shouldExitOnSecondPress(lastBackPressRef.current, now)) {
+        // 2. geri basma (2sn içinde): Çıkışa izin ver.
       } else {
         // 1. geri basma: Toast uyarısı göster ve sekmenin kök durumunu yenile
         lastBackPressRef.current = now;

@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
+import { prefersReducedMotion } from "../lib/animation";
 
 export type SwapMode = "LEFT" | "EATEN";
 
@@ -62,19 +63,43 @@ export function DirectionalTextSwap({
     },
   ]);
 
+  const valueRef = useRef(value);
+  valueRef.current = value;
+  const labelRef = useRef(label);
+  labelRef.current = label;
+  const subtextRef = useRef(subtext);
+  subtextRef.current = subtext;
+
+  // Mode degisimi ve kalinti (exiting) oge temizlik zamanlayicisi:
+  // value/label/subtext animasyon tiklerinden etkilenmemesi icin bagimliliklar ayrilmistir.
   useEffect(() => {
     if (prevModeRef.current !== mode) {
       const prevMode = prevModeRef.current;
       prevModeRef.current = mode;
 
-      // Determine motion direction:
+      const newSlotId = `slot-${++slotIdCounter.current}`;
+
+      if (prefersReducedMotion()) {
+        setItems([
+          {
+            id: newSlotId,
+            mode,
+            value: valueRef.current,
+            label: labelRef.current,
+            subtext: subtextRef.current,
+            animClass: "",
+            isExiting: false,
+          },
+        ]);
+        return;
+      }
+
+      // Motion direction:
       // LEFT -> EATEN : Downward motion (dir = "down")
       // EATEN -> LEFT : Upward motion (dir = "up")
       const isDown = prevMode === "LEFT" && mode === "EATEN";
       const exitAnimClass = isDown ? "anim-swap-down-out" : "anim-swap-up-out";
       const enterAnimClass = isDown ? "anim-swap-down-in" : "anim-swap-up-in";
-
-      const newSlotId = `slot-${++slotIdCounter.current}`;
 
       setItems((prev) => {
         const exiting = prev.map((item) => ({
@@ -86,9 +111,9 @@ export function DirectionalTextSwap({
         const entering: SlotItem = {
           id: newSlotId,
           mode,
-          value,
-          label,
-          subtext,
+          value: valueRef.current,
+          label: labelRef.current,
+          subtext: subtextRef.current,
           animClass: enterAnimClass,
           isExiting: false,
         };
@@ -102,13 +127,15 @@ export function DirectionalTextSwap({
       }, durationMs);
 
       return () => clearTimeout(cleanupTimer);
-    } else {
-      // Update contents if mode did not change
-      setItems((prev) =>
-        prev.map((item) => (!item.isExiting ? { ...item, value, label, subtext } : item))
-      );
     }
-  }, [mode, value, label, subtext, durationMs]);
+  }, [mode, durationMs]);
+
+  // Deger/etiket degistiginde aktif (exiting olmayan) ogenin icerigini guncelle
+  useEffect(() => {
+    setItems((prev) =>
+      prev.map((item) => (!item.isExiting ? { ...item, value, label, subtext } : item))
+    );
+  }, [value, label, subtext]);
 
   return (
     <div

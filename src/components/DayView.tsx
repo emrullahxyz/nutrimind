@@ -10,7 +10,6 @@ import { Modal } from "./Modal";
 import { ScanSheet } from "./ScanSheet";
 import { SupplementCard } from "./SupplementCard";
 import { WeightCard } from "./WeightCard";
-import { Collapsible } from "./Collapsible";
 import { MealRow } from "./MealRow";
 import { ExerciseModal } from "./ExerciseModal";
 import { NutritionSheet } from "./NutritionSheet";

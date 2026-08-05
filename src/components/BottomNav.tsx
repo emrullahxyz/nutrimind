@@ -11,6 +11,7 @@ import {
   Camera,
   Plus,
 } from "lucide-react";
+import { useBodyScrollLock } from "../hooks/useBodyScrollLock";
 
 export type TabType = "daily" | "history" | "aliases" | "settings";
 
@@ -61,8 +62,14 @@ export function BottomNav({
 }: BottomNavProps) {
   const [open, setOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
+  const isPoppedRef = useRef(false);
 
-  // FAB menüsü açıkken hem body overflow kilitlenir hem de dışarı tıklama dinlenir
+  // FAB menüsü açıkken body scroll'u paylaşılan, referans-sayaçlı mekanizmayla
+  // kilitlenir (bkz. useBodyScrollLock) — burada artık doğrudan
+  // document.body.style'a dokunulmuyor.
+  useBodyScrollLock(open);
+
+  // FAB menüsü açıkken dışarı tıklama kapatır.
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
       if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
@@ -71,13 +78,43 @@ export function BottomNav({
     }
     if (open) {
       document.addEventListener("mousedown", handleClickOutside);
-      const prevOverflow = document.body.style.overflow;
-      document.body.style.overflow = "hidden";
       return () => {
         document.removeEventListener("mousedown", handleClickOutside);
-        document.body.style.overflow = prevOverflow;
       };
     }
+  }, [open]);
+
+  // Android donanım geri tuşu / geri kaydırma: FAB menüsü ÖNCEDEN ne pushState'e
+  // ne de popstate'e katılıyordu — ÜSTELİK App.tsx'in eski "modal açık mı" DOM
+  // sorgusu bu backdrop'u (`.fixed.inset-0`) yanlışlıkla "modal açık" sanıp
+  // App'in kendi geri-tuşu mantığını da susturuyordu. Sonuç: menü açıkken geri
+  // tuşu TAMAMEN tepkisiz kalıyordu. Diğer tam-ekran modal bileşenleriyle
+  // (MealForm, RecipeBuilder, AliasForm, NutritionSheet) AYNI deseni kullanır:
+  // açılışta pushState, popstate'te kapat, `isModal: true` ile işaretle (hem
+  // App'in `state?.isModal` kontrolü hem de scroll kilidi sayesinde
+  // `hasOpenOverlay()` bunu "kendi dinleyicisinde ele alınan bir overlay" olarak görür).
+  useEffect(() => {
+    if (!open) return;
+    isPoppedRef.current = false;
+    window.history.pushState({ isModal: true, modalType: "fab_menu" }, "");
+
+    const handlePopState = () => {
+      isPoppedRef.current = true;
+      setOpen(false);
+    };
+
+    window.addEventListener("popstate", handlePopState);
+
+    return () => {
+      window.removeEventListener("popstate", handlePopState);
+      // Menü geri tuşu HARİCİNDE kapatıldıysa (dışarı tıklama, sekme seçimi,
+      // FAB'a tekrar tıklama): pushlanan geçmiş girdisini temizlemek için geri
+      // git — aksi halde bir sonraki gerçek geri tuşu bu "hayalet" girdiyi
+      // tüketir, o anki gerçek ekranı değil.
+      if (!isPoppedRef.current && window.history.state?.isModal) {
+        window.history.back();
+      }
+    };
   }, [open]);
 
   const tabs = [
