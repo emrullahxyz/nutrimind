@@ -3,6 +3,7 @@ import { Search, Camera, Plus, Utensils, BookOpen, Edit3, X } from "lucide-react
 import { AliasForm } from "../components/AliasForm";
 import { RecipeBuilder } from "../components/RecipeBuilder";
 import { ScanSheet } from "../components/ScanSheet";
+import type { AIParseItem } from "../types";
 import { ConfirmButton, ErrorText } from "../components/FormBits";
 import { formatNumber } from "../lib/format";
 import { scaleNutrition } from "../lib/nutrition";
@@ -11,7 +12,15 @@ import { useData } from "../lib/data";
 import { parseTemplatesConfig } from "../lib/templates";
 import type { Alias } from "../types";
 
-export function AliasPage({ resetKey = 0 }: { resetKey?: number }) {
+export function AliasPage({
+  resetKey = 0,
+  onVisionResult,
+}: {
+  resetKey?: number;
+  /** Görsel/etiket taraması sonucu — App bunu global öğün formuna yönlendirir.
+   *  Barkod yolu ScanSheet'in kendi içinde hafızaya kaydediyor, buraya düşmez. */
+  onVisionResult: (items: AIParseItem[]) => void;
+}) {
   const { aliases, removeAlias, config, updateConfig } = useData();
   const [editingAlias, setEditingAlias] = useState<Alias | null | undefined>(undefined);
   const [editingRecipe, setEditingRecipe] = useState<Alias | null | undefined>(undefined);
@@ -265,7 +274,15 @@ export function AliasPage({ resetKey = 0 }: { resetKey?: number }) {
 
       {editingAlias !== undefined && <AliasForm initial={editingAlias} onClose={() => setEditingAlias(undefined)} />}
       {editingRecipe !== undefined && <RecipeBuilder initial={editingRecipe} onClose={() => setEditingRecipe(undefined)} />}
-      {showScan && <ScanSheet onClose={() => setShowScan(false)} />}
+      {showScan && (
+        <ScanSheet
+          onClose={() => setShowScan(false)}
+          onVisionResult={(items) => {
+            setShowScan(false);
+            onVisionResult(items);
+          }}
+        />
+      )}
     </div>
   );
 }
