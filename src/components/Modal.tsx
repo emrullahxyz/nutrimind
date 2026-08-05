@@ -2,6 +2,13 @@ import { useEffect, useRef } from "react";
 import type { ReactNode } from "react";
 import { createPortal } from "react-dom";
 
+/** Modal'ın KENDİ çağırdığı `history.back()`'in ürettiği `popstate`'i yut.
+ *  Bu bayrak olmadan: temizlikteki `back()` asenkron bir `popstate` doğurur, o da
+ *  (yeniden mount olmuşsa) yeni dinleyiciye düşer ve modalı kendi kendine kapatır.
+ *  Modül düzeyinde, çünkü `popstate` global bir olay ve dinleyici o sırada
+ *  unmount olmuş bileşene ait olabilir. */
+let pendingProgrammaticBacks = 0;
+
 /** Koyu tema modal kabuğu: masaüstünde ortalı, mobilde alttan sheet.
  *  Esc ya da zemine tıklama kapatır; açıkken arka plan kaydırması kilitlenir. */
 export function Modal({
@@ -23,13 +30,35 @@ export function Modal({
   const mouseDownTargetRef = useRef<EventTarget | null>(null);
   const isPoppedRef = useRef(false);
 
+  // `onClose`/`title` ref üzerinden okunuyor ki aşağıdaki geçmiş efekti YALNIZCA
+  // mount/unmount'ta çalışsın. Bağımlılık dizisinde dursalardı efekt her render'da
+  // yeniden kurulur, temizliği `history.back()` çağırır, geciken `popstate` yeni
+  // dinleyiciye düşer ve modal KENDİ KENDİNİ kapatırdı. ScanSheet'te tam olarak bu
+  // oluyordu (`requestClose` her render'da yeni bir fonksiyon) — kamera açılır
+  // açılmaz tarayıcı kapanıyordu. Bu diziyi doldurma.
+  const onCloseRef = useRef(onClose);
+  useEffect(() => {
+    onCloseRef.current = onClose;
+  }, [onClose]);
+  const titleRef = useRef(title);
+  useEffect(() => {
+    titleRef.current = title;
+  }, [title]);
+
   useEffect(() => {
     // Modal açıldığında tarayıcı geçmişine push et
-    window.history.pushState({ isModal: true, title }, "");
+    window.history.pushState({ isModal: true, title: titleRef.current }, "");
 
     const handlePopState = () => {
+      // Kendi temizliğimizin doğurduğu back() ise: yut, kapatma sayma.
+      // Sayaç (boolean değil): üst üste iki temizlik iki back() doğurursa ikisi de
+      // yutulmalı, yoksa bayrak takılı kalıp kullanıcının gerçek geri basışını yer.
+      if (pendingProgrammaticBacks > 0) {
+        pendingProgrammaticBacks -= 1;
+        return;
+      }
       isPoppedRef.current = true;
-      onClose();
+      onCloseRef.current();
     };
 
     window.addEventListener("popstate", handlePopState);
@@ -38,10 +67,11 @@ export function Modal({
       window.removeEventListener("popstate", handlePopState);
       // Kullanıcı X veya buton ile kapattıysa (popstate harici), history stack'i temizlemek için back() yap
       if (!isPoppedRef.current && window.history.state?.isModal) {
+        pendingProgrammaticBacks += 1;
         window.history.back();
       }
     };
-  }, [onClose, title]);
+  }, []);
 
   const handleUserClose = () => {
     if (!isPoppedRef.current && window.history.state?.isModal) {

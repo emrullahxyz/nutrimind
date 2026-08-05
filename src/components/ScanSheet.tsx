@@ -55,7 +55,10 @@ export function ScanSheet({
   onVisionResult,
 }: {
   onClose: () => void;
-  onVisionResult?: (items: AIParseItem[]) => void;
+  /** ZORUNLU. Opsiyonelken iki çağıran (App'in FAB yolu ve AliasPage) bunu
+   *  geçirmeyi unutmuştu; `onVisionResult?.()` sessizce hiçbir şey yapmadığı için
+   *  görsel/etiket taraması o iki yolda sonuçsuz kalıyordu. Opsiyonel yapma. */
+  onVisionResult: (items: AIParseItem[]) => void;
 }) {
   // Lock background body scroll when modal is open
   useBodyScrollLock(true);

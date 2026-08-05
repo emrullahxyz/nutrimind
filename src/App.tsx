@@ -10,6 +10,7 @@ import { MealForm } from "./components/MealForm";
 import { ScanSheet } from "./components/ScanSheet";
 import { ExerciseModal } from "./components/ExerciseModal";
 import { ErrorBoundary } from "./components/ErrorBoundary";
+import type { AIParseItem } from "./types";
 import { todayISO } from "./lib/format";
 import { calculateStreak } from "./lib/streak";
 
@@ -25,6 +26,17 @@ function MainContent() {
   const [triggerScan, setTriggerScan] = useState(false);
   const [globalScanOpen, setGlobalScanOpen] = useState(false);
   const [globalAddMealOpen, setGlobalAddMealOpen] = useState(false);
+  /** FAB > "Yemek Taraması" sonucunun öğün formuna taşındığı ara durum. */
+  const [globalAIItems, setGlobalAIItems] = useState<AIParseItem[] | undefined>(undefined);
+
+  /** DayView'daki kanonik desenin aynısı: tarama sonucu doğrudan öğün formunun
+   *  sepetine düşer. FAB ve Hafıza yollarında bu bağlanmadığı için sonuç
+   *  sessizce yutuluyordu. */
+  const handleVisionResult = (items: AIParseItem[]) => {
+    setGlobalAIItems(items);
+    setGlobalScanOpen(false);
+    setGlobalAddMealOpen(true);
+  };
   const [globalExerciseOpen, setGlobalExerciseOpen] = useState(false);
   const [showExitToast, setShowExitToast] = useState(false);
   const lastBackPressRef = useRef<number>(0);
@@ -139,7 +151,7 @@ function MainContent() {
         ) : tab === "history" ? (
           <HistoryPage />
         ) : tab === "aliases" ? (
-          <AliasPage resetKey={tabResetKey.aliases} />
+          <AliasPage resetKey={tabResetKey.aliases} onVisionResult={handleVisionResult} />
         ) : (
           <SettingsSheet onClose={() => handleTabChange("daily")} embedded resetKey={tabResetKey.settings} />
         )}
@@ -156,11 +168,19 @@ function MainContent() {
       />
 
       {globalAddMealOpen && (
-        <MealForm date={todayISO()} editIndex={null} onClose={() => setGlobalAddMealOpen(false)} />
+        <MealForm
+          date={todayISO()}
+          editIndex={null}
+          onClose={() => {
+            setGlobalAddMealOpen(false);
+            setGlobalAIItems(undefined);
+          }}
+          initialAIItems={globalAIItems}
+        />
       )}
 
       {globalScanOpen && (
-        <ScanSheet onClose={() => setGlobalScanOpen(false)} />
+        <ScanSheet onClose={() => setGlobalScanOpen(false)} onVisionResult={handleVisionResult} />
       )}
 
       <ExerciseModal
