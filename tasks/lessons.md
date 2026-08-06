@@ -93,21 +93,29 @@ algılamıyor"); tek kök sebepti.
 hata vermez). Görüntü kalitesi şikâyetlerinde önce elde edilen `videoWidth/videoHeight`'ı ölç —
 CSS/görsel katmanı suçlamadan önce akışın kendisine bak.
 
-## L11 — agy'nin diff'i HER ZAMAN kapsam açısından denetlenir
+## L11 — Ajanın çalıştığı sırada oluşan değişiklik, ajanın yaptığı demek DEĞİLDİR
 
-**Olay (2026-08-06, Faz B):** Brief'te "yalnızca şu 4 dosyayı oluştur, başka hiçbir dosyaya
-dokunma" yazmasına rağmen agy `Besin Hafızası.dc.html` ve `Wireframes.dc.html` dosyalarını
-**sildi** — ikisi de CLAUDE.md'nin "ASLA düzenleme" listesindeki bağlayıcı salt-okunur
-referanslar. `git checkout --` ile geri alındı. Raporunda bundan hiç söz etmemişti.
+**Olay (2026-08-06, Faz B):** agy'nin turundan sonra `git status`'ta iki silinmiş dosya gördüm
+(`Besin Hafızası.dc.html`, `Wireframes.dc.html`) ve bunu "agy kapsam dışına çıktı" diye
+raporladım, hatta bu dosyaya bir ders olarak yazdım. **Yanlıştı — dosyaları kullanıcı silmişti.**
+Delegasyondan hemen önce aldığım `git status` temizdi, silme agy'nin çalıştığı pencerede belirdi;
+kanıtım bu zamanlama çakışmasından ibaretti. Kullanıcı da aynı dizinde çalışıyordu. `git checkout`
+ile "geri alarak" kullanıcının bilinçli işini bozdum.
 
-**Kural:** agy'nin "tamamlandı" raporu bir İDDİA'dır. Her turdan sonra sırasıyla:
-`git status --short` (silinen/beklenmedik dosya var mı) → `git log -1` (commit atmış mı) →
-`git diff --stat <yasaklı dosyalar>` → doğrulama kapısını **kendin** çalıştır. Bu denetim,
-raporu ne kadar ikna edici olursa olsun atlanmaz.
+**Kural:** Çalışma dizini paylaşılan bir kaynaktır — bir ajan koşarken kullanıcı da düzenleme
+yapabilir. Zamanlama çakışması nedensellik değildir. Bir değişikliği ajana **yüklemeden ve
+raporlamadan** önce ya ajanın kendi çıktısında o dosyaya dokunduğuna dair iz bul, ya da
+kullanıcıya sor: "bu iki dosya silinmiş, sen mi sildin?" tek cümlelik bir soruydu ve yanlış
+suçlamayı da, dosyaya yazdığım yanlış dersi de önlerdi.
 
-**Ayrıca:** agy'nin bildirdiği iki "sorun"dan biri geçersizdi (`dummyHashCache`'in
-`NUTRI_SCRYPT_N` değişince bayatlayacağı iddiası — `SCRYPT_N` modül düzeyinde bir sabit,
-yükleme anında bir kez okunuyor, bayatlayamaz). Ajan bulgularını da doğrula (bkz. L3).
+**Not:** Dosyaları geri getirmem sonuçta doğru çıktı (kullanıcı gerekli olduklarını bilmeden
+silmiş, geri istedi) — ama bu şans eseriydi, gerekçem yanlıştı. Doğru hamle "geri aldım" diye
+bildirmek değil, "silinmiş, ne yapayım?" diye sormaktı.
+
+**Değişmeyen kısım:** agy'nin "tamamlandı" raporu yine de bir İDDİA'dır; doğrulama kapısı her
+turda bağımsız çalıştırılır (bu turda çalıştırıldı, 480/480 doğrulandı). Ayrıca agy'nin bildirdiği
+iki "sorun"dan biri geçersizdi (`dummyHashCache`'in `NUTRI_SCRYPT_N` değişince bayatlayacağı
+iddiası — `SCRYPT_N` modül düzeyinde bir sabit, bayatlayamaz). Ajan bulgularını doğrula (bkz. L3).
 
 ## L6 — Kullanıcıya seçenek sunarken premisi doğrula
 

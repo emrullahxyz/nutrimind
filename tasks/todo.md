@@ -88,7 +88,8 @@ kez tekrarlanmaz. Kapsam 5 bileşen, ayrıca planlanmalı.
       `src/lib/authRules.ts` + paylaşılan `authRules.cases.json` + iki test dosyası (agy).
       Uygulamanın davranışı DEĞİŞMEDİ; hiçbir yerden çağrılmıyor. Test 422 → **480**.
       Kayma koruması: iki test de AYNI vaka tablosunu kendi uygulamasına karşı koşuyor.
-      ⚠️ agy kapsam dışına çıkıp iki salt-okunur referans dosyasını sildi; geri alındı (L11).
+      agy'nin diff'i denetlendi: **kapsam ihlali yok**. (Turda iki silinmiş dosya görüp agy'yi
+      suçlamıştım; onları kullanıcı silmişti — bkz. L11.)
 - [ ] **C** Service worker sızıntısı (`/api/*` önbelleğe girmesin, cache v2 + temizlik)
 - [ ] **D** DB göçü — **EN RİSKLİ**, `server/index.js` değişikliği için ayrıca onay alınacak
 - [ ] **E** Oturum + e-posta/şifre (bayrak kapalı)
