@@ -1,0 +1,317 @@
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { DatabaseSync } from "node:sqlite";
+import migrateModule from "./migrate.js";
+
+// ============================================================================
+// Faz E: oturum + e-posta/parola uçları. Buradaki testlerin çoğu "çalışıyor mu"
+// değil, "SIZDIRIYOR MU / AYIRT EDİLEBİLİYOR MU" sorusunu soruyor:
+//   - bilinmeyen e-posta ile yanlış parola AYNI yanıtı vermeli
+//   - bayrak kapalıyken hiçbir uç iş yapmamalı (fazın davranış değiştirmeden
+//     gönderilebilmesini sağlayan şey bu)
+//   - bir kullanıcının oturumu diğerinin verisini açmamalı
+// ============================================================================
+
+const V0_SCHEMA = `
+  CREATE TABLE IF NOT EXISTS days (date TEXT PRIMARY KEY, meals TEXT NOT NULL);
+  CREATE TABLE IF NOT EXISTS config (key TEXT PRIMARY KEY, value TEXT NOT NULL);
+  CREATE TABLE IF NOT EXISTS aliases (id TEXT PRIMARY KEY, data TEXT NOT NULL);
+`;
+
+const BAYRAKLAR = ["NUTRIMIND_AUTH_ENABLED", "NUTRIMIND_ALLOW_SIGNUP", "NUTRI_SECURE_COOKIE", "NUTRIMIND_PUBLIC_ORIGIN"];
+const yedek = {};
+
+beforeEach(() => {
+  for (const k of BAYRAKLAR) yedek[k] = process.env[k];
+});
+afterEach(() => {
+  for (const k of BAYRAKLAR) {
+    if (yedek[k] === undefined) delete process.env[k];
+    else process.env[k] = yedek[k];
+  }
+});
+
+/** Bayraklar modül yüklenirken okunuyor → her senaryo için taze yükleme. */
+async function yukle(env) {
+  vi.resetModules();
+  for (const k of BAYRAKLAR) delete process.env[k];
+  Object.assign(process.env, env);
+  const mod = await import("./authRoutes.js");
+  return mod.default ?? mod;
+}
+
+function yeniDb() {
+  const db = new DatabaseSync(":memory:");
+  db.exec(V0_SCHEMA);
+  migrateModule.migrate(db, { ownerEmail: "sahip@x.co" });
+  return db;
+}
+
+/** Tarayıcıdan gelen normal bir istek. `sec-fetch-site: same-origin` olmadan
+ *  CSRF kapısı POST'ları reddeder — bu bilinçli. */
+const istek = (cookie, ekstra) => ({
+  headers: { "sec-fetch-site": "same-origin", "user-agent": "test", ...(cookie ? { cookie } : {}), ...(ekstra || {}) },
+  socket: { remoteAddress: "127.0.0.1" },
+});
+
+const govde = (obj) => async () => obj;
+
+/** `Set-Cookie` başlığından çerez dizesini çıkarır. */
+const cerezden = (r) => {
+  const sc = r.headers && r.headers["Set-Cookie"];
+  if (!sc) return null;
+  return sc.split(";")[0];
+};
+
+describe("bayrak KAPALIYKEN (varsayılan) hiçbir şey değişmez", () => {
+  it("/me geçirgen döner — istemci giriş ekranını hiç göstermez", async () => {
+    const R = await yukle({});
+    const db = yeniDb();
+    const r = await R.handleAuth({ db, req: istek(), method: "GET", path: "/api/auth/me", readBody: govde({}) });
+    expect(r.status).toBe(200);
+    expect(r.body).toEqual({ ok: true, user: null, authDisabled: true });
+    db.close();
+  });
+
+  it("diğer uçlar 503 — kod prod'a gitse bile özellik inaktif kalır", async () => {
+    const R = await yukle({});
+    const db = yeniDb();
+    for (const p of ["/api/auth/login", "/api/auth/register", "/api/auth/logout"]) {
+      const r = await R.handleAuth({ db, req: istek(), method: "POST", path: p, readBody: govde({}) });
+      expect(r.status).toBe(503);
+    }
+    db.close();
+  });
+});
+
+describe("kayıt", () => {
+  it("ALLOW_SIGNUP kapalıyken reddedilir (varsayılan)", async () => {
+    const R = await yukle({ NUTRIMIND_AUTH_ENABLED: "1" });
+    const db = yeniDb();
+    const r = await R.handleAuth({
+      db, req: istek(), method: "POST", path: "/api/auth/register",
+      readBody: govde({ email: "yeni@x.co", password: "parola1234" }),
+    });
+    expect(r.status).toBe(403);
+    db.close();
+  });
+
+  it("açıkken hesap oluşur, çerez döner ve oturum hemen geçerlidir", async () => {
+    const R = await yukle({ NUTRIMIND_AUTH_ENABLED: "1", NUTRIMIND_ALLOW_SIGNUP: "1" });
+    const db = yeniDb();
+    const kayit = await R.handleAuth({
+      db, req: istek(), method: "POST", path: "/api/auth/register",
+      readBody: govde({ email: "  Yeni@X.CO ", password: "parola1234", name: "Yeni" }),
+    });
+    expect(kayit.status).toBe(201);
+    expect(kayit.body.user.email).toBe("yeni@x.co"); // normalize edildi
+    const cerez = cerezden(kayit);
+    expect(cerez).toBeTruthy();
+
+    const me = await R.handleAuth({ db, req: istek(cerez), method: "GET", path: "/api/auth/me", readBody: govde({}) });
+    expect(me.status).toBe(200);
+    expect(me.body.user.email).toBe("yeni@x.co");
+    db.close();
+  });
+
+  it("çerez HttpOnly + SameSite=Lax taşır", async () => {
+    const R = await yukle({ NUTRIMIND_AUTH_ENABLED: "1", NUTRIMIND_ALLOW_SIGNUP: "1" });
+    const db = yeniDb();
+    const r = await R.handleAuth({
+      db, req: istek(), method: "POST", path: "/api/auth/register",
+      readBody: govde({ email: "a@x.co", password: "parola1234" }),
+    });
+    const sc = r.headers["Set-Cookie"];
+    expect(sc).toContain("HttpOnly");
+    expect(sc).toContain("SameSite=Lax"); // Strict DEĞİL — Google dönüşü için
+    expect(sc).toContain("Path=/");
+    db.close();
+  });
+
+  it("aynı e-posta ikinci kez kaydolamaz", async () => {
+    const R = await yukle({ NUTRIMIND_AUTH_ENABLED: "1", NUTRIMIND_ALLOW_SIGNUP: "1" });
+    const db = yeniDb();
+    const g = { email: "a@x.co", password: "parola1234" };
+    await R.handleAuth({ db, req: istek(), method: "POST", path: "/api/auth/register", readBody: govde(g) });
+    const r = await R.handleAuth({ db, req: istek(), method: "POST", path: "/api/auth/register", readBody: govde(g) });
+    expect(r.status).toBe(409);
+    db.close();
+  });
+
+  it("zayıf parola / geçersiz e-posta 400 döner", async () => {
+    const R = await yukle({ NUTRIMIND_AUTH_ENABLED: "1", NUTRIMIND_ALLOW_SIGNUP: "1" });
+    const db = yeniDb();
+    const kisa = await R.handleAuth({
+      db, req: istek(), method: "POST", path: "/api/auth/register",
+      readBody: govde({ email: "a@x.co", password: "kisa" }),
+    });
+    expect(kisa.status).toBe(400);
+    const bozuk = await R.handleAuth({
+      db, req: istek(), method: "POST", path: "/api/auth/register",
+      readBody: govde({ email: "abc", password: "parola1234" }),
+    });
+    expect(bozuk.status).toBe(400);
+    db.close();
+  });
+});
+
+describe("giriş", () => {
+  async function hazir() {
+    const R = await yukle({ NUTRIMIND_AUTH_ENABLED: "1", NUTRIMIND_ALLOW_SIGNUP: "1" });
+    const db = yeniDb();
+    await R.handleAuth({
+      db, req: istek(), method: "POST", path: "/api/auth/register",
+      readBody: govde({ email: "a@x.co", password: "parola1234" }),
+    });
+    return { R, db };
+  }
+
+  it("doğru parola girer ve YENİ bir oturum kimliği verir (oturum sabitleme)", async () => {
+    const { R, db } = await hazir();
+    const ilk = await R.handleAuth({
+      db, req: istek(), method: "POST", path: "/api/auth/login",
+      readBody: govde({ email: "a@x.co", password: "parola1234" }),
+    });
+    const ikinci = await R.handleAuth({
+      db, req: istek(), method: "POST", path: "/api/auth/login",
+      readBody: govde({ email: "a@x.co", password: "parola1234" }),
+    });
+    expect(ilk.status).toBe(200);
+    expect(cerezden(ilk)).not.toBe(cerezden(ikinci));
+    db.close();
+  });
+
+  it("YANLIŞ PAROLA ile BİLİNMEYEN E-POSTA ayırt edilemez", async () => {
+    const { R, db } = await hazir();
+    const yanlisParola = await R.handleAuth({
+      db, req: istek(), method: "POST", path: "/api/auth/login",
+      readBody: govde({ email: "a@x.co", password: "yanlisparola" }),
+    });
+    const yokEposta = await R.handleAuth({
+      db, req: istek(), method: "POST", path: "/api/auth/login",
+      readBody: govde({ email: "yok@x.co", password: "parola1234" }),
+    });
+    expect(yanlisParola.status).toBe(401);
+    expect(yokEposta.status).toBe(401);
+    expect(yanlisParola.body).toEqual(yokEposta.body); // gövdeler BİREBİR aynı
+    expect(yanlisParola.headers).toBeUndefined(); // çerez sızmıyor
+    db.close();
+  });
+
+  it("parolası olmayan hesaba (göçten gelen sahip) giriş yapılamaz", async () => {
+    const { R, db } = await hazir();
+    const r = await R.handleAuth({
+      db, req: istek(), method: "POST", path: "/api/auth/login",
+      readBody: govde({ email: "sahip@x.co", password: "herhangibirsey" }),
+    });
+    expect(r.status).toBe(401);
+    db.close();
+  });
+});
+
+describe("oturum yaşam döngüsü", () => {
+  it("çıkış oturumu SUNUCUDA siler ve çerezi temizler", async () => {
+    const R = await yukle({ NUTRIMIND_AUTH_ENABLED: "1", NUTRIMIND_ALLOW_SIGNUP: "1" });
+    const db = yeniDb();
+    const kayit = await R.handleAuth({
+      db, req: istek(), method: "POST", path: "/api/auth/register",
+      readBody: govde({ email: "a@x.co", password: "parola1234" }),
+    });
+    const cerez = cerezden(kayit);
+    expect(db.prepare("SELECT COUNT(*) AS c FROM sessions").get().c).toBe(1);
+
+    const cikis = await R.handleAuth({ db, req: istek(cerez), method: "POST", path: "/api/auth/logout", readBody: govde({}) });
+    expect(cikis.status).toBe(200);
+    expect(cikis.headers["Set-Cookie"]).toContain("Max-Age=0");
+    expect(db.prepare("SELECT COUNT(*) AS c FROM sessions").get().c).toBe(0);
+
+    // Çalınmış çerez artık işe yaramaz
+    const me = await R.handleAuth({ db, req: istek(cerez), method: "GET", path: "/api/auth/me", readBody: govde({}) });
+    expect(me.status).toBe(401);
+    db.close();
+  });
+
+  it("süresi geçmiş oturum reddedilir VE satırı silinir", async () => {
+    const R = await yukle({ NUTRIMIND_AUTH_ENABLED: "1", NUTRIMIND_ALLOW_SIGNUP: "1" });
+    const db = yeniDb();
+    const t0 = Date.parse("2026-01-01T00:00:00Z");
+    const kayit = await R.handleAuth({
+      db, req: istek(), method: "POST", path: "/api/auth/register",
+      readBody: govde({ email: "a@x.co", password: "parola1234" }), now: t0,
+    });
+    const cerez = cerezden(kayit);
+    const cokSonra = t0 + 400 * 86400000;
+
+    const me = await R.handleAuth({ db, req: istek(cerez), method: "GET", path: "/api/auth/me", readBody: govde({}), now: cokSonra });
+    expect(me.status).toBe(401);
+    expect(db.prepare("SELECT COUNT(*) AS c FROM sessions").get().c).toBe(0); // ölü satır birikmiyor
+    db.close();
+  });
+
+  it("bir kullanıcının çerezi diğerinin hesabını AÇMAZ", async () => {
+    const R = await yukle({ NUTRIMIND_AUTH_ENABLED: "1", NUTRIMIND_ALLOW_SIGNUP: "1" });
+    const db = yeniDb();
+    const a = await R.handleAuth({
+      db, req: istek(), method: "POST", path: "/api/auth/register",
+      readBody: govde({ email: "a@x.co", password: "parola1234" }),
+    });
+    const b = await R.handleAuth({
+      db, req: istek(), method: "POST", path: "/api/auth/register",
+      readBody: govde({ email: "b@x.co", password: "parola1234" }),
+    });
+    const meA = await R.handleAuth({ db, req: istek(cerezden(a)), method: "GET", path: "/api/auth/me", readBody: govde({}) });
+    const meB = await R.handleAuth({ db, req: istek(cerezden(b)), method: "GET", path: "/api/auth/me", readBody: govde({}) });
+    expect(meA.body.user.email).toBe("a@x.co");
+    expect(meB.body.user.email).toBe("b@x.co");
+    expect(meA.body.user.id).not.toBe(meB.body.user.id);
+    db.close();
+  });
+
+  it("uydurma çerez reddedilir", async () => {
+    const R = await yukle({ NUTRIMIND_AUTH_ENABLED: "1" });
+    const db = yeniDb();
+    const r = await R.handleAuth({
+      db, req: istek(`${R.COOKIE_NAME}=uydurma`), method: "GET", path: "/api/auth/me", readBody: govde({}),
+    });
+    expect(r.status).toBe(401);
+    db.close();
+  });
+});
+
+describe("CSRF ve hız sınırı", () => {
+  it("çapraz-site POST reddedilir", async () => {
+    const R = await yukle({ NUTRIMIND_AUTH_ENABLED: "1", NUTRIMIND_ALLOW_SIGNUP: "1" });
+    const db = yeniDb();
+    const r = await R.handleAuth({
+      db,
+      req: { headers: { "sec-fetch-site": "cross-site" }, socket: { remoteAddress: "1.2.3.4" } },
+      method: "POST", path: "/api/auth/login", readBody: govde({ email: "a@x.co", password: "parola1234" }),
+    });
+    expect(r.status).toBe(403);
+    db.close();
+  });
+
+  it("aynı e-postaya art arda denemeler 429 + Retry-After ile durur", async () => {
+    const R = await yukle({ NUTRIMIND_AUTH_ENABLED: "1", NUTRIMIND_ALLOW_SIGNUP: "1" });
+    const db = yeniDb();
+    let sonuncu;
+    for (let i = 0; i < 12; i++) {
+      sonuncu = await R.handleAuth({
+        db, req: istek(), method: "POST", path: "/api/auth/login",
+        readBody: govde({ email: "kurban@x.co", password: `deneme${i}` }), now: 1_700_000_000_000,
+      });
+    }
+    expect(sonuncu.status).toBe(429);
+    expect(Number(sonuncu.headers["Retry-After"])).toBeGreaterThan(0);
+    db.close();
+  });
+
+  it("nginx arkasındaki gerçek IP X-Forwarded-For'un SON sıçramasından alınır", async () => {
+    const R = await yukle({ NUTRIMIND_AUTH_ENABLED: "1" });
+    const ip = R.clientIp({
+      headers: { "x-forwarded-for": "9.9.9.9, 203.0.113.7" },
+      socket: { remoteAddress: "127.0.0.1" },
+    });
+    // Öndeki değerler istemci tarafından uydurulabilir; güvenilir olan sonuncusu.
+    expect(ip).toBe("203.0.113.7");
+  });
+});
