@@ -49,7 +49,7 @@ Dördü de doğrulandı ve düzeltildi:
       (gerçek geri basışın yutulması) imkânsız. Ölçüm: 8/8 denemede uyarı **yok**, menüyü
       dışarı tıklayıp kapatınca da yok, **gerçek** geri basışta uyarı hâlâ çıkıyor.
 - [x] Kapı: typecheck 0 · test **414/414** · build ✓
-- [ ] Commit + deploy
+- [x] Commit + deploy — `6c81399`; canlı `index-C1xEnRqy.js` 414267 B, yerel derlemeyle aynı
 
 ## Sonraki fazlar (onaylı planda ayrıntılı)
 
