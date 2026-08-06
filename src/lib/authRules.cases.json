@@ -1,0 +1,31 @@
+{
+  "email": [
+    { "girdi": "emrullah@example.com", "sorun": null },
+    { "girdi": "  Emrullah@Example.COM  ", "sorun": null },
+    { "girdi": "", "sorun": "E-posta gerekli." },
+    { "girdi": "   ", "sorun": "E-posta gerekli." },
+    { "girdi": "emrullahexample.com", "sorun": "Geçerli bir e-posta adresi yaz." },
+    { "girdi": "emrullah@examplecom", "sorun": "Geçerli bir e-posta adresi yaz." },
+    { "girdi": "emrullah@example.c", "sorun": "Geçerli bir e-posta adresi yaz." },
+    { "girdi": "emrullah @example.com", "sorun": "Geçerli bir e-posta adresi yaz." },
+    {
+      "girdi": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa@example.com",
+      "sorun": "E-posta çok uzun."
+    }
+  ],
+  "password": [
+    { "girdi": "parola12", "sorun": null },
+    { "girdi": "parola1", "sorun": "Parola en az 8 karakter olmalı." },
+    { "girdi": "", "sorun": "Parola gerekli." },
+    { "girdi": "        ", "sorun": "Parola yalnızca boşluktan oluşamaz." },
+    {
+      "girdi": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "sorun": null
+    },
+    {
+      "girdi": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "sorun": "Parola en fazla 200 karakter olabilir."
+    },
+    { "girdi": "şifreÇÖĞ", "sorun": null }
+  ]
+}

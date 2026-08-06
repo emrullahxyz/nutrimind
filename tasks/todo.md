@@ -70,6 +70,11 @@ Dördü de doğrulandı ve düzeltildi:
 - [x] Kapı: typecheck 0 · test **422/422** · build ✓
 - [x] Commit + deploy — `007e834`; canlı `index-C304DqZ7.js` 415512 B, yerel derlemeyle aynı
 
+**Kullanıcı doğrulaması (2026-08-06):** ✅ ana kamera açılıyor, odaklama çok iyi çalışıyor.
+Kalan tek şikâyet: birkaç denemeden sonra AI hatası → **rate limit**. `NUTRI_AI_RATE_VISION`
+sunucuda varsayılan **5/dk** (`server/ai.js:77`). Kod değişikliği gerekmiyor, prod `.env`'de
+tek satır. Kullanıcı "sonra çözeriz" dedi — **bekliyor.**
+
 ### Kalan borç (ayrı bir iş)
 `MealForm`/`AliasForm`/`NutritionSheet`/`RecipeBuilder` `Modal`'ın geçmiş mantığını
 elle KOPYALIYOR ve temizlikte `history.back()` yerine `replaceState` kullanıyor —
@@ -79,7 +84,11 @@ kez tekrarlanmaz. Kapsam 5 bileşen, ayrıca planlanmalı.
 
 ## Sonraki fazlar (onaylı planda ayrıntılı)
 
-- [ ] **B** Saf auth ilkelleri (`server/auth.js` saf yarısı + `src/lib/authRules.ts`)
+- [x] **B** Saf auth ilkelleri — `server/auth.js` (Claude: scrypt/çerez/limit/köken),
+      `src/lib/authRules.ts` + paylaşılan `authRules.cases.json` + iki test dosyası (agy).
+      Uygulamanın davranışı DEĞİŞMEDİ; hiçbir yerden çağrılmıyor. Test 422 → **480**.
+      Kayma koruması: iki test de AYNI vaka tablosunu kendi uygulamasına karşı koşuyor.
+      ⚠️ agy kapsam dışına çıkıp iki salt-okunur referans dosyasını sildi; geri alındı (L11).
 - [ ] **C** Service worker sızıntısı (`/api/*` önbelleğe girmesin, cache v2 + temizlik)
 - [ ] **D** DB göçü — **EN RİSKLİ**, `server/index.js` değişikliği için ayrıca onay alınacak
 - [ ] **E** Oturum + e-posta/şifre (bayrak kapalı)
