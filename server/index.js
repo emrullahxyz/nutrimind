@@ -21,6 +21,7 @@ const { randomBytes } = require("node:crypto");
 const { DatabaseSync } = require("node:sqlite");
 const { parseMealText, parseMealImage } = require("./ai.js");
 const { migrate, OWNER_ID } = require("./migrate.js");
+const authRoutes = require("./authRoutes.js");
 
 const PORT = Number(process.env.NUTRI_PORT || 8790);
 const DB_PATH = process.env.NUTRI_DB || path.join(__dirname, "data.db");
@@ -575,9 +576,18 @@ async function offProduct(barcode) {
 const server = http.createServer(async (req, res) => {
   const u = new URL(req.url, "http://localhost");
   const p = u.pathname;
-  // Bu isteğin sahibi. Faz E'de çerezden çözülecek; şimdilik sabit.
+  // Bu isteğin sahibi. Faz F'de çereze bağlanacak; şimdilik sabit.
   const uid = currentUserId();
   try {
+    // Tüm kimlik uçları TEK bir önek bloğundan geçiyor. Bu şekilde yazılmasının
+    // sebebi: Google girişi (Faz H) iki uç daha ekleyecek ve index.js'e SIFIR
+    // satır eklemesi gerekecek. `handleAuth` asla throw etmez, `{status, body,
+    // headers?}` döner; `send()` zaten bir headers nesnesi alıyor.
+    if (p.startsWith("/api/auth/")) {
+      const r = await authRoutes.handleAuth({ db, req, method: req.method, path: p, readBody });
+      return send(res, r.status, r.body, r.headers);
+    }
+
     if (req.method === "GET" && p === "/api/data")
       return send(res, 200, {
         goals: getGoals(uid),
