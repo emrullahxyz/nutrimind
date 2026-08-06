@@ -102,7 +102,20 @@ kez tekrarlanmaz. Kapsam 5 bileşen, ayrıca planlanmalı.
       gelmiyor ("Veri alınamadı" ekranı). Gerçek çevrimdışı desteği kullanıcıya göre
       anahtarlanmış bir IndexedDB deposu ister — ayrı bir iş.
       Deploy edildi (`7ed7163`): canlı `sw.js` HTTP 200, `nutrimind-v2` + `/api/` filtresi doğrulandı.
-- [ ] **D** DB göçü — **EN RİSKLİ**, `server/index.js` değişikliği için ayrıca onay alınacak
+- [x] **D** DB göçü v0 → v2. `server/migrate.js` (+12 test) ve `server/index.js`'te 19 sorgu
+      noktasının kapsamlanması. **Kullanıcı onayı alındı** (CLAUDE.md'nin donmuş dosya kuralı).
+      Oturum kavramı YOK — `currentUserId()` sabit sahibi döndürüyor, uygulama aynen bugünkü
+      gibi çalışıyor. Faz E'de değişecek TEK yer o fonksiyon.
+      **Prod yedeği:** `data.db.bak-2026-08-06-1030` (sunucuda + yerel kopya), integrity ok.
+      **Gerçek verinin kopyasında doğrulandı:** göç 6 ms, 18 gün / 38 besin / 5 config
+      korundu, üç tablonun içeriği **byte-byte aynı**, gidiş-dönüş birebir geri getiriyor.
+      **Sunucu açılışta göçü otomatik yaptı**, `/api/data` veriyi bozulmadan döndürdü
+      (hedef 2530 kcal, 20 Tem–6 Ağu). Dört yazma ucu da 200.
+      **İzolasyon kanıtı:** ikinci kullanıcının verisi `/api/data`'da hiç görünmüyor;
+      `weight` anahtarı ikisinde de var ve karışmıyor (v0'da bu PK çakışmasıydı).
+      **Saldırı denemeleri:** başkasının besinini id ile ezmek → 404, silmek → kayda
+      dokunmuyor. `aliasExists` bilerek kapsamsız (id'ler global benzersiz olmalı).
+      ⏳ **Prod'a deploy EDİLMEDİ** — göç, yeni `index.js` sunucuya gittiği anda çalışacak.
 - [ ] **E** Oturum + e-posta/şifre (bayrak kapalı)
 - [ ] **F** Giriş ekranı + frontend kapısı
 - [ ] **G** Kayıt sihirbazı (reflog'dan kurtar + `goals` hatasını düzelt + premium görünüm)
