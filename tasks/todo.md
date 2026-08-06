@@ -90,7 +90,18 @@ kez tekrarlanmaz. Kapsam 5 bileşen, ayrıca planlanmalı.
       Kayma koruması: iki test de AYNI vaka tablosunu kendi uygulamasına karşı koşuyor.
       agy'nin diff'i denetlendi: **kapsam ihlali yok**. (Turda iki silinmiş dosya görüp agy'yi
       suçlamıştım; onları kullanıcı silmişti — bkz. L11.)
-- [ ] **C** Service worker sızıntısı (`/api/*` önbelleğe girmesin, cache v2 + temizlik)
+- [x] **C** Service worker sızıntısı — `public/sw.js`. v1 HER başarılı GET'i koşulsuz
+      önbelleğe yazıyordu: `/api/data` yanıtları (kullanıcının tüm beslenme verisi) Cache
+      Storage'a düşüyor ve ağ tökezleyince oradan servis ediliyordu. Çok kullanıcıda bu
+      doğrudan sızıntı olurdu. Düzeltme: `/api/*` hiç önbelleğe girmiyor, yalnızca
+      same-origin, `nutrimind-v2` + `activate`'te eski cache'in **silinmesi**.
+      Tarayıcıda ölçüldü (v1'e sahte kullanıcı verisi konup yeni SW yüklendi):
+      v1 silindi ✓ · v2 yalnızca `/`, JS, CSS, logo içeriyor ✓ · SW kontroldeyken
+      `/api/data` çağrıldı, önbelleğe girmedi ✓ · Google Fonts artık önbelleklenmiyor ✓
+      **Davranış değişikliği:** çevrimdışıyken uygulama kabuğu yükleniyor ama veri
+      gelmiyor ("Veri alınamadı" ekranı). Gerçek çevrimdışı desteği kullanıcıya göre
+      anahtarlanmış bir IndexedDB deposu ister — ayrı bir iş.
+      ⏳ **Deploy bekliyor** — SW'nin telefona ulaşması bir deploy turu gerektiriyor.
 - [ ] **D** DB göçü — **EN RİSKLİ**, `server/index.js` değişikliği için ayrıca onay alınacak
 - [ ] **E** Oturum + e-posta/şifre (bayrak kapalı)
 - [ ] **F** Giriş ekranı + frontend kapısı
