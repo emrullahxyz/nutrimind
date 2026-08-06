@@ -101,7 +101,7 @@ kez tekrarlanmaz. Kapsam 5 bileşen, ayrıca planlanmalı.
       **Davranış değişikliği:** çevrimdışıyken uygulama kabuğu yükleniyor ama veri
       gelmiyor ("Veri alınamadı" ekranı). Gerçek çevrimdışı desteği kullanıcıya göre
       anahtarlanmış bir IndexedDB deposu ister — ayrı bir iş.
-      ⏳ **Deploy bekliyor** — SW'nin telefona ulaşması bir deploy turu gerektiriyor.
+      Deploy edildi (`7ed7163`): canlı `sw.js` HTTP 200, `nutrimind-v2` + `/api/` filtresi doğrulandı.
 - [ ] **D** DB göçü — **EN RİSKLİ**, `server/index.js` değişikliği için ayrıca onay alınacak
 - [ ] **E** Oturum + e-posta/şifre (bayrak kapalı)
 - [ ] **F** Giriş ekranı + frontend kapısı
