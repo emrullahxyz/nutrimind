@@ -62,8 +62,10 @@ export function ExerciseModal({ isOpen, onClose, date }: Props) {
     window.history.pushState({ isModal: true, title: "Egzersiz" }, "");
     isPoppedRef.current = false;
 
-    const handlePopState = () => {
-      if (consumeProgrammaticBack()) return;
+    const handlePopState = (e: PopStateEvent) => {
+      // Olay geçiliyor — App'in global dinleyicisi bizden önce çalışıp sayacı
+      // düşürmüş oluyor; aynı olay için ikimiz de `true` almalıyız.
+      if (consumeProgrammaticBack(e)) return;
       isPoppedRef.current = true;
       onCloseRef.current();
     };

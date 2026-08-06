@@ -12,6 +12,7 @@ import {
   Plus,
 } from "lucide-react";
 import { useBodyScrollLock } from "../hooks/useBodyScrollLock";
+import { markProgrammaticBack } from "../lib/backStack";
 
 export type TabType = "daily" | "history" | "aliases" | "settings";
 
@@ -111,7 +112,15 @@ export function BottomNav({
       // FAB'a tekrar tıklama): pushlanan geçmiş girdisini temizlemek için geri
       // git — aksi halde bir sonraki gerçek geri tuşu bu "hayalet" girdiyi
       // tüketir, o anki gerçek ekranı değil.
+      //
+      // `markProgrammaticBack()` ŞART ve unutulmuştu. Bu `back()` asenkron: bir
+      // menü öğesi (ör. "Yemek Taraması") aynı anda yeni bir modal açtığında,
+      // geciken `popstate` o YENİ modalın dinleyicisine düşüyor ve onu açılır
+      // açılmaz kapatıyordu — "FAB > Yemek Taraması açılmıyor" ve "kamera bazen
+      // hiç açılmıyor" şikâyetlerinin sebebi buydu. Yarış olduğu için aralıklıydı.
+      // Modal ve ExerciseModal bu sayacı zaten kullanıyordu; burası tek istisnaydı.
       if (!isPoppedRef.current && window.history.state?.isModal) {
+        markProgrammaticBack();
         window.history.back();
       }
     };

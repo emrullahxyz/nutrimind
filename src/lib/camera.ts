@@ -188,12 +188,41 @@ export function useCameraStream(active: boolean): UseCameraStreamResult {
     void (async () => {
       try {
         stream = await navigator.mediaDevices.getUserMedia({
-          video: { facingMode: { ideal: "environment" } },
+          video: {
+            facingMode: { ideal: "environment" },
+            // ÇÖZÜNÜRLÜK İSTEMEK ŞART. İstenmediğinde tarayıcı düşük bir
+            // varsayılan seçiyor (Android'de sıklıkla 640x480) ve bu İKİ şeyi
+            // birden bozuyordu:
+            //   1. Akış telefon ekranına büyütüldüğü için görüntü BULANIK.
+            //   2. Çerçeveye kırpılan bölge o küçük kareden alındığı için AI'a
+            //      giden etiket okunamayacak kadar küçük gidiyor — "etiketi
+            //      bazen algılıyor bazen algılamıyor" şikâyetinin sebebi bu.
+            // `ideal` desteklenmiyorsa HATA VERMEZ, tarayıcı en yakınını seçer.
+            width: { ideal: 2560 },
+            height: { ideal: 1440 },
+          },
         });
         if (stopped) {
           stream.getTracks().forEach((t) => t.stop());
           return;
         }
+
+        // Sürekli otomatik odak. Bazı Android cihazlarda `getUserMedia` akışı
+        // sabit odakla başlıyor; etiket gibi YAKIN çekimlerde görüntü net
+        // olmuyor. Desteklenmeyen cihazda `applyConstraints` reddediyor —
+        // sessizce yutuyoruz, kamera yine çalışır.
+        const track = stream.getVideoTracks()[0];
+        if (track) {
+          try {
+            await track.applyConstraints({
+              advanced: [{ focusMode: "continuous" } as MediaTrackConstraintSet],
+            });
+          } catch {
+            /* cihaz desteklemiyor — sorun değil */
+          }
+        }
+        if (stopped) return;
+
         const video = videoRef.current;
         if (!video) {
           release();
@@ -202,8 +231,36 @@ export function useCameraStream(active: boolean): UseCameraStreamResult {
         // muted + playsInline JSX tarafında: mobil tarayıcılar sessiz olmayan
         // videoyu kendiliğinden oynatmaz.
         video.srcObject = stream;
-        await video.play();
+
+        // Metadata gelmeden `play()` çağırmak bazı Android tarayıcılarında
+        // reddediliyor — kameranın "bazen hiç açılmaması" bununla uyumlu.
+        // Ölçüler gelene kadar bekliyoruz; `videoWidth` deklanşörün de ön koşulu.
+        if (!video.videoWidth) {
+          await new Promise<void>((res) => {
+            const done = () => {
+              video.removeEventListener("loadedmetadata", done);
+              res();
+            };
+            video.addEventListener("loadedmetadata", done);
+            // Olay hiç gelmezse takılı kalmayalım.
+            window.setTimeout(done, 3000);
+          });
+        }
         if (stopped) return;
+
+        // `play()` reddi tek başına ölümcül değil: akış bağlı ve kare akıyor
+        // olabilir. Kamerayı kapatmak yerine devam ediyoruz.
+        try {
+          await video.play();
+        } catch {
+          /* autoplay reddi — aşağıdaki videoWidth kontrolü asıl kararı verir */
+        }
+        if (stopped) return;
+        if (!video.videoWidth) {
+          release();
+          setError("Kamera görüntüsü başlatılamadı. Ekranı kapatıp tekrar dene.");
+          return;
+        }
         setReady(true);
       } catch (e) {
         if (stopped) return;

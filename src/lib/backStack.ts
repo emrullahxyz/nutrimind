@@ -46,8 +46,17 @@ export function classifyPopState(params: {
   newState: BackStackState | null | undefined;
   hasOpenOverlay: boolean;
   hasActiveSubView: boolean;
+  /** Bu `popstate` bir bileşenin kendi temizliğindeki `back()`'inden mi doğdu? */
+  isProgrammaticBack?: boolean;
 }): PopStateDecision {
-  const { newState, hasOpenOverlay, hasActiveSubView } = params;
+  const { newState, hasOpenOverlay, hasActiveSubView, isProgrammaticBack } = params;
+
+  // Kendi ürettiğimiz geri gidiş: kullanıcının niyeti değil, temizlik artığı.
+  // Bunu "kullanıcı kökte geri bastı" sanmak sahte çıkış uyarısını doğuruyordu
+  // (FAB menüsünden bir öğe seçince ya da menüyü dışarı tıklayıp kapatınca).
+  if (isProgrammaticBack) {
+    return "ignore";
+  }
 
   // Modal'ın kendi ittiği durum ya da ekranda açık bir overlay (scroll kilidi
   // sayacı > 0) varsa: o bileşen zaten kendi dinleyicisinde kapanışı yönetir.
@@ -84,7 +93,10 @@ export function shouldExitOnSecondPress(
 }
 
 // ---------------------------------------------------------------------------
-// Programatik `history.back()` yutma sayacı — Modal ve ExerciseModal PAYLAŞIR.
+// Programatik `history.back()` yutma sayacı — Modal, ExerciseModal ve BottomNav'ın
+// FAB menüsü PAYLAŞIR. Temizliğinde `history.back()` çağıran HER bileşen bunu
+// çağırmak zorunda; BottomNav bir süre çağırmıyordu ve FAB'dan açılan modallar
+// açılır açılmaz kapanıyordu (bkz. o dosyadaki not).
 //
 // Bir overlay kapanırken temizliği `history.back()` çağırır. Bu asenkron bir
 // `popstate` doğurur; overlay o sırada yeniden mount olduysa (React StrictMode
@@ -99,23 +111,43 @@ export function shouldExitOnSecondPress(
 // ---------------------------------------------------------------------------
 
 let pendingProgrammaticBacks = 0;
+/** Programatik olduğu SAPTANMIŞ son olay. Aynı `popstate`'i birden çok dinleyici
+ *  görür (App'in globali + o an açık modal); hepsi aynı cevabı almalı ama sayaç
+ *  yalnızca BİR kez düşmeli. */
+let markedEvent: unknown = null;
 
 /** Temizlikte `history.back()` çağırmadan HEMEN ÖNCE çağır. */
 export function markProgrammaticBack(): void {
   pendingProgrammaticBacks += 1;
 }
 
-/** `popstate` dinleyicisinin ilk satırı. `true` dönerse olay bizim kendi
- *  `back()`'imizden geliyordur — kapatma sayma, dokunma. */
-export function consumeProgrammaticBack(): boolean {
+/**
+ * `popstate` dinleyicisinin ilk satırı. `true` dönerse olay bizim kendi
+ * `back()`'imizden geliyordur — kapatma sayma, çıkış mantığı çalıştırma.
+ *
+ * OLAYI GEÇ (`event`): aynı olay için tekrar sorulduğunda sayaç düşürülmeden
+ * yine `true` döner. Buna ihtiyaç var çünkü App'in global dinleyicisi (önce
+ * çalışır, çünkü ebeveyn önce mount olur) ile modalın kendi dinleyicisi AYNI
+ * olayı görüyor. App katılmasaydı iki hata birden çıkardı:
+ *   1. FAB menüsü kapanırken doğan `back()` App'e "kullanıcı kökte geri bastı"
+ *      gibi görünüp sahte "uygulamadan çıkmak için tekrar bas" uyarısını
+ *      tetikliyordu;
+ *   2. ortada tüketecek bir modal yoksa sayaç birikip kullanıcının GERÇEK geri
+ *      basışını yerdi.
+ * App her `popstate`'te bunu çağırdığı için sayaç asla birikmez.
+ */
+export function consumeProgrammaticBack(event?: unknown): boolean {
+  if (event !== undefined && event !== null && markedEvent === event) return true;
   if (pendingProgrammaticBacks > 0) {
     pendingProgrammaticBacks -= 1;
+    if (event !== undefined && event !== null) markedEvent = event;
     return true;
   }
   return false;
 }
 
-/** Yalnızca testler için — modül düzeyi sayacı sıfırlar. */
+/** Yalnızca testler için — modül düzeyi sayacı ve işaretli olayı sıfırlar. */
 export function resetProgrammaticBacks(): void {
+  markedEvent = null;
   pendingProgrammaticBacks = 0;
 }
