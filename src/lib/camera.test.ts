@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { cropRectFor, guideRectFor, visionModeFor } from "./camera";
-import type { ScanMode } from "./camera";
+import { cropRectFor, guideRectFor, pickBackCameraDeviceId, visionModeFor } from "./camera";
+import type { CameraDeviceLike, ScanMode } from "./camera";
 
 // ============================================================================
 // Bug: kamera yaşam döngüsü barkod dedektörüne kilitliydi (`cameraScanSupported`
@@ -14,6 +14,75 @@ import type { ScanMode } from "./camera";
 // ============================================================================
 
 const LIVE_MODES: ScanMode[] = ["scan_food", "barcode", "food_label"];
+
+// ============================================================================
+// Bug: kullanıcı telefonda taramaya girince cihaz ULTRA-GENİŞ kamerayı açıyordu.
+// `facingMode: "environment"` yalnızca "arkaya bakan bir kamera" der, hangisi
+// olduğunu söylemez. Ultra-geniş lensler genelde SABİT ODAKLI olduğu için besin
+// etiketi gibi yakın çekimler net çıkmıyor — "odak yapmadı, bulanık" şikâyeti.
+// ============================================================================
+describe("pickBackCameraDeviceId", () => {
+  const vid = (deviceId: string, label: string): CameraDeviceLike => ({ deviceId, label, kind: "videoinput" });
+
+  it("Android: aynı yöne bakan kameralardan en küçük camera2 indeksi ana kameradır", () => {
+    const secim = pickBackCameraDeviceId([
+      vid("ana", "camera2 0, facing back"),
+      vid("on", "camera2 1, facing front"),
+      vid("genis", "camera2 2, facing back"),
+    ]);
+    expect(secim).toBe("ana");
+  });
+
+  it("Android: liste sırası ters olsa da ana kamera seçilir", () => {
+    const secim = pickBackCameraDeviceId([
+      vid("genis", "camera2 2, facing back"),
+      vid("ana", "camera2 0, facing back"),
+      vid("on", "camera2 1, facing front"),
+    ]);
+    expect(secim).toBe("ana");
+  });
+
+  it("iOS: ultra-geniş ve telefoto elenir, düz 'Back Camera' seçilir", () => {
+    const secim = pickBackCameraDeviceId([
+      vid("on", "Front Camera"),
+      vid("genis", "Back Ultra Wide Camera"),
+      vid("ana", "Back Camera"),
+      vid("tele", "Back Telephoto Camera"),
+    ]);
+    expect(secim).toBe("ana");
+  });
+
+  it("ses cihazları yok sayılır", () => {
+    const secim = pickBackCameraDeviceId([
+      { deviceId: "mik", label: "Default - Microphone", kind: "audioinput" },
+      vid("ana", "Back Camera"),
+    ]);
+    expect(secim).toBe("ana");
+  });
+
+  it("etiketler boşken (izin verilmemiş) null döner — yanlış kamerayı seçmektense dokunma", () => {
+    expect(
+      pickBackCameraDeviceId([vid("a", ""), vid("b", ""), vid("c", "")]),
+    ).toBeNull();
+  });
+
+  it("hiç kamera yoksa null döner", () => {
+    expect(pickBackCameraDeviceId([])).toBeNull();
+    expect(pickBackCameraDeviceId([{ deviceId: "m", label: "Mic", kind: "audioinput" }])).toBeNull();
+  });
+
+  it("tek arka kamera ultra-geniş bile olsa onu seçer (hiç yoktan iyidir)", () => {
+    const secim = pickBackCameraDeviceId([
+      vid("on", "Front Camera"),
+      vid("genis", "Back Ultra Wide Camera"),
+    ]);
+    expect(secim).toBe("genis");
+  });
+
+  it("masaüstü: tek kamera olduğu gibi seçilir", () => {
+    expect(pickBackCameraDeviceId([vid("web", "Integrated Camera")])).toBe("web");
+  });
+});
 
 describe("visionModeFor", () => {
   it("yalnızca etiket modu BİREBİR okuma istemine gider", () => {

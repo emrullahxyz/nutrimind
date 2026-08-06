@@ -1,4 +1,5 @@
 import { useMemo, useState, useEffect, useRef } from "react";
+import { consumeProgrammaticBack } from "../lib/backStack";
 import { ArrowLeft, Sparkles, Plus, Check } from "lucide-react";
 import {
   EMPTY_DRAFT,
@@ -200,7 +201,12 @@ export function MealForm({
     isPoppedRef.current = false;
     window.history.pushState({ isModal: true, modalType: "add_meal", tab: "daily" }, "");
 
-    const handlePopState = () => {
+    const handlePopState = (e: PopStateEvent) => {
+      // BAŞKA bir overlay'in temizliğinden doğan `back()` bize ait değil.
+      // `ScanSheet` kapanırken tam olarak bunu yapıyor; sayaca bakılmadığı için
+      // tarama sonucuyla açılan bu form AÇILIR AÇILMAZ kapanıyor ve AI'ın
+      // okuduğu besin sessizce düşüyordu — "fotoğrafı seçtim, hiçbir tepki yok".
+      if (consumeProgrammaticBack(e)) return;
       isPoppedRef.current = true;
       onClose();
     };

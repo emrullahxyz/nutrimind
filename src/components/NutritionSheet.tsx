@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react";
+import { consumeProgrammaticBack } from "../lib/backStack";
 import { ArrowLeft, Flame, Beef, Wheat, Droplet, Trash2, Plus } from "lucide-react";
 import type { MealItem, Nutrition } from "../types";
 import { useBodyScrollLock } from "../hooks/useBodyScrollLock";
@@ -36,7 +37,10 @@ export function NutritionSheet({ isOpen, onClose, meal, onSave, onDelete, onEdit
     isPoppedRef.current = false;
     window.history.pushState({ isModal: true, modalType: "nutrition", tab: "daily" }, "");
 
-    const handlePopState = () => {
+    const handlePopState = (e: PopStateEvent) => {
+      // Başka bir overlay'in temizliğinden doğan `back()` bize ait değil
+      // (bkz. MealForm'daki aynı not).
+      if (consumeProgrammaticBack(e)) return;
       isPoppedRef.current = true;
       onClose();
     };
