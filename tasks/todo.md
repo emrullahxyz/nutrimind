@@ -28,6 +28,29 @@ Bu dosya CLAUDE.md'nin "Görev Yönetimi" bölümünün istediği çalışan pla
       senkronlandı (yedek: `ai.js.bak-2026-08-06-0857`), `nutri-api` aktif,
       canlı `/api/ai/vision` **200** döndü — önceki turdaki "Gemini kotası 0" sorunu geçmiş.
 
+## FAZ A2 — gerçek cihaz geri bildirimi (telefonda test sonrası)
+
+Dördü de doğrulandı ve düzeltildi:
+
+- [x] **Bulanık görüntü + "etiketi bazen algılamıyor"** — tek kök sebep: `getUserMedia`
+      HİÇBİR çözünürlük istemiyordu, tarayıcı düşük varsayılan seçiyordu. `width/height
+      ideal 2560×1440` eklendi. AI'a giden etiket görseli **265×390 → 607×893** (piksel
+      sayısı ~5 katı). Etiket JPEG kalitesi 0.85 → 0.92 (ince yazıyı en çok artefakt yiyor).
+- [x] **Yakın çekimde odak** — `track.applyConstraints({advanced:[{focusMode:"continuous"}]})`,
+      desteklemeyen cihazda sessizce yutuluyor (catch yolu tarayıcıda doğrulandı).
+- [x] **"Kamera bazen hiç açılmıyor"** — `BottomNav.tsx:115` FAB menüsü kapanırken
+      `history.back()` çağırıyor ama `markProgrammaticBack()` **çağırmıyordu**. Geciken
+      `popstate` yeni açılan tarayıcıyı anında kapatıyordu. Yarış olduğu için aralıklıydı.
+      Ölçüm: FAB > Yemek Taraması **0/5 → 8/8** açılıyor.
+- [x] **Sahte "uygulamadan çıkmak için…" uyarısı** — sayaç yalnızca modalın dinleyicisini
+      koruyordu; App'in global dinleyicisi aynı olayı görüp "kullanıcı kökte geri bastı"
+      sanıyordu. `consumeProgrammaticBack(event)` artık olay-farkında: aynı olay için tüm
+      dinleyiciler `true` alır, sayaç bir kez düşer. App de katıldığı için sayaç birikmesi
+      (gerçek geri basışın yutulması) imkânsız. Ölçüm: 8/8 denemede uyarı **yok**, menüyü
+      dışarı tıklayıp kapatınca da yok, **gerçek** geri basışta uyarı hâlâ çıkıyor.
+- [x] Kapı: typecheck 0 · test **414/414** · build ✓
+- [ ] Commit + deploy
+
 ## Sonraki fazlar (onaylı planda ayrıntılı)
 
 - [ ] **B** Saf auth ilkelleri (`server/auth.js` saf yarısı + `src/lib/authRules.ts`)

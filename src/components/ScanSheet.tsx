@@ -80,9 +80,11 @@ const MODE_HINT: Record<ScanMode, string> = {
   barcode: "Barkodu çerçeveye getir — otomatik okunur",
 };
 
-/** Etiket okuma ayrıntı ister (küçük punto), yemek fotoğrafı istemez. */
+/** Etiket okuma ayrıntı ister (küçük punto besin tablosu), yemek fotoğrafı istemez.
+ *  Etikette kalite bilerek yüksek: JPEG artefaktları en çok ince yazıyı yiyor ve
+ *  kırpılmış kare zaten küçük olduğu için birkaç KB'lik fark önemsiz. */
 const CAPTURE_OPTS: Record<VisionMode, { maxDim: number; quality: number }> = {
-  food_label: { maxDim: 1600, quality: 0.85 },
+  food_label: { maxDim: 1600, quality: 0.92 },
   food_photo: { maxDim: 1024, quality: 0.7 },
 };
 

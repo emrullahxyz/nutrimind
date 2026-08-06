@@ -48,9 +48,11 @@ export function Modal({
     // Modal açıldığında tarayıcı geçmişine push et
     window.history.pushState({ isModal: true, title: titleRef.current }, "");
 
-    const handlePopState = () => {
+    const handlePopState = (e: PopStateEvent) => {
       // Kendi temizliğimizin doğurduğu back() ise: yut, kapatma sayma.
-      if (consumeProgrammaticBack()) return;
+      // Olay geçiliyor: App'in global dinleyicisi bizden ÖNCE çalışıp sayacı
+      // düşürmüş oluyor; aynı olay için ikimiz de `true` almalıyız.
+      if (consumeProgrammaticBack(e)) return;
       isPoppedRef.current = true;
       onCloseRef.current();
     };

@@ -1,5 +1,11 @@
-import { describe, expect, it } from "vitest";
-import { classifyPopState, shouldExitOnSecondPress } from "./backStack";
+import { beforeEach, describe, expect, it } from "vitest";
+import {
+  classifyPopState,
+  consumeProgrammaticBack,
+  markProgrammaticBack,
+  resetProgrammaticBacks,
+  shouldExitOnSecondPress,
+} from "./backStack";
 
 // ============================================================================
 // Bug: Ayarlar > Profil'den ya da Geçmiş > hafta/gün detayından geri tuşuyla
@@ -87,6 +93,84 @@ describe("classifyPopState", () => {
       hasActiveSubView: false,
     });
     expect(decision).toBe("evaluate-exit");
+  });
+});
+
+// ============================================================================
+// Bug: FAB menüsünden "Yemek Taraması" seçilince tarayıcı ya hiç açılmıyor ya
+// da açılırken "Uygulamadan çıkmak için bir kez daha geri basın" uyarısı
+// çıkıyordu. Sebep: menünün temizliğindeki `history.back()` asenkron bir
+// popstate doğuruyor ve bunu AYNI ANDA iki dinleyici görüyor — App'in globali
+// (önce) ve yeni açılan modalınki (sonra). Sayaç tek tüketimliydi, dolayısıyla
+// yalnızca biri korunabiliyordu.
+// ============================================================================
+describe("programatik back sayacı", () => {
+  beforeEach(() => resetProgrammaticBacks());
+
+  it("işaretlenmemiş bir olay programatik sayılmaz", () => {
+    expect(consumeProgrammaticBack({})).toBe(false);
+  });
+
+  it("aynı olay için birden çok dinleyici de true alır, sayaç bir kez düşer", () => {
+    const olay = { tur: "popstate" };
+    markProgrammaticBack();
+
+    expect(consumeProgrammaticBack(olay)).toBe(true); // App'in globali
+    expect(consumeProgrammaticBack(olay)).toBe(true); // modalın kendi dinleyicisi
+    expect(consumeProgrammaticBack(olay)).toBe(true); // fazladan bir dinleyici de olsa
+
+    // Sayaç yalnızca bir kez düştüğü için BAŞKA bir olay artık korunmaz.
+    expect(consumeProgrammaticBack({ tur: "baska" })).toBe(false);
+  });
+
+  it("iki ayrı programatik back, iki ayrı olayı korur", () => {
+    const a = { n: 1 };
+    const b = { n: 2 };
+    markProgrammaticBack();
+    markProgrammaticBack();
+    expect(consumeProgrammaticBack(a)).toBe(true);
+    expect(consumeProgrammaticBack(b)).toBe(true);
+    expect(consumeProgrammaticBack({ n: 3 })).toBe(false);
+  });
+
+  it("App her popstate'te sorduğu için sayaç birikmez (tüketecek modal olmasa bile)", () => {
+    markProgrammaticBack();
+    // Modal yok; yalnızca App sordu.
+    expect(consumeProgrammaticBack({ n: 1 })).toBe(true);
+    // Kullanıcının GERÇEK geri basışı artık yutulmamalı.
+    expect(consumeProgrammaticBack({ n: 2 })).toBe(false);
+  });
+
+  it("olaysız çağrı eski davranışı korur (geriye dönük çağrılar)", () => {
+    markProgrammaticBack();
+    expect(consumeProgrammaticBack()).toBe(true);
+    expect(consumeProgrammaticBack()).toBe(false);
+  });
+});
+
+describe("classifyPopState — programatik back", () => {
+  it("kendi temizliğimizden doğan popstate çıkış mantığını TETİKLEMEZ", () => {
+    // Bu bileşim düzeltmeden önce "evaluate-exit" dönüyordu: FAB menüsü
+    // kapandığı için overlay yok, durum kök — yani sahte çıkış uyarısı.
+    expect(
+      classifyPopState({
+        newState: { isRoot: true },
+        hasOpenOverlay: false,
+        hasActiveSubView: false,
+        isProgrammaticBack: true,
+      }),
+    ).toBe("ignore");
+  });
+
+  it("gerçek kullanıcı basışında (programatik değil) çıkış mantığı çalışır", () => {
+    expect(
+      classifyPopState({
+        newState: { isRoot: true },
+        hasOpenOverlay: false,
+        hasActiveSubView: false,
+        isProgrammaticBack: false,
+      }),
+    ).toBe("evaluate-exit");
   });
 });
 

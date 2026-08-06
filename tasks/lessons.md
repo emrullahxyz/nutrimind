@@ -68,6 +68,31 @@ yapmıyor ve `getBoundingClientRect` bayat değer dönüyor. Elemanın **inline 
 `innerText`, geçiş animasyonları) güvenme. Layout'tan bağımsız kanıta bak: inline stil, React
 çıktısı, ağ isteğinin gövdesi. Ölçüm aracını suçlamadan önce `document.visibilityState`'i kontrol et.
 
+## L9 — Paylaşılan bir "yut" sayacına TÜM dinleyiciler katılmalı
+
+**Olay:** `markProgrammaticBack`/`consumeProgrammaticBack` sayacını yalnızca modaller
+kullanıyordu. İki hata birden çıktı: (a) `BottomNav` sayacı hiç çağırmıyordu, bu yüzden FAB'dan
+açılan tarayıcı açılır açılmaz kapanıyordu; (b) sayacı çağıran modal olsa bile App'in global
+dinleyicisi aynı `popstate`'i görüp "kullanıcı kökte geri bastı" sanıyor ve sahte çıkış uyarısı
+gösteriyordu. Ayrıca tüketecek modal yoksa sayaç birikip gerçek geri basışı yiyordu.
+
+**Kural:** Bir olayı "bizim ürettiğimiz" diye yutan mekanizmada, o olayı gören **her** dinleyici
+aynı cevabı almalı ve sayaç **bir kez** düşmeli — bu yüzden olayın kendisi anahtar olarak
+kullanılır. Her zaman mount olan bir dinleyici (App'inki) mutlaka katılmalı, yoksa sayaç birikir.
+Yeni bir `history.back()` çağrısı eklerken: temizlik artığı mı (işaretle) yoksa kullanıcının
+niyeti mi (işaretleme) diye sor.
+
+## L10 — Medya kısıtı istemezsen tarayıcı en düşüğünü verir
+
+**Olay:** `getUserMedia({video:{facingMode}})` çözünürlük istemiyordu. Tarayıcı düşük bir
+varsayılan seçtiği için görüntü ekranda bulanık görünüyor VE kırpılan kare AI'a okunamayacak
+kadar küçük gidiyordu. Kullanıcı iki ayrı şikâyet olarak bildirdi ("bulanık", "bazen
+algılamıyor"); tek kök sebepti.
+
+**Kural:** `getUserMedia`'da her zaman `width/height: {ideal: …}` iste (`ideal` desteklenmezse
+hata vermez). Görüntü kalitesi şikâyetlerinde önce elde edilen `videoWidth/videoHeight`'ı ölç —
+CSS/görsel katmanı suçlamadan önce akışın kendisine bak.
+
 ## L6 — Kullanıcıya seçenek sunarken premisi doğrula
 
 **Olay:** "Kullanıcı başına ayrı DB" seçeneğini "şema hiç değişmez, göç riski sıfır" diye sundum.

@@ -14,7 +14,7 @@ import type { AIParseItem } from "./types";
 import { todayISO } from "./lib/format";
 import { calculateStreak } from "./lib/streak";
 import { fabTarget } from "./lib/fabRouting";
-import { classifyPopState, shouldExitOnSecondPress } from "./lib/backStack";
+import { classifyPopState, consumeProgrammaticBack, shouldExitOnSecondPress } from "./lib/backStack";
 import { hasOpenOverlay } from "./lib/overlayLock";
 import { hasActiveSubView } from "./lib/subViewRegistry";
 
@@ -101,6 +101,13 @@ function MainContent() {
         newState: state,
         hasOpenOverlay: hasOpenOverlay(),
         hasActiveSubView: hasActiveSubView(),
+        // App'in global dinleyicisi HER popstate'te sayaca bakar. İki sebeple
+        // şart: (1) bir overlay'in temizliğindeki `back()` buraya "kullanıcı
+        // kökte geri bastı" gibi geliyordu ve sahte çıkış uyarısını
+        // tetikliyordu; (2) ortada tüketecek bir modal yoksa sayaç birikip
+        // sonraki GERÇEK geri basışı yerdi. Olay geçildiği için modalın kendi
+        // dinleyicisi de aynı olay için `true` almaya devam eder.
+        isProgrammaticBack: consumeProgrammaticBack(e),
       });
 
       if (decision !== "evaluate-exit") {
