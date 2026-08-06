@@ -68,7 +68,7 @@ Dördü de doğrulandı ve düzeltildi:
       yanlış kamerayı seçmektense dokunmamak doğru. Ölçüm: cihaz ultra-genişi verdi
       (1280×960), kod ana kameraya geçti (2560×1440).
 - [x] Kapı: typecheck 0 · test **422/422** · build ✓
-- [ ] Commit + deploy
+- [x] Commit + deploy — `007e834`; canlı `index-C304DqZ7.js` 415512 B, yerel derlemeyle aynı
 
 ### Kalan borç (ayrı bir iş)
 `MealForm`/`AliasForm`/`NutritionSheet`/`RecipeBuilder` `Modal`'ın geçmiş mantığını
