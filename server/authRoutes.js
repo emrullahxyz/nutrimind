@@ -19,6 +19,7 @@
 
 const { randomBytes } = require("node:crypto");
 const auth = require("./auth.js");
+const google = require("./googleAuth.js");
 
 const AUTH_ENABLED = process.env.NUTRIMIND_AUTH_ENABLED === "1";
 const ALLOW_SIGNUP = process.env.NUTRIMIND_ALLOW_SIGNUP === "1";
@@ -34,6 +35,17 @@ const DAY_MS = 86400000;
  * Yerelde http üzerinden test edilebilsin diye ada bayrakla karar veriliyor.
  */
 const COOKIE_NAME = SECURE_COOKIE ? "__Host-nm_session" : "nm_session";
+
+// --- Google ---------------------------------------------------------------------
+const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID || "";
+const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET || "";
+const GOOGLE_ENABLED = GOOGLE_CLIENT_ID !== "" && GOOGLE_CLIENT_SECRET !== "";
+/** Google Console'da KAYITLI olan yol — birebir tutmak zorunda. */
+const GOOGLE_CALLBACK_PATH = "/api/auth/callback/google";
+const googleRedirectUri = () => `${PUBLIC_ORIGIN}${GOOGLE_CALLBACK_PATH}`;
+/** `state` + PKCE `code_verifier`'ı taşıyan kısa ömürlü çerez. */
+const OAUTH_COOKIE = SECURE_COOKIE ? "__Host-nm_oauth" : "nm_oauth";
+const OAUTH_TTL_SEC = 600;
 
 const cookieOpts = () => ({
   httpOnly: true,
@@ -147,12 +159,15 @@ async function handleAuth({ db, req, method, path, readBody, now }) {
       // gönderilebilmesini sağlayan şey bu.
       if (!AUTH_ENABLED) return { status: 200, body: { ok: true, user: null, authDisabled: true } };
       const s = resolveSession(db, req, t);
-      if (!s) return { status: 401, body: { error: "oturum yok" } };
+      // Oturumsuzken de yetenekleri bildiriyoruz: giriş ekranı Google düğmesini
+      // gösterip göstermeyeceğine buna bakarak karar veriyor.
+      const yetenekler = { signupAllowed: ALLOW_SIGNUP, googleEnabled: GOOGLE_ENABLED };
+      if (!s) return { status: 401, body: { error: "oturum yok", ...yetenekler } };
       const row = db.prepare("SELECT id, email, display_name FROM users WHERE id = ?").get(s.userId);
-      if (!row) return { status: 401, body: { error: "oturum yok" } };
+      if (!row) return { status: 401, body: { error: "oturum yok", ...yetenekler } };
       return {
         status: 200,
-        body: { ok: true, user: publicUser(row), signupAllowed: ALLOW_SIGNUP },
+        body: { ok: true, user: publicUser(row), ...yetenekler },
         ...(s.refreshed ? { headers: setCookieHeader(s.sessionId) } : {}),
       };
     }
@@ -173,6 +188,141 @@ async function handleAuth({ db, req, method, path, readBody, now }) {
         status: 200,
         body: { ok: true },
         headers: { "Set-Cookie": auth.clearCookie(COOKIE_NAME, cookieOpts()) },
+      };
+    }
+
+    // ---- GET /api/auth/google/start ----
+    // Üst seviye navigasyon (GET) olduğu için yukarıdaki CSRF kapısına takılmaz;
+    // bu bilinçli. Google'dan dönüş de aynı sebeple GET.
+    if (method === "GET" && path === "/api/auth/google/start") {
+      if (!GOOGLE_ENABLED) return { status: 503, body: { error: "Google girişi yapılandırılmamış" } };
+      if (!PUBLIC_ORIGIN) return { status: 500, body: { error: "NUTRIMIND_PUBLIC_ORIGIN ayarlanmamış" } };
+      const state = google.newState();
+      const { verifier, challenge } = google.pkcePair();
+      const url = google.buildAuthUrl({
+        clientId: GOOGLE_CLIENT_ID,
+        redirectUri: googleRedirectUri(),
+        state,
+        codeChallenge: challenge,
+      });
+      return {
+        status: 302,
+        body: { ok: true, redirect: url },
+        headers: {
+          Location: url,
+          // `state` ve `verifier` ÇEREZDE: sunucuda durum tutmuyoruz. Çerez
+          // HttpOnly olduğu için sayfadaki JS bunları okuyamaz.
+          "Set-Cookie": auth.serializeCookie(OAUTH_COOKIE, JSON.stringify({ state, verifier }), {
+            ...cookieOpts(),
+            maxAge: OAUTH_TTL_SEC,
+          }),
+        },
+      };
+    }
+
+    // ---- GET /api/auth/callback/google ----
+    if (method === "GET" && path === GOOGLE_CALLBACK_PATH) {
+      if (!GOOGLE_ENABLED) return { status: 503, body: { error: "Google girişi yapılandırılmamış" } };
+      // Hatalar JSON değil YÖNLENDİRME ile bildiriliyor: burası bir üst seviye
+      // navigasyon, kullanıcı tarayıcıda ham JSON görmemeli.
+      const hata = (kod) => ({
+        status: 302,
+        body: { ok: false, error: kod },
+        headers: {
+          Location: `/?auth_error=${encodeURIComponent(kod)}`,
+          "Set-Cookie": auth.clearCookie(OAUTH_COOKIE, cookieOpts()),
+        },
+      });
+
+      const q = new URL(req.url || path, "http://yerel").searchParams;
+      // Kullanıcı Google ekranında "iptal" derse buraya `error=access_denied` gelir.
+      if (q.get("error")) return hata(q.get("error"));
+
+      const cookies = auth.parseCookies(req.headers && req.headers.cookie);
+      let saklanan = null;
+      try {
+        saklanan = JSON.parse(cookies[OAUTH_COOKIE] || "null");
+      } catch {
+        saklanan = null;
+      }
+      if (!saklanan || !saklanan.state || !saklanan.verifier) return hata("oturum_suresi_doldu");
+      // CSRF: Google'ın döndürdüğü `state`, bizim ürettiğimizle aynı olmalı.
+      if (q.get("state") !== saklanan.state) return hata("state_uyusmadi");
+      const code = q.get("code");
+      if (!code) return hata("kod_yok");
+
+      let tokens;
+      try {
+        tokens = await google.exchangeCode({
+          code,
+          clientId: GOOGLE_CLIENT_ID,
+          clientSecret: GOOGLE_CLIENT_SECRET,
+          redirectUri: googleRedirectUri(),
+          codeVerifier: saklanan.verifier,
+        });
+      } catch {
+        return hata("token_degisimi_basarisiz");
+      }
+
+      let jwks;
+      try {
+        jwks = (await google.fetchJwks(t)).keys;
+      } catch {
+        return hata("jwks_alinamadi");
+      }
+      let dogrulama = google.verifyIdToken({ token: tokens.id_token, jwks, clientId: GOOGLE_CLIENT_ID, now: t });
+      if (!dogrulama.ok) {
+        // Bilinmeyen `kid` anahtar rotasyonu olabilir — bir kez zorla tazele.
+        try {
+          jwks = (await google.fetchJwks(t, true)).keys;
+          dogrulama = google.verifyIdToken({ token: tokens.id_token, jwks, clientId: GOOGLE_CLIENT_ID, now: t });
+        } catch {
+          /* aşağıdaki kontrol karar verecek */
+        }
+      }
+      if (!dogrulama.ok) return hata("token_dogrulanamadi");
+
+      const p = dogrulama.payload;
+      const email = auth.normalizeEmail(p.email);
+      const bySub = db.prepare("SELECT id, email, display_name FROM users WHERE google_sub = ?").get(p.sub);
+      const byEmail = email
+        ? db.prepare("SELECT id, email, display_name, google_sub FROM users WHERE email = ?").get(email)
+        : null;
+
+      const karar = google.linkDecision({ payload: p, bySub, byEmail });
+      let userId;
+      if (karar === "giris") {
+        userId = bySub.id;
+      } else if (karar === "bagla") {
+        userId = byEmail.id;
+        db.prepare("UPDATE users SET google_sub = ?, display_name = COALESCE(display_name, ?) WHERE id = ?").run(
+          p.sub,
+          p.name || null,
+          userId,
+        );
+      } else if (karar === "yeni") {
+        // Yeni hesap açmak kayıt iznine tabi. Bağlama (`bagla`) tabi DEĞİL:
+        // orada zaten var olan bir hesaba giriliyor.
+        if (!ALLOW_SIGNUP) return hata("yeni_kayit_kapali");
+        userId = `u_${t.toString(36)}${randomBytes(4).toString("hex")}`;
+        db.prepare(
+          "INSERT INTO users (id, email, password_hash, google_sub, display_name, created_at) VALUES (?, ?, NULL, ?, ?, ?)",
+        ).run(userId, email, p.sub, p.name || null, new Date(t).toISOString());
+      } else {
+        return hata("hesap_baglanamadi");
+      }
+
+      const { sessionId } = createSession(db, userId, req, t);
+      return {
+        status: 302,
+        body: { ok: true },
+        headers: {
+          Location: "/",
+          "Set-Cookie": [
+            auth.serializeCookie(COOKIE_NAME, sessionId, cookieOpts()),
+            auth.clearCookie(OAUTH_COOKIE, cookieOpts()),
+          ],
+        },
       };
     }
 
