@@ -134,6 +134,52 @@ export function cropRectFor(
  * Kamera bu tarayıcıda açılabilir mi? `cameraScanSupported()`'tan (off.ts) FARKI:
  * `BarcodeDetector` ARANMAZ. Yemek/etiket çekimi ona ihtiyaç duymuyor.
  */
+export interface CameraDeviceLike {
+  deviceId: string;
+  label: string;
+  kind: string;
+}
+
+/**
+ * Çok kameralı telefonlarda ANA arka kamerayı seçer.
+ *
+ * `facingMode: "environment"` yalnızca "arkaya bakan bir kamera" diyor; hangisi
+ * olduğunu GARANTİ ETMİYOR. Cihaz ultra-geniş lensi verdiğinde iki şey birden
+ * bozuluyor: ultra-geniş lensler genelde SABİT ODAKLI olduğu için yakın çekim
+ * (besin etiketi) net çıkmıyor, ayrıca daha düşük çözünürlüklü oluyorlar.
+ *
+ * Eleme sırası: önce arkaya bakanlar, sonra yardımcı lensler (ultra-geniş,
+ * telefoto, derinlik, makro) atılır. Kalanlar arasında Android'in
+ * "camera2 N, facing back" etiketindeki EN KÜÇÜK indeks seçilir — Camera2
+ * API'sinde 0 numaralı arka kamera ana kameradır.
+ */
+export function pickBackCameraDeviceId(devices: CameraDeviceLike[]): string | null {
+  const inputs = devices.filter((d) => d.kind === "videoinput" && d.deviceId);
+  if (inputs.length === 0) return null;
+  // Etiketler yalnızca izin verildikten SONRA dolar. Boşken hangi lensin
+  // hangisi olduğu bilinemez; yanlış kamerayı (ör. ön kamerayı) seçmektense
+  // hiç dokunmamak doğru — çağıran mevcut akışla devam eder.
+  if (inputs.every((d) => !d.label.trim())) return null;
+
+  const isFront = (l: string) => /front|user|selfie|ön kamera/i.test(l);
+  const isAux = (l: string) =>
+    /ultra|wide[-\s]?angle|telephoto|\btele\b|zoom|depth|macro|monochrome|infrared|\bir\b/i.test(l);
+
+  let back = inputs.filter((d) => /back|rear|environment|arka/i.test(d.label));
+  if (back.length === 0) back = inputs.filter((d) => !isFront(d.label));
+  if (back.length === 0) back = inputs;
+
+  const main = back.filter((d) => !isAux(d.label));
+  const pool = main.length > 0 ? main : back;
+
+  const camera2Index = (l: string) => {
+    const m = /camera2\s+(\d+)/i.exec(l);
+    return m ? Number(m[1]) : Number.POSITIVE_INFINITY;
+  };
+  // `sort` kararlı: indeks yoksa (iOS, masaüstü) sıralama bozulmaz, ilki seçilir.
+  return [...pool].sort((a, b) => camera2Index(a.label) - camera2Index(b.label))[0].deviceId;
+}
+
 export function cameraSupported(): boolean {
   const g = globalThis as unknown as {
     navigator?: { mediaDevices?: { getUserMedia?: unknown } };
@@ -185,6 +231,9 @@ export function useCameraStream(active: boolean): UseCameraStreamResult {
       if (videoRef.current) videoRef.current.srcObject = null;
     };
 
+    /** İki `getUserMedia` çağrısı da aynı çözünürlüğü ister. */
+    const RES = { width: { ideal: 2560 }, height: { ideal: 1440 } } as const;
+
     void (async () => {
       try {
         stream = await navigator.mediaDevices.getUserMedia({
@@ -207,11 +256,47 @@ export function useCameraStream(active: boolean): UseCameraStreamResult {
           return;
         }
 
+        // ANA arka kameraya geç. Cihaz etiketleri ancak izin verildikten SONRA
+        // okunabildiği için bu ikinci adım: ilk akış izni alır, sonra doğru
+        // lensi seçip yeniden bağlanırız. `facingMode` tek başına ultra-geniş
+        // lensi verebiliyor (sabit odaklı → etiket yakın çekimde net çıkmıyor).
+        let wanted: string | null = null;
+        try {
+          const list = await navigator.mediaDevices.enumerateDevices?.();
+          const current = stream.getVideoTracks()[0]?.getSettings?.().deviceId;
+          const pick = list ? pickBackCameraDeviceId(list) : null;
+          if (pick && current && pick !== current) wanted = pick;
+        } catch {
+          /* enumerateDevices yok/başarısız — mevcut akışla devam edilir */
+        }
+
+        if (wanted && !stopped) {
+          // Mobilde iki kamerayı aynı anda açmak reddedilebiliyor: önce eskiyi
+          // bırak. Yeni lens açılamazsa ilk kısıtlarla GERİ DÖN — aksi hâlde
+          // ölü bir akışla devam ederdik.
+          stream.getTracks().forEach((t) => t.stop());
+          stream = null;
+          try {
+            stream = await navigator.mediaDevices.getUserMedia({
+              video: { deviceId: { exact: wanted }, ...RES },
+            });
+          } catch {
+            stream = await navigator.mediaDevices.getUserMedia({
+              video: { facingMode: { ideal: "environment" }, ...RES },
+            });
+          }
+        }
+        const active = stream;
+        if (stopped || !active) {
+          active?.getTracks().forEach((t) => t.stop());
+          return;
+        }
+
         // Sürekli otomatik odak. Bazı Android cihazlarda `getUserMedia` akışı
         // sabit odakla başlıyor; etiket gibi YAKIN çekimlerde görüntü net
         // olmuyor. Desteklenmeyen cihazda `applyConstraints` reddediyor —
         // sessizce yutuyoruz, kamera yine çalışır.
-        const track = stream.getVideoTracks()[0];
+        const track = active.getVideoTracks()[0];
         if (track) {
           try {
             await track.applyConstraints({
@@ -230,7 +315,7 @@ export function useCameraStream(active: boolean): UseCameraStreamResult {
         }
         // muted + playsInline JSX tarafında: mobil tarayıcılar sessiz olmayan
         // videoyu kendiliğinden oynatmaz.
-        video.srcObject = stream;
+        video.srcObject = active;
 
         // Metadata gelmeden `play()` çağırmak bazı Android tarayıcılarında
         // reddediliyor — kameranın "bazen hiç açılmaması" bununla uyumlu.

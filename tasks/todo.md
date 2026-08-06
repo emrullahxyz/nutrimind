@@ -51,6 +51,32 @@ Dördü de doğrulandı ve düzeltildi:
 - [x] Kapı: typecheck 0 · test **414/414** · build ✓
 - [x] Commit + deploy — `6c81399`; canlı `index-C1xEnRqy.js` 414267 B, yerel derlemeyle aynı
 
+## FAZ A3 — ikinci tur cihaz geri bildirimi
+
+- [x] **"Fotoğrafı seçtim, hiçbir tepki yok"** — görsel analiz aslında BAŞARILIYDI
+      (kullanıcının `IMG20260806094312.jpeg` dosyası: 476 KB gönderildi, 200 döndü,
+      Gemini "Lipton Ice Tea Sparkling (100ml), 2 kcal" okudu) ama sonuç sessizce
+      düşüyordu. Sebep L9'un aynısı: `MealForm`, `AliasForm`, `NutritionSheet`,
+      `RecipeBuilder` `popstate` dinliyor ama paylaşılan sayaca **katılmıyordu**.
+      `ScanSheet` kapanırken doğan `back()`, yeni açılan öğün formunu anında
+      kapatıyordu. Ölçüm: artık "Lipton" ekranda, form açık.
+- [x] **Ultra-geniş kamera kullanılıyordu** — `facingMode:"environment"` yalnızca
+      "arkaya bakan bir kamera" der. Ultra-geniş lensler genelde SABİT ODAKLI →
+      etiket yakın çekimde net çıkmıyor. `pickBackCameraDeviceId()` izin alındıktan
+      sonra cihazları sayıp ana kameraya geçiyor (yardımcı lensler elenir; Android'de
+      en küçük `camera2 N` indeksi ana kameradır). Etiketler boşken **null** döner —
+      yanlış kamerayı seçmektense dokunmamak doğru. Ölçüm: cihaz ultra-genişi verdi
+      (1280×960), kod ana kameraya geçti (2560×1440).
+- [x] Kapı: typecheck 0 · test **422/422** · build ✓
+- [ ] Commit + deploy
+
+### Kalan borç (ayrı bir iş)
+`MealForm`/`AliasForm`/`NutritionSheet`/`RecipeBuilder` `Modal`'ın geçmiş mantığını
+elle KOPYALIYOR ve temizlikte `history.back()` yerine `replaceState` kullanıyor —
+bu yüzden her form açılışı geçmiş yığınına harcanmış bir girdi bırakıyor. Doğrusu
+tek bir `useModalHistory` hook'una çıkarmak; aynı hata sınıfı (L9) böylece üçüncü
+kez tekrarlanmaz. Kapsam 5 bileşen, ayrıca planlanmalı.
+
 ## Sonraki fazlar (onaylı planda ayrıntılı)
 
 - [ ] **B** Saf auth ilkelleri (`server/auth.js` saf yarısı + `src/lib/authRules.ts`)

@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react";
+import { consumeProgrammaticBack } from "../lib/backStack";
 import { ArrowLeft, Sparkles, Check, Plus, Trash2, Tag, Scale, Package } from "lucide-react";
 import {
   EMPTY_DRAFT,
@@ -37,7 +38,10 @@ export function AliasForm({ initial, onClose }: { initial: Alias | null; onClose
     isPoppedRef.current = false;
     window.history.pushState({ isModal: true, modalType: "alias_form", tab: "aliases" }, "");
 
-    const handlePopState = () => {
+    const handlePopState = (e: PopStateEvent) => {
+      // Başka bir overlay'in temizliğinden doğan `back()` bize ait değil
+      // (bkz. MealForm'daki aynı not).
+      if (consumeProgrammaticBack(e)) return;
       isPoppedRef.current = true;
       onClose();
     };
