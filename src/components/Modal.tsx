@@ -12,6 +12,7 @@ export function Modal({
   children,
   footer,
   fullScreen = false,
+  bleed = false,
   contentRef,
 }: {
   title: string;
@@ -19,6 +20,9 @@ export function Modal({
   children: ReactNode;
   footer?: ReactNode;
   fullScreen?: boolean;
+  /** İçerik alanının kendi dolgusunu ve kaydırmasını kaldırır — içeriğin kenardan
+   *  kenara dolduğu ekranlar için (kamera). `fullScreen` ile birlikte kullanılır. */
+  bleed?: boolean;
   contentRef?: React.Ref<HTMLDivElement>;
 }) {
   const dialogRef = useRef<HTMLDivElement>(null);
@@ -147,7 +151,10 @@ export function Modal({
             ✕
           </button>
         </div>
-        <div ref={contentRef} className="flex-1 overflow-y-auto min-h-0 p-4 sm:p-5">
+        <div
+          ref={contentRef}
+          className={`flex-1 min-h-0 ${bleed ? "overflow-hidden" : "overflow-y-auto p-4 sm:p-5"}`}
+        >
           {children}
         </div>
         {footer && (

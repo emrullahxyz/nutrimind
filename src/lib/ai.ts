@@ -4,7 +4,7 @@
 // `src/lib/off.ts` ile aynı desen: kendi hata sınıfı + kendi fetch sarmalayıcısı,
 // `api.ts`'in `mutate()`'inden bağımsız (bu bir "mutate" değil, bir "hesapla").
 // ============================================================================
-import type { AIParseItem, AIParseResult, Nutrition } from "../types";
+import type { AIParseItem, AIParseResult, Nutrition, VisionMode } from "../types";
 
 /** Proxy'den dönen hata. `status` HTTP kodudur (0 = ağa hiç çıkılamadı),
  *  `retryAfter` yalnızca 429'da doludur (saniye). */
@@ -107,10 +107,13 @@ export async function parseWithAI(text: string, signal?: AbortSignal): Promise<A
   return { items };
 }
 
+/** Bir görseli (kameradan yakalanmış kare ya da galeriden seçilmiş dosya) besin
+ *  öğelerine çevirir. `healthNote`, öğe çıkmadığında kullanıcıya gösterilecek
+ *  anlamlı açıklamayı taşır — genel bir hata metninden çok daha iyi. */
 export async function parseMealImage(
   base64: string,
   mimeType: string,
-  mode: "gallery" | "food_label",
+  mode: VisionMode,
   signal?: AbortSignal,
 ): Promise<AIParseResult> {
   const raw = await aiPost<{ items?: unknown[]; healthNote?: string }>("/api/ai/vision", { image: base64, mimeType, mode }, signal);

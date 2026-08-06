@@ -11,6 +11,11 @@ build/
 .env
 .env.local
 .env.*.local
+# Google OAuth istemci dosyası (konsoldan indirilen JSON) — gerçek client_secret
+# içerir, ASLA commit'lenmez. Kod bunu okumaz; değerler .env'e GOOGLE_CLIENT_ID /
+# GOOGLE_CLIENT_SECRET olarak girilir (bkz. .env.example).
+client_secret_*.json
+client_secret*.apps.googleusercontent.com.json
 
 # db data (docker volume is external, but ignore any local dumps)
 *.sql.bak
