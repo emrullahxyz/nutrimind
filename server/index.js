@@ -20,16 +20,37 @@ const path = require("node:path");
 const { randomBytes } = require("node:crypto");
 const { DatabaseSync } = require("node:sqlite");
 const { parseMealText, parseMealImage } = require("./ai.js");
+const { migrate, OWNER_ID } = require("./migrate.js");
 
 const PORT = Number(process.env.NUTRI_PORT || 8790);
 const DB_PATH = process.env.NUTRI_DB || path.join(__dirname, "data.db");
 
 const db = new DatabaseSync(DB_PATH);
+// v0 şeması: yalnızca YENİ bir dosyada oluşur. Mevcut veritabanlarında
+// `IF NOT EXISTS` sayesinde hiçbir etkisi yok; göç bir sonraki adımda
+// birincil anahtarları composite hâle getiriyor.
 db.exec(`
   CREATE TABLE IF NOT EXISTS days (date TEXT PRIMARY KEY, meals TEXT NOT NULL);
   CREATE TABLE IF NOT EXISTS config (key TEXT PRIMARY KEY, value TEXT NOT NULL);
   CREATE TABLE IF NOT EXISTS aliases (id TEXT PRIMARY KEY, data TEXT NOT NULL);
 `);
+
+// Şema göçü v0 → v2 (çok kullanıcı). İdempotent: `PRAGMA user_version` zaten 2
+// ise hiçbir şey yapmaz. Fırlatırsa süreç AÇILMAMALI — yarı göçmüş bir
+// veritabanıyla servis vermek, veriyi sessizce bozmaktan daha kötü değil ama
+// teşhisi çok daha zor olurdu.
+const migrationResult = migrate(db, { ownerEmail: process.env.NUTRIMIND_OWNER_EMAIL });
+if (migrationResult.migrated) {
+  console.log(`şema göçü: v${migrationResult.from} → v${migrationResult.to}`, migrationResult.rows);
+}
+
+/**
+ * O anki isteğin sahibi. Faz D'de oturum kavramı HENÜZ YOK: her istek tek
+ * kullanıcıya (mevcut verinin sahibine) ait sayılıyor, yani uygulama aynen
+ * bugünkü gibi davranıyor. Faz E bu fonksiyonu çereze bağlayacak; o zamana
+ * kadar tüm sorgular zaten kapsamlanmış olacağı için değişecek TEK yer burası.
+ */
+const currentUserId = () => OWNER_ID;
 
 // --- İlk çalıştırmada tohumla (boşsa) ---
 const DEFAULT_GOALS = { kcal: 2600, protein: 145, carbs: 360, fat: 72, fiber: 30 };
@@ -124,19 +145,25 @@ const SEED_ALIASES = [
 // yani bir daha asla tohumlanamaz. "Bir zamanlar veri görmüş" bir DB'ye sahte
 // geçmiş geri gelmez.
 const SEED_FLAG_KEY = "seeded";
-if (!db.prepare("SELECT value FROM config WHERE key = ?").get(SEED_FLAG_KEY)) {
+// ⚠️ TOHUMLAMA YALNIZCA SAHİBE, YALNIZCA AÇILIŞTA. Bu blok modül yüklenirken bir
+// kez çalışır, istek başına DEĞİL — dolayısıyla sonradan açılan hesaplar (eş,
+// misafir) buraya HİÇ uğramaz ve boş başlar. Bunu istek yoluna taşımak, yeni bir
+// kullanıcının karşısına 4 sahte Temmuz günü + 6 demo besin çıkarırdı.
+const SEED_OWNER = currentUserId();
+if (!db.prepare("SELECT value FROM config WHERE user_id = ? AND key = ?").get(SEED_OWNER, SEED_FLAG_KEY)) {
   const fresh =
-    db.prepare("SELECT COUNT(*) AS c FROM days").get().c === 0 &&
-    db.prepare("SELECT COUNT(*) AS c FROM aliases").get().c === 0 &&
-    !db.prepare("SELECT 1 FROM config WHERE key='goals'").get();
+    db.prepare("SELECT COUNT(*) AS c FROM days WHERE user_id = ?").get(SEED_OWNER).c === 0 &&
+    db.prepare("SELECT COUNT(*) AS c FROM aliases WHERE user_id = ?").get(SEED_OWNER).c === 0 &&
+    !db.prepare("SELECT 1 FROM config WHERE user_id = ? AND key = 'goals'").get(SEED_OWNER);
 
   if (fresh) {
-    const insDay = db.prepare("INSERT INTO days(date, meals) VALUES(?, ?)");
-    for (const [date, meals] of Object.entries(SEED_DAYS)) insDay.run(date, JSON.stringify(meals));
-    const insAlias = db.prepare("INSERT INTO aliases(id, data) VALUES(?, ?)");
-    for (const { id, ...rest } of SEED_ALIASES) insAlias.run(id, JSON.stringify(rest));
+    const insDay = db.prepare("INSERT INTO days(user_id, date, meals) VALUES(?, ?, ?)");
+    for (const [date, meals] of Object.entries(SEED_DAYS)) insDay.run(SEED_OWNER, date, JSON.stringify(meals));
+    const insAlias = db.prepare("INSERT INTO aliases(id, data, user_id) VALUES(?, ?, ?)");
+    for (const { id, ...rest } of SEED_ALIASES) insAlias.run(id, JSON.stringify(rest), SEED_OWNER);
   }
-  db.prepare("INSERT INTO config(key, value) VALUES(?, ?)").run(
+  db.prepare("INSERT INTO config(user_id, key, value) VALUES(?, ?, ?)").run(
+    SEED_OWNER,
     SEED_FLAG_KEY,
     JSON.stringify({ at: new Date().toISOString(), seeded: fresh }),
   );
@@ -145,8 +172,11 @@ if (!db.prepare("SELECT value FROM config WHERE key = ?").get(SEED_FLAG_KEY)) {
 
 // Hedef satırı her koşulda bulunmalı — tohumlamadan BAĞIMSIZ. Bu "sahte geçmiş"
 // değil, uygulamanın açılabilmesi için gereken tek yapılandırma satırı.
-if (!db.prepare("SELECT 1 FROM config WHERE key='goals'").get()) {
-  db.prepare("INSERT INTO config(key, value) VALUES('goals', ?)").run(JSON.stringify(DEFAULT_GOALS));
+if (!db.prepare("SELECT 1 FROM config WHERE user_id = ? AND key = 'goals'").get(SEED_OWNER)) {
+  db.prepare("INSERT INTO config(user_id, key, value) VALUES(?, 'goals', ?)").run(
+    SEED_OWNER,
+    JSON.stringify(DEFAULT_GOALS),
+  );
 }
 
 /** Hedefler. SAVUNMACI: eskiden satırın varlığını ve JSON'un geçerliliğini
@@ -154,9 +184,12 @@ if (!db.prepare("SELECT 1 FROM config WHERE key='goals'").get()) {
  *  çeviriyordu (uygulama tamamen açılmıyordu). Artık varsayılana düşer.
  *  ŞEKİL doğrulaması BİLEREK yok: Faz 8'in v2 profil yapısı da buradan
  *  olduğu gibi geçmeli. */
-const getGoals = () => {
+// Dördü de artık `userId` ZORUNLU alıyor. Parametreyi eklemenin sebebi kozmetik
+// değil: "bu sorgu kapsamlandı mı?" sorusu, "bu fonksiyonun userId parametresi
+// var mı?" sorusuna indirgenmiş oluyor — gözle taranabilir bir değişmez.
+const getGoals = (userId) => {
   try {
-    const row = db.prepare("SELECT value FROM config WHERE key='goals'").get();
+    const row = db.prepare("SELECT value FROM config WHERE user_id = ? AND key='goals'").get(userId);
     if (!row) return { ...DEFAULT_GOALS };
     const parsed = JSON.parse(row.value);
     if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return { ...DEFAULT_GOALS };
@@ -165,15 +198,21 @@ const getGoals = () => {
     return { ...DEFAULT_GOALS };
   }
 };
-const getDays = () => {
+const getDays = (userId) => {
   const out = {};
-  for (const r of db.prepare("SELECT date, meals FROM days").all()) out[r.date] = JSON.parse(r.meals);
+  for (const r of db.prepare("SELECT date, meals FROM days WHERE user_id = ?").all(userId)) {
+    out[r.date] = JSON.parse(r.meals);
+  }
   return out;
 };
-const getAliases = () => db.prepare("SELECT id, data FROM aliases").all().map((r) => ({ id: r.id, ...JSON.parse(r.data) }));
-const getConfig = () => {
+const getAliases = (userId) =>
+  db
+    .prepare("SELECT id, data FROM aliases WHERE user_id = ?")
+    .all(userId)
+    .map((r) => ({ id: r.id, ...JSON.parse(r.data) }));
+const getConfig = (userId) => {
   const out = {};
-  for (const r of db.prepare("SELECT key, value FROM config").all()) {
+  for (const r of db.prepare("SELECT key, value FROM config WHERE user_id = ?").all(userId)) {
     if (RESERVED_CONFIG_KEYS.has(r.key)) continue;
     try {
       const parsed = JSON.parse(r.value);
@@ -344,6 +383,11 @@ function normalizeRecipe(v) {
   return { ingredients: v.ingredients, totalG };
 }
 
+// BİLEREK KAPSAMSIZ — unutulmuş değil. Bu sorgu yeni bir id üretirken çakışma
+// arıyor; id'lerin TÜM kullanıcılar arasında benzersiz olması gerekiyor, çünkü
+// `aliases.id` hâlâ tekil birincil anahtar (göç sırasında bu tabloyu yeniden
+// yaratmamamızın sebebi de buydu). Kullanıcıya kapsamlansaydı iki kullanıcı aynı
+// id'yi alabilir ve ikincisinin yazması birincisininkini ezerdi.
 const aliasExists = db.prepare("SELECT 1 FROM aliases WHERE id = ?");
 
 /** Yeni alias kimliği.
@@ -531,13 +575,22 @@ async function offProduct(barcode) {
 const server = http.createServer(async (req, res) => {
   const u = new URL(req.url, "http://localhost");
   const p = u.pathname;
+  // Bu isteğin sahibi. Faz E'de çerezden çözülecek; şimdilik sabit.
+  const uid = currentUserId();
   try {
     if (req.method === "GET" && p === "/api/data")
-      return send(res, 200, { goals: getGoals(), days: getDays(), aliases: getAliases(), config: getConfig() });
+      return send(res, 200, {
+        goals: getGoals(uid),
+        days: getDays(uid),
+        aliases: getAliases(uid),
+        config: getConfig(uid),
+      });
 
     if (req.method === "POST" && p === "/api/ai/parse") {
       const b = await readBody(req);
-      const { status, body } = await parseMealText({ text: b.text, aliases: getAliases() });
+      // Besin hafızası isteme giriyor — kullanıcıya özel olmak ZORUNDA, yoksa
+      // AI bir kullanıcının besinlerini diğerine önerirdi.
+      const { status, body } = await parseMealText({ text: b.text, aliases: getAliases(uid) });
       return send(res, status, body);
     }
     if (req.method === "POST" && p === "/api/ai/vision") {
@@ -546,7 +599,7 @@ const server = http.createServer(async (req, res) => {
         imageBase64: b.image,
         mimeType: b.mimeType,
         mode: b.mode,
-        aliases: getAliases(),
+        aliases: getAliases(uid),
       });
       return send(res, status, body);
     }
@@ -565,13 +618,13 @@ const server = http.createServer(async (req, res) => {
       const b = await readBody(req);
       if (!b.date || !Array.isArray(b.meals)) return send(res, 400, { error: "date + meals[] gerekli" });
       db.prepare(
-        "INSERT INTO days(date, meals) VALUES(?, ?) ON CONFLICT(date) DO UPDATE SET meals = excluded.meals",
-      ).run(b.date, JSON.stringify(b.meals));
+        "INSERT INTO days(user_id, date, meals) VALUES(?, ?, ?) ON CONFLICT(user_id, date) DO UPDATE SET meals = excluded.meals",
+      ).run(uid, b.date, JSON.stringify(b.meals));
       return send(res, 200, { ok: true, date: b.date });
     }
     if (req.method === "DELETE" && p.startsWith("/api/day/")) {
       const date = decodeURIComponent(p.slice("/api/day/".length));
-      db.prepare("DELETE FROM days WHERE date = ?").run(date);
+      db.prepare("DELETE FROM days WHERE user_id = ? AND date = ?").run(uid, date);
       return send(res, 200, { ok: true, date });
     }
     if (req.method === "PUT" && p === "/api/goals") {
@@ -581,8 +634,8 @@ const server = http.createServer(async (req, res) => {
       // Doğrulanan gövde OLDUĞU GİBİ saklanır: blob tasarımı bilerek geçirgen,
       // ileride eklenecek besinler ve Faz 8 alanları backend'e dokunmadan geçer.
       db.prepare(
-        "INSERT INTO config(key, value) VALUES('goals', ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value",
-      ).run(JSON.stringify(b));
+        "INSERT INTO config(user_id, key, value) VALUES(?, 'goals', ?) ON CONFLICT(user_id, key) DO UPDATE SET value = excluded.value",
+      ).run(uid, JSON.stringify(b));
       return send(res, 200, { ok: true });
     }
     if (req.method === "GET" && p.startsWith("/api/config/")) {
@@ -590,7 +643,7 @@ const server = http.createServer(async (req, res) => {
       if (!CONFIG_KEY_PATTERN.test(key)) return send(res, 400, { error: "geçersiz config anahtarı" });
       if (RESERVED_CONFIG_KEYS.has(key))
         return send(res, 400, { error: `"${key}" ayrılmış bir anahtar, bu uçtan erişilemez` });
-      const row = db.prepare("SELECT value FROM config WHERE key = ?").get(key);
+      const row = db.prepare("SELECT value FROM config WHERE user_id = ? AND key = ?").get(uid, key);
       let value = null;
       if (row) {
         try {
@@ -610,8 +663,8 @@ const server = http.createServer(async (req, res) => {
       const b = await readBody(req);
       if (!isPlainObject(b)) return send(res, 400, { error: "config değeri bir nesne olmalı" });
       db.prepare(
-        "INSERT INTO config(key, value) VALUES(?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value",
-      ).run(key, JSON.stringify(b));
+        "INSERT INTO config(user_id, key, value) VALUES(?, ?, ?) ON CONFLICT(user_id, key) DO UPDATE SET value = excluded.value",
+      ).run(uid, key, JSON.stringify(b));
       return send(res, 200, { ok: true, key });
     }
 
@@ -629,13 +682,16 @@ const server = http.createServer(async (req, res) => {
       // `null` (units için `[]`) gönderilir.
       let prev = {};
       if (isUpdate) {
-        const row = db.prepare("SELECT data FROM aliases WHERE id = ?").get(id);
-        if (row) {
-          try {
-            prev = JSON.parse(row.data) || {};
-          } catch {
-            prev = {};
-          }
+        // SAHİPLİK KAPISI: id'ler tahmin edilebilir olmasa da, kapsamsız bir
+        // güncelleme başka bir kullanıcının besinini id'sini bilerek EZMEYE
+        // izin verirdi. Kayıt yoksa ya da başkasınınsa 404 — "var ama senin
+        // değil" ile "hiç yok" arasındaki farkı da sızdırmıyoruz.
+        const row = db.prepare("SELECT data FROM aliases WHERE user_id = ? AND id = ?").get(uid, id);
+        if (!row) return send(res, 404, { error: "besin bulunamadı" });
+        try {
+          prev = JSON.parse(row.data) || {};
+        } catch {
+          prev = {};
         }
       }
 
@@ -663,12 +719,16 @@ const server = http.createServer(async (req, res) => {
       carry("off_id", (v) => normalizeCode(v, "off_id")); // Faz 4
       carry("recipe", normalizeRecipe); // Faz 7
 
-      db.prepare("INSERT INTO aliases(id, data) VALUES(?, ?) ON CONFLICT(id) DO UPDATE SET data = excluded.data").run(id, JSON.stringify(data));
+      // `WHERE aliases.user_id = excluded.user_id`: yukarıdaki sahiplik kapısına
+      // ek ikinci savunma. Bir yol onu atlasa bile başkasının satırı EZİLMEZ.
+      db.prepare(
+        "INSERT INTO aliases(id, data, user_id) VALUES(?, ?, ?) ON CONFLICT(id) DO UPDATE SET data = excluded.data WHERE aliases.user_id = excluded.user_id",
+      ).run(id, JSON.stringify(data), uid);
       return send(res, 200, { ok: true, id });
     }
     if (req.method === "DELETE" && p.startsWith("/api/alias/")) {
       const id = decodeURIComponent(p.slice("/api/alias/".length));
-      db.prepare("DELETE FROM aliases WHERE id = ?").run(id);
+      db.prepare("DELETE FROM aliases WHERE user_id = ? AND id = ?").run(uid, id);
       return send(res, 200, { ok: true, id });
     }
 
