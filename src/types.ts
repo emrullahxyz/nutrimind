@@ -84,6 +84,22 @@ export interface AIParseResult {
  */
 export type VisionMode = "food_photo" | "food_label";
 
+/** Oturum açmış kullanıcı. `/api/auth/me`'nin döndürdüğü ALAN KÜMESİNİN aynısı —
+ *  bilerek dar: parola karması, oturum kimliği ve `google_sub` istemciye HİÇ
+ *  gitmiyor. */
+export interface AuthUser {
+  id: string;
+  email: string;
+  name: string | null;
+}
+
+/** Sunucunun bildirdiği kimlik yetenekleri; giriş ekranı neyi göstereceğine
+ *  buna bakarak karar veriyor (kayıt açık mı, Google yapılandırılmış mı). */
+export interface AuthCapabilities {
+  signupAllowed: boolean;
+  googleEnabled: boolean;
+}
+
 export interface AliasUnit {
   /** Kullanıcının gördüğü ad: "adet", "kase", "dilim", "ölçek". */
   name: string;

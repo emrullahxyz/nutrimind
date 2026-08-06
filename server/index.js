@@ -46,12 +46,27 @@ if (migrationResult.migrated) {
 }
 
 /**
- * O anki isteğin sahibi. Faz D'de oturum kavramı HENÜZ YOK: her istek tek
- * kullanıcıya (mevcut verinin sahibine) ait sayılıyor, yani uygulama aynen
- * bugünkü gibi davranıyor. Faz E bu fonksiyonu çereze bağlayacak; o zamana
- * kadar tüm sorgular zaten kapsamlanmış olacağı için değişecek TEK yer burası.
+ * O anki isteğin sahibi.
+ *
+ * BAYRAK KAPALIYKEN (varsayılan) her istek sabit sahibe ait sayılıyor — yani
+ * uygulama aynen bugünkü gibi davranıyor ve kimlik özelliği tamamen inaktif.
+ *
+ * BAYRAK AÇIKKEN oturumdan çözülüyor ve oturumsuz istek `null` alıyor; çağıran
+ * 401 döner. Tüm sorgular Faz D'de kapsamlandığı için değişen TEK yer burası
+ * oldu — parametreyi fonksiyonlara eklemenin asıl kazancı buydu.
  */
-const currentUserId = () => OWNER_ID;
+const currentUserId = (req) => {
+  if (!authRoutes.AUTH_ENABLED) return OWNER_ID;
+  const s = authRoutes.resolveSession(db, req, Date.now());
+  return s ? s.userId : null;
+};
+
+/** Oturum gerektirmeyen uçlar. `/api/health` açık kalıyor: yalnızca canlılık ve
+ *  OFF önbellek sayaçlarını sızdırıyor, karşılığında sunucu dışından izlenebilir
+ *  oluyor. Bunun DIŞINDAKİ her uç oturum ister — AI ve OFF proxy'leri DAHİL,
+ *  çünkü basic-auth kalktığında `/api/ai/vision` internete açık kalırsa
+ *  kullanıcının Gemini kotasını yakar. */
+const PUBLIC_PATHS = new Set(["/api/health"]);
 
 // --- İlk çalıştırmada tohumla (boşsa) ---
 const DEFAULT_GOALS = { kcal: 2600, protein: 145, carbs: 360, fat: 72, fiber: 30 };
@@ -150,7 +165,11 @@ const SEED_FLAG_KEY = "seeded";
 // kez çalışır, istek başına DEĞİL — dolayısıyla sonradan açılan hesaplar (eş,
 // misafir) buraya HİÇ uğramaz ve boş başlar. Bunu istek yoluna taşımak, yeni bir
 // kullanıcının karşısına 4 sahte Temmuz günü + 6 demo besin çıkarırdı.
-const SEED_OWNER = currentUserId();
+// Sabit `OWNER_ID` — `currentUserId()` DEĞİL. Burası modül yüklenirken, ortada
+// hiçbir istek yokken çalışıyor; `currentUserId(undefined)` bayrak açıkken
+// doğru biçimde `null` döner ve `user_id NOT NULL` kısıtı sunucuyu açılışta
+// düşürürdü. Tohumlama zaten tanımı gereği SAHİBE ait.
+const SEED_OWNER = OWNER_ID;
 if (!db.prepare("SELECT value FROM config WHERE user_id = ? AND key = ?").get(SEED_OWNER, SEED_FLAG_KEY)) {
   const fresh =
     db.prepare("SELECT COUNT(*) AS c FROM days WHERE user_id = ?").get(SEED_OWNER).c === 0 &&
@@ -576,8 +595,7 @@ async function offProduct(barcode) {
 const server = http.createServer(async (req, res) => {
   const u = new URL(req.url, "http://localhost");
   const p = u.pathname;
-  // Bu isteğin sahibi. Faz F'de çereze bağlanacak; şimdilik sabit.
-  const uid = currentUserId();
+  const uid = currentUserId(req);
   try {
     // Tüm kimlik uçları TEK bir önek bloğundan geçiyor. Bu şekilde yazılmasının
     // sebebi: Google girişi (Faz H) iki uç daha ekleyecek ve index.js'e SIFIR
@@ -586,6 +604,14 @@ const server = http.createServer(async (req, res) => {
     if (p.startsWith("/api/auth/")) {
       const r = await authRoutes.handleAuth({ db, req, method: req.method, path: p, readBody });
       return send(res, r.status, r.body, r.headers);
+    }
+
+    // OTURUM KAPISI. `uid` yalnızca bayrak AÇIKKEN ve geçerli oturum YOKKEN
+    // null olur; bayrak kapalıyken bu satır hiçbir şey yapmaz.
+    // Kapı, kimlik uçlarından SONRA: giriş yapabilmek için giriş ucuna
+    // oturumsuz erişebilmek gerekiyor.
+    if (uid === null && !PUBLIC_PATHS.has(p)) {
+      return send(res, 401, { error: "oturum gerekli" });
     }
 
     if (req.method === "GET" && p === "/api/data")

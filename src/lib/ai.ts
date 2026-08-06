@@ -5,6 +5,7 @@
 // `api.ts`'in `mutate()`'inden bağımsız (bu bir "mutate" değil, bir "hesapla").
 // ============================================================================
 import type { AIParseItem, AIParseResult, Nutrition, VisionMode } from "../types";
+import { signalUnauthorizedFromApi } from "./api";
 
 /** Proxy'den dönen hata. `status` HTTP kodudur (0 = ağa hiç çıkılamadı),
  *  `retryAfter` yalnızca 429'da doludur (saniye). */
@@ -84,6 +85,11 @@ async function aiPost<T>(path: string, body: unknown, signal?: AbortSignal): Pro
     if ((e as Error | undefined)?.name === "AbortError") throw e;
     throw new AiError(0, aiErrorMessage(0));
   }
+
+  // Oturum düştüyse bu bir "AI hatası" değil — `api.ts` ile AYNI sinyali
+  // kullanıyoruz ki kullanıcı "AI servisi yanıt vermiyor" yerine giriş
+  // ekranına düşsün.
+  if (res.status === 401) throw new AiError(401, signalUnauthorizedFromApi());
 
   const json: unknown = await res.json().catch(() => null);
 

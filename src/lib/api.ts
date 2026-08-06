@@ -237,9 +237,41 @@ interface RawData {
   config?: Record<string, unknown>;
 }
 
+// ---------------------------------------------------------------------------
+// Oturum düşme sinyali.
+//
+// Hook DEĞİL, modül düzeyi bir geri çağırım: `api.ts` düz bir modül ve
+// `exporters.ts` gibi yerlerden doğrudan da import ediliyor. Her okuma/yazma
+// yolu `fetchData`/`mutate`'ten geçtiği için `AuthProvider`'da TEK bir kayıt
+// bütün yolları kapsıyor.
+//
+// ⚠️ `authApi.ts` bunu ASLA tetiklemez: orada 401 "parolan yanlış" demek,
+// burada "oturumun düştü" demek. Karışırlarsa yanlış parola girmek kullanıcıyı
+// giriş ekranına atardı.
+// ---------------------------------------------------------------------------
+let unauthorizedHandler: (() => void) | null = null;
+
+export function setUnauthorizedHandler(fn: (() => void) | null): void {
+  unauthorizedHandler = fn;
+}
+
+const SESSION_EXPIRED = "Oturum sona erdi — tekrar giriş yap.";
+
+function signalUnauthorized(): Error {
+  if (unauthorizedHandler) unauthorizedHandler();
+  return new Error(SESSION_EXPIRED);
+}
+
+/** `ai.ts` de aynı sinyali kullanabilsin diye (kendi hata sınıfına sarıyor). */
+export function signalUnauthorizedFromApi(): string {
+  if (unauthorizedHandler) unauthorizedHandler();
+  return SESSION_EXPIRED;
+}
+
 /** Backend'den { goals, days, aliases } çeker; öğünleri MealItem'a dönüştürür. */
 export async function fetchData(): Promise<AppData> {
-  const res = await fetch("/api/data", { headers: { Accept: "application/json" } });
+  const res = await fetch("/api/data", { headers: { Accept: "application/json" }, credentials: "same-origin" });
+  if (res.status === 401) throw signalUnauthorized();
   if (!res.ok) throw new Error(`API ${res.status}`);
   const raw = (await res.json()) as RawData;
 
@@ -301,8 +333,10 @@ async function mutate<T>(path: string, method: string, body?: unknown): Promise<
   const res = await fetch(path, {
     method,
     headers: { "Content-Type": "application/json", Accept: "application/json" },
+    credentials: "same-origin",
     body: body === undefined ? undefined : JSON.stringify(body),
   });
+  if (res.status === 401) throw signalUnauthorized();
   const json = (await res.json().catch(() => null)) as { error?: string } | null;
   if (!res.ok) throw new Error(json?.error ?? `API ${res.status}`);
   return json as T;

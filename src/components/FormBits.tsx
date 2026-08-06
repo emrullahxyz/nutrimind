@@ -17,21 +17,42 @@ export function Label({ children }: { children: ReactNode }) {
   return <span className={`mb-1 block ${sectionLabelCls}`}>{children}</span>;
 }
 
+/** `type`/`inputMode`/`autoComplete` SONRADAN eklendi ve hepsi opsiyonel —
+ *  mevcut çağıranların hiçbiri değişmedi. `autoComplete` olmadan Android'in
+ *  otomatik doldurması ve parola yöneticileri çalışmıyor; mobil öncelikli bir
+ *  uygulamada giriş formu için bu gerçek bir kusur olurdu. */
 export function TextField({
   label,
   value,
   onChange,
   placeholder,
+  type,
+  inputMode,
+  autoComplete,
+  autoFocus,
 }: {
   label: string;
   value: string;
   onChange: (v: string) => void;
   placeholder?: string;
+  type?: "text" | "email" | "password";
+  inputMode?: "text" | "email";
+  autoComplete?: string;
+  autoFocus?: boolean;
 }) {
   return (
     <label className="block">
       <Label>{label}</Label>
-      <input className={fieldCls} value={value} placeholder={placeholder} onChange={(e) => onChange(e.target.value)} />
+      <input
+        className={fieldCls}
+        value={value}
+        placeholder={placeholder}
+        type={type}
+        inputMode={inputMode}
+        autoComplete={autoComplete}
+        autoFocus={autoFocus}
+        onChange={(e) => onChange(e.target.value)}
+      />
     </label>
   );
 }
