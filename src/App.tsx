@@ -15,6 +15,8 @@ import { todayISO } from "./lib/format";
 import { calculateStreak } from "./lib/streak";
 import { fabTarget } from "./lib/fabRouting";
 import { classifyPopState, consumeProgrammaticBack, shouldExitOnSecondPress } from "./lib/backStack";
+import { AuthProvider, useAuth } from "./lib/auth";
+import { AuthScreen } from "./components/AuthScreen";
 import { hasOpenOverlay } from "./lib/overlayLock";
 import { hasActiveSubView } from "./lib/subViewRegistry";
 
@@ -242,10 +244,32 @@ export function App() {
   return (
     <div className="mx-auto min-h-screen w-full max-w-md px-4 py-5 pad-safe sm:px-6 md:max-w-5xl md:px-10 md:py-8">
       <ErrorBoundary>
-        <DataProvider>
-          <MainContent />
-        </DataProvider>
+        <AuthProvider>
+          <AuthGate>
+            <DataProvider>
+              <MainContent />
+            </DataProvider>
+          </AuthGate>
+        </AuthProvider>
       </ErrorBoundary>
     </div>
   );
+}
+
+/**
+ * Kapı, `DataProvider`'ın DIŞINDA olmak ZORUNDA: `DataProvider` mount olur
+ * olmaz koşulsuz `fetchData()` atıyor ve çocuklarını render etmeden önce
+ * iskelet/hata ekranı gösteriyor (data.tsx:90-98). İçeride olsaydı giriş
+ * yapmamış ziyaretçi, giriş formu yerine "Veri alınamadı" ölü ekranını görürdü.
+ *
+ * `ErrorBoundary`'nin İÇİNDE olmak da zorunlu: giriş ekranındaki bir çökme
+ * beyaz sayfaya değil, kurtarma ekranına düşmeli.
+ *
+ * `anon` olduğunda `DataProvider` KOMPLE unmount oluyor — oturum düştüğünde
+ * onun terminal `stale`/`err` durumlarının temizlenmesi bu sayede kendiliğinden
+ * oluyor, `data.tsx`'e hiç dokunmadık.
+ */
+function AuthGate({ children }: { children: React.ReactNode }) {
+  const { status } = useAuth();
+  return status === "anon" ? <AuthScreen /> : <>{children}</>;
 }
