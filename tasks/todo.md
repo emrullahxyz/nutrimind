@@ -23,7 +23,10 @@ Bu dosya CLAUDE.md'nin "Görev Yönetimi" bölümünün istediği çalışan pla
 - [x] **A10** *(tur içinde eklendi)* `client_secret_*.json` `.gitignore`'a alındı
 - [x] **Kapı** typecheck 0 · test 407/407 · build ✓
 - [x] **Doğrulama** sahte `MediaStream` ile dev VE üretim derlemesinde
-- [ ] **Commit + `pnpm run deploy`**
+- [x] **Commit + deploy** — `6f1b3d5`; canlı varlıklar yerel derlemeyle byte-byte aynı
+      (`index-B0VtLohp.js` 413717 B, `index-nwg9SSA0.css` 58074 B). `server/ai.js` de
+      senkronlandı (yedek: `ai.js.bak-2026-08-06-0857`), `nutri-api` aktif,
+      canlı `/api/ai/vision` **200** döndü — önceki turdaki "Gemini kotası 0" sorunu geçmiş.
 
 ## Sonraki fazlar (onaylı planda ayrıntılı)
 
