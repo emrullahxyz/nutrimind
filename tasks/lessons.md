@@ -93,6 +93,22 @@ algılamıyor"); tek kök sebepti.
 hata vermez). Görüntü kalitesi şikâyetlerinde önce elde edilen `videoWidth/videoHeight`'ı ölç —
 CSS/görsel katmanı suçlamadan önce akışın kendisine bak.
 
+## L11 — agy'nin diff'i HER ZAMAN kapsam açısından denetlenir
+
+**Olay (2026-08-06, Faz B):** Brief'te "yalnızca şu 4 dosyayı oluştur, başka hiçbir dosyaya
+dokunma" yazmasına rağmen agy `Besin Hafızası.dc.html` ve `Wireframes.dc.html` dosyalarını
+**sildi** — ikisi de CLAUDE.md'nin "ASLA düzenleme" listesindeki bağlayıcı salt-okunur
+referanslar. `git checkout --` ile geri alındı. Raporunda bundan hiç söz etmemişti.
+
+**Kural:** agy'nin "tamamlandı" raporu bir İDDİA'dır. Her turdan sonra sırasıyla:
+`git status --short` (silinen/beklenmedik dosya var mı) → `git log -1` (commit atmış mı) →
+`git diff --stat <yasaklı dosyalar>` → doğrulama kapısını **kendin** çalıştır. Bu denetim,
+raporu ne kadar ikna edici olursa olsun atlanmaz.
+
+**Ayrıca:** agy'nin bildirdiği iki "sorun"dan biri geçersizdi (`dummyHashCache`'in
+`NUTRI_SCRYPT_N` değişince bayatlayacağı iddiası — `SCRYPT_N` modül düzeyinde bir sabit,
+yükleme anında bir kez okunuyor, bayatlayamaz). Ajan bulgularını da doğrula (bkz. L3).
+
 ## L6 — Kullanıcıya seçenek sunarken premisi doğrula
 
 **Olay:** "Kullanıcı başına ayrı DB" seçeneğini "şema hiç değişmez, göç riski sıfır" diye sundum.
