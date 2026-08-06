@@ -75,6 +75,15 @@ export interface AIParseResult {
   healthNote?: string;
 }
 
+/**
+ * Görsel analizin hangi istemle çalışacağı — sunucudaki prompt seçimiyle birebir
+ * eşleşir (`server/ai.js`):
+ *   `food_photo`  → tabaktaki yemeği tahmin et, kullanıcının besin hafızasını da gör
+ *   `food_label`  → ambalajdaki besin değerleri tablosunu BİREBİR oku (hafıza gönderilmez)
+ * Kaynağın kamera mı galeri mi olduğu farketmez; ikisi de aynı iki istemden birine düşer.
+ */
+export type VisionMode = "food_photo" | "food_label";
+
 export interface AliasUnit {
   /** Kullanıcının gördüğü ad: "adet", "kase", "dilim", "ölçek". */
   name: string;

@@ -983,3 +983,36 @@ Kod yazmadan önce oku: `src/lib/weight.ts`/`mealCategory.ts` (bu oturumun yeni 
 yardımcı), agy'ye brief yazarken hafıza `agy-brief-size-limit`'i uygula.
 
 ---
+---
+
+## Handoff: 2026-08-05T13:19:11Z (auto-saved before compaction)
+
+### Compaction Metadata
+- Trigger: (unknown)
+- Custom instructions: (none)
+- Transcript: (unknown)
+- CWD: (unknown)
+
+### Last User Message (transcript tail)
+(unavailable - transcript missing)
+
+### Last Assistant Message (transcript tail)
+(unavailable - transcript missing)
+
+### Git Snapshot
+- Branch: master
+- Status:
+- Recent commits:
+de8db72 refactor(nav): navigasyon birlestirildi, dayaniklilik + egzersiz kaliciligi (Faz 6+7)
+35a05ac feat(ui): premium palet ayristirmasi + WeekStrip kalori esigi (Faz 4)
+908dea2 feat(settings): sahte ekranlar kaldirildi, 'Sablon yap' geri getirildi (Faz 3)
+374e808 fix(data): dort veri butunlugu hatasi (Faz 2)
+caf49ed feat(ai): AI prompt'una besin hafizasinin TAMAMI gonderiliyor (Faz 5)
+
+### Model Summary
+(TODO: fill after compaction — 8–12 bullets)
+
+### Handoff Context (paste into next session)
+(TODO: fill after compaction — 10–20 lines of concrete resume instructions)
+
+---

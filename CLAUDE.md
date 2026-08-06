@@ -74,9 +74,27 @@ PARÇASI DEĞİL — ayrı, sonradan gelen bir yön değişikliği. Claude bunun
 sadeleştirme (gömülü modda sade alev ikonu), FAB 2x2 ızgara menüsü, `HistoryPage`'in "Haftalar"/"Trend"
 ayrık sekmeleri yerine tek sürekli akışa (üstte `StreakCard`) geçirilmesi.
 
-**Tarama ekranındaki "Food Label" ve "Gallery" modları şu an KOZMETİK** — alttaki tarayıcı hâlâ salt
-barkod dedektörü (`useOffScanner`/`BarcodeDetector`), gerçek OCR/görsel analiz YOK. Bu, orijinal planın
-Faz 5'i (`/api/ai/vision`, Besin Etiketi OCR) — henüz inşa edilmedi.
+## Kamera (2026-08-06'da yeniden yazıldı)
+
+Tarama ekranı **tam ekran bir kamera**: üç canlı mod (🍽️ Yemek / 🏷️ Etiket / 📊 Barkod) + bir
+**Galeri** eylemi. Galeri bir mod DEĞİL — dosya seçiciyi açar, seçim bitince kullanıcı yine içinde
+bulunduğu canlı moda döner.
+
+- `src/lib/camera.ts` — kamera yaşam döngüsü (`useCameraStream`) barkod taramadan
+  (`useBarcodeDetection`) **ayrıdır**. Eskiden `cameraScanSupported()` önce `BarcodeDetector`
+  arıyordu; dedektör iOS Safari'de olmadığı için o cihazlarda yemek/etiket çekimi için kamera
+  hiç açılmıyordu. Yeni `cameraSupported()` yalnızca `getUserMedia` + güvenli bağlam ister.
+- **Asist çerçevesi dekor değil**: `guideRectFor(mode, w, h)` çerçeveyi verir, `cropRectFor(...)`
+  onu videonun kendi piksellerine çevirir (`object-cover` ölçek/ofsetiyle) ve deklanşör kareyi
+  tam olarak oraya **kırpar** — model tüm sahne yerine sadece etiketi/tabağı görüyor. Bu yüzden
+  çerçeveye geçiş animasyonu YOK: görünen dikdörtgen ile kırpılan bölge ayrışmamalı.
+- Deklanşör → `captureVideoFrame()` → `parseMealImage()` → `onVisionResult()` → `MealForm`.
+- Öğün kaydının **üç** yolu var: "Öğüne + hafızaya", "Sadece öğüne" (ifade İSTEMEZ, `sources` yazmaz),
+  "Sadece hafızaya".
+- Kamerasız/dedektörsüz cihazlarda özellik ölmez: galeri ve elle barkod her zaman erişilebilir.
+
+`/api/ai/vision` **çalışıyor** (`6b01628` ile geldi; 2026-08-06'da uçtan uca doğrulandı — Gemini
+kırpılmış etiketten kcal/protein/karbonhidrat/yağ/lif değerlerini birebir okudu).
 
 ## Komutlar
 
@@ -85,7 +103,7 @@ pnpm install
 pnpm dev          # Vite → http://localhost:5173   ← 127.0.0.1:5173 ÇALIŞMAZ
 pnpm build        # tsc && vite build
 pnpm typecheck    # tsc --noEmit
-pnpm test         # vitest run  (314 test)
+pnpm test         # vitest run  (407 test)
 pnpm format       # prettier --write .
 pnpm run deploy   # dist/ → nutri.emrullah.xyz   ← "run" ŞART, çıplak `pnpm deploy` pnpm'in kendi komutuna gider
 ```
@@ -97,7 +115,11 @@ node server/index.js     # backend, 127.0.0.1:8790
 pnpm dev                 # Vite, /api proxy'li
 ```
 
-Doğrulama kapısı: `pnpm typecheck` (0 hata) + `pnpm test` (314/314) + `pnpm build` (✓ built).
+Doğrulama kapısı: `pnpm typecheck` (0 hata) + `pnpm test` (407/407) + `pnpm build` (✓ built).
+
+`pnpm preview` (4173) artık `/api`'yi de vekilliyor — **üretim derlemesi yerelde uçtan uca
+denenebilir.** Dev'de görünmeyen davranışlar (React StrictMode efektleri iki kez çalıştırır,
+service worker yalnızca PROD'da kaydolur) yalnızca burada ortaya çıkar.
 
 ## Tasarım token'ları
 
@@ -118,3 +140,66 @@ DEĞİL): bg `#0D0D14`, protein `#FF6B8A` (pembe-kırmızı), karbonhidrat `#FFB
 ## İlke
 
 **Local-first:** her şey herhangi bir uzak işlemden önce localhost'ta çalışmalı ve doğrulanmalı.
+
+## İş Akışı Kuralları (Workflow Orchestration)
+
+### 1. Plan Mode Varsayılan
+- 3+ adımlı veya mimari karar gerektiren HERHANGİ bir işte plan moduna geç.
+- Bir şey ters giderse hemen DUR ve yeniden planla — zorlamaya devam etme.
+- Plan modunu sadece inşa için değil, doğrulama adımları için de kullan.
+- Belirsizliği azaltmak için önceden detaylı spesifikasyon yaz.
+
+### 2. Subagent Stratejisi
+- Ana context'i temiz tutmak için subagent'ları serbestçe kullan.
+- Araştırma, keşif ve paralel analizi subagent'lara devret.
+- Karmaşık problemlerde subagent'lar üzerinden daha fazla compute harca.
+- Her subagent'a tek, odaklı bir görev ver.
+
+### 3. Kendini Geliştirme Döngüsü
+- Kullanıcıdan HERHANGİ bir düzeltme geldikten sonra: `tasks/lessons.md`'yi o kalıpla güncelle.
+- Aynı hatayı önleyecek kendi kurallarını yaz.
+- Bu dersleri hata oranı düşene kadar acımasızca iyileştir.
+- Oturum başında ilgili proje için dersleri gözden geçir.
+
+### 4. Bitirmeden Önce Doğrulama
+- Çalıştığını kanıtlamadan bir görevi tamamlanmış olarak işaretleme.
+- İlgili olduğunda main ile değişikliklerin davranışını diff'le.
+- Kendine sor: "Bir kıdemli mühendis bunu onaylar mıydı?"
+- Testleri çalıştır, logları kontrol et, doğruluğu göster.
+
+### 5. Zarafeti Talep Et (Dengeli)
+- Önemsiz olmayan değişikliklerde dur ve sor: "Daha zarif bir yolu var mı?"
+- Bir çözüm hacky hissettiriyorsa: "Şimdi bildiğin her şeyi bilerek, zarif çözümü uygula."
+- Basit, açık düzeltmelerde bunu atla — aşırı mühendislik yapma.
+- Sunmadan önce kendi işini sorgula.
+
+### 6. Otonom Hata Düzeltme
+- Bir hata raporu geldiğinde: direkt düzelt, elini tutmasını isteme.
+- Logları, hataları, başarısız testleri işaret et — sonra çöz.
+- Kullanıcıdan sıfır context switching gerekmeli.
+- CI testleri, sana nasıl yapılacağı söylenmeden düzelt.
+- **İstisna: `server/index.js`.** Yukarıdaki "donmuş kabul edilir — değiştirmeden önce sor" kuralı
+  (bkz. "Mimari" bölümü) bu otonom hata düzeltme kuralına göre önceliklidir. `server/index.js`'i
+  etkileyen bir hata/bug bulursan bile, önce kullanıcıya danış; sormadan direkt değiştirme. Yeni
+  backend mantığı gerekiyorsa zaten kurulmuş izole modül deseni (`server/ai.js` gibi) geçerli kalır.
+
+---
+
+## Görev Yönetimi (Task Management)
+
+1. **Önce Planla**: Planı işaretlenebilir maddelerle `tasks/todo.md`'ye yaz.
+2. **Planı Doğrula**: Uygulamaya başlamadan önce kullanıcıya danış.
+3. **İlerlemeyi Takip Et**: İlerledikçe maddeleri tamamlandı olarak işaretle.
+4. **Değişiklikleri Açıkla**: Her adımda üst düzey özet ver.
+5. **Sonuçları Belgele**: `tasks/todo.md`'ye bir inceleme (review) bölümü ekle.
+6. **Dersleri Yakala**: Düzeltmelerden sonra `tasks/lessons.md`'yi güncelle.
+
+---
+
+## Temel İlkeler (genişletilmiş)
+
+- **Basitlik Önce**: Her değişikliği olabildiğince basit tut. Minimal kodu etkile.
+- **Tembellik Yok**: Kök nedenleri bul. Geçici düzeltme yok. Kıdemli geliştirici standartları.
+- **Minimal Etki**: Değişiklikler sadece gerekli olanı etkilemeli. Yeni bug'lar eklemekten kaçın.
+
+(Yukarıdaki Local-first kuralıyla birlikte geçerlidir.)

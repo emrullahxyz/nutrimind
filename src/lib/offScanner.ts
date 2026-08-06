@@ -15,16 +15,8 @@
 // ============================================================================
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { Dispatch, MutableRefObject, SetStateAction } from "react";
-import {
-  FOOD_BARCODE_FORMATS,
-  OffError,
-  barcodeDetectorCtor,
-  cameraScanSupported,
-} from "./off";
-import type { BarcodeDetectorLike } from "./off";
-
-/** Kamera karesi tarama aralığı. 400 ms göze anında görünüyor, CPU'yu yormuyor. */
-const SCAN_INTERVAL_MS = 400;
+import { OffError, cameraScanSupported } from "./off";
+import { useBarcodeDetection, useCameraStream } from "./camera";
 
 // --- Kota (429) geri sayımı --------------------------------------------------
 
@@ -98,107 +90,49 @@ export interface UseOffScannerResult {
 }
 
 /**
- * OffSearch'ün kamera efektinin AYNISI (bkz. eski OffSearch.tsx yorumları):
- * akış `scanning` true olduğu sürece yaşar, efektin temizliği HER çıkışta
- * (kapatma, seçim, bileşenin unmount'ı) parçaları durdurur. Açık kalan kamera
- * gerçek bir hatadır — telefon ışığı yanık kalır.
+ * Barkod odaklı tarayıcı — `OffSearch`'ün kullandığı akış.
+ *
+ * ARTIK BİR BİLEŞİM: kamera yaşam döngüsü (`useCameraStream`) ile barkod tarama
+ * (`useBarcodeDetection`) `../lib/camera`'ya ayrıldı, çünkü ikisi birbirine
+ * kilitliyken `BarcodeDetector`'ı olmayan cihazlarda (iOS Safari) kamera yemek
+ * fotoğrafı/etiket okuma için de HİÇ açılamıyordu. Buradaki dışa dönük API
+ * bilerek aynı bırakıldı — `OffSearch` değişmedi.
+ *
+ * `canScan` hâlâ `cameraScanSupported()` (yani BarcodeDetector şartı DAHİL),
+ * çünkü bu akışın tek işi barkod okumak: dedektör yoksa düğmeyi göstermek boş
+ * umut olurdu. Yemek/etiket çekimi bu kapıyı kullanmaz (`cameraSupported`).
  */
 export function useOffScanner({ onDetected, blocked }: UseOffScannerOptions): UseOffScannerResult {
   const [scanning, setScanning] = useState(false);
-  const [cameraError, setCameraError] = useState<string | null>(null);
-  const videoRef = useRef<HTMLVideoElement | null>(null);
   // Kamera düğmesi yalnızca gerçekten çalışacaksa görünür. Tek seferlik
   // ölçülüyor: yetenek oturum içinde değişmez.
   const [canScan] = useState(cameraScanSupported);
 
-  // En güncel `blocked`/`onDetected`'ı ref'te tut: efekt YENİDEN KURULMADAN
-  // (yani kamerayı yeniden başlatmadan) en taze değeri okuyabilsin.
+  const { videoRef, error } = useCameraStream(scanning);
+
+  // En güncel `blocked`'ı ref'te tut: değeri değiştiğinde kamera GEREKSİZ YERE
+  // yeniden başlamasın (telefon ışığı sönüp yeniden yanmasın).
   const blockedRef = useRef(blocked);
   useEffect(() => {
     blockedRef.current = blocked;
   }, [blocked]);
-  const onDetectedRef = useRef(onDetected);
+
+  useBarcodeDetection({
+    videoRef,
+    active: scanning,
+    onDetected: (value) => {
+      setScanning(false); // okundu: akışı kapat
+      // KOTA KİLİDİ: banner gösterilirken okunan barkod isteğe dönüşmez —
+      // sessizce düşer, kullanıcı zaten geri sayımı görüyor.
+      if (blockedRef.current) return;
+      onDetected(value);
+    },
+  });
+
+  // Kamera açılamadıysa "taranıyor" durumunda kalmanın anlamı yok.
   useEffect(() => {
-    onDetectedRef.current = onDetected;
-  }, [onDetected]);
+    if (error) setScanning(false);
+  }, [error]);
 
-  useEffect(() => {
-    if (!scanning) return;
-    const Ctor = barcodeDetectorCtor();
-    if (!Ctor) {
-      setScanning(false);
-      return;
-    }
-
-    let stopped = false;
-    let stream: MediaStream | null = null;
-    let timer: number | null = null;
-
-    const release = () => {
-      stopped = true;
-      if (timer !== null) window.clearInterval(timer);
-      timer = null;
-      stream?.getTracks().forEach((t) => t.stop());
-      stream = null;
-      if (videoRef.current) videoRef.current.srcObject = null;
-    };
-
-    (async () => {
-      let detector: BarcodeDetectorLike;
-      try {
-        // Desteklenmeyen biçim istemek Chrome'da fırlatır — kesişim alınıyor.
-        const supported = (await Ctor.getSupportedFormats?.()) ?? null;
-        const formats = supported
-          ? FOOD_BARCODE_FORMATS.filter((f) => supported.includes(f))
-          : [...FOOD_BARCODE_FORMATS];
-        detector = new Ctor(formats.length > 0 ? { formats } : undefined);
-
-        stream = await navigator.mediaDevices.getUserMedia({
-          video: { facingMode: { ideal: "environment" } },
-        });
-        if (stopped) {
-          stream.getTracks().forEach((t) => t.stop());
-          return;
-        }
-        const video = videoRef.current;
-        if (!video) {
-          release();
-          return;
-        }
-        video.srcObject = stream;
-        await video.play();
-      } catch (e) {
-        if (stopped) return;
-        release();
-        setScanning(false);
-        setCameraError(`Kamera açılamadı: ${String((e as Error)?.message ?? e)}`);
-        return;
-      }
-
-      timer = window.setInterval(async () => {
-        const video = videoRef.current;
-        if (!video || stopped) return;
-        try {
-          const hits = await detector.detect(video);
-          const value = hits[0]?.rawValue?.trim();
-          if (!value) return;
-          release();
-          setScanning(false);
-          // KOTA KİLİDİ: banner gösterilirken okunan barkod isteğe dönüşmez —
-          // sessizce düşer, kullanıcı zaten geri sayımı görüyor.
-          if (blockedRef.current) return;
-          onDetectedRef.current(value);
-        } catch {
-          // Tek karenin çözülememesi normal — sonraki kare denenir.
-        }
-      }, SCAN_INTERVAL_MS);
-    })();
-
-    return release;
-    // Yalnızca `scanning` değişince yeniden kurulur — `blocked`/`onDetected`
-    // ref üzerinden okunuyor ki bu ikisi değiştiğinde kamera GEREKSİZ YERE
-    // yeniden başlamasın (telefon ışığı sönüp yeniden yanmasın).
-  }, [scanning]);
-
-  return { scanning, setScanning, videoRef, canScan, cameraError };
+  return { scanning, setScanning, videoRef, canScan, cameraError: error };
 }

@@ -1,5 +1,5 @@
 // ============================================================================
-// Nutrimind — "Tara → yedim" (Faz S3).
+// Nutrimind — "Tara → yedim" (Faz S3, Faz A'da tam ekran kameraya taşındı).
 //
 // Kullanıcının en yüksek değerli isteği: barkod okutup öğünü kaydetmek 7
 // dokunuşa mal oluyordu ve mükemmel bir tarama sonrasında bile Kaydet
@@ -7,8 +7,17 @@
 // AliasForm.tsx). Bu bileşen TEK ekranda biter: tara → onayla → hem hafızaya
 // yaz hem (istenirse) bugüne işle.
 //
-// Kamera yaşam döngüsü ve kota (429) geri sayımı OffSearch (Faz 4) ile
-// PAYLAŞILIYOR (`../lib/offScanner`) — kopyalanmış kod değil.
+// FAZ A'DA DÜZELTİLEN ÜÇ ŞEY:
+//   1. Kamera, barkod dedektörüne kilitliydi (`cameraScanSupported` önce
+//      `BarcodeDetector` arıyordu). Dedektörü olmayan cihazlarda yemek fotoğrafı
+//      ve etiket okuma için kamera HİÇ açılmıyordu. Artık `useCameraStream`
+//      (kamera) ile `useBarcodeDetection` (barkod) ayrı — bkz. ../lib/camera.
+//   2. "Food Label" düğmesi `fileInputRef.click()` çağırıyordu, yani canlı etiket
+//      okuma diye bir şey yoktu; galeri açılıyordu. Artık canlı bir kamera modu.
+//   3. Canlı kameradan AI'a giden yol hiç yoktu — yalnızca galeriden seçilen
+//      dosya analiz edilebiliyordu. Artık deklanşör kareyi ÇERÇEVEYE KIRPARAK
+//      yakalıyor (`captureVideoFrame` + `cropRectFor`); kırpma sayesinde model
+//      tüm sahne yerine sadece etiketi/tabağı görüyor.
 //
 // ÇİFT YAZMA TUZAĞI (CLAUDE.md'nin uyardığı, projeyi daha önce ısırmış olan):
 //   1. `saveAlias` yeni id'yi DÖNER (`upsertAlias` context aksiyonu artık bunu
@@ -17,9 +26,7 @@
 //   2. Gün yazımı günün TÜM öğün dizisini DEĞİŞTİRİR. Bu yüzden payload'ı
 //      `mealsOf(days, date)`'ten alias yazımının kendi refetch'i SONRASINDA,
 //      TAZE çekilen veriden türetiyoruz — bileşenin kendi `useData()`
-//      kapanışındaki (closure) `days`'ten DEĞİL. React state güncellemesi bu
-//      async akışın ortasında henüz bu render'a yansımamış olabilir; bayat
-//      diziyle yazmak bugün az önce kaydedilmiş başka öğünleri SİLERDİ.
+//      kapanışındaki (closure) `days`'ten DEĞİL.
 //   3. Alias yazımı başarılı ama gün yazımı başarısız olursa: besin GERÇEKTEN
 //      hafızaya kaydedildi, bunu toptan bir "başarısız" gibi göstermek yalan
 //      olur — ayrı, dürüst bir mesaj var.
@@ -41,14 +48,43 @@ import {
   missingLabels,
 } from "../lib/off";
 import type { OffFood } from "../lib/off";
-import { useOffCooldown, useOffScanner } from "../lib/offScanner";
+import { useOffCooldown } from "../lib/offScanner";
+import {
+  cameraSupported,
+  cropRectFor,
+  guideRectFor,
+  useBarcodeDetection,
+  useCameraStream,
+  visionModeFor,
+} from "../lib/camera";
+import type { ScanMode } from "../lib/camera";
 import { todayISO } from "../lib/format";
-import type { AIParseItem, MealPayload, MealSource } from "../types";
-import { AiError, aiErrorMessage, parseMealImage } from "../lib/ai";
-import { compressImageToBase64 } from "../lib/image";
+import type { AIParseItem, MealPayload, MealSource, VisionMode } from "../types";
+import { AiError, parseMealImage } from "../lib/ai";
+import { captureVideoFrame, compressImageToBase64 } from "../lib/image";
 import { useBodyScrollLock } from "../hooks/useBodyScrollLock";
 
-type Saving = "today" | "memory" | null;
+/** Üç kayıt yolu var; hangisinin sürdüğünü ayrı ayrı bilmek gerekiyor ki doğru
+ *  düğme "…" göstersin. `dayOnly` = hafızaya HİÇ yazmadan yalnızca bugüne ekle. */
+type Saving = "today" | "memory" | "dayOnly" | null;
+
+const MODES: { mode: ScanMode; icon: string; label: string }[] = [
+  { mode: "scan_food", icon: "🍽️", label: "Yemek" },
+  { mode: "food_label", icon: "🏷️", label: "Etiket" },
+  { mode: "barcode", icon: "📊", label: "Barkod" },
+];
+
+const MODE_HINT: Record<ScanMode, string> = {
+  scan_food: "Yemeği çerçeveye sığdır",
+  food_label: "Besin değerleri tablosunu çerçeveye hizala",
+  barcode: "Barkodu çerçeveye getir — otomatik okunur",
+};
+
+/** Etiket okuma ayrıntı ister (küçük punto), yemek fotoğrafı istemez. */
+const CAPTURE_OPTS: Record<VisionMode, { maxDim: number; quality: number }> = {
+  food_label: { maxDim: 1600, quality: 0.85 },
+  food_photo: { maxDim: 1024, quality: 0.7 },
+};
 
 export function ScanSheet({
   onClose,
@@ -60,7 +96,6 @@ export function ScanSheet({
    *  görsel/etiket taraması o iki yolda sonuçsuz kalıyordu. Opsiyonel yapma. */
   onVisionResult: (items: AIParseItem[]) => void;
 }) {
-  // Lock background body scroll when modal is open
   useBodyScrollLock(true);
   const { aliases, upsertAlias, setDayMeals } = useData();
 
@@ -68,13 +103,52 @@ export function ScanSheet({
   const [food, setFood] = useState<OffFood | null>(null);
   const [barcode, setBarcode] = useState("");
   const { status, setStatus, cooldownLeft, blocked, applyError } = useOffCooldown();
-  const [visionLoading, setVisionLoading] = useState(false);
 
-  /** Bu barkod hafızada zaten var mı? Tarama-öncelikli bir akışta aynı ürün
-   *  defalarca okutulur; her seferinde yeni bir besin yaratsaydık hafıza
-   *  kopyalarla dolardı. Varsa kayıt YENİDEN YAZILMAZ — kullanıcının elle
-   *  düzelttiği tetikleyiciler/birimler ezilmesin diye olduğu gibi kullanılır. */
-  const knownAlias = food ? (aliases.find((a) => a.barcode === food.code) ?? null) : null;
+  const [scanMode, setScanMode] = useState<ScanMode>("scan_food");
+  const [showManual, setShowManual] = useState(false);
+  const [analyzing, setAnalyzing] = useState(false);
+  const abortRef = useRef<AbortController | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Yetenek oturum içinde değişmez, bir kez ölçülüyor. `cameraScanSupported`'tan
+  // farkı: BarcodeDetector ARAMAZ — yemek/etiket çekimi ona ihtiyaç duymuyor.
+  const [canUseCamera] = useState(cameraSupported);
+  const scanning = food === null;
+
+  const { videoRef, ready, error: cameraError, retry: retryCamera } = useCameraStream(
+    scanning && canUseCamera,
+  );
+
+  // Barkod taraması YALNIZCA barkod modunda ve akış hazırken çalışır. `blocked`
+  // değişimi yalnızca bu aralığı yeniden kurar — kamerayı DEĞİL (telefon ışığı
+  // sönüp yeniden yanmasın).
+  useBarcodeDetection({
+    videoRef,
+    active: scanning && scanMode === "barcode" && ready && !blocked,
+    onDetected: (value) => {
+      setBarcode(value);
+      void lookupBarcode(value);
+    },
+  });
+
+  // Asist çerçevesi için sahnenin gerçek ölçüsü gerekiyor: hem çizim hem de
+  // yakalanan karenin kırpılması AYNI dikdörtgeni kullanmalı.
+  const stageRef = useRef<HTMLDivElement | null>(null);
+  const [stage, setStage] = useState({ width: 0, height: 0 });
+  useEffect(() => {
+    const el = stageRef.current;
+    if (!el) return;
+    const measure = () => {
+      const r = el.getBoundingClientRect();
+      setStage({ width: r.width, height: r.height });
+    };
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [scanning]);
+
+  const guide = guideRectFor(scanMode, stage.width, stage.height);
 
   function selectFood(f: OffFood) {
     // TEK sonuç: ekstra bir liste/tık yok, doğrudan onay ekranına geçilir.
@@ -106,24 +180,80 @@ export function ScanSheet({
     }
   }
 
-  const { scanning, setScanning, videoRef, canScan, cameraError } = useOffScanner({
-    blocked,
-    onDetected: (value) => {
-      setBarcode(value);
-      void lookupBarcode(value);
-    },
-  });
+  /** Bu barkod hafızada zaten var mı? Tarama-öncelikli bir akışta aynı ürün
+   *  defalarca okutulur; her seferinde yeni bir besin yaratsaydık hafıza
+   *  kopyalarla dolardı. Varsa kayıt YENİDEN YAZILMAZ — kullanıcının elle
+   *  düzelttiği tetikleyiciler/birimler ezilmesin diye olduğu gibi kullanılır. */
+  const knownAlias = food ? (aliases.find((a) => a.barcode === food.code) ?? null) : null;
 
-  // Kamera destekleniyorsa DOĞRUDAN aç — ek bir açılır panele gerek yok, tek
-  // dokunuş tasarrufunun asıl kaynağı bu (bkz. brief).
-  useEffect(() => {
-    if (canScan) setScanning(true);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  // --- Görsel analiz (kamera karesi ve galeri dosyası aynı yolu paylaşır) ---
 
-  useEffect(() => {
-    if (cameraError) setStatus({ kind: "error", message: cameraError });
-  }, [cameraError, setStatus]);
+  async function runVision(base64: string, mimeType: string, mode: VisionMode) {
+    const ctrl = new AbortController();
+    abortRef.current = ctrl;
+    setAnalyzing(true);
+    setStatus({ kind: "idle" });
+    try {
+      const result = await parseMealImage(base64, mimeType, mode, ctrl.signal);
+      if (result.items.length === 0) {
+        // `healthNote` sunucunun gerçek gerekçesi ("görselde yemek tespit
+        // edilemedi" gibi) — genel bir hata metninden çok daha yardımcı.
+        setStatus({
+          kind: "error",
+          message: result.healthNote ?? "Görselden bir besin çıkarılamadı. Daha net/yakın bir fotoğraf dene.",
+        });
+        return;
+      }
+      onVisionResult(result.items);
+    } catch (e) {
+      if ((e as Error | undefined)?.name === "AbortError") return; // kullanıcı iptal etti
+      // `AiError.message` zaten kullanıcıya gösterilebilir Türkçe metin.
+      setStatus({
+        kind: "error",
+        message: e instanceof AiError ? e.message : String((e as Error)?.message ?? e),
+      });
+    } finally {
+      setAnalyzing(false);
+      abortRef.current = null;
+    }
+  }
+
+  async function captureAndAnalyze() {
+    const video = videoRef.current;
+    if (!video || !ready || analyzing) return;
+    const mode = visionModeFor(scanMode);
+    // Çerçeve dekor değil: kare tam olarak buraya kırpılıyor.
+    const crop = guide
+      ? cropRectFor(video.videoWidth, video.videoHeight, stage.width, stage.height, guide)
+      : undefined;
+    try {
+      const { base64, mimeType } = await captureVideoFrame(video, { ...CAPTURE_OPTS[mode], crop });
+      await runVision(base64, mimeType, mode);
+    } catch (e) {
+      setStatus({ kind: "error", message: String((e as Error)?.message ?? e) });
+    }
+  }
+
+  const handleGallerySelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = ""; // aynı dosya tekrar seçilebilsin diye input'u sıfırla
+    if (!file || !file.type.startsWith("image/")) return;
+    // Galeri bir MOD değil, bir eylem: o anda hangi moddaysan onun istemiyle
+    // okunur (etiket modundayken galeriden seçilen fotoğraf da etiket sayılır).
+    const mode = visionModeFor(scanMode);
+    try {
+      const { base64, mimeType } = await compressImageToBase64(file, CAPTURE_OPTS[mode]);
+      await runVision(base64, mimeType, mode);
+    } catch (err) {
+      setStatus({ kind: "error", message: String((err as Error)?.message ?? err) });
+    }
+  };
+
+  function cancelAnalyze() {
+    abortRef.current?.abort();
+    abortRef.current = null;
+    setAnalyzing(false);
+  }
 
   // --- Onay adımı ---
   const [triggers, setTriggers] = useState("");
@@ -149,10 +279,16 @@ export function ScanSheet({
   const scaledNutrition = food && gramsTotal > 0 ? scaleNutrition(food.nutrition, OFF_SERVING_G, gramsTotal) : null;
 
   const canSaveAlias = triggerList.length > 0;
-  const canLogToday = canSaveAlias && scaledNutrition !== null;
+  const canLogWithMemory = canSaveAlias && scaledNutrition !== null;
+  /** "Sadece öğüne" ifade İSTEMEZ — hafızaya hiçbir şey yazılmadığı için
+   *  tetikleyiciye ihtiyaç yok. Eskiden tek kayıt yolu hafızadan geçtiği için
+   *  taranan bir ürünü bugüne eklemek, uydurma bir ifade yazmayı zorunlu
+   *  kılıyordu. */
+  const canLogOnly = scaledNutrition !== null;
 
   function requestClose() {
     if (saving) return;
+    if (analyzing) cancelAnalyze();
     onClose();
   }
 
@@ -195,8 +331,34 @@ export function ScanSheet({
     }
   }
 
+  /** Yalnızca bugüne ekler — hafızaya HİÇBİR ŞEY yazmaz.
+   *
+   *  `sources` bilerek YOK: `MealSource.aliasId` gerçek bir hafıza kaydına
+   *  işaret etmek zorunda; alias yaratmadığımız için uyduracak bir id de yok.
+   *  Bu öğün miktar tahmini öğrenmesine katılmaz — kullanıcı zaten "hafızaya
+   *  yazma" demiş oluyor. */
+  async function logOnly() {
+    if (!food || !scaledNutrition || saving) return;
+    setSaving("dayOnly");
+    setErr(null);
+    try {
+      // Gün yazımı günün TÜM dizisini değiştirir → payload TAZE veriden
+      // türetilir (bkz. dosya başındaki çift yazma tuzağı notu).
+      const date = todayISO();
+      const fresh = await fetchData();
+      const existing = toPayload(mealsOf(fresh.days, date));
+      const entry: MealPayload = { name: food.name, nutrition: scaledNutrition };
+      await setDayMeals(date, [...existing, entry]);
+      onClose();
+    } catch (e) {
+      setErr(String((e as Error)?.message ?? e));
+    } finally {
+      setSaving(null);
+    }
+  }
+
   async function saveAndLog() {
-    if (!food || !canLogToday || !scaledNutrition || saving) return;
+    if (!food || !canLogWithMemory || !scaledNutrition || saving) return;
     setSaving("today");
     setErr(null);
 
@@ -236,61 +398,24 @@ export function ScanSheet({
     }
   }
 
-  // Camera scan mode state (CAL AI modes)
-  const [scanMode, setScanMode] = useState<"scan_food" | "barcode" | "food_label" | "gallery">("scan_food");
-  const fileInputRef = useRef<HTMLInputElement>(null);
-
-  const handleGallerySelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    e.target.value = ""; // aynı dosya tekrar seçilebilsin diye input'u sıfırla
-    if (!file || !file.type.startsWith("image/")) return;
-
-    const visionMode: "gallery" | "food_label" = scanMode === "food_label" ? "food_label" : "gallery";
-    setStatus({ kind: "loading" });
-    setVisionLoading(true);
-    try {
-      const { base64, mimeType } = await compressImageToBase64(
-        file,
-        visionMode === "food_label" ? { maxDim: 1600, quality: 0.85 } : { maxDim: 1024, quality: 0.7 },
-      );
-      const result = await parseMealImage(base64, mimeType, visionMode);
-      if (result.items.length === 0) {
-        setStatus({ kind: "error", message: "Görselden bir besin çıkarılamadı. Daha net/yakın bir fotoğraf dene." });
-      } else {
-        setStatus({ kind: "idle" });
-        onVisionResult?.(result.items);
-      }
-    } catch (err) {
-      setStatus({
-        kind: "error",
-        message:
-          err instanceof AiError
-            ? aiErrorMessage(err.status, err.message, err.retryAfter)
-            : String((err as Error)?.message ?? err),
-      });
-    } finally {
-      setVisionLoading(false);
-    }
-  };
-
   const footerContent = food ? (
     <div className="flex flex-col gap-2">
       <button
         type="button"
         onClick={saveAndLog}
-        disabled={!canLogToday || !!saving}
+        disabled={!canLogWithMemory || !!saving}
         className="w-full rounded-pill bg-accent px-4 py-2.5 text-sm font-extrabold text-accent-ink transition disabled:opacity-40"
       >
-        {saving === "today" ? "…" : "Kaydet ve bugüne ekle"}
+        {saving === "today" ? "…" : "Öğüne + hafızaya ekle"}
       </button>
-      <div className="flex items-center justify-between gap-2">
+      <div className="grid grid-cols-2 gap-2">
         <button
           type="button"
-          onClick={requestClose}
-          disabled={!!saving}
-          className="rounded-pill border border-line px-4 py-2 text-sm font-semibold text-ink-secondary transition hover:text-ink-primary disabled:opacity-40"
+          onClick={logOnly}
+          disabled={!canLogOnly || !!saving}
+          className="rounded-pill border border-line bg-white/[0.04] px-4 py-2 text-sm font-bold text-ink-primary transition hover:bg-white/[0.08] disabled:opacity-40"
         >
-          Vazgeç
+          {saving === "dayOnly" ? "…" : "Sadece öğüne"}
         </button>
         <button
           type="button"
@@ -301,163 +426,211 @@ export function ScanSheet({
           {saving === "memory" ? "…" : knownAlias ? "Hafızada var" : "Sadece hafızaya"}
         </button>
       </div>
+      <button
+        type="button"
+        onClick={requestClose}
+        disabled={!!saving}
+        className="self-center text-[11px] font-semibold text-ink-tertiary underline transition hover:text-ink-primary disabled:opacity-40"
+      >
+        Vazgeç
+      </button>
     </div>
   ) : undefined;
 
-  return (
-    <Modal title={food ? "Onayla ve kaydet" : "Kamera / Tara"} onClose={requestClose} footer={footerContent}>
-      <input
-        ref={fileInputRef}
-        type="file"
-        accept="image/*"
-        className="hidden"
-        onChange={handleGallerySelect}
-      />
-      {!food ? (
-        <div className="flex flex-col gap-3">
-          {canScan ? (
-            <div className="relative overflow-hidden rounded-chip border border-line bg-black">
-              {scanning ? (
-                <>
-                  {/* muted + playsInline: mobil tarayıcılar sessiz olmayan videoyu
-                      kendiliğinden oynatmaz. */}
-                  <video ref={videoRef} muted playsInline className="h-52 w-full object-cover" />
-                  
-                  {/* Overlay according to mode */}
-                  {scanMode === "food_label" && (
-                    <div className="pointer-events-none absolute inset-4 border-2 border-dashed border-accent/70 rounded-xl flex items-center justify-center">
-                      <span className="bg-black/60 px-3 py-1 rounded-full text-[10px] text-accent font-semibold">
-                        Etiketi çerçeveye hizala
-                      </span>
-                    </div>
-                  )}
+  const manualBarcodeForm = (
+    <form
+      className="flex items-end gap-2"
+      onSubmit={(e) => {
+        e.preventDefault();
+        if (!blocked) void lookupBarcode(barcode);
+      }}
+    >
+      <label className="block flex-1">
+        <Label>Barkod (elle)</Label>
+        <input
+          className={`${fieldCls} font-mono`}
+          inputMode="numeric"
+          value={barcode}
+          placeholder="5900531004544"
+          onChange={(e) => setBarcode(e.target.value)}
+        />
+      </label>
+      <button
+        type="submit"
+        disabled={blocked || barcode.trim() === ""}
+        className="flex-none rounded-pill border border-line px-3 py-2 text-sm text-ink-secondary transition hover:text-ink-primary disabled:opacity-40"
+      >
+        Getir
+      </button>
+    </form>
+  );
 
-                  <div className="flex items-center justify-between gap-2 px-2 py-1.5">
-                    <p className="text-[11px] text-ink-tertiary">
-                      {scanMode === "barcode"
-                        ? "Barkodu çerçeveye getir — okununca otomatik seçilir."
-                        : scanMode === "food_label"
-                        ? "Besin değerleri etiketini odakla."
-                        : "Yemeği çerçeveye hizala."}
-                    </p>
-                    <button
-                      type="button"
-                      onClick={() => setScanning(false)}
-                      className="flex-none text-[11px] font-semibold text-ink-tertiary underline transition hover:text-ink-primary"
-                    >
-                      Kapat
-                    </button>
-                  </div>
-                </>
-              ) : (
+  const statusBand =
+    status.kind === "loading" ? (
+      <p className="rounded-chip bg-black/60 px-3 py-2 text-center text-[11px] text-white/80 backdrop-blur-sm">
+        Aranıyor…
+      </p>
+    ) : status.kind === "error" ? (
+      <p className="rounded-chip bg-danger/20 px-3 py-2 text-center text-[11px] text-danger backdrop-blur-sm">
+        {status.message}
+      </p>
+    ) : blocked ? (
+      <p className="rounded-chip bg-warn/20 px-3 py-2 text-center text-[11px] text-warn backdrop-blur-sm">
+        Çok hızlı arama yapıldı. Open Food Facts kotası korunuyor —{" "}
+        <span className="font-mono font-semibold">{cooldownLeft} sn</span> sonra tekrar dene.
+      </p>
+    ) : null;
+
+  return (
+    <Modal
+      fullScreen
+      bleed={scanning}
+      title={food ? "Onayla ve kaydet" : "Kamera / Tara"}
+      onClose={requestClose}
+      footer={footerContent}
+    >
+      {/* Galeri seçici: SADECE "Galeri" düğmesi tetikler. Eskiden "Food Label"
+          da bunu açıyordu — canlı etiket okuma diye bir şey yoktu. */}
+      <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleGallerySelect} />
+
+      {scanning ? (
+        <div ref={stageRef} className="relative h-full w-full overflow-hidden bg-black">
+          {canUseCamera && !cameraError ? (
+            <>
+              {/* muted + playsInline: mobil tarayıcılar sessiz olmayan videoyu
+                  kendiliğinden oynatmaz. */}
+              <video ref={videoRef} muted playsInline className="absolute inset-0 h-full w-full object-cover" />
+
+              {/* Asist çerçevesi. Dev `box-shadow` yayılımı çerçevenin DIŞINI
+                  karartıyor — tek eleman hem çerçeve hem maske (sahne
+                  `overflow-hidden` olduğu için taşma görünmez).
+                  GEÇİŞ ANİMASYONU YOK ve olmamalı: çerçeve dekor değil, deklanşörün
+                  kırpacağı bölgenin ta kendisi. Animasyon sırasında görünen
+                  dikdörtgen ile gerçekte kırpılan bölge birbirini tutmuyordu. */}
+              {guide && (
+                <div
+                  className="pointer-events-none absolute rounded-2xl border-2 border-dashed border-accent/80 shadow-[0_0_0_9999px_rgba(0,0,0,0.5)]"
+                  style={{ left: guide.x, top: guide.y, width: guide.width, height: guide.height }}
+                />
+              )}
+
+              <p className="pointer-events-none absolute inset-x-0 top-3 mx-auto w-fit max-w-[86%] rounded-pill bg-black/60 px-3 py-1.5 text-center text-[11px] font-semibold text-white/90 backdrop-blur-sm">
+                {MODE_HINT[scanMode]}
+              </p>
+
+              {!ready && (
+                <p className="pointer-events-none absolute inset-0 flex items-center justify-center text-[11px] text-white/60">
+                  Kamera açılıyor…
+                </p>
+              )}
+            </>
+          ) : (
+            /* Kamera yok ya da açılamadı — özellik burada ÖLMEZ: galeri ve elle
+               barkod her cihazda çalışır. */
+            <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 px-6 text-center">
+              <p className="text-[12px] text-ink-secondary">
+                {cameraError ?? "Bu tarayıcıda kamera kullanılamıyor."}
+              </p>
+              <p className="text-[11px] text-ink-tertiary">
+                Galeriden fotoğraf seçebilir veya barkodu elle girebilirsin.
+              </p>
+              {canUseCamera && (
                 <button
                   type="button"
-                  onClick={() => setScanning(true)}
-                  disabled={blocked}
-                  className="flex h-24 w-full items-center justify-center text-sm font-semibold text-ink-secondary transition hover:text-ink-primary disabled:opacity-40"
+                  onClick={retryCamera}
+                  className="rounded-pill border border-line px-4 py-2 text-sm font-semibold text-ink-secondary transition hover:text-ink-primary"
                 >
-                  📷 Kamerayı aç
+                  Tekrar dene
                 </button>
               )}
             </div>
-          ) : (
-            <p className="rounded-chip border border-line bg-white/[0.02] p-3 text-[11px] text-ink-tertiary">
-              Bu tarayıcıda kamerayla barkod okuma desteklenmiyor. Barkodu aşağıya elle girebilir veya galeriden fotoğraf seçebilirsin.
-            </p>
           )}
 
-          {/* CAL AI Camera Bottom Mode Selector */}
-          <div className="flex items-center justify-around gap-1 rounded-2xl border border-white/10 bg-white/5 p-1.5 text-[11px] font-semibold text-white/70 backdrop-blur-md overflow-x-auto no-scrollbar">
-            <button
-              type="button"
-              onClick={() => setScanMode("barcode")}
-              className={`flex items-center gap-1 px-2.5 py-1.5 rounded-xl transition ${
-                scanMode === "barcode" ? "bg-white text-black font-bold shadow" : "hover:text-white"
-              }`}
-            >
-              <span>📊</span>
-              <span>Barcode</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                setScanMode("food_label");
-                fileInputRef.current?.click();
-              }}
-              className={`flex items-center gap-1 px-2.5 py-1.5 rounded-xl transition ${
-                scanMode === "food_label" ? "bg-white text-black font-bold shadow" : "hover:text-white"
-              }`}
-            >
-              <span>🏷️</span>
-              <span>Food Label</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                setScanMode("scan_food");
-                if (!scanning && canScan) setScanning(true);
-              }}
-              className={`flex items-center gap-1 px-2.5 py-1.5 rounded-xl transition ${
-                scanMode === "scan_food" ? "bg-white text-black font-bold shadow" : "hover:text-white"
-              }`}
-            >
-              <span>📷</span>
-              <span>Scan Food</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                setScanMode("gallery");
-                fileInputRef.current?.click();
-              }}
-              className={`flex items-center gap-1 px-2.5 py-1.5 rounded-xl transition ${
-                scanMode === "gallery" ? "bg-white text-black font-bold shadow" : "hover:text-white"
-              }`}
-            >
-              <span>🖼️</span>
-              <span>Gallery</span>
-            </button>
+          {/* --- Alt kontroller --- */}
+          <div className="absolute inset-x-0 bottom-0 z-10 flex flex-col gap-3 bg-gradient-to-t from-black via-black/85 to-transparent px-4 pb-[calc(0.75rem+env(safe-area-inset-bottom,0px))] pt-10">
+            {statusBand}
+
+            <div className="mx-auto flex items-center gap-1 rounded-pill border border-white/10 bg-black/50 p-1 text-[11px] font-semibold text-white/70 backdrop-blur-md">
+              {MODES.map((m) => (
+                <button
+                  key={m.mode}
+                  type="button"
+                  onClick={() => setScanMode(m.mode)}
+                  aria-pressed={scanMode === m.mode}
+                  className={`flex items-center gap-1 rounded-pill px-3 py-1.5 transition ${
+                    scanMode === m.mode ? "bg-white font-bold text-black shadow" : "hover:text-white"
+                  }`}
+                >
+                  <span aria-hidden>{m.icon}</span>
+                  <span>{m.label}</span>
+                </button>
+              ))}
+            </div>
+
+            <div className="grid grid-cols-3 items-center">
+              <button
+                type="button"
+                onClick={() => setShowManual((v) => !v)}
+                aria-expanded={showManual}
+                className="justify-self-start rounded-pill border border-white/15 bg-black/40 px-3 py-2 text-[11px] font-semibold text-white/80 backdrop-blur-sm transition hover:text-white"
+              >
+                ⌨ Elle
+              </button>
+
+              <div className="justify-self-center">
+                {scanMode === "barcode" ? (
+                  <span className="flex h-[68px] w-[68px] items-center justify-center rounded-full border-2 border-dashed border-white/40 text-center text-[10px] font-semibold leading-tight text-white/70">
+                    otomatik
+                    <br />
+                    okunuyor
+                  </span>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={captureAndAnalyze}
+                    disabled={!ready || analyzing}
+                    aria-label={scanMode === "food_label" ? "Etiketi çek ve oku" : "Yemeği çek ve tanı"}
+                    className="flex h-[68px] w-[68px] items-center justify-center rounded-full border-4 border-white/90 transition active:scale-95 disabled:opacity-40"
+                  >
+                    <span className="h-[52px] w-[52px] rounded-full bg-white transition" />
+                  </button>
+                )}
+              </div>
+
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                className="justify-self-end rounded-pill border border-white/15 bg-black/40 px-3 py-2 text-[11px] font-semibold text-white/80 backdrop-blur-sm transition hover:text-white"
+              >
+                🖼️ Galeri
+              </button>
+            </div>
+
+            {showManual && (
+              <div className="rounded-chip border border-white/10 bg-black/60 p-3 backdrop-blur-md">
+                {manualBarcodeForm}
+                <p className="mt-2 text-[10px] text-ink-faint">{OFF_ATTRIBUTION}</p>
+              </div>
+            )}
           </div>
 
-          {/* --- Elle barkod: her tarayıcıda çalışan, HER ZAMAN görünen yedek yol --- */}
-          <form
-            className="flex items-end gap-2"
-            onSubmit={(e) => {
-              e.preventDefault();
-              if (!blocked) void lookupBarcode(barcode);
-            }}
-          >
-            <label className="block flex-1">
-              <Label>Barkod (elle)</Label>
-              <input
-                className={`${fieldCls} font-mono`}
-                inputMode="numeric"
-                value={barcode}
-                placeholder="5900531004544"
-                onChange={(e) => setBarcode(e.target.value)}
-              />
-            </label>
-            <button
-              type="submit"
-              disabled={blocked || barcode.trim() === ""}
-              className="flex-none rounded-pill border border-line px-3 py-2 text-sm text-ink-secondary transition hover:text-ink-primary disabled:opacity-40"
-            >
-              Getir
-            </button>
-          </form>
-
-          {status.kind === "loading" && <p className="text-[11px] text-ink-tertiary">Aranıyor…</p>}
-          {status.kind === "error" && (
-            <p className="rounded-chip bg-danger/10 px-3 py-2 text-[11px] text-danger">{status.message}</p>
+          {/* --- Analiz örtüsü --- */}
+          {analyzing && (
+            <div className="absolute inset-0 z-20 flex flex-col items-center justify-center gap-3 bg-black/85 backdrop-blur-sm">
+              <span className="h-10 w-10 animate-spin rounded-full border-2 border-white/15 border-t-accent" />
+              <p className="text-sm font-extrabold text-ink-primary">Analiz ediliyor…</p>
+              <p className="text-[11px] text-ink-tertiary">
+                {scanMode === "food_label" ? "Etiket okunuyor" : "Yemek tanınıyor"}
+              </p>
+              <button
+                type="button"
+                onClick={cancelAnalyze}
+                className="mt-2 rounded-pill border border-line px-4 py-2 text-sm font-semibold text-ink-secondary transition hover:text-ink-primary"
+              >
+                İptal
+              </button>
+            </div>
           )}
-          {blocked && (
-            <p className="rounded-chip bg-warn/10 px-3 py-2 text-[11px] text-warn">
-              Çok hızlı arama yapıldı. Open Food Facts kotası korunuyor —{" "}
-              <span className="font-mono font-semibold">{cooldownLeft} sn</span> sonra tekrar dene.
-            </p>
-          )}
-
-          <p className="text-[10px] text-ink-faint">{OFF_ATTRIBUTION}</p>
         </div>
       ) : (
         <div className="flex flex-col gap-3">
@@ -472,24 +645,23 @@ export function ScanSheet({
 
           {/* --- Ürün özeti: SALT-OKUNUR. Tam düzenleme AliasForm'da. --- */}
           <div className="rounded-chip border border-line bg-white/[0.03] p-3">
-            <div className="text-sm font-bold text-ink-primary">{food.name}</div>
-            {food.brand && <div className="text-[11px] text-ink-tertiary">{food.brand}</div>}
+            <div className="text-sm font-bold text-ink-primary">{food!.name}</div>
+            {food!.brand && <div className="text-[11px] text-ink-tertiary">{food!.brand}</div>}
             <NutrientSummaryLine
-              nutrition={food.nutrition}
+              nutrition={food!.nutrition}
               defs={MACROS}
               kcal="inline"
               prefix="100 g · "
               className="mt-2 border-t border-line pt-2 font-mono text-[11px] text-ink-secondary"
             />
-            {missingLabels(food).length > 0 && (
-              <p className="mt-1 text-[10px] text-warn">eksik veri: {missingLabels(food).join(", ")}</p>
+            {missingLabels(food!).length > 0 && (
+              <p className="mt-1 text-[10px] text-warn">eksik veri: {missingLabels(food!).join(", ")}</p>
             )}
           </div>
 
           {knownAlias && (
             <p className="rounded-chip border border-memory/40 bg-memory/10 p-2.5 text-[11px] text-memory">
-              Bu ürün hafızanda zaten var — yeni bir kayıt oluşturulmayacak, mevcut besin
-              kullanılacak.
+              Bu ürün hafızanda zaten var — yeni bir kayıt oluşturulmayacak, mevcut besin kullanılacak.
             </p>
           )}
 
@@ -515,9 +687,12 @@ export function ScanSheet({
               ))}
             </div>
           ) : (
-            <p className="text-[11px] text-warn">
-              En az bir ifade gerekli — düğmeler bu yüzden kapalı. Yukarıya kısa bir kelime yaz
-              (örn. ürünün kısaltılmış adı).
+            /* Artık bir ÇIKMAZ değil: "Sadece öğüne" ifade istemiyor. Metin de
+               bunu söylemeli — eskiden "düğmeler bu yüzden kapalı" diyordu ve
+               taranan ürünü bugüne eklemenin tek yolu uydurma bir ifade yazmaktı. */
+            <p className="text-[11px] text-ink-tertiary">
+              Kısa bir ifade yazarsan bu ürün <span className="font-semibold text-memory">hafızana</span>{" "}
+              kaydedilir ve bir dahakine adıyla yazman yeter. Boş bırakırsan yalnızca bugüne eklenir.
             </p>
           )}
 

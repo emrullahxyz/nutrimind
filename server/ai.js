@@ -402,9 +402,14 @@ async function parseMealImage({ imageBase64, mimeType, mode, aliases }) {
     return { status: 400, body: { error: "geçersiz mimeType (image/jpeg, image/png, image/webp)" } };
   }
 
-  const visionMode = mode === "food_label" ? "food_label" : "gallery";
+  // İki istem var (bkz. src/types.ts'in `VisionMode`'u — aynı ikili):
+  //   food_label → ambalajdaki tabloyu BİREBİR oku, tahmin etme, hafıza gönderme
+  //   food_photo → tabaktaki yemeği tahmin et, kullanıcının besin hafızasını da gör
+  // Görselin kameradan mı galeriden mi geldiği farketmez, ikisi de aynı ikiliye düşer.
   const prompt =
-    visionMode === "food_label" ? buildLabelPrompt() : buildFoodPhotoPrompt(Array.isArray(aliases) ? aliases : []);
+    mode === "food_label"
+      ? buildLabelPrompt()
+      : buildFoodPhotoPrompt(Array.isArray(aliases) ? aliases : []);
 
   const result = await callLLM({
     bucket: visionBucket,
