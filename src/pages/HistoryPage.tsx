@@ -42,7 +42,7 @@ function SectionLabel({ children }: { children: string }) {
   return <h2 className="text-sm font-bold text-ink-secondary">{children}</h2>;
 }
 
-export function HistoryPage() {
+export function HistoryPage({ resetKey = 0 }: { resetKey?: number }) {
   const { days } = useData();
   const all = weeks(days);
   const [selectedWeek, setSelectedWeek] = useState<string | null>(null);
@@ -53,6 +53,19 @@ export function HistoryPage() {
   // YENİ çıkıldığını anlayıp sahte "çıkmak için bir kez daha bas" toast'ını
   // bastırabilmesi için — bkz. hooks/useSubViewRegistration.ts.
   useSubViewRegistration(selectedWeek !== null || selectedDay !== null);
+
+  // Alttaki gezinmeden "İlerleme"ye zaten o sekmedeyken tekrar basmak
+  // App.tsx'te `tabResetKey.history`'yi artırır — burada dinlenmezse hafta/gün
+  // detayında sıkışan kullanıcı sekmesine tekrar basarak listeye dönemiyordu.
+  useEffect(() => {
+    if (resetKey > 0) {
+      setSelectedWeek(null);
+      setSelectedDay(null);
+      if (window.history.state?.tab === "history") {
+        window.history.replaceState({ tab: "history", isRoot: true }, "");
+      }
+    }
+  }, [resetKey]);
 
   useEffect(() => {
     const handlePopState = (e: PopStateEvent) => {

@@ -240,7 +240,7 @@ function MainContent() {
             resetKey={tabResetKey.daily}
           />
         ) : tab === "history" ? (
-          <HistoryPage />
+          <HistoryPage resetKey={tabResetKey.history} />
         ) : tab === "aliases" ? (
           <AliasPage resetKey={tabResetKey.aliases} onVisionResult={handleVisionResult} />
         ) : (
