@@ -163,7 +163,35 @@ kez tekrarlanmaz. Kapsam 5 bileşen, ayrıca planlanmalı.
       Ref guard'ı eklendi; ikinci ölçümde profil **11 alanla** tam kaydedildi.
       Tarayıcıda uçtan uca: 5 adım, BMR 1582 / TDEE 2452, `PUT /api/goals` 200,
       `PUT /api/config/profile` **tek** çağrı 11 alan, modal kapandı.
-- [ ] **I** Prod'da bayrağı çevir + nginx basic-auth kaldır
+- [x] **I** Prod'a alma — **iki adımda** (kullanıcının seçimi: önce giriş kapalı gitsin, dene,
+      sonra aç). Sıra bozulmadı: yedek → env → dosyalar → göç → doğrula → bayrak → basic-auth.
+
+      **Adım 1 (giriş KAPALI):** `data.db.bak-2026-08-07-0620`, `index.js.bak-…`, `.env.bak-…`
+      yedekleri alındı. `.env`'e ayarlar **göçten ÖNCE** yazıldı (`NUTRIMIND_OWNER_EMAIL`
+      yalnızca göç anında okunuyor). 6 sunucu dosyası md5 eşleşmesiyle gitti.
+      Canlı log: `şema göçü: v0 → v2 { days: 18, aliases: 38, config: 5 }` — sahipsiz satır 0,
+      `integrity_check ok`, servis hatasız, `/api/ai/parse` 200. Ön yüz de deploy edildi.
+      ✅ Kullanıcı telefonda doğruladı: giriş yapılıyor, veriler yerinde.
+
+      **Adım 2 (giriş AÇIK + basic-auth kaldırıldı):**
+      - Sahip parolası kuruldu; Saide'nin hesabı `--create` ile açıldı (kayıt kapalı kaldı).
+      - nginx `app.conf` yedeklendi, `auth_basic` iki bloktan da kaldırıldı, `nginx -t` geçti.
+      - Dışarıdan HTTPS doğrulaması: ana sayfa 200, `/api/data` `/api/auth/me`
+        `/api/ai/vision` **401**, `/api/health` 200. Emrullah girişi → 18 gün/38 besin;
+        Saide girişi → **0 gün/0 besin, sızıntı yok**. Çerez `__Host-nm_session`.
+
+      **Bu adımda yakalanan iki güvenlik açığı (planda yoktu):**
+      1. `setpassword.js` e-posta bulunamazsa **sahip hesabını devralıyordu** — Saide'nin
+         adresiyle çalıştırmak Emrullah'ın hesabının e-postasını değiştirip üzerine yazardı.
+         Artık sahip yalnızca HÂLÂ SAHİPSİZKEN (yer tutucu e-posta + parola yok)
+         devralınabiliyor; yeni hesap için açık `--create` gerekiyor.
+      2. nginx `X-Forwarded-For` göndermiyordu → IP başına hız sınırı herkesi tek kovaya
+         (127.0.0.1) düşürüyordu, yani bir saldırgan tüm kullanıcıları kilitleyebilirdi.
+         Başlık eklendi VE kod `X-Real-IP`'ye de düşecek şekilde sağlamlaştırıldı (YunoHost
+         vhost'u yeniden üretirse elle eklenen satır kaybolabilir).
+
+- [ ] **Kullanıcı doğrulaması bekliyor:** Google ile giriş (artık basic-auth kalktığı için
+      ilk kez gerçek ortamda denenebilir), Saide'nin ilk girişi.
 
 ---
 
