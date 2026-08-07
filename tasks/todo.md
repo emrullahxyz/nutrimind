@@ -116,10 +116,53 @@ kez tekrarlanmaz. Kapsam 5 bileşen, ayrıca planlanmalı.
       **Saldırı denemeleri:** başkasının besinini id ile ezmek → 404, silmek → kayda
       dokunmuyor. `aliasExists` bilerek kapsamsız (id'ler global benzersiz olmalı).
       ⏳ **Prod'a deploy EDİLMEDİ** — göç, yeni `index.js` sunucuya gittiği anda çalışacak.
-- [ ] **E** Oturum + e-posta/şifre (bayrak kapalı)
-- [ ] **F** Giriş ekranı + frontend kapısı
-- [ ] **G** Kayıt sihirbazı (reflog'dan kurtar + `goals` hatasını düzelt + premium görünüm)
-- [ ] **H** Google girişi (redirect akışı)
+- [x] **E** Oturum + e-posta/şifre, bayrak KAPALI (`a745737`). `server/auth.js` saf bırakıldı,
+      DB/HTTP işi `server/authRoutes.js`'te. İzole modül sözleşmesi `{status, body}` →
+      `{status, body, headers?}` genişletildi (Set-Cookie + Retry-After için). `index.js`'e
+      11 satır, TEK önek bloğu. `setpassword.js` ile sahip parolası kuruluyor —
+      "parolasız satırı sahiplen" akışı bilerek yazılmadı (hesap ele geçirme dalı).
+- [x] **H** Google girişi (`37f1328`) — **sıra değişti, F'ten önce yapıldı** ki giriş ekranı
+      bir kez yazılsın. `index.js`'e **sıfır satır** (E'deki önek bloğu sayesinde).
+      Redirect + PKCE seçildi, GIS değil: GIS tarayıcıya sürüm sabitlenemeyen üçüncü taraf
+      JS sokuyor ve erişilemezse buton sessizce hiç render olmuyor.
+      Testler gerçek RSA anahtarıyla, ağa çıkmadan: bozuk imza, kurcalanmış payload,
+      `alg:none`, HS256 düşürme, **başka uygulama için üretilmiş geçerli token** (`aud`),
+      yanlış issuer, süresi dolmuş, bilinmeyen `kid` — hepsi reddediliyor.
+      Callback yolu kullanıcının Console'da KAYITLI adresine uyduruldu.
+      ✅ **Kullanıcı gerçek Google girişini yaptı:** mevcut hesaba BAĞLANDI (yeni hesap
+      açılmadı), `display_name` Google'dan doldu, parola girişi yan yana çalışıyor.
+- [x] **F** Giriş ekranı + ön yüz kapısı + **oturum zorunluluğu** (`38031f7`).
+      Kapı `<ErrorBoundary>` ile `<DataProvider>` ARASINA — içeride olsaydı oturumsuz
+      ziyaretçi giriş formu yerine "Veri alınamadı" ölü ekranını görürdü.
+      401 gelince `AuthProvider` `anon`'a düşüyor, bu da `DataProvider`'ı komple unmount
+      edip terminal `stale`/`err` durumlarını atıyor — `data.tsx`'e hiç dokunulmadı.
+      `authApi.ts` bilerek `api.ts`'ten ayrı: orada 401 "parolan yanlış", burada "oturumun
+      düştü"; karışsalardı yanlış parola kullanıcıyı giriş ekranına atardı.
+      ⚠️ **Bu faz sırasında bulundu:** bayrak açıkken çerezsiz `/api/data` **200 + tüm veriyi**
+      dönüyordu — giriş ekranı kozmetikti. Kullanıcı onayıyla `index.js`'e oturum kapısı
+      bağlandı: `/api/auth/*` ve `/api/health` dışındaki her uç 401 (AI ve OFF dahil —
+      basic-auth kalkınca `/api/ai/vision` açık kalırsa Gemini kotasını yakar).
+      Ayrıca bir bug yakalandı: `currentUserId(req)` değişikliği, modül yüklenirken
+      argümansız çağrılan tohumlama satırını `null`'a düşürüp sunucuyu **açılışta**
+      öldürüyordu. İlk ölçüm bunu görmedi çünkü eski süreç hâlâ portu tutuyordu (L12).
+- [x] **G** Kayıt sihirbazı — reflog'dan kurtarıldı (`OnboardingModal.tsx` 539 satır,
+      `tdee.ts` 136, `tdee.test.ts` 51), **asıl hata düzeltildi**, palete oturtuldu, bağlandı.
+      **Asıl hata:** hedefler `updateConfig("goals", …)` ile yazılıyordu ama `goals`
+      `RESERVED_CONFIG_KEYS` içinde → uç **400** dönüyordu. Kullanıcı 5 adımı dolduruyor,
+      "Kaydet"e basıyor ve hedefler **hiç kaydedilmiyordu**. Artık `updateGoals`
+      (`PUT /api/goals` → **200**, ölçüldü).
+      **Tetik İKİ koşula bağlı:** profil kurulmamış **VE** hesapta hiç gün yok. Tek koşula
+      bağlansaydı 18 günlük verisi olan mevcut kullanıcının karşısına da çıkardı.
+      **Palet:** 55 ham hex (subagent) + 50 `purple/indigo/amber` (agy) temizlendi. Mor
+      bilerek kaldırıldı: bu projede mor `memory`, yani "besin hafızası" özelliğinin rengi;
+      sihirbazda kullanmak yanlış anlamsal sinyal verirdi. Gradient ve mor glow gölgesi de
+      kaldırıldı — uygulamanın hiçbir yerinde gradient yok.
+      **Bu fazda yakalanan İKİNCİ hata:** `handleFinish` kaydettikten hemen sonra `onClose`
+      çağırıyor; kapatma yolum profili BAYAT değerle üzerine yazıp yaş/boy/kilo/BMR/TDEE'yi
+      siliyordu (ilk ölçümde `profile` yalnızca `{hasCompletedOnboarding:true}` içeriyordu).
+      Ref guard'ı eklendi; ikinci ölçümde profil **11 alanla** tam kaydedildi.
+      Tarayıcıda uçtan uca: 5 adım, BMR 1582 / TDEE 2452, `PUT /api/goals` 200,
+      `PUT /api/config/profile` **tek** çağrı 11 alan, modal kapandı.
 - [ ] **I** Prod'da bayrağı çevir + nginx basic-auth kaldır
 
 ---

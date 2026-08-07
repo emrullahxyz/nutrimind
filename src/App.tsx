@@ -17,6 +17,8 @@ import { fabTarget } from "./lib/fabRouting";
 import { classifyPopState, consumeProgrammaticBack, shouldExitOnSecondPress } from "./lib/backStack";
 import { AuthProvider, useAuth } from "./lib/auth";
 import { AuthScreen } from "./components/AuthScreen";
+import { OnboardingModal } from "./components/OnboardingModal";
+import type { UserProfileInput } from "./lib/tdee";
 import { hasOpenOverlay } from "./lib/overlayLock";
 import { hasActiveSubView } from "./lib/subViewRegistry";
 
@@ -48,7 +50,55 @@ function MainContent() {
   const [showExitToast, setShowExitToast] = useState(false);
   const lastBackPressRef = useRef<number>(0);
 
-  const { days } = useData();
+  const { days, config, updateGoals, updateConfig } = useData();
+
+  // --- Kayıt sihirbazı -------------------------------------------------------
+  // Tetik İKİ koşula bağlı, tek koşula değil: profil kurulmamış OLMASI yetmez,
+  // hesabın HİÇ verisi de olmamalı. Yalnızca profile bakılsaydı, 18 günlük
+  // geçmişi olan mevcut kullanıcının karşısına da çıkardı — sihirbaz yeni
+  // başlayan için, veri girmiş biri için değil.
+  const profil = config.profile as { hasCompletedOnboarding?: boolean } | undefined;
+  const sihirbazGerekli = profil?.hasCompletedOnboarding !== true && Object.keys(days).length === 0;
+  const [sihirbazKapatildi, setSihirbazKapatildi] = useState(false);
+  const sihirbazAcik = sihirbazGerekli && !sihirbazKapatildi;
+
+  /** Sihirbazın hesapladığı hedefleri kaydeder.
+   *
+   *  ⚠️ Hedefler `updateGoals` ile yazılıyor, `updateConfig("goals", …)` ile
+   *  DEĞİL. Kurtarılan sürüm ikincisini kullanıyordu ve `goals`
+   *  `RESERVED_CONFIG_KEYS` içinde olduğu için `PUT /api/config/goals` 400
+   *  dönüyordu: kullanıcı 5 adımı dolduruyor, "Kaydet"e basıyor ve hedefler
+   *  HİÇ kaydedilmiyordu. Bu fazın asıl sebebi bu hatayı düzeltmek. */
+  /** Sihirbaz kendi kaydını yaptıysa true. Ref, çünkü hemen ardından çağrılan
+   *  `onClose`'un bunu GÖRMESİ gerekiyor; state güncellemesi o kadar hızlı
+   *  yansımaz. */
+  const sihirbazKaydettiRef = useRef(false);
+
+  async function sihirbaziTamamla(
+    profilVerisi: UserProfileInput & { bmr: number; tdee: number },
+    goalConfig: Parameters<typeof updateGoals>[0],
+  ) {
+    await updateGoals(goalConfig);
+    await updateConfig("profile", { ...profilVerisi, hasCompletedOnboarding: true });
+    sihirbazKaydettiRef.current = true;
+  }
+
+  /** Kapatma da "tamamlandı" sayılır: aksi hâlde sihirbaz her açılışta geri
+   *  gelir ve kullanıcıyı sıkıştırır. Hedeflere DOKUNULMAZ. */
+  async function sihirbaziAtla() {
+    setSihirbazKapatildi(true);
+    // ⚠️ Sihirbaz kaydettiyse HİÇBİR ŞEY yazma. `handleFinish` kaydettikten
+    // hemen sonra `onClose`'u çağırıyor; buradaki yazma, kapanış anında elimizde
+    // olan BAYAT `profil` değerini kullanacağı için az önce kaydedilen tüm
+    // profili (yaş, boy, kilo, aktivite, BMR/TDEE) `{hasCompletedOnboarding}`
+    // ile EZİYORDU. Ölçülen bug buydu.
+    if (sihirbazKaydettiRef.current) return;
+    try {
+      await updateConfig("profile", { ...(profil ?? {}), hasCompletedOnboarding: true });
+    } catch {
+      // Yazma başarısız olsa bile bu oturumda tekrar açılmasın.
+    }
+  }
   const streak = calculateStreak(days);
 
   // Tab değiştirme sarmalayıcısı (Her sekme ana sekmedir, replaceState ile kök tutulur)
@@ -228,6 +278,13 @@ function MainContent() {
         isOpen={globalExerciseOpen}
         onClose={() => setGlobalExerciseOpen(false)}
         date={todayISO()}
+      />
+
+      {/* Yeni hesabın ilk açılışında: 5 adımlı profil + TDEE kurulumu. */}
+      <OnboardingModal
+        isOpen={sihirbazAcik}
+        onClose={sihirbaziAtla}
+        onSaveProfileAndGoals={sihirbaziTamamla}
       />
 
       {/* Çift Geri Basma / Çıkış Toast Uyarısı */}
