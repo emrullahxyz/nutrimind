@@ -34,6 +34,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Modal } from "./Modal";
 import { ErrorText, Label, NumField, NutrientSummaryLine, fieldCls } from "./FormBits";
+import { VisionReviewScreen } from "./VisionReview";
 import { useData } from "../lib/data";
 import { fetchData } from "../lib/api";
 import { mealsOf, toPayload } from "../lib/days";
@@ -115,7 +116,15 @@ export function ScanSheet({
   // Yetenek oturum içinde değişmez, bir kez ölçülüyor. `cameraScanSupported`'tan
   // farkı: BarcodeDetector ARAMAZ — yemek/etiket çekimi ona ihtiyaç duymuyor.
   const [canUseCamera] = useState(cameraSupported);
-  const scanning = food === null;
+
+  // Etiket/Yemek modunda `runVision()` artık `onVisionResult`'ı doğrudan
+  // çağırmıyor — sonucu burada tutup barkodla AYNI Modal içinde üçüncü bir
+  // onay dalı (`VisionReviewScreen`) açıyor (bkz. dosya altındaki render).
+  const [visionItems, setVisionItems] = useState<AIParseItem[] | null>(null);
+  const [visionMode, setVisionMode] = useState<VisionMode | null>(null);
+  const [visionSaving, setVisionSaving] = useState(false);
+
+  const scanning = food === null && visionItems === null;
 
   const { videoRef, ready, error: cameraError, retry: retryCamera } = useCameraStream(
     scanning && canUseCamera,
@@ -206,7 +215,11 @@ export function ScanSheet({
         });
         return;
       }
-      onVisionResult(result.items);
+      // Etiket/Yemek artık `MealForm`'un sepetine hiç uğramıyor — sonucu
+      // burada tutup barkodun onay ekranıyla AYNI desende (`VisionReviewScreen`)
+      // direkt güne/hafızaya yazdırıyoruz.
+      setVisionItems(result.items);
+      setVisionMode(mode);
     } catch (e) {
       if ((e as Error | undefined)?.name === "AbortError") return; // kullanıcı iptal etti
       // `AiError.message` zaten kullanıcıya gösterilebilir Türkçe metin.
@@ -289,7 +302,7 @@ export function ScanSheet({
   const canLogOnly = scaledNutrition !== null;
 
   function requestClose() {
-    if (saving) return;
+    if (saving || visionSaving) return;
     if (analyzing) cancelAnalyze();
     onClose();
   }
@@ -298,6 +311,14 @@ export function ScanSheet({
     if (saving) return;
     setFood(null);
     setErr(null);
+  }
+
+  /** `VisionReviewScreen`'in "‹ Yeniden çek"i: `backToScan`'ın Etiket/Yemek
+   *  karşılığı — tarama sonucunu atıp kameraya döner. */
+  function backFromVision() {
+    if (visionSaving) return;
+    setVisionItems(null);
+    setVisionMode(null);
   }
 
   function aliasPayload(f: OffFood) {
@@ -483,11 +504,14 @@ export function ScanSheet({
       </p>
     ) : null;
 
+  const visionTitle =
+    visionMode === "food_label" ? "Etiketi onayla" : visionMode === "food_photo" ? "Yemeği onayla" : "Kamera / Tara";
+
   return (
     <Modal
       fullScreen
       bleed={scanning}
-      title={food ? "Onayla ve kaydet" : "Kamera / Tara"}
+      title={food ? "Onayla ve kaydet" : visionItems && visionMode ? visionTitle : "Kamera / Tara"}
       onClose={requestClose}
       footer={footerContent}
     >
@@ -634,7 +658,7 @@ export function ScanSheet({
             </div>
           )}
         </div>
-      ) : (
+      ) : food ? (
         <div className="flex flex-col gap-3">
           <button
             type="button"
@@ -728,7 +752,19 @@ export function ScanSheet({
 
           {err && <ErrorText>{err}</ErrorText>}
         </div>
-      )}
+      ) : visionItems && visionMode ? (
+        <VisionReviewScreen
+          mode={visionMode}
+          items={visionItems}
+          onBack={backFromVision}
+          // Barkodun saveOnly/logOnly/saveAndLog'u gibi: başarılı yazımdan
+          // sonra HAM `onClose` prop'u çağrılır (requestClose'un guard'ını
+          // beklemeden) — aksi halde `finally`de sıfırlanan `visionSaving`
+          // henüz `false` olmadığı için `requestClose` kapanışı YUTARDI.
+          onClose={onClose}
+          onSavingChange={setVisionSaving}
+        />
+      ) : null}
     </Modal>
   );
 }

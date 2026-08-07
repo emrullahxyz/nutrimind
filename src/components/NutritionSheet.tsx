@@ -4,7 +4,8 @@ import { ArrowLeft, Flame, Beef, Wheat, Droplet, Trash2, Plus } from "lucide-rea
 import type { MealItem, Nutrition } from "../types";
 import { useBodyScrollLock } from "../hooks/useBodyScrollLock";
 import { scaleMealSources } from "../lib/nutrition";
-import { formatMicroOrDash } from "../lib/format";
+import { EditableStat, toDraft, fromDraft } from "./FormBits";
+import type { NutritionDraft } from "./FormBits";
 
 interface Props {
   isOpen: boolean;
@@ -15,6 +16,21 @@ interface Props {
   onEditMealItems?: () => void;
 }
 
+/** `multiplier`'la ölçeklenmiş besin değeri — hem render'da hem `handleStep`
+ *  içinde (yeni çarpanın taslağını kurmak için) kullanılıyor, tek yerde. */
+function scaleMealNutrition(computed: Nutrition | undefined, multiplier: number): Nutrition {
+  return {
+    kcal: Math.round((computed?.kcal ?? 0) * multiplier),
+    protein: Number(((computed?.protein ?? 0) * multiplier).toFixed(1)),
+    carbs: Number(((computed?.carbs ?? 0) * multiplier).toFixed(1)),
+    fat: Number(((computed?.fat ?? 0) * multiplier).toFixed(1)),
+    fiber: Number(((computed?.fiber ?? 0) * multiplier).toFixed(1)),
+    sugar: computed?.sugar !== undefined ? Number((computed.sugar * multiplier).toFixed(1)) : undefined,
+    satFat: computed?.satFat !== undefined ? Number((computed.satFat * multiplier).toFixed(1)) : undefined,
+    sodium: computed?.sodium !== undefined ? Math.round(computed.sodium * multiplier) : undefined,
+  };
+}
+
 export function NutritionSheet({ isOpen, onClose, meal, onSave, onDelete, onEditMealItems }: Props) {
   const isPoppedRef = useRef(false);
 
@@ -23,12 +39,20 @@ export function NutritionSheet({ isOpen, onClose, meal, onSave, onDelete, onEdit
 
   const [label, setLabel] = useState(meal?.label ?? "");
   const [multiplier, setMultiplier] = useState(1);
+  // Kartların kendisi düzenlenebilir alan — `draft` her zaman gösterilen değer.
+  // "Miktar her zaman kazanır": stepper her basıldığında draft yeniden ölçeklenmiş
+  // değerle kurulur ve `basis` "quantity"ye döner; bir alana doğrudan yazmak
+  // `basis`'i "manual" yapar (kaydederken `sources` koparılır).
+  const [basis, setBasis] = useState<"quantity" | "manual">("quantity");
+  const [draft, setDraft] = useState<NutritionDraft>(() => toDraft(scaleMealNutrition(meal?.computed, 1)));
 
   // Sync state when meal prop changes
   useEffect(() => {
     if (meal) {
       setLabel(meal.label);
       setMultiplier(1);
+      setBasis("quantity");
+      setDraft(toDraft(scaleMealNutrition(meal.computed, 1)));
     }
   }, [meal]);
 
@@ -64,33 +88,36 @@ export function NutritionSheet({ isOpen, onClose, meal, onSave, onDelete, onEdit
 
   if (!isOpen || !meal) return null;
 
-  // Scaled nutrition based on multiplier stepper
-  const scaledNutrition: Nutrition = {
-    kcal: Math.round((meal.computed?.kcal ?? 0) * multiplier),
-    protein: Number(((meal.computed?.protein ?? 0) * multiplier).toFixed(1)),
-    carbs: Number(((meal.computed?.carbs ?? 0) * multiplier).toFixed(1)),
-    fat: Number(((meal.computed?.fat ?? 0) * multiplier).toFixed(1)),
-    fiber: Number(((meal.computed?.fiber ?? 0) * multiplier).toFixed(1)),
-    sugar: meal.computed?.sugar !== undefined ? Number(((meal.computed.sugar) * multiplier).toFixed(1)) : undefined,
-    satFat: meal.computed?.satFat !== undefined ? Number(((meal.computed.satFat) * multiplier).toFixed(1)) : undefined,
-    sodium: meal.computed?.sodium !== undefined ? Math.round((meal.computed.sodium) * multiplier) : undefined,
-  };
+  const scaledSources = scaleMealSources(meal.sources, multiplier);
+
+  function updateField(key: keyof NutritionDraft, value: string) {
+    setBasis("manual");
+    setDraft((d) => ({ ...d, [key]: value }));
+  }
 
   const handleStep = (delta: number) => {
-    setMultiplier((prev) => Math.max(0.25, Number((prev + delta).toFixed(2))));
+    // Miktar her zaman kazanır: porsiyon çarpanı değiştiğinde önceki elle
+    // düzenlenmiş makro değerleri geçersiz kılınır, taslak yeniden ölçeklenmiş
+    // değerle kurulur.
+    const nextMultiplier = Math.max(0.25, Number((multiplier + delta).toFixed(2)));
+    setMultiplier(nextMultiplier);
+    setBasis("quantity");
+    setDraft(toDraft(scaleMealNutrition(meal.computed, nextMultiplier)));
   };
 
   const handleApplySave = () => {
     if (!onSave) return;
     // Porsiyon çarpanı `sources[].qty`'yi de ölçeklemeli — aksi halde `computed`
     // iki katına çıkar ama kaynak miktar eski değerde kalır, `usualQuantity`nin
-    // ("geçmişe dayalı miktar tahmini") temel aldığı veri bozulur.
-    const scaledSources = scaleMealSources(meal.sources, multiplier);
+    // ("geçmişe dayalı miktar tahmini") temel aldığı veri bozulur. Bir alan elle
+    // düzenlendiyse (`basis==="manual"`) hafıza bağlantısı koparılır.
+    const finalNutrition = fromDraft(draft);
+    const finalSources = basis === "manual" ? undefined : scaledSources;
     const updated: MealItem = {
       ...meal,
       label,
-      computed: scaledNutrition,
-      ...(scaledSources ? { sources: scaledSources } : {}),
+      computed: finalNutrition,
+      ...(finalSources ? { sources: finalSources } : {}),
     };
     onSave(updated);
     handleUserClose();
@@ -190,7 +217,7 @@ export function NutritionSheet({ isOpen, onClose, meal, onSave, onDelete, onEdit
           </div>
         </div>
 
-        {/* Calories Hero Card */}
+        {/* Calories Hero Card — tıklayınca direkt düzenlenebilir */}
         <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center text-white">
@@ -198,9 +225,11 @@ export function NutritionSheet({ isOpen, onClose, meal, onSave, onDelete, onEdit
             </div>
             <div>
               <div className="text-xs font-medium text-white/50">Kalori</div>
-              <div className="text-2xl font-black text-white tabular-nums tracking-tight">
-                {scaledNutrition.kcal}
-              </div>
+              <EditableStat
+                value={draft.kcal ?? ""}
+                onChange={(v) => updateField("kcal", v)}
+                className="text-2xl font-black text-white tabular-nums tracking-tight w-24"
+              />
             </div>
           </div>
           <div className="text-xs font-bold text-white/40 font-mono">kcal</div>
@@ -214,8 +243,13 @@ export function NutritionSheet({ isOpen, onClose, meal, onSave, onDelete, onEdit
               <Beef className="w-3.5 h-3.5 text-[#FF6B8A]" />
               <span>Protein</span>
             </div>
-            <div className="text-base sm:text-lg font-black text-white tabular-nums tracking-tight mt-1">
-              {scaledNutrition.protein}g
+            <div className="flex items-baseline gap-0.5 mt-1">
+              <EditableStat
+                value={draft.protein ?? ""}
+                onChange={(v) => updateField("protein", v)}
+                className="text-base sm:text-lg font-black text-white tabular-nums tracking-tight w-12"
+              />
+              <span className="text-base sm:text-lg font-black text-white">g</span>
             </div>
           </div>
 
@@ -225,8 +259,13 @@ export function NutritionSheet({ isOpen, onClose, meal, onSave, onDelete, onEdit
               <Wheat className="w-3.5 h-3.5 text-[#FFB84D]" />
               <span>Karb</span>
             </div>
-            <div className="text-base sm:text-lg font-black text-white tabular-nums tracking-tight mt-1">
-              {scaledNutrition.carbs}g
+            <div className="flex items-baseline gap-0.5 mt-1">
+              <EditableStat
+                value={draft.carbs ?? ""}
+                onChange={(v) => updateField("carbs", v)}
+                className="text-base sm:text-lg font-black text-white tabular-nums tracking-tight w-12"
+              />
+              <span className="text-base sm:text-lg font-black text-white">g</span>
             </div>
           </div>
 
@@ -236,8 +275,13 @@ export function NutritionSheet({ isOpen, onClose, meal, onSave, onDelete, onEdit
               <Droplet className="w-3.5 h-3.5 text-[#5B8DEF]" />
               <span>Yağ</span>
             </div>
-            <div className="text-base sm:text-lg font-black text-white tabular-nums tracking-tight mt-1">
-              {scaledNutrition.fat}g
+            <div className="flex items-baseline gap-0.5 mt-1">
+              <EditableStat
+                value={draft.fat ?? ""}
+                onChange={(v) => updateField("fat", v)}
+                className="text-base sm:text-lg font-black text-white tabular-nums tracking-tight w-12"
+              />
+              <span className="text-base sm:text-lg font-black text-white">g</span>
             </div>
           </div>
         </div>
@@ -245,32 +289,58 @@ export function NutritionSheet({ isOpen, onClose, meal, onSave, onDelete, onEdit
         {/* Other Nutrition Facts List (Diğer Besin Değerleri) */}
         <div className="space-y-2.5 pt-2">
           <div className="text-sm font-bold text-white/90">Diğer besin değerleri</div>
+          <p className="text-[11px] text-white/40">Boş bırakırsan "bilinmiyor" sayılır, 0 kaydedilmez.</p>
           <div className="space-y-2">
             {/* Doymuş Yağ */}
             <div className="rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3.5 flex items-center justify-between text-xs sm:text-sm">
               <span className="font-medium text-white/80">Doymuş Yağ</span>
-              <span className={`font-extrabold ${scaledNutrition.satFat !== undefined ? "text-white" : "text-white/30"}`}>
-                {formatMicroOrDash(scaledNutrition.satFat, "g")}
-              </span>
+              <div className="flex items-center gap-1">
+                <EditableStat
+                  value={draft.satFat ?? ""}
+                  onChange={(v) => updateField("satFat", v)}
+                  placeholder="—"
+                  className="font-extrabold text-white text-right w-14"
+                />
+                <span className="font-extrabold text-white/40">g</span>
+              </div>
             </div>
             {/* Sodyum */}
             <div className="rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3.5 flex items-center justify-between text-xs sm:text-sm">
               <span className="font-medium text-white/80">Sodyum</span>
-              <span className={`font-extrabold ${scaledNutrition.sodium !== undefined ? "text-white" : "text-white/30"}`}>
-                {formatMicroOrDash(scaledNutrition.sodium, "mg")}
-              </span>
+              <div className="flex items-center gap-1">
+                <EditableStat
+                  value={draft.sodium ?? ""}
+                  onChange={(v) => updateField("sodium", v)}
+                  placeholder="—"
+                  className="font-extrabold text-white text-right w-14"
+                />
+                <span className="font-extrabold text-white/40">mg</span>
+              </div>
             </div>
             {/* Lif */}
             <div className="rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3.5 flex items-center justify-between text-xs sm:text-sm">
               <span className="font-medium text-white/80">Lif</span>
-              <span className="font-extrabold text-white">{scaledNutrition.fiber}g</span>
+              <div className="flex items-center gap-1">
+                <EditableStat
+                  value={draft.fiber ?? ""}
+                  onChange={(v) => updateField("fiber", v)}
+                  className="font-extrabold text-white text-right w-14"
+                />
+                <span className="font-extrabold text-white/40">g</span>
+              </div>
             </div>
             {/* Şeker */}
             <div className="rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3.5 flex items-center justify-between text-xs sm:text-sm">
               <span className="font-medium text-white/80">Şeker</span>
-              <span className={`font-extrabold ${scaledNutrition.sugar !== undefined ? "text-white" : "text-white/30"}`}>
-                {formatMicroOrDash(scaledNutrition.sugar, "g")}
-              </span>
+              <div className="flex items-center gap-1">
+                <EditableStat
+                  value={draft.sugar ?? ""}
+                  onChange={(v) => updateField("sugar", v)}
+                  placeholder="—"
+                  className="font-extrabold text-white text-right w-14"
+                />
+                <span className="font-extrabold text-white/40">g</span>
+              </div>
             </div>
           </div>
         </div>

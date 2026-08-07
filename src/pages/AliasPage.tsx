@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Search, Camera, Plus, Utensils, BookOpen, Edit3, X } from "lucide-react";
+import { Search, Camera, Plus, Utensils, BookOpen, X } from "lucide-react";
 import { AliasForm } from "../components/AliasForm";
 import { RecipeBuilder } from "../components/RecipeBuilder";
 import { ScanSheet } from "../components/ScanSheet";
@@ -208,23 +208,11 @@ export function AliasPage({
                   )}
                 </div>
 
-                {/* Bottom Actions */}
+                {/* Bottom Actions — kart zaten tıklanınca düzenlemeyi açıyor, burada sadece silme kalır */}
                 <div
                   className="flex items-center justify-end gap-2 border-t border-white/10 pt-2.5 w-full min-w-0"
                   onClick={(e) => e.stopPropagation()}
                 >
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      if (a.recipe) setEditingRecipe(a);
-                      else setEditingAlias(a);
-                    }}
-                    disabled={busy}
-                    className="px-2.5 py-1.5 rounded-full bg-white/10 hover:bg-white/20 text-xs font-bold text-white transition disabled:opacity-40 flex items-center gap-1"
-                  >
-                    <Edit3 className="w-3 h-3 text-white/70" /> {a.recipe ? "Tarifi Düzenle" : "Düzenle"}
-                  </button>
                   <ConfirmButton onConfirm={() => remove(a.id)} disabled={busy} />
                 </div>
               </div>

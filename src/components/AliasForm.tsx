@@ -84,11 +84,7 @@ export function AliasForm({ initial, onClose }: { initial: Alias | null; onClose
   const [saving, setSaving] = useState(false);
   const [err, setErr] = useState<string | null>(null);
 
-  const hasDetailsData = Boolean(
-    brand.trim() ||
-      barcode.trim() ||
-      unitDrafts.some((u) => u.name.trim() || u.grams.trim())
-  );
+  const hasDetailsData = Boolean(brand.trim() || barcode.trim());
 
   const triggerList = [
     ...new Set(
@@ -247,7 +243,68 @@ export function AliasForm({ initial, onClose }: { initial: Alias | null; onClose
           <NumField label="Porsiyon Miktarı" suffix="g" value={servingG} onChange={setServingG} />
         </div>
 
-        {/* Details Card (Marka, Barkod, Özel Birimler) */}
+        {/* Custom Units Card — always visible, moved out of Details for discoverability */}
+        <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-4 text-white space-y-3">
+          <div className="flex items-center gap-2">
+            <Scale className="w-4 h-4 text-purple-400" />
+            <span className="text-xs font-bold text-white/90">Özel Birimler (opsiyonel)</span>
+          </div>
+          {unitDrafts.length > 0 && (
+            <div className="space-y-2">
+              {unitDrafts.map((u) => (
+                <div key={u.id} className="flex items-end gap-2 bg-black/40 p-3 rounded-xl border border-white/10">
+                  <div className="flex-1">
+                    <TextField
+                      label="Birim Adı"
+                      value={u.name}
+                      placeholder="örn. adet, kase, dilim"
+                      onChange={(val) =>
+                        setUnitDrafts((prev) =>
+                          prev.map((x) => (x.id === u.id ? { ...x, name: val } : x))
+                        )
+                      }
+                    />
+                  </div>
+                  <div className="w-28">
+                    <NumField
+                      label="Miktar"
+                      suffix="g"
+                      value={u.grams}
+                      onChange={(val) =>
+                        setUnitDrafts((prev) =>
+                          prev.map((x) => (x.id === u.id ? { ...x, grams: val } : x))
+                        )
+                      }
+                    />
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setUnitDrafts((prev) => prev.filter((x) => x.id !== u.id))}
+                    className="p-2.5 rounded-xl bg-white/10 hover:bg-red-500/20 text-white/50 hover:text-red-400 transition mb-0.5"
+                    title="Birimi sil"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+
+          <button
+            type="button"
+            onClick={() =>
+              setUnitDrafts((prev) => [
+                ...prev,
+                { id: `unit-${Date.now()}-${Math.random()}`, name: "", grams: "" },
+              ])
+            }
+            className="w-full py-2.5 rounded-xl border border-white/15 bg-white/5 hover:bg-white/10 text-xs font-bold text-white transition active:scale-95 flex items-center justify-center gap-1.5"
+          >
+            <Plus className="w-3.5 h-3.5 text-purple-400" /> Birim Ekle
+          </button>
+        </div>
+
+        {/* Details Card (Marka & Barkod) */}
         <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-4 text-white space-y-3">
           <button
             type="button"
@@ -257,7 +314,7 @@ export function AliasForm({ initial, onClose }: { initial: Alias | null; onClose
           >
             <span className="flex items-center gap-2">
               <Scale className="w-4 h-4 text-purple-400" />
-              <span>Ayrıntılar (Marka, Barkod & Özel Birimler)</span>
+              <span>Ayrıntılar (Marka & Barkod)</span>
               {hasDetailsData && (
                 <span className="px-2 py-0.5 rounded-full bg-purple-500/20 text-purple-300 border border-purple-500/30 text-[10px] font-mono">
                   Dolu
@@ -271,64 +328,6 @@ export function AliasForm({ initial, onClose }: { initial: Alias | null; onClose
             <div className="space-y-4 pt-3 border-t border-white/10">
               <TextField label="Marka (opsiyonel)" value={brand} onChange={setBrand} placeholder="örn. Sütaş" />
               <TextField label="Barkod (opsiyonel)" value={barcode} onChange={setBarcode} placeholder="örn. 8690000000000" />
-
-              {/* Custom Units */}
-              <div className="space-y-3 pt-2">
-                <span className="text-xs font-bold text-white/80 block">Özel Birimler (opsiyonel)</span>
-                {unitDrafts.length > 0 && (
-                  <div className="space-y-2">
-                    {unitDrafts.map((u) => (
-                      <div key={u.id} className="flex items-end gap-2 bg-black/40 p-3 rounded-xl border border-white/10">
-                        <div className="flex-1">
-                          <TextField
-                            label="Birim Adı"
-                            value={u.name}
-                            placeholder="örn. adet, kase, dilim"
-                            onChange={(val) =>
-                              setUnitDrafts((prev) =>
-                                prev.map((x) => (x.id === u.id ? { ...x, name: val } : x))
-                              )
-                            }
-                          />
-                        </div>
-                        <div className="w-28">
-                          <NumField
-                            label="Miktar"
-                            suffix="g"
-                            value={u.grams}
-                            onChange={(val) =>
-                              setUnitDrafts((prev) =>
-                                prev.map((x) => (x.id === u.id ? { ...x, grams: val } : x))
-                              )
-                            }
-                          />
-                        </div>
-                        <button
-                          type="button"
-                          onClick={() => setUnitDrafts((prev) => prev.filter((x) => x.id !== u.id))}
-                          className="p-2.5 rounded-xl bg-white/10 hover:bg-red-500/20 text-white/50 hover:text-red-400 transition mb-0.5"
-                          title="Birimi sil"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                )}
-
-                <button
-                  type="button"
-                  onClick={() =>
-                    setUnitDrafts((prev) => [
-                      ...prev,
-                      { id: `unit-${Date.now()}-${Math.random()}`, name: "", grams: "" },
-                    ])
-                  }
-                  className="w-full py-2.5 rounded-xl border border-white/15 bg-white/5 hover:bg-white/10 text-xs font-bold text-white transition active:scale-95 flex items-center justify-center gap-1.5"
-                >
-                  <Plus className="w-3.5 h-3.5 text-purple-400" /> Birim Ekle
-                </button>
-              </div>
             </div>
           )}
         </div>
