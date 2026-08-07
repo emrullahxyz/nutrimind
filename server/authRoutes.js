@@ -187,6 +187,56 @@ async function handleAuth({ db, req, method, path, readBody, now }) {
       return { status: 403, body: { error: "geçersiz köken" } };
     }
 
+    // ---- POST /api/auth/password ----
+    // Parola belirleme/değiştirme. Oturum ŞART.
+    if (method === "POST" && path === "/api/auth/password") {
+      const s = resolveSession(db, req, t);
+      if (!s) return { status: 401, body: { error: "oturum gerekli" } };
+
+      const row = db.prepare("SELECT id, password_hash FROM users WHERE id = ?").get(s.userId);
+      if (!row) return { status: 401, body: { error: "oturum gerekli" } };
+
+      const b2 = (await readBody(req)) || {};
+      const yeni = typeof b2.newPassword === "string" ? b2.newPassword : "";
+      const mevcut = typeof b2.currentPassword === "string" ? b2.currentPassword : "";
+
+      const problem = auth.passwordProblem(yeni);
+      if (problem) return { status: 400, body: { error: problem } };
+
+      // Yalnızca Google ile açılmış hesapta `password_hash` NULL olur; orada
+      // "mevcut parola" diye bir şey YOK, kullanıcı ilk kez belirliyor. Bu bir
+      // yetki yükseltmesi değil: zaten geçerli bir oturumu var.
+      if (row.password_hash !== null) {
+        // Hız sınırı: geçerli oturumu olan biri bile mevcut parolayı deneme
+        // yanılmayla bulmaya çalışmasın.
+        const kontrol = emailLimiter.take(`pw:${row.id}`, t);
+        if (!kontrol.allowed) {
+          return {
+            status: 429,
+            body: { error: "çok fazla deneme, biraz sonra tekrar dene", retryAfter: kontrol.retryAfter },
+            headers: { "Retry-After": String(kontrol.retryAfter) },
+          };
+        }
+        if (!auth.verifyPassword(mevcut, row.password_hash)) {
+          return { status: 403, body: { error: "mevcut parola hatalı" } };
+        }
+      }
+
+      db.prepare("UPDATE users SET password_hash = ? WHERE id = ?").run(auth.hashPassword(yeni), row.id);
+
+      // DİĞER cihazlardaki oturumlar düşürülür, bu cihazınki KALIR. Parola
+      // değiştirmenin anlamı çalınmış bir oturumu kesmekse bu şart; kendi
+      // oturumunu da düşürmek kullanıcıyı gereksizce dışarı atardı.
+      const digerleri = db
+        .prepare("DELETE FROM sessions WHERE user_id = ? AND id_hash != ?")
+        .run(row.id, auth.hashSessionId(s.sessionId));
+
+      return {
+        status: 200,
+        body: { ok: true, kapatilanOturum: (digerleri && digerleri.changes) || 0 },
+      };
+    }
+
     // ---- POST /api/auth/logout ----
     if (method === "POST" && path === "/api/auth/logout") {
       const cookies = auth.parseCookies(req.headers && req.headers.cookie);

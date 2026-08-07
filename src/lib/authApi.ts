@@ -179,3 +179,12 @@ export function googleErrorMessage(code: string): string {
       return "Google girişi tamamlanamadı.";
   }
 }
+
+export async function changePassword(currentPassword: string, newPassword: string): Promise<void> {
+  const r = await call("/api/auth/password", {
+    method: "POST",
+    body: JSON.stringify({ currentPassword, newPassword }),
+  });
+  if (r.status !== 200) throwFrom(r);
+}
+
