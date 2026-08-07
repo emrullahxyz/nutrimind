@@ -16,6 +16,8 @@ import {
   ArrowLeft,
   Sparkles,
   Check,
+  LogOut,
+  KeyRound,
 } from "lucide-react";
 import { Modal } from "./Modal";
 import { GoalsForm } from "./GoalsForm";
@@ -26,6 +28,10 @@ import { useData } from "../lib/data";
 import { todayISO } from "../lib/format";
 import { parseWeightConfig, withWeightEntry } from "../lib/weight";
 import { useSubViewRegistration } from "../hooks/useSubViewRegistration";
+import { useAuth } from "../lib/auth";
+import { changePassword } from "../lib/authApi";
+import { passwordProblem } from "../lib/authRules";
+import { TextField, FormActions, ErrorText } from "./FormBits";
 
 type SubView =
   | null
@@ -38,7 +44,8 @@ type SubView =
   | "weight"
   | "widgets"
   | "feedback"
-  | "privacy";
+  | "privacy"
+  | "password";
 
 interface MenuItemProps {
   icon: React.ComponentType<{ className?: string }>;
@@ -135,6 +142,7 @@ export function SettingsSheet({
   }, [resetKey]);
   const [cacheStatus, setCacheStatus] = useState<string | null>(null);
   const dataCtx = useData();
+  const { user, authDisabled, logout } = useAuth();
 
   const scrollRef = useRef<HTMLDivElement>(null);
   const savedScrollTopRef = useRef<number>(0);
@@ -317,6 +325,16 @@ export function SettingsSheet({
                 subtitle="Koyu tema, makro görünümü"
                 onClick={() => openSubView("preferences")}
               />
+              {!authDisabled && (
+                <MenuItem
+                  icon={KeyRound}
+                  iconBg="bg-amber-500/15"
+                  iconColor="text-amber-400"
+                  title="Parola Değiştir"
+                  subtitle="Hesap parolanı güncelle"
+                  onClick={() => openSubView("password")}
+                />
+              )}
             </SectionGroup>
 
             {/* HEDEFLER & TAKİP */}
@@ -413,6 +431,17 @@ export function SettingsSheet({
                 subtitle="PWA service worker önbelleğini temizler"
                 onClick={handleClearCache}
               />
+              {!authDisabled && (
+                <MenuItem
+                  icon={LogOut}
+                  iconBg="bg-rose-500/15"
+                  iconColor="text-rose-400"
+                  title="Çıkış Yap"
+                  subtitle={user?.email}
+                  onClick={() => void logout()}
+                  isDanger
+                />
+              )}
             </SectionGroup>
 
             {cacheStatus && (
@@ -457,6 +486,7 @@ export function SettingsSheet({
                 {subView === "widgets" && "Ana Ekran Widget Rehberi"}
                 {subView === "feedback" && "Özellik İste & Geri Bildirim"}
                 {subView === "privacy" && "Gizlilik & Veri Güvenliği"}
+                {subView === "password" && "Parola Değiştir"}
               </h3>
             </div>
 
@@ -482,7 +512,7 @@ export function SettingsSheet({
         {/* 5. PROFİL BİLGİLERİ DÜZENLEME */}
         {subView === "profile" && (
           <div className="flex flex-col gap-4">
-            <div className="rounded-2xl border border-white/10 bg-[#141520] p-4 flex flex-col gap-3">
+            <div className="flex flex-col gap-3 rounded-card border border-line bg-calCard p-4">
               <div>
                 <label className="text-xs font-bold text-white/70 block mb-1">
                   Ad Soyad
@@ -618,6 +648,9 @@ export function SettingsSheet({
             </div>
           </div>
         )}
+
+        {/* 12. PAROLA DEĞİŞTİR */}
+        {subView === "password" && <PasswordForm goBack={goBack} />}
           </div>
         )}
       </div>
@@ -631,5 +664,116 @@ export function SettingsSheet({
     <Modal title={subView ? "Ayarlar" : "Ayarlar & Profil"} onClose={onClose} fullScreen contentRef={scrollRef}>
       {mainBody}
     </Modal>
+  );
+}
+
+function PasswordForm({ goBack }: { goBack: () => void }) {
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [newPasswordConfirm, setNewPasswordConfirm] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+  const [successMsg, setSuccessMsg] = useState<string | null>(null);
+
+  const passProblem = passwordProblem(newPassword);
+  const passwordsMatch = newPassword === newPasswordConfirm;
+
+  let validationProblem: string | null = null;
+  if (newPassword || newPasswordConfirm) {
+    if (passProblem) {
+      validationProblem = passProblem;
+    } else if (!passwordsMatch) {
+      validationProblem = "Parolalar eşleşmiyor.";
+    }
+  }
+
+  const canSave = !passProblem && passwordsMatch;
+
+  async function handleSave() {
+    if (!canSave || saving) return;
+    setSaving(true);
+    setErr(null);
+    setSuccessMsg(null);
+    try {
+      await changePassword(currentPassword, newPassword);
+      setCurrentPassword("");
+      setNewPassword("");
+      setNewPasswordConfirm("");
+      setSuccessMsg("Parolan güncellendi. Diğer cihazlardaki oturumlar kapatıldı.");
+    } catch (e) {
+      setErr(String((e as Error)?.message ?? e));
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <div className="flex flex-col gap-4">
+      <div className="flex flex-col gap-3 rounded-card border border-line bg-calCard p-4">
+        <div>
+          <TextField
+            label="Mevcut parola"
+            value={currentPassword}
+            onChange={(v) => {
+              setCurrentPassword(v);
+              setSuccessMsg(null);
+            }}
+            type="password"
+            autoComplete="current-password"
+          />
+          <p className="mt-1 text-[11px] text-white/50">
+            Hesabını yalnızca Google ile açtıysan burayı boş bırak.
+          </p>
+        </div>
+
+        <div>
+          <TextField
+            label="Yeni parola"
+            value={newPassword}
+            onChange={(v) => {
+              setNewPassword(v);
+              setSuccessMsg(null);
+            }}
+            type="password"
+            autoComplete="new-password"
+          />
+        </div>
+
+        <div>
+          <TextField
+            label="Yeni parola (tekrar)"
+            value={newPasswordConfirm}
+            onChange={(v) => {
+              setNewPasswordConfirm(v);
+              setSuccessMsg(null);
+            }}
+            type="password"
+            autoComplete="new-password"
+          />
+        </div>
+
+        {validationProblem && (
+          <p className="text-xs text-amber-400">{validationProblem}</p>
+        )}
+
+        {err && <ErrorText>{err}</ErrorText>}
+
+        {successMsg && (
+          <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-3 text-center text-xs font-bold text-emerald-400">
+            {successMsg}
+          </div>
+        )}
+
+        <div className="mt-2 flex justify-end">
+          <FormActions
+            onCancel={goBack}
+            onSave={() => void handleSave()}
+            saving={saving}
+            disabled={!canSave}
+            saveLabel="Kaydet"
+          />
+        </div>
+      </div>
+    </div>
   );
 }

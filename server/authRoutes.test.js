@@ -277,6 +277,125 @@ describe("oturum yaşam döngüsü", () => {
   });
 });
 
+// ============================================================================
+// Parola değiştirme: buradaki testlerin çoğu "değişiyor mu" değil, "BAŞKASI
+// değiştirebiliyor mu / çalınmış oturum kesiliyor mu" sorusunu soruyor.
+// ============================================================================
+describe("parola değiştirme", () => {
+  async function hazir() {
+    const R = await yukle({ NUTRIMIND_AUTH_ENABLED: "1", NUTRIMIND_ALLOW_SIGNUP: "1" });
+    const db = yeniDb();
+    const kayit = await R.handleAuth({
+      db, req: istek(), method: "POST", path: "/api/auth/register",
+      readBody: govde({ email: "a@x.co", password: "eskiParola123" }),
+    });
+    return { R, db, cerez: cerezden(kayit) };
+  }
+
+  it("oturumsuz istek reddedilir", async () => {
+    const { R, db } = await hazir();
+    const r = await R.handleAuth({
+      db, req: istek(), method: "POST", path: "/api/auth/password",
+      readBody: govde({ currentPassword: "eskiParola123", newPassword: "yeniParola123" }),
+    });
+    expect(r.status).toBe(401);
+    db.close();
+  });
+
+  it("mevcut parola yanlışsa reddedilir", async () => {
+    const { R, db, cerez } = await hazir();
+    const r = await R.handleAuth({
+      db, req: istek(cerez), method: "POST", path: "/api/auth/password",
+      readBody: govde({ currentPassword: "yanlisParola", newPassword: "yeniParola123" }),
+    });
+    expect(r.status).toBe(403);
+    // Eski parola HÂLÂ geçerli olmalı — başarısız deneme hiçbir şey değiştirmedi.
+    const giris = await R.handleAuth({
+      db, req: istek(), method: "POST", path: "/api/auth/login",
+      readBody: govde({ email: "a@x.co", password: "eskiParola123" }),
+    });
+    expect(giris.status).toBe(200);
+    db.close();
+  });
+
+  it("zayıf yeni parola reddedilir", async () => {
+    const { R, db, cerez } = await hazir();
+    const r = await R.handleAuth({
+      db, req: istek(cerez), method: "POST", path: "/api/auth/password",
+      readBody: govde({ currentPassword: "eskiParola123", newPassword: "kisa" }),
+    });
+    expect(r.status).toBe(400);
+    db.close();
+  });
+
+  it("başarılı değişimden sonra ESKİ parola çalışmaz, yenisi çalışır", async () => {
+    const { R, db, cerez } = await hazir();
+    const r = await R.handleAuth({
+      db, req: istek(cerez), method: "POST", path: "/api/auth/password",
+      readBody: govde({ currentPassword: "eskiParola123", newPassword: "yeniParola123" }),
+    });
+    expect(r.status).toBe(200);
+
+    const eski = await R.handleAuth({
+      db, req: istek(), method: "POST", path: "/api/auth/login",
+      readBody: govde({ email: "a@x.co", password: "eskiParola123" }),
+    });
+    expect(eski.status).toBe(401);
+
+    const yeni = await R.handleAuth({
+      db, req: istek(), method: "POST", path: "/api/auth/login",
+      readBody: govde({ email: "a@x.co", password: "yeniParola123" }),
+    });
+    expect(yeni.status).toBe(200);
+    db.close();
+  });
+
+  it("DİĞER cihazların oturumu düşer, kendi oturumun KALIR", async () => {
+    const { R, db, cerez } = await hazir();
+    // İkinci bir cihazdan giriş (ör. çalınmış oturum)
+    const digerCihaz = await R.handleAuth({
+      db, req: istek(), method: "POST", path: "/api/auth/login",
+      readBody: govde({ email: "a@x.co", password: "eskiParola123" }),
+    });
+    const digerCerez = cerezden(digerCihaz);
+    expect(db.prepare("SELECT COUNT(*) AS c FROM sessions").get().c).toBe(2);
+
+    await R.handleAuth({
+      db, req: istek(cerez), method: "POST", path: "/api/auth/password",
+      readBody: govde({ currentPassword: "eskiParola123", newPassword: "yeniParola123" }),
+    });
+
+    // Kendi oturumum ayakta
+    const ben = await R.handleAuth({ db, req: istek(cerez), method: "GET", path: "/api/auth/me", readBody: govde({}) });
+    expect(ben.status).toBe(200);
+    // Diğer cihaz kesildi
+    const oteki = await R.handleAuth({ db, req: istek(digerCerez), method: "GET", path: "/api/auth/me", readBody: govde({}) });
+    expect(oteki.status).toBe(401);
+    db.close();
+  });
+
+  it("Google ile açılmış (parolasız) hesap mevcut parola İSTEMEDEN parola belirleyebilir", async () => {
+    const R = await yukle({ NUTRIMIND_AUTH_ENABLED: "1" });
+    const db = yeniDb();
+    // Göçten gelen sahip: password_hash NULL. Ona elle bir oturum açalım.
+    const { sessionId } = R.createSession(db, "u_owner", istek(), Date.now());
+    const cerez = `${R.COOKIE_NAME}=${sessionId}`;
+
+    const r = await R.handleAuth({
+      db, req: istek(cerez), method: "POST", path: "/api/auth/password",
+      readBody: govde({ newPassword: "ilkParolam123" }),
+    });
+    expect(r.status).toBe(200);
+
+    const giris = await R.handleAuth({
+      db, req: istek(), method: "POST", path: "/api/auth/login",
+      readBody: govde({ email: "sahip@x.co", password: "ilkParolam123" }),
+    });
+    expect(giris.status).toBe(200);
+    db.close();
+  });
+});
+
 describe("CSRF ve hız sınırı", () => {
   it("çapraz-site POST reddedilir", async () => {
     const R = await yukle({ NUTRIMIND_AUTH_ENABLED: "1", NUTRIMIND_ALLOW_SIGNUP: "1" });
