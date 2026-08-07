@@ -110,6 +110,16 @@ export function ScanSheet({
   const [scanMode, setScanMode] = useState<ScanMode>("scan_food");
   const [showManual, setShowManual] = useState(false);
   const [analyzing, setAnalyzing] = useState(false);
+  /** Deklanşörle çekilen kare, AI'a gitmeden ÖNCE burada bekler. Telefon tam
+   *  basılırken oynarsa (fiziksel titreşim) kullanıcı bunu AI'ın yanıtını
+   *  bekleyip kotayı harcamadan fark edip tekrar çeksin diye — bkz. systematic
+   *  debugging notu: kırpma/çekim senkronizasyonunda kod hatası yoktu, eksik
+   *  olan çekilen kareyi göndermeden önce göstermekti. */
+  const [capturedPreview, setCapturedPreview] = useState<{
+    base64: string;
+    mimeType: string;
+    mode: VisionMode;
+  } | null>(null);
   const abortRef = useRef<AbortController | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -243,10 +253,23 @@ export function ScanSheet({
       : undefined;
     try {
       const { base64, mimeType } = await captureVideoFrame(video, { ...CAPTURE_OPTS[mode], crop });
-      await runVision(base64, mimeType, mode);
+      // Doğrudan AI'a gönderme — önce göster, kullanıcı onaylasın/tekrar çeksin.
+      setCapturedPreview({ base64, mimeType, mode });
     } catch (e) {
       setStatus({ kind: "error", message: String((e as Error)?.message ?? e) });
     }
+  }
+
+  function confirmCapture() {
+    if (!capturedPreview) return;
+    const { base64, mimeType, mode } = capturedPreview;
+    setCapturedPreview(null);
+    void runVision(base64, mimeType, mode);
+  }
+
+  function retakeCapture() {
+    // Video akışı hiç durmadı — önizleme kapanınca canlı kare zaten hazır.
+    setCapturedPreview(null);
   }
 
   const handleGallerySelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -639,6 +662,33 @@ export function ScanSheet({
               </div>
             )}
           </div>
+
+          {/* --- Çekim önizlemesi: AI'a gitmeden önce kullanıcı onaylar/tekrar çeker --- */}
+          {capturedPreview && (
+            <div className="absolute inset-0 z-20 flex flex-col bg-black">
+              <img
+                src={`data:${capturedPreview.mimeType};base64,${capturedPreview.base64}`}
+                alt="Çekilen kare"
+                className="min-h-0 flex-1 object-contain"
+              />
+              <div className="flex items-center justify-center gap-3 bg-gradient-to-t from-black via-black/90 to-transparent px-4 pb-[calc(1rem+env(safe-area-inset-bottom,0px))] pt-8">
+                <button
+                  type="button"
+                  onClick={retakeCapture}
+                  className="rounded-pill border border-white/15 bg-black/40 px-5 py-2.5 text-sm font-semibold text-white/80 backdrop-blur-sm transition hover:text-white"
+                >
+                  ↺ Tekrar çek
+                </button>
+                <button
+                  type="button"
+                  onClick={confirmCapture}
+                  className="rounded-pill bg-white px-6 py-2.5 text-sm font-extrabold text-black transition active:scale-95"
+                >
+                  ✓ Kullan
+                </button>
+              </div>
+            </div>
+          )}
 
           {/* --- Analiz örtüsü --- */}
           {analyzing && (
