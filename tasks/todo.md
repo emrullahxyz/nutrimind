@@ -190,8 +190,21 @@ kez tekrarlanmaz. Kapsam 5 bileşen, ayrıca planlanmalı.
          Başlık eklendi VE kod `X-Real-IP`'ye de düşecek şekilde sağlamlaştırıldı (YunoHost
          vhost'u yeniden üretirse elle eklenen satır kaybolabilir).
 
-- [ ] **Kullanıcı doğrulaması bekliyor:** Google ile giriş (artık basic-auth kalktığı için
-      ilk kez gerçek ortamda denenebilir), Saide'nin ilk girişi.
+- [x] **Kullanıcı doğrulaması:** ✅ Google ile giriş sorunsuz çalıştı.
+      ⚠️ Ama ilk açılışta "Veri alınamadı (API 401)" ölü ekranı görüldü, yenileyince düzeldi.
+      **Sebep nginx'te:** hiçbir dosyaya `Cache-Control` gönderilmiyordu → tarayıcı
+      `index.html`'i doğrulamadan önbellekten verdi → ESKİ JS çalıştı. Teşhisi veren ipucu
+      mesajın kendisiydi: "API 401" metni yeni kodda YOK (yeni sürüm "Oturum sona erdi" der).
+      **Düzeltildi:** `index.html` + `sw.js` → `no-cache`; `/assets/*` → `immutable`, 1 yıl.
+      Doğrulandı. Bu, Saide'nin ilk açılışını ve GELECEK her güncellemeyi de koruyor (L13).
+
+- [ ] **Saide'nin ilk girişi bekliyor.** ⚠️ Google ile girebilmesi için Google Cloud
+      Console'da **Test users** listesine eklenmesi gerekiyor (consent screen "Testing"
+      modunda). Eklenmezse Google onu reddeder; parolayla giriş her hâlükârda çalışır.
+
+### Kalan küçük işler (kullanıcıya önerildi, henüz onaylanmadı)
+- Uygulamada **çıkış yap** düğmesi yok.
+- Uygulamada **parola değiştirme** ekranı yok (şimdilik `setpassword.js` ile sunucudan).
 
 ---
 
