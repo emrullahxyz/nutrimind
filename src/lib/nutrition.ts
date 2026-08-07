@@ -85,6 +85,25 @@ export function scaleNutrition(n: Nutrition, servingG: number, grams: number): N
   return makeNutrition(out);
 }
 
+/** Bir besin değerini sabit bir çarpanla (porsiyon çarpanı, ör. 0.25/1/1.5) ölçekler.
+ *  `scaleNutrition`'ın aksine bir `servingG` tabanı gerektirmez — mevcut bir
+ *  değeri doğrudan katlar. `NutritionSheet`'in "Porsiyon Miktarı" stepper'ı ve
+ *  tarama onay ekranlarının porsiyon çarpanı bunu kullanır. Tanımsız mikro
+ *  alanlar tanımsız kalır — `scaleNutrition`'daki "bilinmiyor ≠ sıfır" kuralı
+ *  burada da geçerli. */
+export function scaleNutritionByFactor(
+  n: Nutrition,
+  multiplier: number,
+): Nutrition {
+  const out: Partial<Record<NutrientKey, number>> = {};
+  for (const key of NUTRIENT_KEYS) {
+    const v = n[key];
+    if (v === undefined) continue;
+    out[key] = round1(v * multiplier);
+  }
+  return makeNutrition(out);
+}
+
 /** `NutritionSheet`'in porsiyon çarpanı (±0,25 adımlı stepper) uygulanırken
  *  `sources[].qty`'yi de AYNI çarpanla ölçekler. Aksi halde çarpan ×2 yapılınca
  *  `computed` iki katına çıkar ama kaynak miktar eski değerde kalır — bu da

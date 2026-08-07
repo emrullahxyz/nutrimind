@@ -5,17 +5,17 @@ import {
   EMPTY_DRAFT,
   ErrorText,
   ExpandableMealName,
-  Label,
   NumField,
   NutrientSummaryLine,
   NutritionFields,
   TextField,
-  fieldCls,
   fromDraft,
   hasUnsavedBasketEntry,
   toDraft,
 } from "./FormBits";
 import type { NutritionDraft } from "./FormBits";
+import { ItemEditFields } from "./ItemEditFields";
+import type { EditableItem } from "./ItemEditFields";
 import { Skeleton } from "./Skeleton";
 import { AiError, aiErrorMessage, parseWithAI } from "../lib/ai";
 import { useData } from "../lib/data";
@@ -25,7 +25,7 @@ import { formatKcal, todayISO, weekdayIndex } from "../lib/format";
 import { effectiveProfile } from "../lib/goals";
 import { buildUsageIndex, rankAliases } from "../lib/aliasRank";
 import { categoryForHour, MEAL_CATEGORIES, MEAL_CATEGORY_LABELS } from "../lib/mealCategory";
-import type { AIParseItem, MealCategory, MealPayload, MealSource, Nutrition } from "../types";
+import type { AIParseItem, Alias, MealCategory, MealPayload, MealSource, Nutrition } from "../types";
 import { usualQuantity } from "../lib/quantity";
 import { AliasPicker } from "./AliasPicker";
 import { useBodyScrollLock } from "../hooks/useBodyScrollLock";
@@ -46,6 +46,7 @@ interface BasketItem {
 
 function BasketSection({
   basket,
+  aliases,
   editingIndex,
   onStartEdit,
   onSaveEdit,
@@ -57,14 +58,15 @@ function BasketSection({
   basketTotal,
 }: {
   basket: BasketItem[];
+  aliases: Alias[];
   editingIndex: number | null;
   onStartEdit: (idx: number) => void;
   onSaveEdit: (idx: number) => void;
   onCancelEdit: () => void;
   onRemove: (idx: number) => void;
   onClear: () => void;
-  editDraft: { name: string; nutrition: NutritionDraft };
-  setEditDraft: (d: { name: string; nutrition: NutritionDraft }) => void;
+  editDraft: EditableItem;
+  setEditDraft: (d: EditableItem) => void;
   basketTotal: Nutrition | null;
 }) {
   if (basket.length === 0) return null;
@@ -97,10 +99,7 @@ function BasketSection({
                   value={editDraft.name}
                   onChange={(name) => setEditDraft({ ...editDraft, name })}
                 />
-                <NutritionFields
-                  draft={editDraft.nutrition}
-                  onChange={(nutrition) => setEditDraft({ ...editDraft, nutrition })}
-                />
+                <ItemEditFields item={editDraft} aliases={aliases} onChange={setEditDraft} />
                 <div className="flex justify-end gap-2 mt-1">
                   <button
                     type="button"
@@ -292,9 +291,9 @@ export function MealForm({
   });
 
   const [editingBasketIndex, setEditingBasketIndex] = useState<number | null>(null);
-  const [basketEditDraft, setBasketEditDraft] = useState<{ name: string; nutrition: NutritionDraft }>({
+  const [basketEditDraft, setBasketEditDraft] = useState<EditableItem>({
     name: "",
-    nutrition: EMPTY_DRAFT,
+    nutrition: fromDraft(EMPTY_DRAFT),
   });
 
   const [saving, setSaving] = useState(false);
@@ -326,14 +325,14 @@ export function MealForm({
     setEditingBasketIndex(idx);
     setBasketEditDraft({
       name: item.name,
-      nutrition: toDraft(item.nutrition),
+      nutrition: item.nutrition,
+      sources: item.sources,
     });
   }
 
   function saveBasketItemEdit(idx: number) {
     const item = basket[idx];
     if (!item) return;
-    const newNut = fromDraft(basketEditDraft.nutrition);
     const updatedName = basketEditDraft.name.trim() || item.name;
     setBasket(
       basket.map((it, i) =>
@@ -341,7 +340,8 @@ export function MealForm({
           ? {
               ...it,
               name: updatedName,
-              nutrition: newNut,
+              nutrition: basketEditDraft.nutrition,
+              sources: basketEditDraft.sources,
               needsReview: false,
             }
           : it
@@ -807,6 +807,7 @@ export function MealForm({
 
               <BasketSection
                 basket={basket}
+                aliases={aliases}
                 editingIndex={editingBasketIndex}
                 onStartEdit={startEditingBasketItem}
                 onSaveEdit={saveBasketItemEdit}
@@ -856,6 +857,7 @@ export function MealForm({
 
             <BasketSection
               basket={basket}
+              aliases={aliases}
               editingIndex={editingBasketIndex}
               onStartEdit={startEditingBasketItem}
               onSaveEdit={saveBasketItemEdit}
@@ -913,6 +915,7 @@ export function MealForm({
             ) : (
               <BasketSection
                 basket={basket}
+                aliases={aliases}
                 editingIndex={editingBasketIndex}
                 onStartEdit={startEditingBasketItem}
                 onSaveEdit={saveBasketItemEdit}

@@ -5,6 +5,7 @@ import {
   parseNum,
   scaleMealSources,
   scaleNutrition,
+  scaleNutritionByFactor,
   toGrams,
   unitOptions,
 } from "./nutrition";
@@ -142,6 +143,50 @@ describe("scaleMealSources", () => {
 
   it("sources boş dizi ise undefined döner", () => {
     expect(scaleMealSources([], 2)).toBeUndefined();
+  });
+});
+
+describe("scaleNutritionByFactor", () => {
+  it("1x çarpanla değeri değiştirmez", () => {
+    expect(scaleNutritionByFactor(BASE, 1)).toEqual(BASE);
+  });
+
+  it("çarpanla tüm alanları orantılı ölçekler", () => {
+    expect(scaleNutritionByFactor(BASE, 2)).toEqual({
+      kcal: 200,
+      protein: 20,
+      carbs: 40,
+      fat: 10,
+      fiber: 4,
+    });
+  });
+
+  it("0.25 gibi kesirli çarpanı doğru uygular", () => {
+    expect(scaleNutritionByFactor(BASE, 0.25)).toEqual({
+      kcal: 25,
+      protein: 2.5,
+      carbs: 5,
+      fat: 1.3,
+      fiber: 0.5,
+    });
+  });
+
+  it("tanımsız mikro alanları tanımsız bırakır (0 yazmaz)", () => {
+    const withUndefinedMicros: Nutrition = {
+      ...BASE,
+      sugar: undefined,
+      satFat: undefined,
+      sodium: undefined,
+    };
+    const result = scaleNutritionByFactor(withUndefinedMicros, 2);
+    expect(result.sugar).toBeUndefined();
+    expect(result.satFat).toBeUndefined();
+    expect(result.sodium).toBeUndefined();
+  });
+
+  it("tanımlı bir mikro alanı da doğru ölçekler", () => {
+    const withSugar: Nutrition = { ...BASE, sugar: 8 };
+    expect(scaleNutritionByFactor(withSugar, 1.5).sugar).toBe(12);
   });
 });
 

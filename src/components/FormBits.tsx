@@ -81,6 +81,34 @@ export function NumField({
   );
 }
 
+/** Sayısal bir gösterim değerini (kart içindeki büyük rakam gibi) yerinde
+ *  düzenlenebilir yapar — odaklanınca/tıklayınca tüm metin seçili gelir
+ *  (`AliasPicker`'daki aynı desen), virgül/nokta ayrımı `fromDraft` → `parseNum`
+ *  aşamasında zaten birleştiği için burada normalize etmeye gerek yok. */
+export function EditableStat({
+  value,
+  onChange,
+  placeholder,
+  className = "",
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  placeholder?: string;
+  className?: string;
+}) {
+  return (
+    <input
+      inputMode="decimal"
+      value={value}
+      placeholder={placeholder}
+      onChange={(e) => onChange(e.target.value)}
+      onFocus={(e) => e.target.select()}
+      onClick={(e) => (e.target as HTMLInputElement).select()}
+      className={`bg-transparent outline-none placeholder:text-white/30 ${className}`}
+    />
+  );
+}
+
 export type NutritionDraft = Partial<Record<NutrientKey, string>>;
 
 function emptyDraft(): NutritionDraft {
