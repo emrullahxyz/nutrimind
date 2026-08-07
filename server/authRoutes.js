@@ -68,11 +68,19 @@ const emailLimiter = auth.createKeyedLimiter({ perMinute: 5, maxKeys: 1000 });
  * sıçrama alınıyor (öndeki değerler istemci tarafından uydurulabilir).
  */
 function clientIp(req) {
-  const xff = req && req.headers && req.headers["x-forwarded-for"];
+  const h = (req && req.headers) || {};
+  const xff = h["x-forwarded-for"];
   if (typeof xff === "string" && xff.trim() !== "") {
     const parts = xff.split(",").map((s) => s.trim()).filter(Boolean);
     if (parts.length > 0) return parts[parts.length - 1];
   }
+  // `X-Real-IP` yedeği: nginx vhost'u YunoHost tarafından yönetiliyor ve yeniden
+  // üretildiğinde elle eklenen `X-Forwarded-For` satırı kaybolabilir. `X-Real-IP`
+  // zaten vhost'un kendi varsayılanında var. Bu yedek olmadan sessizce HERKES
+  // 127.0.0.1 görünür ve IP başına hız sınırı tek bir küresel kovaya çöker —
+  // yani bir saldırgan tüm kullanıcıları kilitleyebilirdi.
+  const real = h["x-real-ip"];
+  if (typeof real === "string" && real.trim() !== "") return real.trim();
   return (req && req.socket && req.socket.remoteAddress) || "bilinmiyor";
 }
 

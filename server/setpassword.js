@@ -20,14 +20,18 @@
 "use strict";
 
 const path = require("node:path");
+const { randomBytes } = require("node:crypto");
 const { DatabaseSync } = require("node:sqlite");
 const auth = require("./auth.js");
 const { migrate, OWNER_ID } = require("./migrate.js");
 
 function main() {
-  const [emailArg, passwordArg] = process.argv.slice(2);
+  const args = process.argv.slice(2);
+  const create = args.includes("--create");
+  const [emailArg, passwordArg] = args.filter((a) => a !== "--create");
   if (!emailArg || !passwordArg) {
-    console.error("kullanım: node server/setpassword.js <e-posta> <parola>");
+    console.error("kullanım: node server/setpassword.js <e-posta> <parola> [--create]");
+    console.error("  --create : YENİ bir hesap açar (ikinci kullanıcı için)");
     process.exit(2);
   }
 
@@ -57,16 +61,30 @@ function main() {
     targetId = byEmail.id;
     db.prepare("UPDATE users SET password_hash = ? WHERE id = ?").run(hash, targetId);
     console.log(`parola güncellendi: ${email} (${targetId})`);
+  } else if (create) {
+    targetId = `u_${Date.now().toString(36)}${randomBytes(4).toString("hex")}`;
+    db.prepare(
+      "INSERT INTO users (id, email, password_hash, google_sub, display_name, created_at) VALUES (?, ?, ?, NULL, NULL, ?)",
+    ).run(targetId, email, hash, new Date().toISOString());
+    console.log(`YENİ hesap açıldı: ${email} (${targetId})`);
   } else {
-    const owner = db.prepare("SELECT id, email FROM users WHERE id = ?").get(OWNER_ID);
-    if (!owner) {
-      console.error(`hesap bulunamadı: ${email} — ve sahip hesabı (${OWNER_ID}) da yok`);
+    // ⚠️ SAHİP DEVRALMA KAPISI. Buradaki dal eskiden koşulsuzdu: e-posta
+    // bulunamazsa sahip hesabının E-POSTASINI değiştirip parolayı ona yazıyordu.
+    // Yani ikinci bir kullanıcı açmak isterken (ya da adresi yanlış yazarken)
+    // SAHİBİN hesabı ele geçirilmiş oluyordu. Artık yalnızca sahip hesabı HÂLÂ
+    // SAHİPSİZKEN (göçün bıraktığı yer tutucu e-posta + parola yok) devralınabilir.
+    const owner = db.prepare("SELECT id, email, password_hash FROM users WHERE id = ?").get(OWNER_ID);
+    const sahipsiz = owner && owner.password_hash === null;
+    if (!owner || !sahipsiz) {
+      console.error(`hesap bulunamadı: ${email}`);
+      console.error("Yeni bir hesap açmak istiyorsan --create ekle.");
+      console.error("(Sahip hesabı zaten kurulmuş; e-postasını bu betikle değiştiremezsin.)");
       db.close();
       process.exit(1);
     }
     targetId = owner.id;
     db.prepare("UPDATE users SET email = ?, password_hash = ? WHERE id = ?").run(email, hash, targetId);
-    console.log(`sahip hesabı güncellendi: ${owner.email} → ${email} (${targetId})`);
+    console.log(`sahip hesabı kuruldu: ${owner.email} → ${email} (${targetId})`);
   }
 
   // Parola değişince o hesabın TÜM açık oturumları düşürülür. Parola

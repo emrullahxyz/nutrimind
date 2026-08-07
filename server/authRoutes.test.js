@@ -314,4 +314,19 @@ describe("CSRF ve hız sınırı", () => {
     // Öndeki değerler istemci tarafından uydurulabilir; güvenilir olan sonuncusu.
     expect(ip).toBe("203.0.113.7");
   });
+
+  it("X-Forwarded-For yoksa X-Real-IP'ye düşer (YunoHost vhost'unun varsayılanı)", async () => {
+    // Bu yedek olmadan HERKES 127.0.0.1 görünür ve IP başına sınır tek bir
+    // küresel kovaya çöker — bir saldırgan tüm kullanıcıları kilitleyebilirdi.
+    const R = await yukle({ NUTRIMIND_AUTH_ENABLED: "1" });
+    expect(
+      R.clientIp({ headers: { "x-real-ip": "203.0.113.9" }, socket: { remoteAddress: "127.0.0.1" } }),
+    ).toBe("203.0.113.9");
+  });
+
+  it("hiçbir başlık yoksa soket adresine düşer, çökmez", async () => {
+    const R = await yukle({ NUTRIMIND_AUTH_ENABLED: "1" });
+    expect(R.clientIp({ headers: {}, socket: { remoteAddress: "10.0.0.1" } })).toBe("10.0.0.1");
+    expect(R.clientIp({})).toBe("bilinmiyor");
+  });
 });
