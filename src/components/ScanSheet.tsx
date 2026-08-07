@@ -272,6 +272,21 @@ export function ScanSheet({
     setCapturedPreview(null);
   }
 
+  /** Modal'ın `onClose`'u önizlemedeyken buna eşitleniyor (bkz. aşağıdaki
+   *  `<Modal onClose=...>`) — geri tuşu/kaydırma/X/Escape'in HEPSİ Modal'ın TEK
+   *  history girdisini `history.back()` ile tüketip bunu çağırıyor. Sıradan
+   *  `retakeCapture` yeterli değil: o girdi artık gitti, sheet React'te hâlâ
+   *  açık ama korumasız kaldı — BİR SONRAKİ geri basış (kullanıcı önizlemeyi
+   *  kapattıktan sonra canlı kameradan çıkmak istediğinde) doğrudan uygulamanın
+   *  kendisinden çıkardı. Girdiyi burada geri koyuyoruz ki sheet hep TEK
+   *  seviye korumalı kalsın (capturedPreview null olduğunda `requestClose`
+   *  zaten kendi temizliğinde bunu normal şekilde tüketecek).
+   */
+  function retakeCaptureFromHistoryPop() {
+    setCapturedPreview(null);
+    window.history.pushState({ isModal: true, title: "Kamera / Tara" }, "");
+  }
+
   const handleGallerySelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     e.target.value = ""; // aynı dosya tekrar seçilebilsin diye input'u sıfırla
@@ -535,7 +550,12 @@ export function ScanSheet({
       fullScreen
       bleed={scanning}
       title={food ? "Onayla ve kaydet" : visionItems && visionMode ? visionTitle : "Kamera / Tara"}
-      onClose={requestClose}
+      // Önizleme açıkken geri tuşu/kaydırma/X/Escape AYNI Modal popstate
+      // dinleyicisinden geçiyor (Modal `onClose`'u bir ref'te tutuyor, tam
+      // bunun için) — tüm sheet'i kapatmak yerine önizlemeyi kapatıp history
+      // korumasını geri koyan sürüme yönlendiriyoruz (bkz. yukarıdaki fonksiyon
+      // yorumu).
+      onClose={capturedPreview ? retakeCaptureFromHistoryPop : requestClose}
       footer={footerContent}
     >
       {/* Galeri seçici: SADECE "Galeri" düğmesi tetikler. Eskiden "Food Label"
