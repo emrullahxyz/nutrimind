@@ -132,6 +132,26 @@ Windows/git-bash'te sessizce başarısız olabiliyor; port hâlâ eski PID'deyse
 Bu, L8'in ("gizli panelde DOM ölçümü güvenilmez") sunucu tarafındaki kardeşi: **önce ölçüm
 aracına güven, sonra bulguya.**
 
+## L13 — `Cache-Control` YOKSA tarayıcı kendi kararını verir
+
+**Olay (Faz I sonrası):** Kullanıcı güncellemeden sonra uygulamayı açtı ve
+"Veri alınamadı (API 401)" ölü ekranını gördü; yenileyince düzeldi. Mimari bu ekranı
+göstermemek üzere kurulmuştu, yani ilk bakışta mimari hatası gibi duruyordu.
+
+**Teşhisi veren ipucu mesajın KENDİSİydi:** "API 401" metni YENİ kodda yok (yeni sürüm 401'i
+ayrı ele alıyor ve "Oturum sona erdi" diyor). Demek ki tarayıcıda ESKİ JS çalışmıştı.
+Sebep: nginx hiçbir dosyaya `Cache-Control` göndermiyordu. Başlık yokken tarayıcı
+"sezgisel tazelik" uyguluyor ve `index.html`'i **doğrulamadan** önbellekten verebiliyor;
+o eski HTML de eski JS'i işaret ediyor.
+
+**Kural:** SPA dağıtımında iki sınıf dosya vardır ve ikisi de AÇIKÇA etiketlenmeli:
+- `index.html` + `sw.js` → `no-cache` ("önbellekleme" değil, "kullanmadan önce sor")
+- hash'li varlıklar → `immutable`, uzun ömür (ad değişince içerik değişir)
+Başlık yokluğu "önbellekleme yok" DEĞİLDİR; tarayıcının kendi kararını vermesidir.
+
+**İkinci ders:** Bir hata mesajının METNİ hangi sürümün çalıştığını söyleyebilir. Mimariyi
+suçlamadan önce "bu cümle hangi koddan geliyor?" diye sor.
+
 ## L6 — Kullanıcıya seçenek sunarken premisi doğrula
 
 **Olay:** "Kullanıcı başına ayrı DB" seçeneğini "şema hiç değişmez, göç riski sıfır" diye sundum.
