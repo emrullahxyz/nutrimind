@@ -1,15 +1,24 @@
 // ============================================================================
-// Nutrimind — AI istemcisi (Gemini + NVIDIA NIM fallback).
+// Nutrimind — AI istemcisi (Gemini kademeleri + NVIDIA NIM + OpenCode Zen fallback zinciri).
 //
 // server/index.js "donmuş" kabul edildiği için bu mantık AYRI bir modülde
-// yaşıyor; index.js yalnızca /api/ai/parse isteğini buraya yönlendiren birkaç
-// satırlık bir köprü taşıyor (bkz. Adım 2).
+// yaşıyor; index.js yalnızca /api/ai/parse ve /api/ai/vision isteklerini buraya
+// yönlendiren birkaç satırlık bir köprü taşıyor.
 //
-// EN ÖNEMLİ KURAL: `parseMealText` HİÇBİR ZAMAN throw ETMEZ, her zaman
-// {status, body} döner. index.js'in paylaşılan catch'i `instanceof HttpError`
-// kontrolü yapıyor (o sınıf index.js'e özel, buradan export edilmiyor) —
-// burada throw edilen her şey index.js'in catch'inde sessizce 500'e düşerdi.
-// Bu modülün kendi hataları KENDİ İÇİNDE yakalanıp {status,body}'e çevrilir.
+// EN ÖNEMLİ KURAL: `parseMealText`/`parseMealImage` HİÇBİR ZAMAN throw ETMEZ,
+// her zaman {status, body} döner. index.js'in paylaşılan catch'i `instanceof
+// HttpError` kontrolü yapıyor (o sınıf index.js'e özel, buradan export
+// edilmiyor) — burada throw edilen her şey index.js'in catch'inde sessizce
+// 500'e düşerdi. Bu modülün kendi hataları KENDİ İÇİNDE yakalanıp {status,body}'e
+// çevrilir.
+//
+// FALLBACK ZİNCİRİ (2026-08-07 tasarımı — docs/superpowers/specs/2026-08-07-ai-fallback-chain-design.md):
+// Gemini kotası model bazlı ayrı bir kova (Google'ın 429 hata mesajındaki
+// quotaDimensions.model alanı bunu doğruluyor) — yani "gemini-3.6-flash" dolsa
+// bile "gemini-3.5-flash" açık olabilir. Bu yüzden zincir önce Gemini'nin 3
+// canlı kademesini dener, sonra NIM'e, metin ucunda son olarak OpenCode Zen'in
+// ücretsiz bir modeline düşer. OpenCode Zen'in ücretsiz modelleri vision
+// desteklemediği için görsel zincirde yok.
 // ============================================================================
 "use strict";
 
@@ -55,27 +64,52 @@ loadDotEnvOnce();
 
 // --- Sabitler ----------------------------------------------------------------
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY || "";
-const GEMINI_MODEL = process.env.GEMINI_MODEL || "gemini-2.0-flash";
+const GEMINI_MODEL = process.env.GEMINI_MODEL || "gemini-flash-latest";
+const GEMINI_TIER2_MODEL = process.env.GEMINI_TIER2_MODEL || "gemini-3.5-flash";
+const GEMINI_TIER3_MODEL = process.env.GEMINI_TIER3_MODEL || "gemini-flash-lite-latest";
 const NVIDIA_NIM_API_KEY = process.env.NVIDIA_NIM_API_KEY || "";
 const NVIDIA_NIM_MODEL = process.env.NVIDIA_NIM_MODEL || "meta/llama-3.1-8b-instruct";
+const NVIDIA_NIM_VISION_MODEL = process.env.NVIDIA_NIM_VISION_MODEL || "meta/llama-3.2-90b-vision-instruct";
+const OPENCODE_API_KEY = process.env.OPENCODE_API_KEY || "";
+const OPENCODE_MODEL = process.env.OPENCODE_MODEL || "deepseek-v4-flash-free";
 const LLM_PROVIDER = process.env.NUTRIMIND_LLM_PROVIDER || "none";
 const CONFIDENCE_THRESHOLD = Number(process.env.NUTRIMIND_CONFIDENCE_THRESHOLD || 0.8);
 const AI_RATE_PARSE = Number(process.env.NUTRI_AI_RATE_PARSE || 10);
+const AI_RATE_GEMINI_TIER2 = Number(process.env.NUTRI_AI_RATE_GEMINI_TIER2 || 10);
+const AI_RATE_GEMINI_TIER3 = Number(process.env.NUTRI_AI_RATE_GEMINI_TIER3 || 15);
 const NIM_RATE_PARSE = Number(process.env.NUTRI_AI_RATE_NIM || 10);
+const NIM_VISION_RATE = Number(process.env.NUTRI_AI_RATE_NIM_VISION || 5);
+const AI_RATE_OPENCODE = Number(process.env.NUTRI_AI_RATE_OPENCODE || 10);
 const AI_TIMEOUT_MS = Number(process.env.NUTRI_AI_TIMEOUT_MS || 15000);
+// NIM/OpenCode fallback adımları hem soğuk-başlangıçta (~30sn, vision'da canlı
+// ölçüldü) hem de gerçek besin-analizi prompt'larında (kısa "OK" testinden çok
+// daha uzun JSON üretimi gerektiriyor, canlı testte 15sn'yi aşıp 504 verdiği
+// gözlendi) birincil Gemini denemesinden belirgin şekilde yavaş olabiliyor —
+// bu yüzden hepsi daha uzun bir zaman aşımı kullanıyor.
+const NIM_FALLBACK_TIMEOUT_MS = Number(process.env.NUTRI_AI_NIM_TIMEOUT_MS || 40000);
 const NIM_URL = "https://integrate.api.nvidia.com/v1/chat/completions";
+const OPENCODE_URL = "https://opencode.ai/zen/v1/chat/completions";
 
-const geminiUrl = () =>
-  `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${GEMINI_API_KEY}`;
+const geminiUrl = (model) =>
+  `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${GEMINI_API_KEY}`;
 
 // --- Jeton kovası (server/index.js'teki OFF proxy'sinin BİREBİR aynı deseni) --
 function makeBucket(perMin) {
   return { tokens: perMin, cap: perMin, perMs: perMin / 60000, last: Date.now() };
 }
+// Metin zinciri: Gemini tier1 (mevcut GEMINI_MODEL) → tier2 → tier3 → NIM → OpenCode.
 const aiBucket = makeBucket(AI_RATE_PARSE);
+const geminiTier2Bucket = makeBucket(AI_RATE_GEMINI_TIER2);
+const geminiTier3Bucket = makeBucket(AI_RATE_GEMINI_TIER3);
 const nimBucket = makeBucket(NIM_RATE_PARSE);
-const VISION_RATE = Number(process.env.NUTRI_AI_RATE_VISION || 5);
+const opencodeBucket = makeBucket(AI_RATE_OPENCODE);
+// Görsel zinciri: Gemini tier1 → tier2 → tier3 → NIM Vision. Tier2/tier3 kovaları
+// metin zinciriyle PAYLAŞILIYOR (aynı Gemini modeli, aynı gerçek üst kota) —
+// yalnızca tier1 (aiBucket/visionBucket) ve NIM (nimBucket/nimVisionBucket) ayrı,
+// çünkü bunlar zaten var olan, prod'da ayarlı olabilecek env anahtarları.
+const VISION_RATE = Number(process.env.NUTRI_AI_RATE_VISION || 15);
 const visionBucket = makeBucket(VISION_RATE);
+const nimVisionBucket = makeBucket(NIM_VISION_RATE);
 const VALID_IMAGE_MIME = new Set(["image/jpeg", "image/png", "image/webp"]);
 
 function peekTokens(b) {
@@ -203,7 +237,12 @@ KURALLAR:
 - Yanıtı Türkçe ver.`;
 }
 
-const NIM_JSON_INSTRUCTION = `
+// NIM ve OpenCode Zen, Gemini'nin `responseSchema` (yapısal çıktı garantisi)
+// özelliğini desteklemiyor — bu yüzden ikisine de "sadece bu JSON'u döndür"
+// talimatı ekleniyor. Eskiden `buildNimPrompt`/`NIM_JSON_INSTRUCTION` adıyla
+// yalnızca NIM için vardı; artık OpenCode de aynı sınırlamayı paylaştığı için
+// isim genelleştirildi.
+const JSON_MODE_INSTRUCTION = `
 
 SADECE aşağıdaki JSON şekline uygun yanıt ver. Başka hiçbir metin, açıklama veya markdown
 kod bloğu (\`\`\`) EKLEME — yanıtın TAMAMI geçerli JSON olmalı:
@@ -211,8 +250,8 @@ kod bloğu (\`\`\`) EKLEME — yanıtın TAMAMI geçerli JSON olmalı:
 
 "confidence" alanını HER ZAMAN dahil et (0 ile 1 arası, ne kadar eminsin).`;
 
-function buildNimPrompt(basePrompt) {
-  return basePrompt + NIM_JSON_INSTRUCTION;
+function buildJsonModePrompt(basePrompt) {
+  return basePrompt + JSON_MODE_INSTRUCTION;
 }
 
 // --- Ortak LLM çağrı mantığı ---------------------------------------------------
@@ -222,7 +261,7 @@ function stripMarkdownFence(s) {
   return m ? m[1] : trimmed;
 }
 
-async function callLLM({ bucket, url, headers, requestBody, extractText }) {
+async function callLLM({ bucket, url, headers, requestBody, extractText, timeoutMs }) {
   const wait = takeToken(bucket);
   if (wait > 0) {
     return {
@@ -238,7 +277,7 @@ async function callLLM({ bucket, url, headers, requestBody, extractText }) {
       method: "POST",
       headers,
       body: JSON.stringify(requestBody),
-      signal: AbortSignal.timeout(AI_TIMEOUT_MS),
+      signal: AbortSignal.timeout(timeoutMs || AI_TIMEOUT_MS),
     });
     text = await r.text();
   } catch (e) {
@@ -275,34 +314,69 @@ async function callLLM({ bucket, url, headers, requestBody, extractText }) {
   return { status: 200, body: parsed };
 }
 
-function geminiFetch(prompt) {
+/** @param {{model:string, bucket:object, imageBase64?:string, mimeType?:string, timeoutMs?:number}} opts */
+function geminiFetch(prompt, opts) {
+  const parts = [{ text: prompt }];
+  if (opts.imageBase64) {
+    parts.push({ inline_data: { mime_type: opts.mimeType, data: opts.imageBase64 } });
+  }
   return callLLM({
-    bucket: aiBucket,
-    url: geminiUrl(),
+    bucket: opts.bucket,
+    url: geminiUrl(opts.model),
     headers: { "Content-Type": "application/json" },
     requestBody: {
-      contents: [{ parts: [{ text: prompt }] }],
+      contents: [{ parts }],
       generationConfig: { responseMimeType: "application/json", responseSchema: RESPONSE_SCHEMA },
     },
     extractText: (j) => j?.candidates?.[0]?.content?.parts?.[0]?.text,
+    timeoutMs: opts.timeoutMs,
   });
 }
 
-function nimFetch(prompt) {
+/** @param {{model:string, bucket:object, imageBase64?:string, mimeType?:string, timeoutMs?:number}} opts */
+function nimFetch(prompt, opts) {
+  const content = opts.imageBase64
+    ? [
+        { type: "text", text: prompt },
+        { type: "image_url", image_url: { url: `data:${opts.mimeType};base64,${opts.imageBase64}` } },
+      ]
+    : prompt;
   return callLLM({
-    bucket: nimBucket,
+    bucket: opts.bucket,
     url: NIM_URL,
     headers: {
       "Content-Type": "application/json",
       Authorization: `Bearer ${NVIDIA_NIM_API_KEY}`,
     },
     requestBody: {
-      model: NVIDIA_NIM_MODEL,
-      messages: [{ role: "user", content: prompt }],
+      model: opts.model,
+      messages: [{ role: "user", content }],
       temperature: 0.2,
-      response_format: { type: "json_object" },
+      // Bazı NIM vision modelleri response_format'ı desteklemeyebilir — görsel
+      // isteklerde göndermiyoruz, sadece JSON_MODE_INSTRUCTION'a güveniyoruz.
+      ...(opts.imageBase64 ? {} : { response_format: { type: "json_object" } }),
     },
     extractText: (j) => j?.choices?.[0]?.message?.content,
+    timeoutMs: opts.timeoutMs,
+  });
+}
+
+/** @param {{model:string, bucket:object, timeoutMs?:number}} opts */
+function opencodeFetch(prompt, opts) {
+  return callLLM({
+    bucket: opts.bucket,
+    url: OPENCODE_URL,
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${OPENCODE_API_KEY}`,
+    },
+    requestBody: {
+      model: opts.model,
+      messages: [{ role: "user", content: prompt }],
+      max_tokens: 2000,
+    },
+    extractText: (j) => j?.choices?.[0]?.message?.content,
+    timeoutMs: opts.timeoutMs,
   });
 }
 
@@ -310,14 +384,88 @@ function attemptGemini(prompt) {
   if (!GEMINI_API_KEY) {
     return { status: 500, body: { error: "AI servisi yapılandırılmamış (GEMINI_API_KEY yok)" } };
   }
-  return geminiFetch(prompt);
+  return geminiFetch(prompt, { model: GEMINI_MODEL, bucket: aiBucket });
 }
 
 function attemptNim(prompt) {
   if (!NVIDIA_NIM_API_KEY) {
     return { status: 500, body: { error: "AI servisi yapılandırılmamış (NVIDIA_NIM_API_KEY yok)" } };
   }
-  return nimFetch(prompt);
+  return nimFetch(prompt, { model: NVIDIA_NIM_MODEL, bucket: nimBucket });
+}
+
+// --- Sağlayıcı fallback zinciri --------------------------------------------
+// `steps`: [{available: boolean, run: () => Promise<{status,body}>}]. Sırayla
+// dener, ilk 200'de durur. Hiçbiri "available" değilse (hiç API key yoksa)
+// hemen 500 döner — hiçbir ağ isteği yapılmaz.
+async function runChain(steps) {
+  const usable = steps.filter((s) => s.available);
+  if (usable.length === 0) {
+    return {
+      status: 500,
+      body: { error: "AI servisi yapılandırılmamış (hiçbir sağlayıcı için API key yok)" },
+    };
+  }
+  let result;
+  for (const step of usable) {
+    result = await step.run();
+    if (result.status === 200) return result;
+  }
+  return result;
+}
+
+function textChainSteps(prompt) {
+  const jsonPrompt = buildJsonModePrompt(prompt);
+  return [
+    { available: !!GEMINI_API_KEY, run: () => geminiFetch(prompt, { model: GEMINI_MODEL, bucket: aiBucket }) },
+    {
+      available: !!GEMINI_API_KEY,
+      run: () => geminiFetch(prompt, { model: GEMINI_TIER2_MODEL, bucket: geminiTier2Bucket }),
+    },
+    {
+      available: !!GEMINI_API_KEY,
+      run: () => geminiFetch(prompt, { model: GEMINI_TIER3_MODEL, bucket: geminiTier3Bucket }),
+    },
+    {
+      available: !!NVIDIA_NIM_API_KEY,
+      run: () =>
+        nimFetch(jsonPrompt, { model: NVIDIA_NIM_MODEL, bucket: nimBucket, timeoutMs: NIM_FALLBACK_TIMEOUT_MS }),
+    },
+    {
+      available: !!OPENCODE_API_KEY,
+      run: () =>
+        opencodeFetch(jsonPrompt, { model: OPENCODE_MODEL, bucket: opencodeBucket, timeoutMs: NIM_FALLBACK_TIMEOUT_MS }),
+    },
+  ];
+}
+
+function visionChainSteps(prompt, imageBase64, mimeType) {
+  const jsonPrompt = buildJsonModePrompt(prompt);
+  return [
+    {
+      available: !!GEMINI_API_KEY,
+      run: () => geminiFetch(prompt, { model: GEMINI_MODEL, bucket: visionBucket, imageBase64, mimeType }),
+    },
+    {
+      available: !!GEMINI_API_KEY,
+      run: () => geminiFetch(prompt, { model: GEMINI_TIER2_MODEL, bucket: geminiTier2Bucket, imageBase64, mimeType }),
+    },
+    {
+      available: !!GEMINI_API_KEY,
+      run: () => geminiFetch(prompt, { model: GEMINI_TIER3_MODEL, bucket: geminiTier3Bucket, imageBase64, mimeType }),
+    },
+    {
+      available: !!NVIDIA_NIM_API_KEY,
+      run: () =>
+        nimFetch(jsonPrompt, {
+          model: NVIDIA_NIM_VISION_MODEL,
+          bucket: nimVisionBucket,
+          timeoutMs: NIM_FALLBACK_TIMEOUT_MS,
+          imageBase64,
+          mimeType,
+        }),
+    },
+  ];
 }
 
 // --- Doğrulama (savunmacı — AI yanıtlarının yapısı garanti değildir) -----------
@@ -366,18 +514,11 @@ async function parseMealText({ text, aliases }) {
   if (LLM_PROVIDER === "gemini") {
     result = await attemptGemini(prompt);
   } else if (LLM_PROVIDER === "nim") {
-    result = await attemptNim(buildNimPrompt(prompt));
+    result = await attemptNim(buildJsonModePrompt(prompt));
   } else {
-    // "auto": önce Gemini, olmazsa NIM. İki sağlayıcı da başarısız olursa NIM'in
-    // (son denenenin) sonucu olduğu gibi döner — birleştirilmiş özel bir mesaj YOK
-    result = await attemptGemini(prompt);
-    if (result.status !== 200) {
-      const nimResult = await attemptNim(buildNimPrompt(prompt));
-      if (nimResult.status !== 200) {
-        console.error(`[ai] her iki sağlayıcı da başarısız: gemini=${result.status} nim=${nimResult.status}`);
-      }
-      result = nimResult;
-    }
+    // "auto": Gemini (3 kademe) → NIM → OpenCode Zen, sırayla. Hepsi başarısız
+    // olursa son denenenin sonucu döner (özel birleştirilmiş mesaj YOK).
+    result = await runChain(textChainSteps(prompt));
   }
 
   if (result.status !== 200) return result;
@@ -391,9 +532,6 @@ async function parseMealText({ text, aliases }) {
 async function parseMealImage({ imageBase64, mimeType, mode, aliases }) {
   if (LLM_PROVIDER === "none") {
     return { status: 503, body: { error: "AI özelliği bu ortamda kapalı" } };
-  }
-  if (!GEMINI_API_KEY) {
-    return { status: 500, body: { error: "AI servisi yapılandırılmamış (GEMINI_API_KEY yok)" } };
   }
   if (typeof imageBase64 !== "string" || !imageBase64.trim()) {
     return { status: 400, body: { error: "image gerekli" } };
@@ -411,16 +549,11 @@ async function parseMealImage({ imageBase64, mimeType, mode, aliases }) {
       ? buildLabelPrompt()
       : buildFoodPhotoPrompt(Array.isArray(aliases) ? aliases : []);
 
-  const result = await callLLM({
-    bucket: visionBucket,
-    url: geminiUrl(),
-    headers: { "Content-Type": "application/json" },
-    requestBody: {
-      contents: [{ parts: [{ text: prompt }, { inline_data: { mime_type: mimeType, data: imageBase64 } }] }],
-      generationConfig: { responseMimeType: "application/json", responseSchema: RESPONSE_SCHEMA },
-    },
-    extractText: (j) => j?.candidates?.[0]?.content?.parts?.[0]?.text,
-  });
+  // NOT: eskiden burada "GEMINI_API_KEY yoksa 500" diye erken bir kontrol vardı.
+  // Artık kaldırıldı — runChain zaten hiçbir adım kullanılamıyorsa kendi 500'ünü
+  // üretiyor, ve Gemini anahtarı olmasa bile NIM Vision tek başına devreye
+  // girebilmeli (zincirin bütün amacı bu).
+  const result = await runChain(visionChainSteps(prompt, imageBase64, mimeType));
 
   if (result.status !== 200) return result;
 
