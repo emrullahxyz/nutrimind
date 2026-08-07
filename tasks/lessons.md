@@ -117,6 +117,21 @@ turda bağımsız çalıştırılır (bu turda çalıştırıldı, 480/480 doğr
 iki "sorun"dan biri geçersizdi (`dummyHashCache`'in `NUTRI_SCRYPT_N` değişince bayatlayacağı
 iddiası — `SCRYPT_N` modül düzeyinde bir sabit, bayatlayamaz). Ajan bulgularını doğrula (bkz. L3).
 
+## L12 — Ölçmeden önce ölçtüğün şeyin GERÇEKTEN yeni kod olduğunu doğrula
+
+**Olay (Faz F):** `server/index.js`'e oturum kapısını bağladım, sunucuyu "yeniden başlattım",
+ölçtüm ve kapı çalışmıyor göründü. Gerçekte yeni süreç **hiç açılmamıştı** (`constraint failed`
+ile ölmüştü) ve eski süreç hâlâ portu tutup cevap veriyordu. Yani ölçtüğüm şey ESKİ koddu.
+"Kapı çalışmıyor" diye yanlış yerde bug arayacaktım; logu okuyunca çıktı — ve asıl bug da
+oradaydı: `currentUserId(req)` değişikliği, modül yüklenirken argümansız çağrılan tohumlama
+satırını `null`'a düşürüyordu.
+
+**Kural:** Arka planda yeniden başlatılan bir süreci ölçmeden önce (a) başlatma logunun
+BAŞARI satırını gör, (b) gerekiyorsa portu dinleyen PID'nin değiştiğini doğrula. `pkill -f`
+Windows/git-bash'te sessizce başarısız olabiliyor; port hâlâ eski PID'deyse ölçüm yalan söyler.
+Bu, L8'in ("gizli panelde DOM ölçümü güvenilmez") sunucu tarafındaki kardeşi: **önce ölçüm
+aracına güven, sonra bulguya.**
+
 ## L6 — Kullanıcıya seçenek sunarken premisi doğrula
 
 **Olay:** "Kullanıcı başına ayrı DB" seçeneğini "şema hiç değişmez, göç riski sıfır" diye sundum.
