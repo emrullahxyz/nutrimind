@@ -66,6 +66,10 @@ export function NutritionSheet({ isOpen, onClose, meal, onSave, onDelete, onEdit
       // (bkz. MealForm'daki aynı not).
       if (consumeProgrammaticBack(e)) return;
       isPoppedRef.current = true;
+      // Odaklı bir EditableStat alanındaki metin seçiliyse mobil "kes/kopyala"
+      // balonu input DOM'dan kalksa bile ekranda asılı kalıyordu — kapanmadan
+      // önce blur ile seçimi bırakmak balonu da kapatıyor.
+      (document.activeElement as HTMLElement | null)?.blur();
       onClose();
     };
 
@@ -80,6 +84,7 @@ export function NutritionSheet({ isOpen, onClose, meal, onSave, onDelete, onEdit
   }, [isOpen, meal, onClose]);
 
   const handleUserClose = () => {
+    (document.activeElement as HTMLElement | null)?.blur();
     if (!isPoppedRef.current && window.history.state?.isModal) {
       window.history.replaceState({ tab: "daily" }, "");
     }

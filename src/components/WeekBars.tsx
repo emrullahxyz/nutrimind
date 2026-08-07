@@ -43,11 +43,18 @@ export function WeekBars({
 
   const max = Math.max(...dayGoals, ...week.days.map((d) => d.total.kcal)) * 1.12 || 1;
 
+  // Bar rengi çizilen çizgiyle AYNI referansa (haftalık ORTALAMA hedef) göre
+  // belirlenir. Önceden her bar KENDİ gün hedefine bakıyordu — gün tipleri
+  // farklı hedeflere sahip olduğunda (ör. dinlenme günü), ortalama çizginin
+  // altında kalan bir bar bile kendi (daha düşük) hedefini aştığı için kırmızı
+  // görünebiliyordu; çizilenle karşılaştırılan tutarsızdı.
+  const avgGoal = dayGoals.reduce((a, b) => a + b, 0) / dayGoals.length;
+
   if (compact) {
     return (
       <div className="flex h-12 items-end gap-1.5 overflow-hidden rounded-lg bg-black/40 p-1.5 inset-0 border border-white/[0.06]">
         {week.days.map((d, i) => {
-          const over = dayGoals[i] > 0 && d.total.kcal > dayGoals[i];
+          const over = avgGoal > 0 && d.total.kcal > avgGoal;
           return (
             <div key={d.date} className="relative flex-1 h-full flex flex-col justify-end">
               {d.hasData ? (
@@ -92,7 +99,6 @@ export function WeekBars({
   }
 
   // Kesikli çizgi tek bir yatay çizgi olduğu için haftanın ORTALAMA hedefini gösterir
-  const avgGoal = dayGoals.reduce((a, b) => a + b, 0) / dayGoals.length;
   const goalVaries = new Set(dayGoals).size > 1;
   const goalPct = (avgGoal / max) * 100;
 
@@ -113,8 +119,7 @@ export function WeekBars({
 
           {week.days.map((d, i) => {
             const h = d.hasData ? Math.max((d.total.kcal / max) * 100, 3) : 1.5;
-            const dayGoal = dayGoals[i];
-            const over = dayGoal > 0 && d.total.kcal > dayGoal;
+            const over = avgGoal > 0 && d.total.kcal > avgGoal;
             const clickable = d.hasData && !!onSelectDay;
             const beamSpeed = BEAM_SPEEDS[i % BEAM_SPEEDS.length];
 
