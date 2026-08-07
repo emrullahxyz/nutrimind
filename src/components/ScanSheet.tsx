@@ -115,11 +115,24 @@ export function ScanSheet({
    *  bekleyip kotayı harcamadan fark edip tekrar çeksin diye — bkz. systematic
    *  debugging notu: kırpma/çekim senkronizasyonunda kod hatası yoktu, eksik
    *  olan çekilen kareyi göndermeden önce göstermekti. */
-  const [capturedPreview, setCapturedPreview] = useState<{
+  const [capturedPreview, setCapturedPreviewState] = useState<{
     base64: string;
     mimeType: string;
     mode: VisionMode;
   } | null>(null);
+  /** `capturedPreview`'ın SENKRON aynası. Modal'ın `onClose`'u popstate'te
+   *  render beklemeden HEMEN karar vermek zorunda (aşağıdaki `handleModalClose`)
+   *  — React state güncellemesi bir sonraki render'a kadar görünmez, ama arka
+   *  arkaya hızlı iki geri basış (gerçek cihazda görülen, ara sıra tetiklenen
+   *  bir hata) ikinci popstate'i o render'dan ÖNCE tetikleyebiliyor. State'e
+   *  güvenilseydi ikinci basış hâlâ "tekrar çek" sanılır, geçmişe fazladan bir
+   *  girdi daha pushlanır ve BİR SONRAKİ geri basış uygulamanın kendisinden
+   *  çıkardı. Ref senkron olduğu için bu yarışı ortadan kaldırıyor. */
+  const capturedPreviewRef = useRef<typeof capturedPreview>(null);
+  function setCapturedPreview(value: typeof capturedPreview) {
+    capturedPreviewRef.current = value;
+    setCapturedPreviewState(value);
+  }
   const abortRef = useRef<AbortController | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -272,19 +285,20 @@ export function ScanSheet({
     setCapturedPreview(null);
   }
 
-  /** Modal'ın `onClose`'u önizlemedeyken buna eşitleniyor (bkz. aşağıdaki
+  /** Modal'a HER ZAMAN aynı, kararlı referans olarak geçiyoruz (bkz. aşağıdaki
    *  `<Modal onClose=...>`) — geri tuşu/kaydırma/X/Escape'in HEPSİ Modal'ın TEK
-   *  history girdisini `history.back()` ile tüketip bunu çağırıyor. Sıradan
-   *  `retakeCapture` yeterli değil: o girdi artık gitti, sheet React'te hâlâ
-   *  açık ama korumasız kaldı — BİR SONRAKİ geri basış (kullanıcı önizlemeyi
-   *  kapattıktan sonra canlı kameradan çıkmak istediğinde) doğrudan uygulamanın
-   *  kendisinden çıkardı. Girdiyi burada geri koyuyoruz ki sheet hep TEK
-   *  seviye korumalı kalsın (capturedPreview null olduğunda `requestClose`
-   *  zaten kendi temizliğinde bunu normal şekilde tüketecek).
-   */
-  function retakeCaptureFromHistoryPop() {
-    setCapturedPreview(null);
-    window.history.pushState({ isModal: true, title: "Kamera / Tara" }, "");
+   *  history girdisini `history.back()` ile tüketip bunu çağırıyor. Karar
+   *  `capturedPreviewRef`'ten (senkron) okunuyor, React state'ten DEĞİL —
+   *  neden önemli olduğu yukarıdaki ref yorumunda. Önizlemedeysek o girdi az
+   *  önce gitti ama sheet React'te hâlâ açık: girdiyi geri pushlayıp TEK
+   *  seviye korumayı sürdürüyoruz. Değilsek gerçek kapanış. */
+  function handleModalClose() {
+    if (capturedPreviewRef.current) {
+      setCapturedPreview(null);
+      window.history.pushState({ isModal: true, title: "Kamera / Tara" }, "");
+    } else {
+      requestClose();
+    }
   }
 
   const handleGallerySelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -550,12 +564,11 @@ export function ScanSheet({
       fullScreen
       bleed={scanning}
       title={food ? "Onayla ve kaydet" : visionItems && visionMode ? visionTitle : "Kamera / Tara"}
-      // Önizleme açıkken geri tuşu/kaydırma/X/Escape AYNI Modal popstate
-      // dinleyicisinden geçiyor (Modal `onClose`'u bir ref'te tutuyor, tam
-      // bunun için) — tüm sheet'i kapatmak yerine önizlemeyi kapatıp history
-      // korumasını geri koyan sürüme yönlendiriyoruz (bkz. yukarıdaki fonksiyon
-      // yorumu).
-      onClose={capturedPreview ? retakeCaptureFromHistoryPop : requestClose}
+      // SABİT referans — capturedPreview'a göre koşullu DEĞİL. Kararı kendi
+      // içinde senkron ref'ten okuyor (bkz. `handleModalClose` yorumu); render
+      // bekleyen bir koşullu swap, arka arkaya hızlı iki geri basışta yarışa
+      // girip ikinci basışta uygulamadan çıkışa yol açıyordu.
+      onClose={handleModalClose}
       footer={footerContent}
     >
       {/* Galeri seçici: SADECE "Galeri" düğmesi tetikler. Eskiden "Food Label"
