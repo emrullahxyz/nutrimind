@@ -12,7 +12,8 @@ import {
   Plus,
 } from "lucide-react";
 import { useBodyScrollLock } from "../hooks/useBodyScrollLock";
-import { markProgrammaticBack } from "../lib/backStack";
+import { useModalHistory } from "../hooks/useModalHistory";
+import { afterHistoryBackSettles } from "../lib/backStack";
 
 export type TabType = "daily" | "history" | "aliases" | "settings";
 
@@ -63,7 +64,6 @@ export function BottomNav({
 }: BottomNavProps) {
   const [open, setOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
-  const isPoppedRef = useRef(false);
 
   // FAB menüsü açıkken body scroll'u paylaşılan, referans-sayaçlı mekanizmayla
   // kilitlenir (bkz. useBodyScrollLock) — burada artık doğrudan
@@ -85,46 +85,15 @@ export function BottomNav({
     }
   }, [open]);
 
-  // Android donanım geri tuşu / geri kaydırma: FAB menüsü ÖNCEDEN ne pushState'e
-  // ne de popstate'e katılıyordu — ÜSTELİK App.tsx'in eski "modal açık mı" DOM
-  // sorgusu bu backdrop'u (`.fixed.inset-0`) yanlışlıkla "modal açık" sanıp
-  // App'in kendi geri-tuşu mantığını da susturuyordu. Sonuç: menü açıkken geri
-  // tuşu TAMAMEN tepkisiz kalıyordu. Diğer tam-ekran modal bileşenleriyle
-  // (MealForm, RecipeBuilder, AliasForm, NutritionSheet) AYNI deseni kullanır:
-  // açılışta pushState, popstate'te kapat, `isModal: true` ile işaretle (hem
-  // App'in `state?.isModal` kontrolü hem de scroll kilidi sayesinde
-  // `hasOpenOverlay()` bunu "kendi dinleyicisinde ele alınan bir overlay" olarak görür).
-  useEffect(() => {
-    if (!open) return;
-    isPoppedRef.current = false;
-    window.history.pushState({ isModal: true, modalType: "fab_menu" }, "");
-
-    const handlePopState = () => {
-      isPoppedRef.current = true;
-      setOpen(false);
-    };
-
-    window.addEventListener("popstate", handlePopState);
-
-    return () => {
-      window.removeEventListener("popstate", handlePopState);
-      // Menü geri tuşu HARİCİNDE kapatıldıysa (dışarı tıklama, sekme seçimi,
-      // FAB'a tekrar tıklama): pushlanan geçmiş girdisini temizlemek için geri
-      // git — aksi halde bir sonraki gerçek geri tuşu bu "hayalet" girdiyi
-      // tüketir, o anki gerçek ekranı değil.
-      //
-      // `markProgrammaticBack()` ŞART ve unutulmuştu. Bu `back()` asenkron: bir
-      // menü öğesi (ör. "Yemek Taraması") aynı anda yeni bir modal açtığında,
-      // geciken `popstate` o YENİ modalın dinleyicisine düşüyor ve onu açılır
-      // açılmaz kapatıyordu — "FAB > Yemek Taraması açılmıyor" ve "kamera bazen
-      // hiç açılmıyor" şikâyetlerinin sebebi buydu. Yarış olduğu için aralıklıydı.
-      // Modal ve ExerciseModal bu sayacı zaten kullanıyordu; burası tek istisnaydı.
-      if (!isPoppedRef.current && window.history.state?.isModal) {
-        markProgrammaticBack();
-        window.history.back();
-      }
-    };
-  }, [open]);
+  // Android donanım geri tuşu / geri kaydırma — bkz. `useModalHistory` (bu
+  // dosya eskiden tek istisnaydı: `markProgrammaticBack()` unutulmuştu, bir
+  // menü öğesi aynı anda yeni bir modal açtığında gecikmiş `popstate` o YENİ
+  // modalın dinleyicisine düşüp onu açılır açılmaz kapatıyordu — "FAB >
+  // Yemek Taraması açılmıyor" şikâyetinin sebebiydi. Ortak hook bunu zaten
+  // doğru yapıyor). Menüyü kapatan HİÇBİR `setOpen(false)` çağrısı
+  // değişmedi — hook'un temizliği `open` `false` olduğunda otomatik devreye
+  // giriyor, ayrı bir `requestClose()` çağrısına gerek yok.
+  useModalHistory({ active: open, onClose: () => setOpen(false) });
 
   const tabs = [
     { id: "daily" as TabType, label: "Bugün", icon: Home },
@@ -149,7 +118,13 @@ export function BottomNav({
         className="fixed bottom-0 left-0 right-0 z-40 border-t border-white/10 bg-[#1A1926]/95 backdrop-blur-xl"
       >
         <div className="relative mx-auto flex max-w-md items-center justify-between px-3 py-2 sm:max-w-lg">
-          {/* 2x2 FAB Popup Menu */}
+          {/* 2x2 FAB Popup Menu — her öğe `afterHistoryBackSettles` ile sarılı:
+              menü kapanışı `history.back()` çağırıyor (asenkron), öğe AYNI
+              anda yeni bir modal açarsa (senkron `pushState`) tarayıcı
+              back()'in hedefini çağrı anındaki konuma göre kaydedip aradaki
+              yeni push'u atlıyor — canlıda "FAB > Yemek Taraması, geri, geri"
+              dizisiyle uygulamadan çıkışa yol açtığı doğrulandı. Bkz.
+              `backStack.ts`'teki fonksiyon yorumu. */}
           {open && (
             <div className="anim-zoom absolute bottom-20 right-3 mb-2 grid w-64 grid-cols-2 gap-2.5 rounded-3xl border border-white/15 bg-[#1F1E2C]/98 p-3 shadow-float backdrop-blur-2xl z-50">
               <FabMenuItem
@@ -157,7 +132,7 @@ export function BottomNav({
                 label="Egzersiz Kaydet"
                 onClick={() => {
                   setOpen(false);
-                  onOpenExercise?.();
+                  afterHistoryBackSettles(() => onOpenExercise?.());
                 }}
               />
               <FabMenuItem
@@ -165,7 +140,7 @@ export function BottomNav({
                 label="Kayıtlı Besinler"
                 onClick={() => {
                   setOpen(false);
-                  onSavedFoods?.();
+                  afterHistoryBackSettles(() => onSavedFoods?.());
                 }}
               />
               <FabMenuItem
@@ -173,7 +148,7 @@ export function BottomNav({
                 label="Besin Arama"
                 onClick={() => {
                   setOpen(false);
-                  onAddMeal?.();
+                  afterHistoryBackSettles(() => onAddMeal?.());
                 }}
               />
               <FabMenuItem
@@ -181,7 +156,7 @@ export function BottomNav({
                 label="Yemek Taraması"
                 onClick={() => {
                   setOpen(false);
-                  onScan?.();
+                  afterHistoryBackSettles(() => onScan?.());
                 }}
               />
             </div>

@@ -1,11 +1,11 @@
-import { useState, useEffect, useRef } from "react";
+import { useState } from "react";
 import { Dumbbell, Flame, Plus, Trash2, X, Activity, Footprints, Waves, Bike, Sparkles } from "lucide-react";
 import type { Exercise, ExerciseCategory } from "../types";
 import { useData } from "../lib/data";
 import { useBodyScrollLock } from "../hooks/useBodyScrollLock";
+import { useModalHistory } from "../hooks/useModalHistory";
 
 import { EXERCISE_CONFIG_KEY, exercisesFor, parseExerciseEntries, withExercises } from "../lib/exercise";
-import { consumeProgrammaticBack, markProgrammaticBack } from "../lib/backStack";
 
 interface Props {
   isOpen: boolean;
@@ -44,50 +44,10 @@ export function ExerciseModal({ isOpen, onClose, date }: Props) {
   const [category, setCategory] = useState<ExerciseCategory>("run");
   const [duration, setDuration] = useState(30);
   const [calories, setCalories] = useState(200);
-  const isPoppedRef = useRef(false);
 
-  // `onClose` ref üzerinden okunuyor: bağımlılık dizisinde dursaydı (çağıran
-  // taraf inline bir arrow geçirdiği için her render'da yeni bir fonksiyon)
-  // efekt her render'da yeniden kurulur, temizliği `history.back()` çağırır ve
-  // geciken `popstate` yeni dinleyiciye düşüp modalı KENDİ KENDİNE kapatırdı.
-  // `Modal.tsx`'te aynı hata tarayıcı/kamera ekranını bozuyordu — bkz.
-  // `lib/backStack.ts`'teki yutma sayacı. Diziye yalnızca `isOpen` girer.
-  const onCloseRef = useRef(onClose);
-  useEffect(() => {
-    onCloseRef.current = onClose;
-  }, [onClose]);
-
-  useEffect(() => {
-    if (!isOpen) return;
-    window.history.pushState({ isModal: true, title: "Egzersiz" }, "");
-    isPoppedRef.current = false;
-
-    const handlePopState = (e: PopStateEvent) => {
-      // Olay geçiliyor — App'in global dinleyicisi bizden önce çalışıp sayacı
-      // düşürmüş oluyor; aynı olay için ikimiz de `true` almalıyız.
-      if (consumeProgrammaticBack(e)) return;
-      isPoppedRef.current = true;
-      onCloseRef.current();
-    };
-
-    window.addEventListener("popstate", handlePopState);
-
-    return () => {
-      window.removeEventListener("popstate", handlePopState);
-      if (!isPoppedRef.current && window.history.state?.isModal) {
-        markProgrammaticBack();
-        window.history.back();
-      }
-    };
-  }, [isOpen]);
-
-  const handleUserClose = () => {
-    if (!isPoppedRef.current && window.history.state?.isModal) {
-      window.history.back();
-    } else {
-      onClose();
-    }
-  };
+  // Geri tuşu/kaydırma/X entegrasyonu — bkz. `useModalHistory` (7 bileşende
+  // elle kopyalanmış aynı deseni tek yere topluyor).
+  const { requestClose: handleUserClose } = useModalHistory({ active: isOpen, onClose });
 
   const [busy, setBusy] = useState(false);
 

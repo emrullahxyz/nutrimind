@@ -1,5 +1,4 @@
-import { useState, useEffect, useRef } from "react";
-import { consumeProgrammaticBack } from "../lib/backStack";
+import { useState } from "react";
 import { ArrowLeft, Sparkles, Check, Plus, Trash2, Tag, Scale, Package } from "lucide-react";
 import {
   EMPTY_DRAFT,
@@ -20,6 +19,7 @@ import type { OffFood } from "../lib/off";
 import type { Alias, AliasUnit, Nutrition } from "../types";
 
 import { useBodyScrollLock } from "../hooks/useBodyScrollLock";
+import { useModalHistory } from "../hooks/useModalHistory";
 
 interface UnitDraft {
   id: string;
@@ -29,39 +29,14 @@ interface UnitDraft {
 
 /** Alias (besin hafızası) ekleme/düzenleme full-screen modal */
 export function AliasForm({ initial, onClose }: { initial: Alias | null; onClose: () => void }) {
-  const isPoppedRef = useRef(false);
-
   // Lock background body scroll when modal is open
   useBodyScrollLock(true);
 
-  useEffect(() => {
-    isPoppedRef.current = false;
-    window.history.pushState({ isModal: true, modalType: "alias_form", tab: "aliases" }, "");
-
-    const handlePopState = (e: PopStateEvent) => {
-      // Başka bir overlay'in temizliğinden doğan `back()` bize ait değil
-      // (bkz. MealForm'daki aynı not).
-      if (consumeProgrammaticBack(e)) return;
-      isPoppedRef.current = true;
-      onClose();
-    };
-
-    window.addEventListener("popstate", handlePopState);
-
-    return () => {
-      window.removeEventListener("popstate", handlePopState);
-      if (!isPoppedRef.current && window.history.state?.isModal) {
-        window.history.replaceState({ tab: "aliases" }, "");
-      }
-    };
-  }, [onClose]);
-
-  const handleUserClose = () => {
-    if (!isPoppedRef.current && window.history.state?.isModal) {
-      window.history.replaceState({ tab: "aliases" }, "");
-    }
-    onClose();
-  };
+  // Geri tuşu/kaydırma/X entegrasyonu — bkz. `useModalHistory` (7 bileşende
+  // elle kopyalanmış aynı deseni tek yere topluyor; bu dosyadaki eski sürüm
+  // kapanışta `replaceState` kullanıyordu, bu da her açılışta geçmiş
+  // yığınında boş bir girdi bırakıyordu — hook `history.back()` kullanıyor).
+  const { requestClose: handleUserClose } = useModalHistory({ active: true, onClose });
 
   const { upsertAlias } = useData();
 
