@@ -56,8 +56,19 @@ Hepsi prod'a (`nutri.emrullah.xyz` + `nutri-api.service`) deploy edildi ve doğr
    kapatıyordu). İkinci düzeltme, arka arkaya ÇOK hızlı iki geri basışta (React render'ının
    yetişemediği bir yarış durumu) uygulamadan tamamen çıkma hatasını giderdi — karar artık React
    state değil, senkron bir ref'ten okunuyor.
+4. **Modal history hook'u ortaklaştırıldı** (`57d0ae7`, aşağıdaki eski "Faz B") — yedi ayrı yerde
+   elle kopyalanmış history mantığı `src/hooks/useModalHistory.ts`'e taşındı; dördü
+   (`MealForm`/`AliasForm`/`RecipeBuilder`/`NutritionSheet`) kapanışta `replaceState` kullanan
+   bilinen teknik borcu da düzeltti (artık hepsi `history.back()`+`markProgrammaticBack`).
+   **Doğrulama sırasında yeni, gerçek bir yarış durumu bulundu ve düzeltildi:** FAB menüsünden bir
+   öğe seçilince menü kapanırken `history.back()` çağırıyor (asenkron), AYNI tıklama yeni bir
+   modal açarsa (senkron `pushState`) tarayıcı `back()`'in hedefini çağrı anındaki konuma göre
+   hesaplayıp aradaki yeni push'u atlıyor — canlıda "FAB → Yemek Taraması → geri → geri"
+   dizisiyle uygulamadan çıkışa yol açtığı `pnpm preview`'de doğrulandı. `afterHistoryBackSettles`
+   (`backStack.ts`) FAB menü öğelerinin yeni modal açmadan önce kapanışın gerçek `popstate`'ini
+   beklemesini sağlıyor.
 
-`server/ai.test.js` (8 yeni test) ve mevcut 569 testin tamamı yeşil.
+`server/ai.test.js` (8 yeni test) dahil 574 testin tamamı yeşil.
 
 ## Bu dosyanın kapsamı: ertelenen fikirler + öneriler
 
@@ -65,22 +76,13 @@ Brainstorming sırasında kullanıcı iki fikir önerdi (multi-stage pipeline, v
 kasıtlı olarak bu turun dışında bırakıldı. Kullanıcı ayrıca kendi fikirlerimi de istedi. Aşağıda
 hepsi, önerilen bir öncelik sırasıyla.
 
-### Faz B — Modal history hook'unu ortak bir yere çıkar (öneri, YÜKSEK öncelik)
-
-**Neden en yüksek öncelik:** Bu son oturumda `ScanSheet.tsx`'te tam olarak bu sınıf bir hatayı
-(Modal'ın `history.pushState`/`popstate` mantığı + iç içe bir "önizleme" alt-durumu arasındaki
-etkileşim) debug etmek saatler sürdü — kök neden, React state'in render beklemesiyle tarayıcı
-history API'sinin senkron olması arasındaki bir yarış durumuydu. `docs/handoff/HANDOFF.md`'de
-zaten not düşülmüş: `MealForm.tsx`, `AliasForm.tsx`, `NutritionSheet.tsx`, `RecipeBuilder.tsx`
-**her biri** `Modal.tsx`'in history mantığını (push/popstate/`consumeProgrammaticBack`) elle
-kopyalıyor, ortak bir hook'a çıkarılmamış. Bunlardan biri gelecekte iç içe bir alt-adım
-(onay ekranı, çok adımlı form vb.) kazanırsa AYNI yarış durumuna düşebilir.
-
-**Öneri:** `src/hooks/useModalHistory.ts` gibi paylaşılan bir hook — `Modal.tsx`'in ve bu 4
-bileşenin mevcut mantığını (push/pop/`isPoppedRef`/`consumeProgrammaticBack` tüketimi) tek yerde
-topla. `ScanSheet.tsx`'teki `capturedPreviewRef` deseni (senkron ref, React state değil) iç içe
-bir alt-adımı desteklemesi gereken herhangi bir çağıran için bu hook'un API'sine dahil edilebilir.
-Bu bir refactor, davranış değişikliği değil — mevcut testlerin hepsi yeşil kalmalı.
+~~Faz B — Modal history hook'unu ortak bir yere çıkar~~ **YAPILDI** (`57d0ae7`) — yukarıdaki
+"Bugüne kadar yapılanlar" 4. maddeye bak. `ScanSheet.tsx`'teki `capturedPreviewRef` deseni
+(senkron ref, React state değil — çekilen kareyi AI'a göndermeden önceki onay adımı) BİLİNÇLİ
+OLARAK bu hook'un dışında bırakıldı: taşıdığı veri (base64 görsel) history state'e sığacak
+şekilde serileştirilemez, hook'un varsayımı (tek push/pop, veri yok) burada geçerli değil. İleride
+başka bir bileşen benzer bir "AI'a göndermeden önce onayla" alt-adımına ihtiyaç duyarsa,
+`useModalHistory`'i zorlamak yerine `ScanSheet.tsx`'teki desene bakılmalı.
 
 ### Faz D — Tekrarlayan fotoğraf/etiket önbelleği (kullanıcının fikri, rafine edilmiş)
 
@@ -150,13 +152,12 @@ gerçekten fark yaratıp yaratmadığı ölçülmeli, sonra otomatikleştirilmel
 
 ## Önerilen sıra ve gerekçe
 
-**B → E (telemetri + gerçek cihaz testi) → D adım 1 (ölçüm) → C (dikkatle) → D adım 2/3 (veri
-varsa) → A (deneysel).**
+**~~B~~ (yapıldı) → E (telemetri + gerçek cihaz testi) → D adım 1 (ölçüm) → C (dikkatle) → D adım
+2/3 (veri varsa) → A (deneysel).**
 
-B en yüksek risk-azaltımını en düşük eforla veriyor (refactor, davranış değişikliği yok). Telemetri
-neredeyse bedava ve sonraki her kararı (D, A) verilerle destekliyor. Gerçek cihaz testi zaten
-planlanan, ucuz bir doğrulama adımı. C ve A daha spekülatif — ölçüm olmadan uygulanırlarsa hem
-ek kota tüketebilir hem karmaşıklık ekleyebilirler, bu yüzden veri sonrası karar önerilir.
+Telemetri neredeyse bedava ve sonraki her kararı (D, A) verilerle destekliyor. Gerçek cihaz testi
+zaten planlanan, ucuz bir doğrulama adımı. C ve A daha spekülatif — ölçüm olmadan uygulanırlarsa
+hem ek kota tüketebilir hem karmaşıklık ekleyebilirler, bu yüzden veri sonrası karar önerilir.
 
 ## Antigravity'ye özel notlar
 
