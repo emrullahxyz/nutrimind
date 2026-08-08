@@ -151,3 +151,39 @@ export function resetProgrammaticBacks(): void {
   markedEvent = null;
   pendingProgrammaticBacks = 0;
 }
+
+// ---------------------------------------------------------------------------
+// Bir overlay'i (ör. FAB menüsü) kapatıp AYNI tıklamada yeni bir modal
+// açarken kullanılır (`BottomNav`'ın FAB menüsü öğeleri gibi).
+//
+// Kapanan overlay'in temizliği `markProgrammaticBack()` + `history.back()`
+// çağırıyor — bu ASENKRON. Yeni modal bunu beklemeden hemen `pushState`
+// çağırırsa (React state güncellemesi + efekt aynı/bir sonraki tick'te
+// senkron çalışabildiği için mümkün), tarayıcı `back()`'in hedefini ÇAĞRI
+// ANINDAKİ konuma göre kaydediyor gibi davranıyor — aradaki yeni push'u
+// ATLAYIP bir fazla geri gidiyor. Sonuç: yeni modal açık ama
+// `window.history.state` zaten köke düşmüş oluyor; kullanıcı o modalı tek
+// bir gerçek geri basışla kapattığında ARTIK hiçbir koruma kalmıyor — bir
+// SONRAKİ geri basış (ya da hızlı ikinci bir basış) doğrudan uygulamadan
+// çıkarıyor. Canlı tarayıcıda `pnpm preview` ile FAB → "Yemek Taraması" →
+// geri → geri dizisiyle üretildi ve doğrulandı.
+//
+// Çözüm: yeni modalı açmadan önce, kapanan overlay'in `back()`'inin
+// GERÇEKTEN ürettiği `popstate`'i bekle — tahmini bir gecikme (`setTimeout`)
+// DEĞİL, olayın kendisi. `back()` hiç popstate üretmezse (ör. zaten kökteyse)
+// takılı kalmamak için kısa bir zaman aşımı güvenlik ağı var.
+/** `setOpen(false)` gibi bir overlay-kapatma çağrısından HEMEN sonra, yeni bir
+ *  modal açmadan ÖNCE çağır. */
+export function afterHistoryBackSettles(callback: () => void): void {
+  let done = false;
+  const finish = () => {
+    if (done) return;
+    done = true;
+    window.removeEventListener("popstate", onPopState);
+    window.clearTimeout(timeoutId);
+    callback();
+  };
+  const onPopState = () => finish();
+  window.addEventListener("popstate", onPopState);
+  const timeoutId = window.setTimeout(finish, 50);
+}

@@ -1,5 +1,5 @@
-import { useMemo, useState, useEffect, useRef } from "react";
-import { consumeProgrammaticBack } from "../lib/backStack";
+import { useMemo, useState } from "react";
+import { useModalHistory } from "../hooks/useModalHistory";
 import { ArrowLeft, Sparkles, Plus, Check } from "lucide-react";
 import {
   EMPTY_DRAFT,
@@ -190,42 +190,14 @@ export function MealForm({
   initialCategory?: MealCategory;
   isOpen?: boolean;
 }) {
-  const isPoppedRef = useRef(false);
-
   // Lock background body scroll when modal is open
   useBodyScrollLock(isOpen);
 
-  useEffect(() => {
-    if (!isOpen) return;
-    isPoppedRef.current = false;
-    window.history.pushState({ isModal: true, modalType: "add_meal", tab: "daily" }, "");
-
-    const handlePopState = (e: PopStateEvent) => {
-      // BAŞKA bir overlay'in temizliğinden doğan `back()` bize ait değil.
-      // `ScanSheet` kapanırken tam olarak bunu yapıyor; sayaca bakılmadığı için
-      // tarama sonucuyla açılan bu form AÇILIR AÇILMAZ kapanıyor ve AI'ın
-      // okuduğu besin sessizce düşüyordu — "fotoğrafı seçtim, hiçbir tepki yok".
-      if (consumeProgrammaticBack(e)) return;
-      isPoppedRef.current = true;
-      onClose();
-    };
-
-    window.addEventListener("popstate", handlePopState);
-
-    return () => {
-      window.removeEventListener("popstate", handlePopState);
-      if (!isPoppedRef.current && window.history.state?.isModal) {
-        window.history.replaceState({ tab: "daily" }, "");
-      }
-    };
-  }, [isOpen, onClose]);
-
-  const handleUserClose = () => {
-    if (!isPoppedRef.current && window.history.state?.isModal) {
-      window.history.replaceState({ tab: "daily" }, "");
-    }
-    onClose();
-  };
+  // Geri tuşu/kaydırma/X entegrasyonu — bkz. `useModalHistory` (7 bileşende
+  // elle kopyalanmış aynı deseni tek yere topluyor; bu dosyadaki eski sürüm
+  // kapanışta `replaceState` kullanıyordu, bu da her açılışta geçmiş
+  // yığınında boş bir girdi bırakıyordu — hook `history.back()` kullanıyor).
+  const { requestClose: handleUserClose } = useModalHistory({ active: isOpen, onClose });
 
   const { aliases, days, goals, setDayMeals } = useData();
   const existing = editIndex === null ? undefined : mealsOf(days, date)[editIndex];

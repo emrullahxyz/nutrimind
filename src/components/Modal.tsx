@@ -2,7 +2,7 @@ import { useEffect, useRef } from "react";
 import type { ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { useBodyScrollLock } from "../hooks/useBodyScrollLock";
-import { consumeProgrammaticBack, markProgrammaticBack } from "../lib/backStack";
+import { useModalHistory } from "../hooks/useModalHistory";
 
 /** Koyu tema modal kabuğu: masaüstünde ortalı, mobilde alttan sheet.
  *  Esc ya da zemine tıklama kapatır; açıkken arka plan kaydırması kilitlenir. */
@@ -27,55 +27,12 @@ export function Modal({
 }) {
   const dialogRef = useRef<HTMLDivElement>(null);
   const mouseDownTargetRef = useRef<EventTarget | null>(null);
-  const isPoppedRef = useRef(false);
 
-  // `onClose`/`title` ref üzerinden okunuyor ki aşağıdaki geçmiş efekti YALNIZCA
-  // mount/unmount'ta çalışsın. Bağımlılık dizisinde dursalardı efekt her render'da
-  // yeniden kurulur, temizliği `history.back()` çağırır, geciken `popstate` yeni
-  // dinleyiciye düşer ve modal KENDİ KENDİNİ kapatırdı. ScanSheet'te tam olarak bu
-  // oluyordu (`requestClose` her render'da yeni bir fonksiyon) — kamera açılır
-  // açılmaz tarayıcı kapanıyordu. Bu diziyi doldurma.
-  const onCloseRef = useRef(onClose);
-  useEffect(() => {
-    onCloseRef.current = onClose;
-  }, [onClose]);
-  const titleRef = useRef(title);
-  useEffect(() => {
-    titleRef.current = title;
-  }, [title]);
-
-  useEffect(() => {
-    // Modal açıldığında tarayıcı geçmişine push et
-    window.history.pushState({ isModal: true, title: titleRef.current }, "");
-
-    const handlePopState = (e: PopStateEvent) => {
-      // Kendi temizliğimizin doğurduğu back() ise: yut, kapatma sayma.
-      // Olay geçiliyor: App'in global dinleyicisi bizden ÖNCE çalışıp sayacı
-      // düşürmüş oluyor; aynı olay için ikimiz de `true` almalıyız.
-      if (consumeProgrammaticBack(e)) return;
-      isPoppedRef.current = true;
-      onCloseRef.current();
-    };
-
-    window.addEventListener("popstate", handlePopState);
-
-    return () => {
-      window.removeEventListener("popstate", handlePopState);
-      // Kullanıcı X veya buton ile kapattıysa (popstate harici), history stack'i temizlemek için back() yap
-      if (!isPoppedRef.current && window.history.state?.isModal) {
-        markProgrammaticBack();
-        window.history.back();
-      }
-    };
-  }, []);
-
-  const handleUserClose = () => {
-    if (!isPoppedRef.current && window.history.state?.isModal) {
-      window.history.back();
-    } else {
-      onClose();
-    }
-  };
+  // Geri tuşu/kaydırma/X/backdrop/Escape entegrasyonu artık ortak hook'ta —
+  // bkz. `useModalHistory` için dosya başındaki not (yedi ayrı yerde elle
+  // kopyalanmış aynı deseni tek yere topluyor). `Modal` her zaman yalnızca
+  // açıkken mount edildiği için `active: true` sabit.
+  const { requestClose: handleUserClose } = useModalHistory({ active: true, onClose });
 
   // Body scroll kilidi artık paylaşılan, referans-sayaçlı mekanizmadan
   // geliyor (bkz. `useBodyScrollLock`) — Modal her zaman yalnızca açıkken
