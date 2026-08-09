@@ -3,6 +3,7 @@ import {
   MIN_VISION_MULTIPLIER,
   combineVisionItems,
   multiplierFromGrams,
+  multiplierToGramsText,
   stepVisionMultiplier,
   visionAliasUnitNutrition,
 } from "./visionReview";
@@ -74,6 +75,25 @@ describe("multiplierFromGrams", () => {
   it("0/negatif girişi çarpan 0.01'e yuvarlar (asla sıfır/eksi değil)", () => {
     expect(multiplierFromGrams(0)).toBe(0.01);
     expect(multiplierFromGrams(-10)).toBe(0.01);
+  });
+
+  it("kesirli gramajı tam hassasiyetle korur — 50,4g = çarpan 0.504 (toFixed(2) ile 0.50'ye kırpılmaz)", () => {
+    expect(multiplierFromGrams(50.4)).toBe(0.504);
+  });
+});
+
+describe("multiplierToGramsText", () => {
+  it("kesirli gramajı tr-TR virgülle gösterir (0.504 → '50,4')", () => {
+    expect(multiplierToGramsText(0.504)).toBe("50,4");
+  });
+
+  it("tam ondalıkta sonundaki sıfırı atar (0.5 → '50', 1 → '100')", () => {
+    expect(multiplierToGramsText(0.5)).toBe("50");
+    expect(multiplierToGramsText(1)).toBe("100");
+  });
+
+  it("3 ondalıkta kırpar (0.5045 → '50,45')", () => {
+    expect(multiplierToGramsText(0.5045)).toBe("50,45");
   });
 });
 

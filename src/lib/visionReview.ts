@@ -39,9 +39,19 @@ export function visionAliasUnitNutrition(finalNutrition: Nutrition, multiplier: 
 export const MIN_VISION_MULTIPLIER = 0.01;
 
 /** Gramaj girişinden çarpanı hesaplar: 1g = 0.01, asla 0/negatif değil, asla
- *  25g'ye (0.25) yapışmaz. `VisionReviewRow`'un blur commit kuralı. */
+ *  25g'ye (0.25) yapışmaz. Tam hassasiyet — `toFixed` ile kırpmak "50,4" →
+ *  0.504 → 0.50 yuvarlamasına yol açıyordu (`357c184`'te girdi). */
 export function multiplierFromGrams(grams: number): number {
-  return Math.max(MIN_VISION_MULTIPLIER, Number((grams / 100).toFixed(2)));
+  return Math.max(MIN_VISION_MULTIPLIER, grams / 100);
+}
+
+/** Çarpanı gram cinsinden gösterir: tr-TR virgüllü, sondaki sıfırlar atılmış,
+ *  FP artıkları temizlenmiş, 3 ondalıkta kırpılmış. Örn. 0.504 → "50,4",
+ *  0.5 → "50", 1 → "100", 0.5045 → "50,45". Gram kutusunun gösterim işlevi —
+ *  kullanıcının yazdığı ondalık kaybolmamalı. */
+export function multiplierToGramsText(multiplier: number): string {
+  const grams = Math.round(multiplier * 100_000) / 1_000;
+  return new Intl.NumberFormat("tr-TR").format(grams);
 }
 
 /** Onay ekranının porsiyon stepper'ı — `NutritionSheet`'in ±0,25 adımlı

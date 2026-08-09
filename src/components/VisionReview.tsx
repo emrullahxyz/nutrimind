@@ -41,6 +41,7 @@ import { parseNum, scaleNutritionByFactor } from "../lib/nutrition";
 import {
   combineVisionItems,
   multiplierFromGrams,
+  multiplierToGramsText,
   stepVisionMultiplier,
   visionAliasUnitNutrition,
 } from "../lib/visionReview";
@@ -95,7 +96,7 @@ function VisionReviewRow({
   needsReview: boolean;
   onRemove?: () => void;
 }) {
-  const [gramsText, setGramsText] = useState(() => String(Math.round(multiplier * 100)));
+  const [gramsText, setGramsText] = useState(() => multiplierToGramsText(multiplier));
   const gramsInputRef = useRef<HTMLInputElement>(null);
   const focusedRef = useRef(false);
 
@@ -104,7 +105,7 @@ function VisionReviewRow({
   // multiplier'dan gelen güncelleme text'i ezip bozmasın.
   useEffect(() => {
     if (!focusedRef.current) {
-      setGramsText(String(Math.round(multiplier * 100)));
+      setGramsText(multiplierToGramsText(multiplier));
     }
   }, [multiplier]);
 
@@ -126,10 +127,10 @@ function VisionReviewRow({
     if (g >= 1) {
       const m = multiplierFromGrams(g);
       onSetMultiplier(m);
-      setGramsText(String(Math.round(m * 100)));
+      setGramsText(multiplierToGramsText(m));
     } else {
       // Geçersiz/boş giriş — eski multiplier'dan gramajı geri yükle
-      setGramsText(String(Math.round(multiplier * 100)));
+      setGramsText(multiplierToGramsText(multiplier));
     }
   }
 
