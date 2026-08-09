@@ -19,6 +19,7 @@ import type { EditableItem } from "./ItemEditFields";
 import { Skeleton } from "./Skeleton";
 import { AiError, aiErrorMessage, parseWithAI } from "../lib/ai";
 import { useData } from "../lib/data";
+import { fetchData } from "../lib/api";
 import { mealsOf, toPayload } from "../lib/days";
 import { GRAM_UNIT, parseNum, scaleNutrition, toGrams, unitOptions } from "../lib/nutrition";
 import { formatKcal, todayISO, weekdayIndex } from "../lib/format";
@@ -570,7 +571,8 @@ export function MealForm({
     setSaving(true);
     setErr(null);
     try {
-      const next: MealPayload[] = toPayload(mealsOf(days, date));
+      const fresh = await fetchData();
+      const next: MealPayload[] = toPayload(mealsOf(fresh.days, date));
 
       const cleanNutrition: Nutrition = {
         kcal: Math.max(0, Math.round(finalNutrition.kcal || 0)),
