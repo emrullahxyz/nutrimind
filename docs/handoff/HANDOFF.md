@@ -1016,3 +1016,135 @@ caf49ed feat(ai): AI prompt'una besin hafizasinin TAMAMI gonderiliyor (Faz 5)
 (TODO: fill after compaction — 10–20 lines of concrete resume instructions)
 
 ---
+---
+
+## Handoff: 2026-08-09T10:16:47Z (auto-saved before compaction)
+
+### Compaction Metadata
+- Trigger: (unknown)
+- Custom instructions: (none)
+- Transcript: (unknown)
+- CWD: (unknown)
+
+### Last User Message (transcript tail)
+(unavailable - transcript missing)
+
+### Last Assistant Message (transcript tail)
+(unavailable - transcript missing)
+
+### Git Snapshot
+- Branch: master
+- Status:
+ M CLAUDE.md
+ M server/data.db
+?? IMG20260806094312.jpeg
+- Recent commits:
+5e10826 feat(ux): ogun kategorisi duzenleme, makro kutusu tiklamasi, gramaj porsiyon
+44b03c9 docs: PLAN.md'yi Modal history hook refactoru tamamlandi diye guncelle
+57d0ae7 refactor(ux): Modal history mantigini ortak useModalHistory hook'una topla
+7d8c33f docs: Claude'dan Antigravity'ye devir icin PLAN.md ekle
+cc44eb0 fix(ux): arka arkaya hizli iki geri basista uygulamadan cikma hatasini duzelt
+
+### Model Summary
+(TODO: fill after compaction — 8–12 bullets)
+
+### Handoff Context (paste into next session)
+(TODO: fill after compaction — 10–20 lines of concrete resume instructions)
+
+---
+## Handoff: 2026-08-09T13:00:00Z (v1.6 released)
+
+### Current Task State
+v1.6 yayınlandı ve prod'a deploy edildi (https://nutri.emrullah.xyz). Bu oturum iki işi tamamladı: (1) `docs/nutrimind_debugging_raporu.md`'deki 8 riskten hâlâ geçerli 4'ünü analiz etti ve 3'ünü düzeltti, (2) 4. riski (editIndex → meal.id) kapsam dışı bıraktı.
+
+### Key Decisions
+- **Risk 3 (editIndex → meal.id) atlandı**: MealForm tam ekran modal olduğu için öğün silme/ekleme/sıralama aynı anda olamaz; kayma riski pratikte yok. 10+ noktada değişiklik gerektirir, sıfır gerçek bug. İleride drag-drop/sıralama eklenirse ID bazlı state'e geçilecek.
+- **`buildUsageIndex` DataProvider'a taşındı**: N form açılışı başına 1 hesaplama yerine N yazma başına 1 hesaplama. `MealForm` ve `AliasPicker` artık context'ten `usageIndex` okuyor.
+- **MealForm save() taze veri kullanıyor**: ScanSheet'in zaten belgelediği "ÇİFT YAZMA TUZAĞI" deseni (`fetchData()` ile taze çek) MealForm'a da uygulandı.
+- **v1.6 commit kapsamı daraltıldı**: Kullanıcı onayıyla yalnızca CLAUDE.md + PLAN.md (test sayısı düzeltmeleri). Diğer çalışma ağacı değişiklikleri commit'e GİRMEDİ.
+
+### Modified Files
+- `src/components/MealForm.tsx` - save() içinde `mealsOf(days, date)` → `fetchData()` + `mealsOf(fresh.days, date)`; `buildUsageIndex` import'u kaldırıldı, context'ten `usageIndex`
+- `src/lib/data.tsx` - `usageIndex: UsageIndex` Ctx tipine eklendi; `buildUsageIndex` useMemo'su DataProvider'da
+- `src/components/AliasPicker.tsx` - local `buildUsageIndex` kaldırıldı, context'ten `usageIndex`
+- `src/lib/camera.ts` - `useCameraStream`'e `visibilitychange` dinleyicisi: sayfa gizlenince track'leri durdur, görününce `retry()`
+- `CLAUDE.md`, `PLAN.md` - test sayısı düzeltmeleri (574 → 569)
+
+### Blockers / Open Questions
+- **Commit edilmemiş değişiklikler çalışma ağacında duruyor** (kullanıcı bilinçli olarak v1.6'ya almadı):
+  - `docs/handoff/HANDOFF.md` (bu dosya — compaction artefaktı + yeni entry)
+  - `docs/nutrimind_vs_calai_tasarim_raporu.md` (silindi)
+  - `docs/superpowers/plans/2026-07-24-manual-edit-crud.md` (silindi)
+  - `docs/superpowers/specs/2026-07-24-manual-edit-crud-design.md` (silindi)
+  - `docs/superpowers/specs/2026-08-03-roll-value-animation-design.md` (silindi)
+  - `server/data.db` (izlenen geliştirme veritabanı — değişti)
+  - `IMG20260806094312.jpeg` (izlenmeyen dosya, oturum başından beri duruyor)
+  - Bunların commit'lenip commit'lenmeyeceği kararlaştırılmadı.
+
+### Next Steps
+1. Commit edilmemiş dosyaların akıbetine kullanıcıyla karar ver (docs silmeleri + HANDOFF.md + data.db + fotoğraf)
+2. `pnpm preview` (4173) ile 3 düzeltmeyi tarayıcıda doğrula (riskler teorik olarak düzeltildi, UI testi henüz yapılmadı)
+3. PLAN.md'deki ertelenen işlere bak: Faz E (telemetri + gerçek cihaz testi) → Faz D adım 1 (ölçüm)
+
+### Critical Context
+- `server/index.js` DONMUŞ — değiştirmeden önce kullanıcıya sor. Yeni backend mantığı `server/ai.js` gibi izole modülde.
+- pnpm 11 TTY-less hatası veriyor: HER komuta `PNPM_CONFIG_VERIFY_DEPS_BEFORE_RUN=false` ön eki şart.
+- Doğrulama kapısı: `pnpm typecheck` (0) + `pnpm test` (569/569) + `pnpm build` (✓).
+- Commit mesajları Türkçe, `Co-Authored-By` trailer'ı YOK.
+- Deploy: `pnpm run deploy` (frontend). Backend değiştiyse elle scp + `sudo systemctl restart nutri-api.service`.
+- Memory'deki uyarı: `server/data.db` git'te izlenen bir dosya; subagent'lar `node server/index.js` çalıştırıp yanlışlıkla yazabilir — `git status`'u kontrol et.
+- `pnpm dev` (5173) React StrictMode'u iki kez çalıştırır; prod davranışı için `pnpm preview` (4173) kullan.
+
+### Model Summary
+- Nutrimind'de 3 debugging raporu riski düzeltildi (bayat closure, gereksiz usageIndex hesaplaması, kamera visibility)
+- v1.6 commit + tag oluşturuldu ve prod'a deploy edildi
+- 4. risk (editIndex → meal.id) bilinçli olarak atlandı — pratikte sorun yok
+- Tüm doğrulama kapıları geçti: typecheck 0, test 569/569, build ✓
+- Çalışma ağacında commit edilmemiş değişiklikler var (docs silmeleri, HANDOFF.md, data.db, fotoğraf)
+- `buildUsageIndex` DataProvider'a memo'landı (MealForm + AliasPicker context'ten okuyor)
+- `useCameraStream`'e visibilitychange eklendi (kamera LED pil tasarrufu)
+- MealForm save() artık taze veri çekiyor
+- Sonraki iş: PLAN.md'deki ertelenen fazlar (telemetri, önbellek ölçümü)
+
+### Handoff Context (paste into next session)
+Proje: Nutrimind (Vite + React + TS + Tailwind, `server/` altında node:sqlite API, Docker YOK). Local-first: her şey localhost'ta doğrulanır. İki terminal: `node server/index.js` (8790) + `pnpm dev` (5173). Prod build için `pnpm preview` (4173) — StrictMode tuzaklarından kaçınmak için bunu kullan. Son sürüm v1.6 (`b728c8f`), canlıda. `docs/nutrimind_debugging_raporu.md`'deki 8 riskten 7'si çözüldü, 1'i (editIndex) bilinçli atlandı. Kalan iş: çalışma ağacındaki commit edilmemiş değişikliklere karar ver (docs silmeleri, HANDOFF.md, server/data.db, IMG*.jpeg) ve PLAN.md'deki ertelenen fazları değerlendir (telemetri → önbellek ölçümü). `server/index.js` donmuş — backend işi izole modül gerektirir. Her pnpm komutunda `PNPM_CONFIG_VERIFY_DEPS_BEFORE_RUN=false` kullan. Commit Türkçe, trailer'sız. Deploy: `pnpm run deploy`.
+---
+
+## Handoff: 2026-08-09T10:49:38Z (auto-saved before compaction)
+
+### Compaction Metadata
+- Trigger: (unknown)
+- Custom instructions: (none)
+- Transcript: (unknown)
+- CWD: (unknown)
+
+### Last User Message (transcript tail)
+(unavailable - transcript missing)
+
+### Last Assistant Message (transcript tail)
+(unavailable - transcript missing)
+
+### Git Snapshot
+- Branch: master
+- Status:
+ M docs/handoff/HANDOFF.md
+ D docs/nutrimind_vs_calai_tasarim_raporu.md
+ D docs/superpowers/plans/2026-07-24-manual-edit-crud.md
+ D docs/superpowers/specs/2026-07-24-manual-edit-crud-design.md
+ D docs/superpowers/specs/2026-08-03-roll-value-animation-design.md
+ M server/data.db
+?? IMG20260806094312.jpeg
+- Recent commits:
+b728c8f docs: CLAUDE.md ve PLAN.md test sayisi duzeltmeleri (574 -> 569)
+9b26536 fix: kamera sayfa arka plana alininca dursun, geri gelince yeniden baslasin
+74d38ef perf: buildUsageIndex hesaplamasini DataProvider'da memo'la, her form acilisinda tekrar hesaplama
+8fd5ab9 fix: MealForm save() icinde bayat closure yerine fetchData() ile taze veri kullan
+5e10826 feat(ux): ogun kategorisi duzenleme, makro kutusu tiklamasi, gramaj porsiyon
+
+### Model Summary
+(TODO: fill after compaction — 8–12 bullets)
+
+### Handoff Context (paste into next session)
+(TODO: fill after compaction — 10–20 lines of concrete resume instructions)
+
+---
