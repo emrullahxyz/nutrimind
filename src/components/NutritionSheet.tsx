@@ -1,11 +1,12 @@
 import { useState, useEffect } from "react";
 import { ArrowLeft, Flame, Beef, Wheat, Droplet, Trash2, Plus } from "lucide-react";
-import type { MealItem, Nutrition } from "../types";
+import type { MealCategory, MealItem, Nutrition } from "../types";
 import { useBodyScrollLock } from "../hooks/useBodyScrollLock";
 import { useModalHistory } from "../hooks/useModalHistory";
 import { scaleMealSources } from "../lib/nutrition";
 import { EditableStat, toDraft, fromDraft } from "./FormBits";
 import type { NutritionDraft } from "./FormBits";
+import { MEAL_CATEGORIES, MEAL_CATEGORY_LABELS, categoryForHour } from "../lib/mealCategory";
 
 interface Props {
   isOpen: boolean;
@@ -36,6 +37,9 @@ export function NutritionSheet({ isOpen, onClose, meal, onSave, onDelete, onEdit
   useBodyScrollLock(isOpen);
 
   const [label, setLabel] = useState(meal?.label ?? "");
+  const [category, setCategory] = useState<MealCategory>(
+    meal?.category ?? categoryForHour(new Date().getHours())
+  );
   const [multiplier, setMultiplier] = useState(1);
   // Kartların kendisi düzenlenebilir alan — `draft` her zaman gösterilen değer.
   // "Miktar her zaman kazanır": stepper her basıldığında draft yeniden ölçeklenmiş
@@ -48,6 +52,7 @@ export function NutritionSheet({ isOpen, onClose, meal, onSave, onDelete, onEdit
   useEffect(() => {
     if (meal) {
       setLabel(meal.label);
+      setCategory(meal.category ?? categoryForHour(new Date().getHours()));
       setMultiplier(1);
       setBasis("quantity");
       setDraft(toDraft(scaleMealNutrition(meal.computed, 1)));
@@ -100,6 +105,7 @@ export function NutritionSheet({ isOpen, onClose, meal, onSave, onDelete, onEdit
     const updated: MealItem = {
       ...meal,
       label,
+      category,
       computed: finalNutrition,
       ...(finalSources ? { sources: finalSources } : {}),
     };
@@ -160,6 +166,30 @@ export function NutritionSheet({ isOpen, onClose, meal, onSave, onDelete, onEdit
           />
         </div>
 
+        {/* Category Selector Pills */}
+        <div className="space-y-2">
+          <label className="text-xs font-semibold text-white/80 block">Öğün Kategorisi</label>
+          <div className="flex items-center gap-2 overflow-x-auto no-scrollbar pb-1">
+            {MEAL_CATEGORIES.map((c) => {
+              const isSelected = category === c;
+              return (
+                <button
+                  key={c}
+                  type="button"
+                  onClick={() => setCategory(c)}
+                  className={`px-4 py-2 rounded-full text-xs font-bold transition-all whitespace-nowrap active:scale-95 ${
+                    isSelected
+                      ? "bg-amber-400/20 text-amber-300 border border-amber-400/40 shadow-sm"
+                      : "border border-white/15 bg-white/[0.04] text-white/70 hover:bg-white/10"
+                  }`}
+                >
+                  {MEAL_CATEGORY_LABELS[c]}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
         {/* Add Extra Item Button (Bu Öğüne Ekstra Kalem/Besin Ekle) */}
         {onEditMealItems && (
           <button
@@ -202,7 +232,7 @@ export function NutritionSheet({ isOpen, onClose, meal, onSave, onDelete, onEdit
         </div>
 
         {/* Calories Hero Card — tıklayınca direkt düzenlenebilir */}
-        <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-4 flex items-center justify-between">
+        <label htmlFor="macro-kcal" className="rounded-2xl border border-white/10 bg-white/[0.04] p-4 flex items-center justify-between cursor-text">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center text-white">
               <Flame className="w-5 h-5" />
@@ -210,6 +240,7 @@ export function NutritionSheet({ isOpen, onClose, meal, onSave, onDelete, onEdit
             <div>
               <div className="text-xs font-medium text-white/50">Kalori</div>
               <EditableStat
+                id="macro-kcal"
                 value={draft.kcal ?? ""}
                 onChange={(v) => updateField("kcal", v)}
                 className="text-2xl font-black text-white tabular-nums tracking-tight w-24"
@@ -217,57 +248,60 @@ export function NutritionSheet({ isOpen, onClose, meal, onSave, onDelete, onEdit
             </div>
           </div>
           <div className="text-xs font-bold text-white/40 font-mono">kcal</div>
-        </div>
+        </label>
 
         {/* 3 Main Macros Grid (Protein, Karbonhidrat, Yağ) */}
         <div className="grid grid-cols-3 gap-2.5">
           {/* Protein */}
-          <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-3 flex flex-col justify-between min-h-[80px]">
+          <label htmlFor="macro-protein" className="rounded-2xl border border-white/10 bg-white/[0.04] p-3 flex flex-col justify-between min-h-[80px] cursor-text">
             <div className="flex items-center gap-1.5 text-xs font-semibold text-white/80">
               <Beef className="w-3.5 h-3.5 text-[#FF6B8A]" />
               <span>Protein</span>
             </div>
             <div className="flex items-baseline gap-0.5 mt-1">
               <EditableStat
+                id="macro-protein"
                 value={draft.protein ?? ""}
                 onChange={(v) => updateField("protein", v)}
                 className="text-base sm:text-lg font-black text-white tabular-nums tracking-tight w-12"
               />
               <span className="text-base sm:text-lg font-black text-white">g</span>
             </div>
-          </div>
+          </label>
 
           {/* Karbonhidrat */}
-          <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-3 flex flex-col justify-between min-h-[80px]">
+          <label htmlFor="macro-carbs" className="rounded-2xl border border-white/10 bg-white/[0.04] p-3 flex flex-col justify-between min-h-[80px] cursor-text">
             <div className="flex items-center gap-1.5 text-xs font-semibold text-white/80">
               <Wheat className="w-3.5 h-3.5 text-[#FFB84D]" />
               <span>Karb</span>
             </div>
             <div className="flex items-baseline gap-0.5 mt-1">
               <EditableStat
+                id="macro-carbs"
                 value={draft.carbs ?? ""}
                 onChange={(v) => updateField("carbs", v)}
                 className="text-base sm:text-lg font-black text-white tabular-nums tracking-tight w-12"
               />
               <span className="text-base sm:text-lg font-black text-white">g</span>
             </div>
-          </div>
+          </label>
 
           {/* Yağ */}
-          <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-3 flex flex-col justify-between min-h-[80px]">
+          <label htmlFor="macro-fat" className="rounded-2xl border border-white/10 bg-white/[0.04] p-3 flex flex-col justify-between min-h-[80px] cursor-text">
             <div className="flex items-center gap-1.5 text-xs font-semibold text-white/80">
               <Droplet className="w-3.5 h-3.5 text-[#5B8DEF]" />
               <span>Yağ</span>
             </div>
             <div className="flex items-baseline gap-0.5 mt-1">
               <EditableStat
+                id="macro-fat"
                 value={draft.fat ?? ""}
                 onChange={(v) => updateField("fat", v)}
                 className="text-base sm:text-lg font-black text-white tabular-nums tracking-tight w-12"
               />
               <span className="text-base sm:text-lg font-black text-white">g</span>
             </div>
-          </div>
+          </label>
         </div>
 
         {/* Other Nutrition Facts List (Diğer Besin Değerleri) */}

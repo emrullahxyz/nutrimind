@@ -20,7 +20,7 @@
 // slotu yerine kendi içinde (sticky) taşıyor — state (satırlar, çarpanlar)
 // burada yaşıyor, yukarı taşımak gereksiz prop drilling olurdu.
 // ============================================================================
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   ErrorText,
   Label,
@@ -37,7 +37,7 @@ import { useData } from "../lib/data";
 import { fetchData } from "../lib/api";
 import { mealsOf, toPayload } from "../lib/days";
 import { MACROS } from "../lib/nutrients";
-import { scaleNutritionByFactor } from "../lib/nutrition";
+import { parseNum, scaleNutritionByFactor } from "../lib/nutrition";
 import { combineVisionItems, stepVisionMultiplier, visionAliasUnitNutrition } from "../lib/visionReview";
 import { todayISO } from "../lib/format";
 import type { AIParseItem, MealPayload, MealSource, Nutrition, VisionMode } from "../types";
@@ -76,6 +76,7 @@ function VisionReviewRow({
   onDraftChange,
   multiplier,
   onStep,
+  onSetMultiplier,
   needsReview,
   onRemove,
 }: {
@@ -85,9 +86,48 @@ function VisionReviewRow({
   onDraftChange: (d: NutritionDraft) => void;
   multiplier: number;
   onStep: (delta: number) => void;
+  onSetMultiplier: (m: number) => void;
   needsReview: boolean;
   onRemove?: () => void;
 }) {
+  const [gramsText, setGramsText] = useState(() => String(Math.round(multiplier * 100)));
+  const gramsInputRef = useRef<HTMLInputElement>(null);
+  const focusedRef = useRef(false);
+
+  // Dışarıdan multiplier değişince (stepper) gramaj text'ini güncelle.
+  // Ama input focus'taysa ATLA — kullanıcı tam yazma ortasındayken
+  // multiplier'dan gelen güncelleme text'i ezip bozmasın.
+  useEffect(() => {
+    if (!focusedRef.current) {
+      setGramsText(String(Math.round(multiplier * 100)));
+    }
+  }, [multiplier]);
+
+  function handleGramsChange(raw: string) {
+    // Yalnızca local text'i güncelle — yazarken multiplier'a dokunma.
+    // Multiplier'a blur'da commit ediyoruz, böylece ara değerler (örn. "1"
+    // → parseNum=1 → 0.01→0.25) text'i ezemiyor.
+    setGramsText(raw);
+  }
+
+  function handleGramsFocus() {
+    focusedRef.current = true;
+    gramsInputRef.current?.select();
+  }
+
+  function handleGramsBlur() {
+    focusedRef.current = false;
+    const g = parseNum(gramsText);
+    if (g >= 1) {
+      const m = Math.max(0.25, Number((g / 100).toFixed(2)));
+      onSetMultiplier(m);
+      setGramsText(String(Math.round(m * 100)));
+    } else {
+      // Geçersiz/boş giriş — eski multiplier'dan gramajı geri yükle
+      setGramsText(String(Math.round(multiplier * 100)));
+    }
+  }
+
   return (
     <div className="flex flex-col gap-3 rounded-chip border border-line bg-white/[0.03] p-3">
       <div className="flex items-start gap-2">
@@ -114,24 +154,39 @@ function VisionReviewRow({
 
       <div className="flex items-center justify-between gap-4">
         <span className={sectionLabelCls}>Porsiyon</span>
-        <div className="flex items-center gap-4 rounded-chip border border-line bg-white/[0.04] px-3 py-1.5">
-          <button
-            type="button"
-            onClick={() => onStep(-0.25)}
-            className="flex h-6 w-6 items-center justify-center text-lg font-bold text-ink-secondary transition active:scale-90 hover:text-ink-primary"
-          >
-            —
-          </button>
-          <span className="min-w-[28px] text-center font-mono text-sm font-extrabold tabular-nums text-ink-primary">
-            {multiplier}
-          </span>
-          <button
-            type="button"
-            onClick={() => onStep(0.25)}
-            className="flex h-6 w-6 items-center justify-center text-lg font-bold text-ink-secondary transition active:scale-90 hover:text-ink-primary"
-          >
-            +
-          </button>
+        <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 rounded-chip border border-line bg-white/[0.04] px-2 py-1.5">
+            <button
+              type="button"
+              onClick={() => onStep(-0.25)}
+              className="flex h-6 w-6 items-center justify-center text-lg font-bold text-ink-secondary transition active:scale-90 hover:text-ink-primary"
+            >
+              —
+            </button>
+            <span className="min-w-[28px] text-center font-mono text-sm font-extrabold tabular-nums text-ink-primary">
+              {multiplier}
+            </span>
+            <button
+              type="button"
+              onClick={() => onStep(0.25)}
+              className="flex h-6 w-6 items-center justify-center text-lg font-bold text-ink-secondary transition active:scale-90 hover:text-ink-primary"
+            >
+              +
+            </button>
+          </div>
+          <div className="flex items-center gap-1.5 rounded-chip border border-line bg-white/[0.04] px-2.5 py-1.5">
+            <input
+              ref={gramsInputRef}
+              inputMode="decimal"
+              value={gramsText}
+              onFocus={handleGramsFocus}
+              onClick={handleGramsFocus}
+              onBlur={handleGramsBlur}
+              onChange={(e) => handleGramsChange(e.target.value)}
+              className="w-14 bg-transparent text-center font-mono text-sm font-extrabold tabular-nums text-ink-primary outline-none placeholder:text-ink-faint"
+            />
+            <span className="text-xs font-semibold text-ink-tertiary">g</span>
+          </div>
         </div>
       </div>
 
@@ -172,6 +227,15 @@ export function VisionReviewScreen({
       prev.map((r) => {
         if (r.id !== id) return r;
         const multiplier = stepVisionMultiplier(r.multiplier, delta);
+        return { ...r, multiplier, draft: toDraft(scaleNutritionByFactor(r.base, multiplier)) };
+      }),
+    );
+  }
+
+  function setRowMultiplier(id: string, multiplier: number) {
+    setRows((prev) =>
+      prev.map((r) => {
+        if (r.id !== id) return r;
         return { ...r, multiplier, draft: toDraft(scaleNutritionByFactor(r.base, multiplier)) };
       }),
     );
@@ -341,6 +405,7 @@ export function VisionReviewScreen({
             onDraftChange={(d) => setRowDraft(row.id, d)}
             multiplier={row.multiplier}
             onStep={(delta) => stepRow(row.id, delta)}
+            onSetMultiplier={(m) => setRowMultiplier(row.id, m)}
             needsReview={row.needsReview}
           />
         )}
@@ -439,6 +504,7 @@ export function VisionReviewScreen({
             onDraftChange={(d) => setRowDraft(r.id, d)}
             multiplier={r.multiplier}
             onStep={(delta) => stepRow(r.id, delta)}
+            onSetMultiplier={(m) => setRowMultiplier(r.id, m)}
             needsReview={r.needsReview}
             onRemove={() => removeRow(r.id)}
           />
