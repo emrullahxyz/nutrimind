@@ -33,8 +33,20 @@ export function visionAliasUnitNutrition(finalNutrition: Nutrition, multiplier: 
   return scaleNutritionByFactor(finalNutrition, 1 / multiplier);
 }
 
+/** Porsiyon çarpanının alt sınırı. Taban 100g olduğu için 0.01 = 1g — 1g'nin
+ *  altı anlamsız (0g = sıfır kalori), negatif de olmaz. Stepper ve gramaj
+ *  girişi aynı sınırı kullansın diye tek doğruluk kaynağı. */
+export const MIN_VISION_MULTIPLIER = 0.01;
+
+/** Gramaj girişinden çarpanı hesaplar: 1g = 0.01, asla 0/negatif değil, asla
+ *  25g'ye (0.25) yapışmaz. `VisionReviewRow`'un blur commit kuralı. */
+export function multiplierFromGrams(grams: number): number {
+  return Math.max(MIN_VISION_MULTIPLIER, Number((grams / 100).toFixed(2)));
+}
+
 /** Onay ekranının porsiyon stepper'ı — `NutritionSheet`'in ±0,25 adımlı
- *  `handleStep`'iyle AYNI taban kuralı (0,25 altına inemez). */
+ *  `handleStep`'iyle aynı adım deseninde ama tabanı `MIN_VISION_MULTIPLIER`
+ *  (1g): 0.25'in altına inebilir, eksiye/0'a düşmez. */
 export function stepVisionMultiplier(current: number, delta: number): number {
-  return Math.max(0.25, Number((current + delta).toFixed(2)));
+  return Math.max(MIN_VISION_MULTIPLIER, Number((current + delta).toFixed(2)));
 }

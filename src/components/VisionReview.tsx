@@ -38,7 +38,12 @@ import { fetchData } from "../lib/api";
 import { mealsOf, toPayload } from "../lib/days";
 import { MACROS } from "../lib/nutrients";
 import { parseNum, scaleNutritionByFactor } from "../lib/nutrition";
-import { combineVisionItems, stepVisionMultiplier, visionAliasUnitNutrition } from "../lib/visionReview";
+import {
+  combineVisionItems,
+  multiplierFromGrams,
+  stepVisionMultiplier,
+  visionAliasUnitNutrition,
+} from "../lib/visionReview";
 import { todayISO } from "../lib/format";
 import type { AIParseItem, MealPayload, MealSource, Nutrition, VisionMode } from "../types";
 
@@ -119,7 +124,7 @@ function VisionReviewRow({
     focusedRef.current = false;
     const g = parseNum(gramsText);
     if (g >= 1) {
-      const m = Math.max(0.25, Number((g / 100).toFixed(2)));
+      const m = multiplierFromGrams(g);
       onSetMultiplier(m);
       setGramsText(String(Math.round(m * 100)));
     } else {

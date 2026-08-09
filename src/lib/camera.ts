@@ -213,6 +213,9 @@ export function useCameraStream(active: boolean): UseCameraStreamResult {
   const [error, setError] = useState<string | null>(null);
   const [attempt, setAttempt] = useState(0);
   const retry = useCallback(() => setAttempt((a) => a + 1), []);
+  // Sayfa gizlenince async başlatma zinciri de abortsun: `stopped` gibi senkron
+  // okunan bir bayrak — state olsa zincir yarıştan önce yeni değeri göremez.
+  const hiddenRef = useRef(false);
 
   useEffect(() => {
     if (!active) return;
@@ -220,6 +223,10 @@ export function useCameraStream(active: boolean): UseCameraStreamResult {
     // edilince hiçbir yerde null'a dönmüyordu: tek bir izin reddi, sonraki tüm
     // denemelerde ekranda yapışık kalıyordu.
     setError(null);
+    // Efekt gizliyken de kurulabilir (ör. gizli sayfada retry): bayrağı o anki
+    // gerçeğe senkronla — ilk koruma noktasındaki `document.hidden` kontrolünü
+    // görmeden getUserMedia'ya girmemek için.
+    hiddenRef.current = document.hidden;
 
     let stopped = false;
     let stream: MediaStream | null = null;
@@ -251,7 +258,7 @@ export function useCameraStream(active: boolean): UseCameraStreamResult {
             height: { ideal: 1440 },
           },
         });
-        if (stopped) {
+        if (stopped || hiddenRef.current) {
           stream.getTracks().forEach((t) => t.stop());
           return;
         }
@@ -270,7 +277,7 @@ export function useCameraStream(active: boolean): UseCameraStreamResult {
           /* enumerateDevices yok/başarısız — mevcut akışla devam edilir */
         }
 
-        if (wanted && !stopped) {
+        if (wanted && !stopped && !hiddenRef.current) {
           // Mobilde iki kamerayı aynı anda açmak reddedilebiliyor: önce eskiyi
           // bırak. Yeni lens açılamazsa ilk kısıtlarla GERİ DÖN — aksi hâlde
           // ölü bir akışla devam ederdik.
@@ -287,7 +294,7 @@ export function useCameraStream(active: boolean): UseCameraStreamResult {
           }
         }
         const active = stream;
-        if (stopped || !active) {
+        if (stopped || hiddenRef.current || !active) {
           active?.getTracks().forEach((t) => t.stop());
           return;
         }
@@ -306,7 +313,7 @@ export function useCameraStream(active: boolean): UseCameraStreamResult {
             /* cihaz desteklemiyor — sorun değil */
           }
         }
-        if (stopped) return;
+        if (stopped || hiddenRef.current) return;
 
         const video = videoRef.current;
         if (!video) {
@@ -331,7 +338,7 @@ export function useCameraStream(active: boolean): UseCameraStreamResult {
             window.setTimeout(done, 3000);
           });
         }
-        if (stopped) return;
+        if (stopped || hiddenRef.current) return;
 
         // `play()` reddi tek başına ölümcül değil: akış bağlı ve kare akıyor
         // olabilir. Kamerayı kapatmak yerine devam ediyoruz.
@@ -340,7 +347,7 @@ export function useCameraStream(active: boolean): UseCameraStreamResult {
         } catch {
           /* autoplay reddi — aşağıdaki videoWidth kontrolü asıl kararı verir */
         }
-        if (stopped) return;
+        if (stopped || hiddenRef.current) return;
         if (!video.videoWidth) {
           release();
           setError("Kamera görüntüsü başlatılamadı. Ekranı kapatıp tekrar dene.");
@@ -348,7 +355,7 @@ export function useCameraStream(active: boolean): UseCameraStreamResult {
         }
         setReady(true);
       } catch (e) {
-        if (stopped) return;
+        if (stopped || hiddenRef.current) return;
         release();
         setError(`Kamera açılamadı: ${String((e as Error)?.message ?? e)}`);
       }
@@ -368,11 +375,16 @@ export function useCameraStream(active: boolean): UseCameraStreamResult {
 
     const onVisibility = () => {
       if (document.hidden) {
+        // Bayrağı senkron kur: halihazırda bağlı akışı durdururken, async
+        // başlatma zinciri de (getUserMedia in-flight ise) bir sonraki koruma
+        // noktasında abort eder — "LED yanık kaldı" hatasının kaçan penceresi.
+        hiddenRef.current = true;
         const stream = videoRef.current?.srcObject as MediaStream | null;
         stream?.getTracks().forEach((t) => t.stop());
         if (videoRef.current) videoRef.current.srcObject = null;
         setReady(false);
       } else {
+        hiddenRef.current = false;
         retry();
       }
     };

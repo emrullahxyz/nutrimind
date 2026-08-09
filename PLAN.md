@@ -68,7 +68,7 @@ Hepsi prod'a (`nutri.emrullah.xyz` + `nutri-api.service`) deploy edildi ve doğr
    (`backStack.ts`) FAB menü öğelerinin yeni modal açmadan önce kapanışın gerçek `popstate`'ini
    beklemesini sağlıyor.
 
-`server/ai.test.js` (8 yeni test) dahil 569 testin tamamı yeşil.
+`server/ai.test.js` (8 yeni test) dahil 574 testin tamamı yeşil.
 
 ## Bu dosyanın kapsamı: ertelenen fikirler + öneriler
 
