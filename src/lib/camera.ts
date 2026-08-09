@@ -361,6 +361,26 @@ export function useCameraStream(active: boolean): UseCameraStreamResult {
     // `attempt` bilerek bağımlılıkta: "tekrar dene" tam olarak bu efekti yeniden kurar.
   }, [active, attempt]);
 
+  // Sayfa arka plana alınınca kamerayı durdur, geri gelince yeniden başlat.
+  // Mobilde uygulama değiştirince kamera LED'inin yanık kalmasını önler.
+  useEffect(() => {
+    if (!active) return;
+
+    const onVisibility = () => {
+      if (document.hidden) {
+        const stream = videoRef.current?.srcObject as MediaStream | null;
+        stream?.getTracks().forEach((t) => t.stop());
+        if (videoRef.current) videoRef.current.srcObject = null;
+        setReady(false);
+      } else {
+        retry();
+      }
+    };
+
+    document.addEventListener("visibilitychange", onVisibility);
+    return () => document.removeEventListener("visibilitychange", onVisibility);
+  }, [active, retry]);
+
   return { videoRef, ready, error, retry };
 }
 
