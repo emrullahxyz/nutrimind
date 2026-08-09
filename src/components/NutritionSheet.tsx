@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { ArrowLeft, Flame, Beef, Wheat, Droplet, Trash2, Plus } from "lucide-react";
+import { ZERO_NUTRITION } from "../types";
 import type { MealCategory, MealItem, Nutrition } from "../types";
 import { useBodyScrollLock } from "../hooks/useBodyScrollLock";
 import { useModalHistory } from "../hooks/useModalHistory";
@@ -19,7 +20,12 @@ interface Props {
 
 /** `multiplier`'la ölçeklenmiş besin değeri — hem render'da hem `handleStep`
  *  içinde (yeni çarpanın taslağını kurmak için) kullanılıyor, tek yerde. */
-function scaleMealNutrition(computed: Nutrition | undefined, multiplier: number): Nutrition {
+export function scaleMealNutrition(computed: Nutrition | undefined, multiplier: number): Nutrition {
+  // Çarpan 1 iken HİÇBİR ŞEYE dokunma: `.toFixed(1)` turu, aç-kaydet akışında
+  // 2 ondalığı sessizce 1 ondalığa tırnaklar (8.75 → 8.8). Kayıt `fromDraft`
+  // ile gösterilen değeri geri yazar, yani taslağın saklananla birebir olması
+  // şart. Yuvarlama yalnızca stepper ölçeklemesinde (m ≠ 1) isteniyor.
+  if (multiplier === 1) return { ...(computed ?? ZERO_NUTRITION) };
   return {
     kcal: Math.round((computed?.kcal ?? 0) * multiplier),
     protein: Number(((computed?.protein ?? 0) * multiplier).toFixed(1)),

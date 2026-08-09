@@ -7,12 +7,32 @@
 // boş kutu HÂLÂ 0 demek — eski davranış aynen duruyor.
 // ============================================================================
 import { describe, expect, it } from "vitest";
-import { EMPTY_DRAFT, filledMicros, fromDraft, hasUnsavedBasketEntry, toDraft } from "./FormBits";
+import { EMPTY_DRAFT, acceptsNumericEntry, filledMicros, fromDraft, hasUnsavedBasketEntry, toDraft } from "./FormBits";
 import type { NutritionDraft } from "./FormBits";
 import { CORE_KEYS } from "../lib/nutrients";
 import type { Nutrition } from "../types";
 
 const BASE: Nutrition = { kcal: 100, protein: 10, carbs: 20, fat: 5, fiber: 2 };
+
+describe("acceptsNumericEntry — negatif giriş inline reddedilir", () => {
+  it("pozitif ve sıfır girişi kabul eder", () => {
+    expect(acceptsNumericEntry("5")).toBe(true);
+    expect(acceptsNumericEntry("0.5")).toBe(true);
+    expect(acceptsNumericEntry("0")).toBe(true);
+    expect(acceptsNumericEntry("12,5")).toBe(true);
+  });
+  it("baştaki '-' ile yazılan negatifi reddeder", () => {
+    expect(acceptsNumericEntry("-5")).toBe(false);
+    expect(acceptsNumericEntry("-0.5")).toBe(false);
+  });
+  it("boş ve boşluklu girişe izin verir (kutuyu temizleme meşru)", () => {
+    expect(acceptsNumericEntry("")).toBe(true);
+    expect(acceptsNumericEntry("  ")).toBe(true);
+  });
+  it("metin/geçersiz giriş engellenmez — ayrıştırma katmanına bırakılır", () => {
+    expect(acceptsNumericEntry("abc")).toBe(true);
+  });
+});
 
 /** Tüm alanları boş bir taslak + verilen üstyazımlar. */
 function draft(over: NutritionDraft = {}): NutritionDraft {

@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   GRAM_UNIT,
   addNutrition,
+  clampMinGrams,
   parseNum,
   scaleMealSources,
   scaleNutrition,
@@ -57,6 +58,26 @@ describe("parseNum", () => {
   });
   it("negatif değerleri korur", () => {
     expect(parseNum("-12,5")).toBe(-12.5);
+  });
+});
+
+describe("clampMinGrams — 1g minimumu", () => {
+  it("1g altındaki pozitif girişi 1'e çeker", () => {
+    expect(clampMinGrams("0.5")).toBe("1");
+    expect(clampMinGrams("0.05")).toBe("1");
+    expect(clampMinGrams("0,25")).toBe("1");
+  });
+  it("1g ve üzerini olduğu gibi bırakır", () => {
+    expect(clampMinGrams("1")).toBe("1");
+    expect(clampMinGrams("150")).toBe("150");
+    expect(clampMinGrams("12.5")).toBe("12.5");
+  });
+  it("0'ı çekmez — anlamlı bir girdidir", () => {
+    expect(clampMinGrams("0")).toBe("0");
+  });
+  it("boş/geçersiz girdiyi olduğu gibi bırakır (clamp mantığı ayrıştırmayla karışmaz)", () => {
+    expect(clampMinGrams("")).toBe("");
+    expect(clampMinGrams("abc")).toBe("abc");
   });
 });
 

@@ -161,3 +161,16 @@ Kullanıcı kararını yanlış premisle vermişti; düzeltilmiş bilgiyle tekra
 
 **Kural:** AskUserQuestion'daki her seçeneğin gerekçesi, sorulmadan önce kodda doğrulanmış olmalı.
 Sonradan yanlış çıkarsa **sessizce devam etme** — düzeltip yeniden sor.
+
+## L7 — Gösterim dönüşümü veri mutasyonuyla eşittir (aç-kaydet sözleşmesi)
+
+**Olay:** NutritionSheet'in `scaleMealNutrition` fonksiyonu `multiplier===1` olsa bile her alana
+`.toFixed(1)` uyguluyordu. Sheet'i kurarken draft bu tırnaklanmış değerden doğuyordu; kayıt
+`fromDraft` ile **gösterilen değeri** DB'ye geri yazıyordu. Yani kullanıcı elini sürmeden
+`carbs: 8.75 → 8.8` sessizce değişti. SEV3, rapor-only turunda kod okunarak değil gerçek DB
+diff'iyle yakalandı.
+
+**Kural:** Bir input ekranından "Kaydet" bastığında yazılan şey, input'un **gösterdiği değerdir**.
+Dolayısıyla gösterim katmanındaki herhangi bir yuvarlama/biçim dönüşümü kalıcı veri mutasyonu olur.
+Dönüşümü ölçekleme yoluna (m≠1) ayır; temel değer kayıpsız kalmalı. Bir form işlevini değiştirirken
+"gösterilen değer kaydediliyor mu, gösterim veriyi tırnaklıyor mu" diye aç-kaydet testi yaz.

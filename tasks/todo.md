@@ -242,3 +242,68 @@ göründü; sebebi React StrictMode'un efekti iki kez çalıştırması. Üretim
 
 **Geçici bir upstream hatası görüldü:** ilk deklanşör isteği Gemini'den 502 aldı, aynı görsel
 sonraki üç denemede 200 döndü. Uygulama bunu doğru karşıladı (tarayıcı açık kaldı, doğru mesaj).
+
+---
+
+## Review — Kapsamlı QA (2026-08-09, rapor-only)
+
+**Kararlar:** rapor-only (kod değişikliği YOK; `server/index.js` donmuş). AI kill-switch davranışı
+test edildi (503 + UI hatası), Gemini anahtarı kullanılmadı. Ortam: `NUTRI_DB=server/data.qa.db`
+scatch DB + `pnpm preview` (4173). Detaylı rapor: `docs/qa/2026-08-09-bulgu-raporu.md`.
+
+**Sonuç:** 11 fazdan Faz 0-10 tamamlandı; **7 bulgu** (1 SEV3 + 6 SEV4), Faz 8 (back-stack/nav)
+**0 bulgu**. Tarihsel bug'ların tamamı (onboarding 400, bayat-profil ezme, FAB yeniden açılma,
+sahte çıkış toast'ı, ilk-yükleme ölü ekranı) **FIXED ve doğrulandı**.
+
+| Sev | Alan | Kısa açıklama | File:line |
+|---|---|---|---|
+| SEV3 | Öğün girişi | NutritionSheet aç-kaydet 2 ondalığı sessizce 1 ondalığa tırnaklıyor | `NutritionSheet.tsx:22-33` |
+| SEV4 | Ana ekran | Öğün satırı seçim modunda çift birim "800 kcal kalori" | `MealRow.tsx:58` |
+| SEV4 | Öğün girişi | Negatif makro kabul edilip kayıtta sessizce 0'a clamp'leniyor | `MealForm.tsx:576-585` |
+| SEV4 | Öğün girişi | Miktar 1g minimumsuz — "0.5" → 0 kcal öğün | `MealForm.tsx:234-239` |
+| SEV4 | Ana ekran | Öğün satırı makroları tr-TR virgülü atlıyor ("12.5g P") | `MealRow.tsx:87-95` |
+| SEV4 | Trend | "Son 7 gün ort." aslında son 7 KAYITLI gün — etiket belirsiz | `trend.ts:213` |
+| SEV4 | Ana ekran | Girilmemiş çekirdek makro "0g", mikro "—" — ilke tutarsız | `MacroCardGrid.tsx` |
+
+**Doğrulanan kritik akışlar (bulgu değil):** AI kill-switch 503 + zarif hata; kamera yoksa galeri/elle
+barkod canlı; onboarding tamamla+atla (hedef 3015 v2, profil korunuyor); çift-geri çıkış toast'ı;
+FAB→modal yığınlama; gün silme + History drilldown; alias öğretme 3 yol ayrımı; hedef `{}` PUT → 400.
+
+**Bir yanlış ölçüm düzeltildi:** sihirbaz açıkken FAB'a "tıklayabildim" göründü — programatik
+`.click()` yığınlamayı aşıyor; gerçek dokunuş modal z-[9999] tarafından engelleniyor (FAB z-50).
+Bulgu değil.
+
+**Önerilen kuyruk (rapor-only olduğu için HİÇBİRİ yapılmadı):**
+1. (SEV3) `NutritionSheet` aç-kaydet dönüşümü: `fromDraft` gösterilen değeri yazıyor; çözüm çarpan
+   mantığını gösterimden ayırmak.
+2. (SEV4) `MealRow` seçim modu `formatKcal` ile normal mod çıplak `{kcal}` — biri tutarlılaştırılmalı.
+3. (SEV4) Negatif makro input'u inline reddetmek (kayıt clamp'ı doğru ama sessiz).
+4. (SEV4) Miktar alanına 1g altı reddi (VisionReview `MIN_VISION_MULTIPLIER` ile aynı kural).
+5. (SEV4) `formatNumber`'ı `MealRow` makrolarına uygulamak (tr-TR virgül).
+6. (SEV4) Trend etiketi "kayıtlı" ibaresini netleştirmek; `goalVaries` mantığı değil.
+7. (SEV4) Çekirdek makro gösteriminde "bilinmiyor" durumu (0 yerine) — `nutrients.ts` sözleşmesiyle
+   birlikte karar verilmeli; tek dokunuş değil, tasarım kararı.
+
+## Düzeltme İncelemesi (2026-08-09)
+
+Kullanıcı onayıyla bulgular **çözüldü** (plan: `imdi-senden-derinlemesine-bi-stateful-swan.md`).
+7 bulgudan 6'sı düzeltildi; 7. (çekirdek makro "0g" vs mikro "—") kullanıcı kararıyla **değişiklik
+yok** — "çekirdek her-zaman-sayı" sözleşmesi korunuyor, rapor nota olarak kalır. `server/index.js`
+dokunulmadı.
+
+| Bulgu | Dosya | Çözüm |
+|---|---|---|
+| SEV3 aç-kaydet tırnaklama | `NutritionSheet.tsx` | `scaleMealNutrition` export + m=1'de lossless erken-dönüş (stepper m≠1 yuvarlaması korunuyor) |
+| SEV4 çift birim | `MealRow.tsx` | seçim modu `formatKcal`→çıplak `{kcal}`, normal modla birebir |
+| SEV4 negatif makro | `FormBits.tsx` | `acceptsNumericEntry` + `NumField`/`EditableStat` onChange guard'ı (uygulama geneli: MealForm, AliasForm, RecipeBuilder, ScanSheet, WeightCard, NutritionSheet) |
+| SEV4 1g minimum | `nutrition.ts` + `MealForm.tsx` | `clampMinGrams` saf fonksiyon; `handleGramsChange` gram biriminde uygular (gram dışı 0.5 meşru) |
+| SEV4 tr-TR makro | `MealRow.tsx` | `macroNum` = `formatNumber(v, tamsayı?0:1)` → "12,5g P" |
+| SEV4 trend etiketi | `TrendPage.tsx` | "Son 7 kayıtlı gün ort." + "Önceki 7 kayıtlı güne göre" |
+
+**Testler:** 589/589 (`+15`: `NutritionSheet.test.ts` yeni 7, `acceptsNumericEntry` 4,
+`clampMinGrams` 4). `pnpm typecheck` 0 hata. `pnpm build` ✓.
+
+**Tarayıcı doğrulaması (preview, scratch DB):** #1 `8.75`→aç/kaydet→DB `8.75` (mutasyon yok);
+#2 seçim modu "800 kalori"; #3 Protein `-5` reddedildi (hem NutritionSheet hem Elle modu), pozitif
+kabul; #4 Miktar `0.5`→`1`, `0` korundu, `200` geçti; #5 satır "12,5g P"; #6 trend kutuları
+"kayıtlı" içeriyor. Temizlik: scratch DB silindi, listener yok, `server/data.db` dokunulmadı.

@@ -1,6 +1,9 @@
 import { Flame, Beef, Wheat, Droplet, Pencil, BookmarkPlus } from "lucide-react";
-import { formatKcal } from "../lib/format";
+import { formatNumber } from "../lib/format";
 import type { MealItem } from "../types";
+
+/** tr-TR ondalık biçimli makro sayısı: tamsayı "12", ondalık "12,5" (sonda ",0" yok). */
+const macroNum = (v: number) => formatNumber(v, Number.isInteger(v) ? 0 : 1);
 
 interface MealRowProps {
   meal: MealItem;
@@ -55,7 +58,7 @@ export function MealRow({
             <h4 className="font-bold text-white text-base truncate">{meal.label}</h4>
             <div className="flex items-center gap-1.5 text-xs text-[#A5A2B8] font-semibold mt-1">
               <Flame className="w-3.5 h-3.5 text-[#FFB74D]" />
-              <span>{formatKcal(meal.computed.kcal)} kalori</span>
+              <span>{meal.computed.kcal} kalori</span>
             </div>
           </div>
         </div>
@@ -84,15 +87,15 @@ export function MealRow({
             <div className="flex items-center gap-1.5 text-[10px] sm:text-xs font-extrabold">
               <span className="flex items-center gap-1 bg-[#38222B] text-[#E57373] px-2.5 py-1 rounded-full">
                 <Beef className="w-3.5 h-3.5" />
-                <span>{meal.computed.protein}g P</span>
+                <span>{macroNum(meal.computed.protein)}g P</span>
               </span>
               <span className="flex items-center gap-1 bg-[#352B20] text-[#FFB74D] px-2.5 py-1 rounded-full">
                 <Wheat className="w-3.5 h-3.5" />
-                <span>{meal.computed.carbs}g K</span>
+                <span>{macroNum(meal.computed.carbs)}g K</span>
               </span>
               <span className="flex items-center gap-1 bg-[#202936] text-[#64B5F6] px-2.5 py-1 rounded-full">
                 <Droplet className="w-3.5 h-3.5" />
-                <span>{meal.computed.fat}g Y</span>
+                <span>{macroNum(meal.computed.fat)}g Y</span>
               </span>
             </div>
 

@@ -57,6 +57,13 @@ export function TextField({
   );
 }
 
+/** Negatif girişi (miktar/makro/kilo) baştan reddet — kayıt anında sessizce
+ *  0'a clamp'lenen (MealForm) ya da DB'ye olduğu gibi yazılan (NutritionSheet)
+ *  negatifler kullanıcıya "girdin ama kaydedilmedi" sürprizi bırakıyor. */
+export function acceptsNumericEntry(raw: string): boolean {
+  return !raw.startsWith("-");
+}
+
 export function NumField({
   label,
   value,
@@ -75,7 +82,10 @@ export function NumField({
         className={`${fieldCls} font-mono`}
         inputMode="decimal"
         value={value}
-        onChange={(e) => onChange(e.target.value)}
+        onChange={(e) => {
+          const v = e.target.value;
+          if (acceptsNumericEntry(v)) onChange(v);
+        }}
       />
     </label>
   );
@@ -104,7 +114,10 @@ export function EditableStat({
       inputMode="decimal"
       value={value}
       placeholder={placeholder}
-      onChange={(e) => onChange(e.target.value)}
+      onChange={(e) => {
+        const v = e.target.value;
+        if (acceptsNumericEntry(v)) onChange(v);
+      }}
       onFocus={(e) => e.target.select()}
       onClick={(e) => (e.target as HTMLInputElement).select()}
       className={`bg-transparent outline-none placeholder:text-white/30 ${className}`}
