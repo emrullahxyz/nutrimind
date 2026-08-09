@@ -132,6 +132,23 @@ Windows/git-bash'te sessizce başarısız olabiliyor; port hâlâ eski PID'deyse
 Bu, L8'in ("gizli panelde DOM ölçümü güvenilmez") sunucu tarafındaki kardeşi: **önce ölçüm
 aracına güven, sonra bulguya.**
 
+## L14 — `transform` içeren animasyonun fill-mode'u `both`/`forwards` ise eleman KALICI containing block olur
+
+**Olay (2026-08-09):** Kullanıcı İlerleme → hafta → gün drilldown'ında bir öğüne tıklayınca
+düzenleme ekranının ekranın en üstünde, görünmezde açıldığını bildirdi; Bugün sekmesinde aynı
+ekran düzgün açılıyordu. Kök neden: drilldown'ı saran `.anim-zoom` (`animation: zoomIn … both`)
+`transform` animasyon ediyor; `fill-mode: both/forwards`, animasyon BİTSE bile tarayıcının o
+elemanı `position: fixed` torunları için **kalıcı containing block** olarak ele almasına yol açıyor
+(CSS Animations spec + WebKit Bug 176858). `NutritionSheet`/`MealForm` portal kullanmıyor
+(`Modal.tsx` kullanıyor, bunlar etmiyor) — `fixed inset-0` viewport yerine sarmalın tepesine
+(sayfa en üstüne, scroll'un üstüne) hizalandı. Bugün sekmesinde transform sarmalı yok → orada doğru.
+
+**Kural:** `position: fixed` torun üreten bir elemanın üstündeki animasyonda `transform` varsa
+fill-mode `backwards` veya `none` olmalı (bitince eleman containing block olmaktan çıkar; son
+kare `transform:none` olduğu için görsel kayıp yok). `forwards`/`both` + `transform` = kalıcı
+containing block. Aynı sarmal altında inline `fixed` modal açılıyorsa (portal yoksa) özellikle
+tehlikeli. Kontrol listesi: "bu modalın atalarında animasyonlu transform var mı?"
+
 ## L13 — `Cache-Control` YOKSA tarayıcı kendi kararını verir
 
 **Olay (Faz I sonrası):** Kullanıcı güncellemeden sonra uygulamayı açtı ve

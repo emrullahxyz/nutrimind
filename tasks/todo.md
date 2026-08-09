@@ -307,3 +307,29 @@ dokunulmadı.
 #2 seçim modu "800 kalori"; #3 Protein `-5` reddedildi (hem NutritionSheet hem Elle modu), pozitif
 kabul; #4 Miktar `0.5`→`1`, `0` korundu, `200` geçti; #5 satır "12,5g P"; #6 trend kutuları
 "kayıtlı" içeriyor. Temizlik: scratch DB silindi, listener yok, `server/data.db` dokunulmadı.
+
+## Düzeltme İncelemesi (2026-08-09, kullanıcı bildirimi: 2 sorun)
+
+QA turu deploy'undan sonra kullanıcı iki yeni sorun bildirdi; ikisi de saf frontend,
+`server/index.js` dokunulmadı (donmuş kural).
+
+| Sorun | Dosya | Çözüm |
+|---|---|---|
+| **Bug** İlerleme drilldown'ında düzenleme ekranı ekranın en üstünde açılıyor | `src/index.css` | `.anim-zoom` `fill-mode: both` → `backwards`. `both`/`forwards` + `transform` animasyonu, animasyon bitse bile sarmalı `position:fixed` torunlar için KALICI containing block yapıyor (WebKit Bug 176858). Portal olmayan `NutritionSheet`/`MealForm` `fixed inset-0` ile viewport yerine sarmalın tepesine hizalanıyordu. Görsel kayıp yok: `zoomIn` son karesi `transform:none` |
+| **UX** Uzun öğün ismi tek satırda `...` ile kesiliyor, okunmuyor | `src/components/MealRow.tsx` | `<h4 truncate>` → `ExpandableMealName` (mevcut desen, `FormBits.tsx:394`): varsayılan 2 satır, isme dokununca `line-clamp-none` (tam açılır), `stopPropagation` sayesinde kartın geri kalanına tıklamak hâlâ düzenlemeye girer. Seçim modu `truncate` kalır (kasıtlı) |
+
+**Kök neden (bug):** drilldown'ı saran `.anim-zoom` (`animation: zoomIn … both`) `transform`
+animasyon ediyor; `fill-mode: both/forwards`, animasyon BİTSE bile tarayıcının o elemanı
+`position: fixed` torunları için kalıcı containing block olarak ele almasına yol açıyor. Bugün
+sekmesinde transform sarmalı yok → orada doğruydu. Ders: `tasks/lessons.md` → **L14**.
+
+**Testler:** 589/589 (değişmez), `pnpm typecheck` 0 hata, `pnpm build` ✓. Unit test eklenmedi:
+1. düzeltme saf CSS, 2. mevcut bileşeni yeniden kullanıyor — ikisi de tarayıcıda doğrulandı.
+
+**Tarayıcı doğrulaması (preview, scratch DB):** Bug 1 — drilldown'da öğüne tıkla → `NutritionSheet`
+viewport tepesinde (top 0); "Öğün ekle" → `MealForm` aynı; "Ekstra Besin" yolu aynı; Bugün
+sekmesinde öğüne tıklamak ortada açıyor (regresyon yok); FAB menüsü ve hafta barı tooltip'i
+(`.anim-zoom` kullananlar) hâlâ düzgün. Bug 2 — uzun isim 2 satır; isme tıkla → tamamı açılır,
+tekrar tıkla → kapanır; kartın isim-dışı alanına tıkla → düzenlemeye girer; kısa isim 1 satır
+(yükseklik bozulmadı). Temizlik: server'lar durduruldu, scratch DB silindi, `server/data.db`
+dokunulmadı.
