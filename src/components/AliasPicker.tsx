@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import type { KeyboardEvent } from "react";
 import type { Alias } from "../types";
 import { filterAliases } from "../lib/aliasFilter";
-import { buildUsageIndex, rankAliases } from "../lib/aliasRank";
+import { rankAliases } from "../lib/aliasRank";
 import { useData } from "../lib/data";
 import { todayISO, weekdayIndex } from "../lib/format";
 import { effectiveProfile } from "../lib/goals";
@@ -23,8 +23,7 @@ export function AliasPicker({
   label = "Hafızadan besin seç",
   mealIndex = 0,
 }: AliasPickerProps) {
-  const { days, goals } = useData();
-  const usageIndex = useMemo(() => buildUsageIndex(days, goals), [days, goals]);
+  const { goals, usageIndex } = useData();
 
   const selectedAlias = aliases.find((a) => a.id === selectedAliasId);
   const [isOpen, setIsOpen] = useState(false);
