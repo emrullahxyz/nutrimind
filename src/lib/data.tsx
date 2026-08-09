@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 import { deleteAlias, deleteDay, fetchData, saveAlias, saveConfig, saveDay, saveGoals } from "./api";
 import type { AliasPayload, AppData } from "./api";
 import type { GoalConfig, MealPayload } from "../types";
+import { buildUsageIndex, type UsageIndex } from "./aliasRank";
 import { AppSkeleton } from "../components/Skeleton";
 
 /** Yazma aksiyonları — hepsi "API çağır → veriyi yeniden çek" desenini izler. */
@@ -22,7 +23,7 @@ export interface Actions {
   updateConfig: (key: string, value: Record<string, unknown>) => Promise<void>;
 }
 
-type Ctx = AppData & Actions;
+type Ctx = AppData & Actions & { usageIndex: UsageIndex };
 
 const DataCtx = createContext<Ctx | null>(null);
 
@@ -146,7 +147,15 @@ export function DataProvider({ children }: { children: ReactNode }) {
     [refresh, runWriteThenRefresh],
   );
 
-  const value = useMemo<Ctx | null>(() => (data ? { ...data, ...actions } : null), [data, actions]);
+  const usageIndex = useMemo<UsageIndex>(() => {
+    if (!data) return new Map();
+    return buildUsageIndex(data.days, data.goals);
+  }, [data?.days, data?.goals]);
+
+  const value = useMemo<Ctx | null>(
+    () => (data ? { ...data, ...actions, usageIndex } : null),
+    [data, actions, usageIndex],
+  );
 
   if (stale) return <StaleFallback refresh={refresh} onResolved={() => setStale(false)} />;
   if (err) return <Center>Veri alınamadı ({err}). Sunucu çalışıyor mu?</Center>;

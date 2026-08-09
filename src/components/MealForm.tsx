@@ -24,7 +24,7 @@ import { mealsOf, toPayload } from "../lib/days";
 import { GRAM_UNIT, parseNum, scaleNutrition, toGrams, unitOptions } from "../lib/nutrition";
 import { formatKcal, todayISO, weekdayIndex } from "../lib/format";
 import { effectiveProfile } from "../lib/goals";
-import { buildUsageIndex, rankAliases } from "../lib/aliasRank";
+import { rankAliases } from "../lib/aliasRank";
 import { categoryForHour, MEAL_CATEGORIES, MEAL_CATEGORY_LABELS } from "../lib/mealCategory";
 import type { AIParseItem, Alias, MealCategory, MealPayload, MealSource, Nutrition } from "../types";
 import { usualQuantity } from "../lib/quantity";
@@ -200,13 +200,12 @@ export function MealForm({
   // yığınında boş bir girdi bırakıyordu — hook `history.back()` kullanıyor).
   const { requestClose: handleUserClose } = useModalHistory({ active: isOpen, onClose });
 
-  const { aliases, days, goals, setDayMeals } = useData();
+  const { aliases, days, usageIndex, goals, setDayMeals } = useData();
   const existing = editIndex === null ? undefined : mealsOf(days, date)[editIndex];
 
   const mealIndex = editIndex !== null ? editIndex : mealsOf(days, date).length;
 
   const initialRankedAliases = useMemo(() => {
-    const usageIndex = buildUsageIndex(days, goals);
     const today = todayISO();
     const ctx = {
       today,
@@ -215,7 +214,7 @@ export function MealForm({
       mealIndex,
     };
     return rankAliases(aliases, usageIndex, ctx);
-  }, [aliases, days, goals, mealIndex]);
+  }, [aliases, usageIndex, goals, mealIndex]);
 
   const [mode, setMode] = useState<Mode>("alias");
   const [category, setCategory] = useState<MealCategory>(
