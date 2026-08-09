@@ -128,12 +128,12 @@ export function TrendPage() {
       {/* özet kutuları — trendin asıl bilgi değeri burada */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
         <Stat
-          label="Son 7 gün ort."
+          label="Son 7 kayıtlı gün ort."
           value={stats.recentAvg === null ? "—" : formatNutrientValue(def, stats.recentAvg)}
           hint={stats.recentAvg === null ? "bu aralıkta kayıt yok" : "kayıtlı son 7 gün"}
         />
         <Stat
-          label="Önceki 7 güne göre"
+          label="Önceki 7 kayıtlı güne göre"
           value={
             stats.changePct === null
               ? "—"

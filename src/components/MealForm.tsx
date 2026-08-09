@@ -21,7 +21,7 @@ import { AiError, aiErrorMessage, parseWithAI } from "../lib/ai";
 import { useData } from "../lib/data";
 import { fetchData } from "../lib/api";
 import { mealsOf, toPayload } from "../lib/days";
-import { GRAM_UNIT, parseNum, scaleNutrition, toGrams, unitOptions } from "../lib/nutrition";
+import { GRAM_UNIT, clampMinGrams, parseNum, scaleNutrition, toGrams, unitOptions } from "../lib/nutrition";
 import { formatKcal, todayISO, weekdayIndex } from "../lib/format";
 import { effectiveProfile } from "../lib/goals";
 import { rankAliases } from "../lib/aliasRank";
@@ -349,7 +349,10 @@ export function MealForm({
 
   function handleGramsChange(v: string) {
     setAliasPendingAdd(true);
-    setGrams(v);
+    // Gram cinsinden 1g altı porsiyon 0 kcal öğün üretir; VisionReview'daki
+    // 1g minimumuyla tutarlı olarak alan kendini 1'e çeker. Gram dışı birimde
+    // (adet vb.) 0.5 meşru — dokunulmaz.
+    setGrams(unitName === GRAM_UNIT.name ? clampMinGrams(v) : v);
   }
 
   function handleUnitChange(newUnitName: string) {

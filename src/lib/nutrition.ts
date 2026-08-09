@@ -65,6 +65,14 @@ export function parseNum(input: string): number {
   return Number.isFinite(n) ? n : 0;
 }
 
+/** 1g altındaki gram girişini 1'e çeker (VisionReview'daki 1g minimumuyla tutarlı).
+ *  "0.5g" → 0 kcal öğün üretiyor; bu da tüm yazma yolunda anlamsız bir kayıt.
+ *  0 anlamlıdır (çekme değil), boş/geçersiz girdi olduğu gibi döner. */
+export function clampMinGrams(raw: string): string {
+  const n = parseNum(raw);
+  return n > 0 && n < 1 ? "1" : raw;
+}
+
 /** 0,1 hassasiyet yeterli — kayan nokta artıklarını da temizler. */
 function round1(value: number): number {
   return Math.round(value * 10) / 10;
