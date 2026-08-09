@@ -4,12 +4,12 @@
 
 :root {
   color-scheme: dark;
-  --ring-deep: #2A283A;
-  --ring-mid: #FFB74D;
-  --ring-bright: #E57373;
-  --ring-over: #E57373;
-  --ring-over-deep: #38222B;
-  --ring-track: #2A283A;
+  --ring-deep: #2a283a;
+  --ring-mid: #ffb74d;
+  --ring-bright: #e57373;
+  --ring-over: #e57373;
+  --ring-over-deep: #38222b;
+  --ring-track: #2a283a;
 }
 
 html {
@@ -29,7 +29,7 @@ body,
 body {
   margin: 0;
   background: #171622;
-  color: #FFFFFF;
+  color: #ffffff;
   font-family: "Manrope", system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
@@ -144,7 +144,9 @@ body {
   animation: growSpring 1.2s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 .anim-zoom {
-  animation: zoomIn 0.45s cubic-bezier(0.2, 0.85, 0.25, 1) both;
+  /* both/forwards, position:fixed torunlar için kalıcı containing block yapar —
+     History drilldown modalları (NutritionSheet/MealForm) sarmalın tepesine çakılır. */
+  animation: zoomIn 0.45s cubic-bezier(0.2, 0.85, 0.25, 1) backwards;
 }
 @keyframes slideUp {
   0% {

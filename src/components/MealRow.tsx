@@ -1,4 +1,5 @@
 import { Flame, Beef, Wheat, Droplet, Pencil, BookmarkPlus } from "lucide-react";
+import { ExpandableMealName } from "./FormBits";
 import { formatNumber } from "../lib/format";
 import type { MealItem } from "../types";
 
@@ -27,7 +28,7 @@ export function MealRow({
   busy,
 }: MealRowProps) {
   const delay = Math.min(index, 6) * 60;
-  
+
   let timeStr = "";
   if (meal.loggedAt) {
     try {
@@ -64,13 +65,14 @@ export function MealRow({
         </div>
       ) : (
         <div className="flex flex-col gap-2">
-          {/* Top Row: Name & Time */}
-          <div className="flex items-baseline justify-between gap-3">
-            <h4 className="font-bold text-white text-base sm:text-lg truncate max-w-[75%]">
-              {meal.label}
-            </h4>
+          {/* Top Row: Name & Time — isme dokunmak genişletir, kartın geri kalanı düzenlemeye girer */}
+          <div className="flex items-start justify-between gap-3">
+            <ExpandableMealName
+              name={meal.label}
+              className="font-bold text-white text-base sm:text-lg flex-1 min-w-0"
+            />
             {timeStr && (
-              <span className="text-xs font-mono font-medium text-[#A5A2B8] shrink-0">
+              <span className="mt-1 shrink-0 text-xs font-mono font-medium text-[#A5A2B8]">
                 {timeStr}
               </span>
             )}
