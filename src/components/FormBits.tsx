@@ -90,14 +90,17 @@ export function EditableStat({
   onChange,
   placeholder,
   className = "",
+  id,
 }: {
   value: string;
   onChange: (v: string) => void;
   placeholder?: string;
   className?: string;
+  id?: string;
 }) {
   return (
     <input
+      id={id}
       inputMode="decimal"
       value={value}
       placeholder={placeholder}
