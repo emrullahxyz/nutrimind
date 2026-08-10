@@ -16,12 +16,12 @@ export default {
           tertiary: "#7A7791",
           faint: "#56546B",
         },
-        protein: "#E57373", // Soft pastel dusty rose
-        carb: "#FFB74D", // Soft pastel amber gold
-        fat: "#64B5F6", // Soft pastel ice blue
+        protein: "#B88996", // Sönük toz pastel gül (muted dusty rose)
+        carb: "#AB996F", // Sönük toz pastel şampanya altını
+        fat: "#7D9CBF", // Sönük toz pastel pudra mavisi
         fab: "#FFFFFF",
         streak: { bg: "#282537", text: "#FFFFFF" },
-        memory: "#B388FF",
+        memory: "#9A8CBA", // Dumanlı lavanta (muted smoky lavender)
         "memory-deep": "#7C4DFF",
         "memory-ink": "#1E1B4B",
         micro: "#A5A2B8",

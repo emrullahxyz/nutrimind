@@ -163,10 +163,10 @@ export function AliasForm({ initial, onClose }: { initial: Alias | null; onClose
             type="button"
             onClick={() => setSearchOpen((o) => !o)}
             aria-expanded={searchOpen}
-            className="w-full flex items-center justify-between text-xs font-bold text-amber-300 hover:text-amber-200 transition"
+            className="w-full flex items-center justify-between text-xs font-bold text-carb hover:text-carb/80 transition"
           >
             <span className="flex items-center gap-2">
-              <Sparkles className="w-4 h-4 text-amber-400" />
+              <Sparkles className="w-4 h-4 text-carb" />
               <span>Open Food Facts'ten besin getir (Arama veya Barkod)</span>
             </span>
             <span className="font-mono text-sm">{searchOpen ? "−" : "+"}</span>
@@ -181,11 +181,11 @@ export function AliasForm({ initial, onClose }: { initial: Alias | null; onClose
         {/* Triggers Card */}
         <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-4 text-white space-y-3">
           <div className="flex items-center gap-2">
-            <Tag className="w-4 h-4 text-amber-400" />
+            <Tag className="w-4 h-4 text-carb" />
             <span className="text-xs font-bold text-white/90">Tetikleyici İfadeler</span>
           </div>
           <input
-            className="w-full px-3.5 py-2.5 rounded-xl bg-black/40 border border-white/15 text-sm font-semibold text-white focus:border-amber-400 focus:outline-none placeholder:text-white/30"
+            className="w-full px-3.5 py-2.5 rounded-xl bg-black/40 border border-white/15 text-sm font-semibold text-white focus:border-carb focus:outline-none placeholder:text-white/30"
             value={triggers}
             placeholder="yoğurt, süzme yoğurt, aynı yoğurt (virgülle ayır)"
             onChange={(e) => setTriggers(e.target.value)}
@@ -196,7 +196,7 @@ export function AliasForm({ initial, onClose }: { initial: Alias | null; onClose
               {triggerList.map((t) => (
                 <span
                   key={t}
-                  className="px-3 py-1 rounded-full text-xs font-bold bg-amber-400/15 text-amber-300 border border-amber-400/30"
+                  className="px-3 py-1 rounded-full text-xs font-bold bg-carb/15 text-carb border border-carb/30"
                 >
                   {t}
                 </span>
@@ -221,7 +221,7 @@ export function AliasForm({ initial, onClose }: { initial: Alias | null; onClose
         {/* Custom Units Card — always visible, moved out of Details for discoverability */}
         <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-4 text-white space-y-3">
           <div className="flex items-center gap-2">
-            <Scale className="w-4 h-4 text-purple-400" />
+            <Scale className="w-4 h-4 text-memory" />
             <span className="text-xs font-bold text-white/90">Özel Birimler (opsiyonel)</span>
           </div>
           {unitDrafts.length > 0 && (
@@ -275,7 +275,7 @@ export function AliasForm({ initial, onClose }: { initial: Alias | null; onClose
             }
             className="w-full py-2.5 rounded-xl border border-white/15 bg-white/5 hover:bg-white/10 text-xs font-bold text-white transition active:scale-95 flex items-center justify-center gap-1.5"
           >
-            <Plus className="w-3.5 h-3.5 text-purple-400" /> Birim Ekle
+            <Plus className="w-3.5 h-3.5 text-memory" /> Birim Ekle
           </button>
         </div>
 
@@ -288,10 +288,10 @@ export function AliasForm({ initial, onClose }: { initial: Alias | null; onClose
             className="flex w-full items-center justify-between text-xs font-bold text-white/80 hover:text-white transition"
           >
             <span className="flex items-center gap-2">
-              <Scale className="w-4 h-4 text-purple-400" />
+              <Scale className="w-4 h-4 text-memory" />
               <span>Ayrıntılar (Marka & Barkod)</span>
               {hasDetailsData && (
-                <span className="px-2 py-0.5 rounded-full bg-purple-500/20 text-purple-300 border border-purple-500/30 text-[10px] font-mono">
+                <span className="px-2 py-0.5 rounded-full bg-memory/20 text-memory border border-memory/30 text-[10px] font-mono">
                   Dolu
                 </span>
               )}
@@ -310,7 +310,7 @@ export function AliasForm({ initial, onClose }: { initial: Alias | null; onClose
         {/* Nutrition Values Card */}
         <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-4 text-white space-y-3">
           <p className="text-xs text-white/70 font-medium">
-            Aşağıdaki makro değerler <strong className="text-amber-400">{parseNum(servingG) || 0} g</strong> porsiyon içindir.
+            Aşağıdaki makro değerler <strong className="text-carb">{parseNum(servingG) || 0} g</strong> porsiyon içindir.
           </p>
           <NutritionFields draft={draft} onChange={setDraft} />
         </div>
