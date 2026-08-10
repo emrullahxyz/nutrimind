@@ -1148,3 +1148,37 @@ b728c8f docs: CLAUDE.md ve PLAN.md test sayisi duzeltmeleri (574 -> 569)
 (TODO: fill after compaction — 10–20 lines of concrete resume instructions)
 
 ---
+---
+
+## Handoff: 2026-08-09T11:23:48Z (auto-saved before compaction)
+
+### Compaction Metadata
+- Trigger: (unknown)
+- Custom instructions: (none)
+- Transcript: (unknown)
+- CWD: (unknown)
+
+### Last User Message (transcript tail)
+(unavailable - transcript missing)
+
+### Last Assistant Message (transcript tail)
+(unavailable - transcript missing)
+
+### Git Snapshot
+- Branch: master
+- Status:
+?? IMG20260806094312.jpeg
+- Recent commits:
+357c184 fix(ux): porsiyon 1g minimum + kamera gizliyken başlatma abort
+b728c8f docs: CLAUDE.md ve PLAN.md test sayisi duzeltmeleri (574 -> 569)
+9b26536 fix: kamera sayfa arka plana alininca dursun, geri gelince yeniden baslasin
+74d38ef perf: buildUsageIndex hesaplamasini DataProvider'da memo'la, her form acilisinda tekrar hesaplama
+8fd5ab9 fix: MealForm save() icinde bayat closure yerine fetchData() ile taze veri kullan
+
+### Model Summary
+(TODO: fill after compaction — 8–12 bullets)
+
+### Handoff Context (paste into next session)
+(TODO: fill after compaction — 10–20 lines of concrete resume instructions)
+
+---
