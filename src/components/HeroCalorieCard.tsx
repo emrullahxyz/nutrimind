@@ -95,7 +95,7 @@ export function HeroCalorieCard({
   return (
     <div
       onClick={onToggleRatio}
-      className="relative overflow-hidden rounded-[24px] bg-[#22202E] p-5 shadow-card backdrop-blur-md cursor-pointer select-none transition-all duration-200 hover:bg-[#282637] active:scale-[0.99] flex items-center justify-between gap-4 h-[180px] sm:h-[188px] group"
+      className="relative overflow-hidden rounded-[24px] bg-[#22202E] p-5 shadow-card backdrop-blur-md cursor-pointer select-none transition-all duration-200 hover:bg-[#282637] active:scale-[0.99] flex items-center justify-between gap-3 h-[180px] sm:h-[188px] group"
       title="Tıklayarak Tüketilen/Kalan görünümünü değiştir"
     >
       {/* Left Column: Title, Compact Number, Subtext, Exercise Button */}
@@ -110,20 +110,19 @@ export function HeroCalorieCard({
             </div>
           }
           value={
-            <div className="flex items-baseline gap-1.5 text-white tracking-tight tabular-nums leading-none">
+            <div className="flex items-baseline gap-1.5 flex-wrap text-white tracking-tight tabular-nums leading-none">
               {showRatio && state.hasTarget ? (
                 <>
                   <span className={consumedBigClass}>{formatNumber(animConsumed)}</span>
-                  <span className="text-sm sm:text-base font-bold text-[#A5A2B8] font-mono">
+                  <span className="text-[12px] sm:text-sm font-semibold text-[#A5A2B8] font-mono whitespace-nowrap">
                     <span style={{ marginRight: 3 }}>/</span>
-                    {formatNumber(animTarget)}
+                    {formatNumber(animTarget)} kcal
                   </span>
-                  <span className="text-xs font-bold text-[#A5A2B8] font-mono">kcal</span>
                 </>
               ) : (
                 <>
                   <span className={textSizeClass}>{displayBigVal}</span>
-                  <span className="text-xs font-bold text-[#A5A2B8] font-mono">kcal</span>
+                  <span className="text-[11px] font-semibold text-[#A5A2B8] font-mono whitespace-nowrap">kcal</span>
                 </>
               )}
             </div>
@@ -150,7 +149,7 @@ export function HeroCalorieCard({
 
       {/* Right Column: Ring scaled to match full hero height (136px) */}
       <div className="flex-none flex items-center justify-center">
-        <CalorieRing consumed={consumed} target={adjustedTarget} size={136} />
+        <CalorieRing consumed={consumed} target={adjustedTarget} size={120} />
       </div>
     </div>
   );
