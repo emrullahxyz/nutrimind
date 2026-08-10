@@ -108,33 +108,13 @@ export function MealRow({
             )}
           </div>
 
-          {/* Middle Row: Calories */}
-          <div className="flex items-center gap-1.5 text-xs sm:text-sm font-bold text-white">
-            <Flame className="w-4 h-4 text-carb" />
-            <span>{meal.computed.kcal} kalori</span>
-          </div>
-
-          {/* Bottom Row: Macros & Actions */}
-          <div className="flex items-center justify-between pt-1">
-            <div className="flex flex-wrap items-center gap-1 text-[10px] sm:text-xs font-extrabold">
-              <span className="flex items-center gap-1 bg-[#1E1C28] border border-protein/50 px-2 py-0.5 rounded-full shrink-0 whitespace-nowrap">
-                <Beef className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-protein" />
-                <span className="whitespace-nowrap text-white">{macroNum(meal.computed.protein)}g</span>
-                <span className="flex items-center justify-center w-4 h-4 rounded-full bg-protein/60 border border-protein/60 text-[8px] sm:text-[9px] leading-none text-[#2A1D22]">P</span>
-              </span>
-              <span className="flex items-center gap-1 bg-[#1E1C28] border border-carb/50 px-2 py-0.5 rounded-full shrink-0 whitespace-nowrap">
-                <Wheat className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-carb" />
-                <span className="whitespace-nowrap text-white">{macroNum(meal.computed.carbs)}g</span>
-                <span className="flex items-center justify-center w-4 h-4 rounded-full bg-carb/60 border border-carb/60 text-[8px] sm:text-[9px] leading-none text-[#292212]">K</span>
-              </span>
-              <span className="flex items-center gap-1 bg-[#1E1C28] border border-fat/50 px-2 py-0.5 rounded-full shrink-0 whitespace-nowrap">
-                <Droplet className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-fat" />
-                <span className="whitespace-nowrap text-white">{macroNum(meal.computed.fat)}g</span>
-                <span className="flex items-center justify-center w-4 h-4 rounded-full bg-fat/60 border border-fat/60 text-[8px] sm:text-[9px] leading-none text-[#16202D]">Y</span>
-              </span>
+          {/* Middle Row: Calories + Actions — butonlar hap satırıyla yer kapışmasın, haplar tam genişlik alsın */}
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex items-center gap-1.5 text-xs sm:text-sm font-bold text-white">
+              <Flame className="w-4 h-4 text-carb" />
+              <span>{meal.computed.kcal} kalori</span>
             </div>
-
-            <div className="flex items-center gap-1.5">
+            <div className="flex items-center gap-1.5 shrink-0">
               <button
                 type="button"
                 onClick={(e) => {
@@ -161,6 +141,25 @@ export function MealRow({
                 <Pencil className="w-3.5 h-3.5" />
               </button>
             </div>
+          </div>
+
+          {/* Bottom Row: Macros — tam genişlik, üç hap hep yan yana */}
+          <div className="flex flex-wrap items-center gap-1 pt-1 text-[10px] sm:text-xs font-extrabold">
+              <span className="flex items-center gap-0.5 bg-[#1E1C28] border border-protein/50 px-1.5 py-0.5 rounded-full shrink-0 whitespace-nowrap">
+                <Beef className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-protein" />
+                <span className="whitespace-nowrap text-white">{macroNum(meal.computed.protein)}g</span>
+                <span className="flex items-center justify-center w-4 h-4 rounded-full bg-protein/60 border border-protein/60 text-[8px] sm:text-[9px] leading-none text-[#2A1D22]">P</span>
+              </span>
+              <span className="flex items-center gap-0.5 bg-[#1E1C28] border border-carb/50 px-1.5 py-0.5 rounded-full shrink-0 whitespace-nowrap">
+                <Wheat className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-carb" />
+                <span className="whitespace-nowrap text-white">{macroNum(meal.computed.carbs)}g</span>
+                <span className="flex items-center justify-center w-4 h-4 rounded-full bg-carb/60 border border-carb/60 text-[8px] sm:text-[9px] leading-none text-[#292212]">K</span>
+              </span>
+              <span className="flex items-center gap-0.5 bg-[#1E1C28] border border-fat/50 px-1.5 py-0.5 rounded-full shrink-0 whitespace-nowrap">
+                <Droplet className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-fat" />
+                <span className="whitespace-nowrap text-white">{macroNum(meal.computed.fat)}g</span>
+                <span className="flex items-center justify-center w-4 h-4 rounded-full bg-fat/60 border border-fat/60 text-[8px] sm:text-[9px] leading-none text-[#16202D]">Y</span>
+              </span>
           </div>
         </div>
       )}
