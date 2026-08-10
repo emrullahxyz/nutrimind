@@ -104,8 +104,18 @@ function MacroCardItem({
           mode={mode}
           layout="value-first"
           value={
-            <div className={`${textSizeClass} font-black text-white leading-tight tabular-nums tracking-tight truncate`}>
-              {displayVal}
+            <div className="font-black text-white leading-tight tabular-nums tracking-tight truncate flex items-baseline">
+              {showRatio && item.target > 0 ? (
+                <>
+                  <span className="text-lg sm:text-xl">{formatNumber(animVal, 0)}</span>
+                  <span className="ml-1.5 text-[10px] sm:text-xs font-bold text-[#A5A2B8] whitespace-nowrap">
+                    <span style={{ marginRight: 3 }}>/</span>
+                    {formatNumber(animTarget, 0)} {item.unit}
+                  </span>
+                </>
+              ) : (
+                <span className={textSizeClass}>{displayVal}</span>
+              )}
             </div>
           }
           label={
@@ -138,7 +148,7 @@ export function MacroCardGrid({ total, goal, showRatio, onToggleRatio }: MacroCa
       label: "Protein",
       sublabel: goal.protein > 0 ? "Kalan Protein" : "Protein",
       icon: Beef,
-      color: "#E57373",
+      color: "#B88996",
       consumed: total.protein,
       target: goal.protein,
       unit: "g",
@@ -148,7 +158,7 @@ export function MacroCardGrid({ total, goal, showRatio, onToggleRatio }: MacroCa
       label: "Karb",
       sublabel: goal.carbs > 0 ? "Kalan Karb" : "Karbonhidrat",
       icon: Wheat,
-      color: "#FFB74D",
+      color: "#AB996F",
       consumed: total.carbs,
       target: goal.carbs,
       unit: "g",
@@ -158,7 +168,7 @@ export function MacroCardGrid({ total, goal, showRatio, onToggleRatio }: MacroCa
       label: "Yağ",
       sublabel: goal.fat > 0 ? "Kalan Yağ" : "Yağ",
       icon: Droplet,
-      color: "#64B5F6",
+      color: "#7D9CBF",
       consumed: total.fat,
       target: goal.fat,
       unit: "g",

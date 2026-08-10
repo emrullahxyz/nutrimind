@@ -56,10 +56,19 @@ export function HeroCalorieCard({
       : `${formatNumber(animConsumed)}`
     : `${formatNumber(bigNum)}`;
 
+  const consumedStr = formatNumber(animConsumed);
   const textSizeClass =
     displayBigVal.length > 11
       ? "text-xl sm:text-2xl font-extrabold"
       : displayBigVal.length > 7
+        ? "text-2xl sm:text-3xl font-black"
+        : "text-3xl sm:text-4xl font-black";
+
+  // "Tüketilen / Hedef" modunda tüketilen büyük ve vurgulu, hedef küçük ve soluk.
+  const consumedBigClass =
+    consumedStr.length > 6
+      ? "text-xl sm:text-2xl font-extrabold"
+      : consumedStr.length > 4
         ? "text-2xl sm:text-3xl font-black"
         : "text-3xl sm:text-4xl font-black";
 
@@ -76,7 +85,7 @@ export function HeroCalorieCard({
       )}
 
       {burnedKcal > 0 && (
-        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-[#38222B] text-[#E57373] text-[10px] font-bold">
+        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-protein/10 text-protein border border-protein/20 text-[10px] font-bold">
           🔥 +{burnedKcal} yakıldı
         </span>
       )}
@@ -96,13 +105,27 @@ export function HeroCalorieCard({
           layout="label-first"
           label={
             <div className="flex items-center gap-1.5 text-xs font-semibold text-[#A5A2B8] mb-1.5">
-              <Flame className="h-4 w-4 text-[#FFB74D]" />
+              <Flame className="h-4 w-4 text-carb" />
               <span>{subtitleLabel}</span>
             </div>
           }
           value={
-            <div className={`${textSizeClass} text-white tracking-tight tabular-nums leading-none`}>
-              {displayBigVal} <span className="text-xs font-bold text-[#A5A2B8] font-mono">kcal</span>
+            <div className="flex items-baseline gap-1.5 text-white tracking-tight tabular-nums leading-none">
+              {showRatio && state.hasTarget ? (
+                <>
+                  <span className={consumedBigClass}>{formatNumber(animConsumed)}</span>
+                  <span className="text-sm sm:text-base font-bold text-[#A5A2B8] font-mono">
+                    <span style={{ marginRight: 3 }}>/</span>
+                    {formatNumber(animTarget)}
+                  </span>
+                  <span className="text-xs font-bold text-[#A5A2B8] font-mono">kcal</span>
+                </>
+              ) : (
+                <>
+                  <span className={textSizeClass}>{displayBigVal}</span>
+                  <span className="text-xs font-bold text-[#A5A2B8] font-mono">kcal</span>
+                </>
+              )}
             </div>
           }
           subtext={subtextNode}
@@ -118,7 +141,7 @@ export function HeroCalorieCard({
               }}
               className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-[#2A283A] hover:bg-[#343248] text-xs font-bold text-white transition active:scale-95"
             >
-              <Dumbbell className="w-3.5 h-3.5 text-[#FFB74D]" />
+              <Dumbbell className="w-3.5 h-3.5 text-carb" />
               <span>Egzersiz Ekle</span>
             </button>
           </div>

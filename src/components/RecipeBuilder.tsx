@@ -251,11 +251,11 @@ export function RecipeBuilder({
         {/* Triggers Card */}
         <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-4 text-white space-y-3">
           <div className="flex items-center gap-2">
-            <Tag className="w-4 h-4 text-amber-400" />
+            <Tag className="w-4 h-4 text-carb" />
             <span className="text-xs font-bold text-white/90">Tetikleyici İfadeler</span>
           </div>
           <input
-            className="w-full px-3.5 py-2.5 rounded-xl bg-black/40 border border-white/15 text-sm font-semibold text-white focus:border-amber-400 focus:outline-none placeholder:text-white/30"
+            className="w-full px-3.5 py-2.5 rounded-xl bg-black/40 border border-white/15 text-sm font-semibold text-white focus:border-carb focus:outline-none placeholder:text-white/30"
             value={triggers}
             placeholder="mercimek çorbası, ev çorbası (virgülle ayır)"
             onChange={(e) => setTriggers(e.target.value)}
@@ -266,7 +266,7 @@ export function RecipeBuilder({
               {triggerList.map((t) => (
                 <span
                   key={t}
-                  className="px-3 py-1 rounded-full text-xs font-bold bg-amber-400/15 text-amber-300 border border-amber-400/30"
+                  className="px-3 py-1 rounded-full text-xs font-bold bg-carb/15 text-carb border border-carb/30"
                 >
                   {t}
                 </span>
@@ -285,7 +285,7 @@ export function RecipeBuilder({
         <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-4 text-white space-y-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <Utensils className="w-4 h-4 text-purple-400" />
+              <Utensils className="w-4 h-4 text-memory" />
               <span className="text-xs font-bold text-white/90">Malzemeler ({parsedIngredients.length})</span>
             </div>
           </div>
@@ -297,7 +297,7 @@ export function RecipeBuilder({
             return (
               <div key={ing.id} className="p-3.5 rounded-2xl border border-white/10 bg-black/40 space-y-3">
                 <div className="flex items-center justify-between border-b border-white/10 pb-2">
-                  <span className="text-xs font-extrabold text-amber-300 font-mono">
+                  <span className="text-xs font-extrabold text-carb font-mono">
                     Malzeme #{index + 1}
                   </span>
                   <div className="flex items-center gap-2">
@@ -336,7 +336,7 @@ export function RecipeBuilder({
                     <label className="block">
                       <span className="text-xs font-semibold text-white/70 block mb-1">Hafızadaki Besin</span>
                       <select
-                        className="w-full px-3 py-2.5 rounded-xl bg-[#191825] border border-white/15 text-xs font-bold text-white focus:outline-none focus:border-amber-400"
+                        className="w-full px-3 py-2.5 rounded-xl bg-[#191825] border border-white/15 text-xs font-bold text-white focus:outline-none focus:border-carb"
                         value={ing.aliasId}
                         onChange={(e) => {
                           const newAliasId = e.target.value;
@@ -366,7 +366,7 @@ export function RecipeBuilder({
                       <label className="block">
                         <span className="text-xs font-semibold text-white/70 block mb-1">Birim</span>
                         <select
-                          className="w-full px-3 py-2.5 rounded-xl bg-[#191825] border border-white/15 text-xs font-bold text-white focus:outline-none focus:border-amber-400"
+                          className="w-full px-3 py-2.5 rounded-xl bg-[#191825] border border-white/15 text-xs font-bold text-white focus:outline-none focus:border-carb"
                           value={ing.unit}
                           onChange={(e) => updateRow(ing.id, (prev) => ({ ...prev, unit: e.target.value }))}
                         >
@@ -437,7 +437,7 @@ export function RecipeBuilder({
             onClick={addRow}
             className="w-full py-3 rounded-xl border border-white/15 bg-white/5 hover:bg-white/10 text-xs font-bold text-white transition active:scale-95 flex items-center justify-center gap-1.5"
           >
-            <Plus className="w-3.5 h-3.5 text-purple-400" /> Malzeme Ekle
+            <Plus className="w-3.5 h-3.5 text-memory" /> Malzeme Ekle
           </button>
         </div>
 
@@ -463,9 +463,9 @@ export function RecipeBuilder({
 
         {/* Live Preview Card */}
         {totalGNum > 0 && parsedIngredients.length > 0 && (
-          <div className="rounded-2xl border border-amber-400/20 bg-amber-400/5 p-4 text-white space-y-2">
-            <div className="flex items-center gap-1.5 text-amber-300 font-extrabold text-xs">
-              <Sparkles className="w-4 h-4 text-amber-400" /> Canlı Tarif Önizleme
+          <div className="rounded-2xl border border-carb/20 bg-carb/5 p-4 text-white space-y-2">
+            <div className="flex items-center gap-1.5 text-carb font-extrabold text-xs">
+              <Sparkles className="w-4 h-4 text-carb" /> Canlı Tarif Önizleme
             </div>
             <div className="flex flex-col gap-1 text-xs font-mono">
               <NutrientSummaryLine nutrition={totalNutrition} kcal="total" className="text-white font-bold" />

@@ -1,5 +1,5 @@
+import { useEffect, useRef, useState } from "react";
 import { Flame, Beef, Wheat, Droplet, Pencil, BookmarkPlus } from "lucide-react";
-import { ExpandableMealName } from "./FormBits";
 import { formatNumber } from "../lib/format";
 import type { MealItem } from "../types";
 
@@ -28,6 +28,25 @@ export function MealRow({
   busy,
 }: MealRowProps) {
   const delay = Math.min(index, 6) * 60;
+  const [nameExpanded, setNameExpanded] = useState(false);
+  const liRef = useRef<HTMLLIElement>(null);
+
+  // İsim açıkken kart dışındaki herhangi bir tıklama ismi eski (kırpılmış) hâle getirir.
+  useEffect(() => {
+    if (!nameExpanded) return;
+    const handler = (e: MouseEvent) => {
+      if (liRef.current && !liRef.current.contains(e.target as Node)) {
+        setNameExpanded(false);
+      }
+    };
+    document.addEventListener("click", handler, { capture: true });
+    return () => document.removeEventListener("click", handler, { capture: true });
+  }, [nameExpanded]);
+
+  // Seçim moduna geçince açık isim kapanır.
+  useEffect(() => {
+    if (selectMode) setNameExpanded(false);
+  }, [selectMode]);
 
   let timeStr = "";
   if (meal.loggedAt) {
@@ -43,9 +62,10 @@ export function MealRow({
 
   return (
     <li
+      ref={liRef}
       className="anim-fadeup overflow-hidden rounded-[24px] bg-[#22202E] p-4 sm:p-5 transition-all hover:bg-[#282637] active:scale-[0.99] cursor-pointer shadow-card"
       style={{ animationDelay: `${delay}ms` }}
-      onClick={selectMode ? onToggleSelect : onEdit}
+      onClick={selectMode ? onToggleSelect : () => { setNameExpanded(false); onEdit(); }}
     >
       {selectMode ? (
         <div className="flex items-center gap-3">
@@ -58,19 +78,29 @@ export function MealRow({
           <div className="flex-1 min-w-0">
             <h4 className="font-bold text-white text-base truncate">{meal.label}</h4>
             <div className="flex items-center gap-1.5 text-xs text-[#A5A2B8] font-semibold mt-1">
-              <Flame className="w-3.5 h-3.5 text-[#FFB74D]" />
+              <Flame className="w-3.5 h-3.5 text-carb" />
               <span>{meal.computed.kcal} kalori</span>
             </div>
           </div>
         </div>
       ) : (
         <div className="flex flex-col gap-2">
-          {/* Top Row: Name & Time — isme dokunmak genişletir, kartın geri kalanı düzenlemeye girer */}
+          {/* Top Row: Name & Time — 1. dokunuş ismi açar, açıkken kartın herhangi bir yeri düzenlemeye girer */}
           <div className="flex items-start justify-between gap-3">
-            <ExpandableMealName
-              name={meal.label}
-              className="font-bold text-white text-base sm:text-lg flex-1 min-w-0"
-            />
+            <span
+              onClick={(e) => {
+                if (!nameExpanded) {
+                  e.stopPropagation();
+                  setNameExpanded(true);
+                }
+              }}
+              title={meal.label}
+              className={`cursor-pointer transition-colors hover:text-memory font-bold text-white text-base sm:text-lg flex-1 min-w-0 ${
+                nameExpanded ? "line-clamp-none" : "line-clamp-2"
+              }`}
+            >
+              {meal.label}
+            </span>
             {timeStr && (
               <span className="mt-1 shrink-0 text-xs font-mono font-medium text-[#A5A2B8]">
                 {timeStr}
@@ -79,25 +109,28 @@ export function MealRow({
           </div>
 
           {/* Middle Row: Calories */}
-          <div className="flex items-center gap-1.5 text-xs sm:text-sm font-bold text-white/90">
-            <Flame className="w-4 h-4 text-[#FFB74D]" />
+          <div className="flex items-center gap-1.5 text-xs sm:text-sm font-bold text-white">
+            <Flame className="w-4 h-4 text-carb" />
             <span>{meal.computed.kcal} kalori</span>
           </div>
 
           {/* Bottom Row: Macros & Actions */}
           <div className="flex items-center justify-between pt-1">
-            <div className="flex items-center gap-1.5 text-[10px] sm:text-xs font-extrabold">
-              <span className="flex items-center gap-1 bg-[#38222B] text-[#E57373] px-2.5 py-1 rounded-full">
-                <Beef className="w-3.5 h-3.5" />
-                <span>{macroNum(meal.computed.protein)}g P</span>
+            <div className="flex flex-wrap items-center gap-1 text-[10px] sm:text-xs font-extrabold">
+              <span className="flex items-center gap-1 bg-[#1E1C28] border border-protein/50 px-2 py-0.5 rounded-full shrink-0 whitespace-nowrap">
+                <Beef className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-protein" />
+                <span className="whitespace-nowrap text-white">{macroNum(meal.computed.protein)}g</span>
+                <span className="flex items-center justify-center w-4 h-4 rounded-full bg-protein/60 border border-protein/60 text-[8px] sm:text-[9px] leading-none text-[#2A1D22]">P</span>
               </span>
-              <span className="flex items-center gap-1 bg-[#352B20] text-[#FFB74D] px-2.5 py-1 rounded-full">
-                <Wheat className="w-3.5 h-3.5" />
-                <span>{macroNum(meal.computed.carbs)}g K</span>
+              <span className="flex items-center gap-1 bg-[#1E1C28] border border-carb/50 px-2 py-0.5 rounded-full shrink-0 whitespace-nowrap">
+                <Wheat className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-carb" />
+                <span className="whitespace-nowrap text-white">{macroNum(meal.computed.carbs)}g</span>
+                <span className="flex items-center justify-center w-4 h-4 rounded-full bg-carb/60 border border-carb/60 text-[8px] sm:text-[9px] leading-none text-[#292212]">K</span>
               </span>
-              <span className="flex items-center gap-1 bg-[#202936] text-[#64B5F6] px-2.5 py-1 rounded-full">
-                <Droplet className="w-3.5 h-3.5" />
-                <span>{macroNum(meal.computed.fat)}g Y</span>
+              <span className="flex items-center gap-1 bg-[#1E1C28] border border-fat/50 px-2 py-0.5 rounded-full shrink-0 whitespace-nowrap">
+                <Droplet className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-fat" />
+                <span className="whitespace-nowrap text-white">{macroNum(meal.computed.fat)}g</span>
+                <span className="flex items-center justify-center w-4 h-4 rounded-full bg-fat/60 border border-fat/60 text-[8px] sm:text-[9px] leading-none text-[#16202D]">Y</span>
               </span>
             </div>
 
