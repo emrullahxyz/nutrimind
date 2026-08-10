@@ -76,13 +76,19 @@ function MicroCard({ item, showRatio, onToggleRatio }: { item: MicroItem; showRa
   let displayVal: string;
   let subText: string;
 
+  const consumedStr = formatNumber(animVal, 0);
+  // Makro kartlarıyla aynı desen: tüketilen büyük/vurgulu, hedef küçük ve soluk.
+  const consumedBigClass = isUndefined
+    ? "text-base font-black text-ink-tertiary"
+    : consumedStr.length > 4
+      ? "text-lg font-extrabold"
+      : "text-xl sm:text-2xl font-black";
+
   if (isUndefined) {
     displayVal = "—";
     subText = def.label;
   } else if (showRatio) {
-    displayVal = target > 0
-      ? `${formatNumber(animVal, 0)}/${formatNumber(animTarget, 0)}${def.unit}`
-      : `${formatNumber(animVal, 0)}${def.unit}`;
+    displayVal = `${formatNumber(animVal, 0)}${def.unit}`;
     subText = "Alınan / Hedef";
   } else {
     displayVal = `${formatNumber(animVal, 0)}${def.unit}`;
@@ -107,12 +113,24 @@ function MicroCard({ item, showRatio, onToggleRatio }: { item: MicroItem; showRa
           mode={mode}
           layout="value-first"
           value={
-            <div
-              className={`${textSizeClass} font-black leading-tight tabular-nums tracking-tight truncate ${
-                isUndefined ? "text-ink-tertiary" : "text-white"
-              }`}
-            >
-              {displayVal}
+            <div className="font-black text-white leading-tight tabular-nums tracking-tight flex items-baseline">
+              {showRatio && !isUndefined && target > 0 ? (
+                <>
+                  <span className={consumedBigClass}>{formatNumber(animVal, 0)}</span>
+                  <span className="ml-1.5 text-[10px] sm:text-xs font-bold text-ink-secondary whitespace-nowrap">
+                    <span style={{ marginRight: 3 }}>/</span>
+                    {formatNumber(animTarget, 0)} {def.unit}
+                  </span>
+                </>
+              ) : (
+                <span
+                  className={`${textSizeClass} ${
+                    isUndefined ? "text-ink-tertiary" : "text-white"
+                  }`}
+                >
+                  {displayVal}
+                </span>
+              )}
             </div>
           }
           label={
