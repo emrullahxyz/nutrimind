@@ -96,7 +96,7 @@ export function ExerciseModal({ isOpen, onClose, date }: Props) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/75 p-0 sm:p-4 backdrop-blur-sm animate-fadeIn">
-      <div className="w-full max-w-lg rounded-t-3xl sm:rounded-3xl bg-[#151421] border border-white/10 p-5 text-white shadow-2xl max-h-[90vh] flex flex-col overflow-hidden">
+      <div className="w-full max-w-lg rounded-t-3xl sm:rounded-3xl bg-panel-alt border border-white/10 p-5 text-white shadow-2xl max-h-[90vh] flex flex-col overflow-hidden">
         {/* Header */}
         <div className="flex items-center justify-between pb-4 border-b border-white/10">
           <div className="flex items-center gap-2.5">
@@ -171,7 +171,7 @@ export function ExerciseModal({ isOpen, onClose, date }: Props) {
               <select
                 value={category}
                 onChange={(e) => setCategory(e.target.value as ExerciseCategory)}
-                className="w-full px-3 py-2 rounded-xl bg-[#151421] border border-white/10 text-xs text-white focus:outline-none focus:border-accent"
+                className="w-full px-3 py-2 rounded-xl bg-panel-alt border border-white/10 text-xs text-white focus:outline-none focus:border-accent"
               >
                 <option value="run">Koşu</option>
                 <option value="weights">Ağırlık</option>

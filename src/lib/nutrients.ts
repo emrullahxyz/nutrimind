@@ -52,7 +52,9 @@ export interface NutrientDef {
    *  Birim dönüşümü OFF katmanının işi: OFF gramla konuşur, sodyumu biz mg
    *  tutuyoruz (`sodium_100g` × 1000; alan boşsa `salt_100g / 2,5 × 1000`). */
   offKey?: string;
-  /** SVG stroke/fill ve gradyan için ham renk (className'de ASLA kullanılmaz). */
+  /** SVG stroke/fill ve gradyan için renk — artık bir CSS değişkeni
+   *  (`var(--nutr-*)`), böylece her iki tema da çizelgeleri/SVG'leri yeniden
+   *  renklendirebilir. className'de ASLA kullanılmaz (yalnızca stroke/fill). */
   hex: string;
   /** TAM Tailwind sınıf adları. Tailwind JIT yalnızca kaynaktaki DÜZ metinleri
    *  görür: `bg-${...}` gibi birleştirilmiş sınıf ÜRETİLMEZ ve öğe boyasız
@@ -94,7 +96,7 @@ export const NUTRIENT_KEYS: readonly NutrientKey[] = [...CORE_KEYS, ...MICRO_KEY
  *  üstünde danger devralır) — yani mikronun kendi rengi tam da sessiz kalması
  *  gereken bölgenin rengidir. */
 const MICRO_CLASSES = { text: "text-micro", bg: "bg-micro", track: "bg-micro/[0.15]" };
-const MICRO_HEX = "#94a3b8";
+const MICRO_HEX = "var(--nutr-micro)";
 
 /** Arayüze girmiş besinler. Sıra formdaki ve barlardaki sırayı belirler.
  *  Renk sınıfları ve hex değerleri tailwind.config.js token'larıyla birebir:
@@ -111,7 +113,7 @@ export const NUTRIENTS: readonly NutrientDef[] = [
     direction: "target",
     decimals: 0,
     offKey: "energy-kcal_100g",
-    hex: "#34d399",
+    hex: "var(--nutr-kcal)",
     classes: { text: "text-accent", bg: "bg-accent", track: "bg-accent/[0.15]" },
   },
   {
@@ -124,7 +126,7 @@ export const NUTRIENTS: readonly NutrientDef[] = [
     kcalPerG: 4,
     decimals: 1,
     offKey: "proteins_100g",
-    hex: "#34d399",
+    hex: "var(--nutr-protein)",
     classes: { text: "text-protein", bg: "bg-protein", track: "bg-protein/[0.15]" },
   },
   {
@@ -138,7 +140,7 @@ export const NUTRIENTS: readonly NutrientDef[] = [
     kcalPerG: 4,
     decimals: 1,
     offKey: "carbohydrates_100g",
-    hex: "#fb923c",
+    hex: "var(--nutr-carbs)",
     classes: { text: "text-carb", bg: "bg-carb", track: "bg-carb/[0.15]" },
   },
   {
@@ -151,7 +153,7 @@ export const NUTRIENTS: readonly NutrientDef[] = [
     kcalPerG: 9,
     decimals: 1,
     offKey: "fat_100g",
-    hex: "#fbbf24",
+    hex: "var(--nutr-fat)",
     classes: { text: "text-fat", bg: "bg-fat", track: "bg-fat/[0.15]" },
   },
   {
@@ -163,7 +165,7 @@ export const NUTRIENTS: readonly NutrientDef[] = [
     direction: "target",
     decimals: 1,
     offKey: "fiber_100g",
-    hex: "#a78bfa",
+    hex: "var(--nutr-fiber)",
     classes: { text: "text-memory", bg: "bg-memory", track: "bg-memory/[0.15]" },
   },
   // --- Mikrolar (Faz 2) — hepsi `limit`: hedef ulaşmak değil, aşmamak. -------

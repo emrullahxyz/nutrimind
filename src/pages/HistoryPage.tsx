@@ -158,7 +158,7 @@ export function HistoryPage({ resetKey = 0 }: { resetKey?: number }) {
         <Card className="flex flex-col items-center justify-center p-6 gap-4">
           <div className="text-sm font-bold text-ink-secondary">Haftalık Makro Dağılımı & Toplamları</div>
           <MacroDonut nutrition={week.total} />
-          <div className="w-full border-t border-line/40 pt-3">
+          <div className="w-full border-t border-line-faint pt-3">
             <div className="grid grid-cols-2 gap-x-4 gap-y-2 sm:grid-cols-4">
               {MACROS.map((def) => (
                 <div key={def.key} className="flex flex-col items-center text-center">

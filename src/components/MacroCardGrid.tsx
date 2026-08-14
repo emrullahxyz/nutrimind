@@ -3,6 +3,7 @@ import type { ComponentType } from "react";
 import { formatNumber } from "../lib/format";
 import type { Nutrition } from "../types";
 import { useAnimatedNumber } from "../hooks/useAnimatedNumber";
+import { usePressSpring } from "../hooks/usePressSpring";
 import { DirectionalTextSwap, type SwapMode } from "./DirectionalTextSwap";
 
 interface MacroItem {
@@ -31,7 +32,7 @@ function SmallDonut({ pct, color, icon: Icon }: { pct: number; color: string; ic
           cy={size / 2}
           r={r}
           fill="none"
-          stroke="#2A283A"
+          stroke="var(--svg-well)"
           strokeWidth={stroke}
         />
         <circle
@@ -58,10 +59,12 @@ function MacroCardItem({
   item,
   showRatio,
   onToggleRatio,
+  delayClass = "",
 }: {
   item: MacroItem;
   showRatio: boolean;
   onToggleRatio: () => void;
+  delayClass?: string;
 }) {
   const remaining = Math.max(0, item.target - item.consumed);
   const pct = item.target > 0 ? item.consumed / item.target : 0;
@@ -70,6 +73,8 @@ function MacroCardItem({
   const rawDisplay = item.target > 0 ? remaining : item.consumed;
   const animVal = useAnimatedNumber(showRatio ? item.consumed : rawDisplay, 650);
   const animTarget = useAnimatedNumber(item.target, 650);
+
+  const press = usePressSpring({ pressScale: 0.97 });
 
   const mode: SwapMode = showRatio ? "EATEN" : "LEFT";
 
@@ -96,8 +101,10 @@ function MacroCardItem({
   return (
     <div
       onClick={onToggleRatio}
-      className="flex flex-col justify-between rounded-[22px] bg-[#22202E] p-3 sm:p-4 min-h-[125px] shadow-card transition-all duration-200 hover:bg-[#282637] cursor-pointer select-none active:scale-[0.98]"
+      className={`flex flex-col justify-between rounded-[22px] bg-calCard p-3 sm:p-4 min-h-[125px] shadow-card transition-all duration-200 hover:bg-cal-hover cursor-pointer select-none active:scale-[0.98] glass-card anim-glass-rise spring-press ${delayClass}`}
       title="Tıklayarak tüm değerleri dönüştür"
+      {...press.handlers}
+      style={press.style}
     >
       <div>
         <DirectionalTextSwap
@@ -108,7 +115,7 @@ function MacroCardItem({
               {showRatio && item.target > 0 ? (
                 <>
                   <span className="text-lg sm:text-xl">{formatNumber(animVal, 0)}</span>
-                  <span className="ml-1.5 text-[10px] sm:text-xs font-bold text-[#A5A2B8] whitespace-nowrap">
+                  <span className="ml-1.5 text-[10px] sm:text-xs font-bold text-ink-secondary whitespace-nowrap">
                     <span style={{ marginRight: 3 }}>/</span>
                     {formatNumber(animTarget, 0)} {item.unit}
                   </span>
@@ -119,7 +126,7 @@ function MacroCardItem({
             </div>
           }
           label={
-            <div className="mt-1 text-[11px] sm:text-xs font-semibold text-[#A5A2B8] truncate">
+            <div className="mt-1 text-[11px] sm:text-xs font-semibold text-ink-secondary truncate">
               {subText}
             </div>
           }
@@ -148,7 +155,7 @@ export function MacroCardGrid({ total, goal, showRatio, onToggleRatio }: MacroCa
       label: "Protein",
       sublabel: goal.protein > 0 ? "Kalan Protein" : "Protein",
       icon: Beef,
-      color: "#B88996",
+      color: "var(--svg-protein)",
       consumed: total.protein,
       target: goal.protein,
       unit: "g",
@@ -158,7 +165,7 @@ export function MacroCardGrid({ total, goal, showRatio, onToggleRatio }: MacroCa
       label: "Karb",
       sublabel: goal.carbs > 0 ? "Kalan Karb" : "Karbonhidrat",
       icon: Wheat,
-      color: "#AB996F",
+      color: "var(--svg-carb)",
       consumed: total.carbs,
       target: goal.carbs,
       unit: "g",
@@ -168,7 +175,7 @@ export function MacroCardGrid({ total, goal, showRatio, onToggleRatio }: MacroCa
       label: "Yağ",
       sublabel: goal.fat > 0 ? "Kalan Yağ" : "Yağ",
       icon: Droplet,
-      color: "#7D9CBF",
+      color: "var(--svg-fat)",
       consumed: total.fat,
       target: goal.fat,
       unit: "g",
@@ -177,8 +184,8 @@ export function MacroCardGrid({ total, goal, showRatio, onToggleRatio }: MacroCa
 
   return (
     <div className="grid grid-cols-3 gap-2.5 sm:gap-3">
-      {mainMacros.map((item) => (
-        <MacroCardItem key={item.key} item={item} showRatio={showRatio} onToggleRatio={onToggleRatio} />
+      {mainMacros.map((item, i) => (
+        <MacroCardItem key={item.key} item={item} showRatio={showRatio} onToggleRatio={onToggleRatio} delayClass={["rise-d-140","rise-d-190","rise-d-240"][i]} />
       ))}
     </div>
   );

@@ -226,10 +226,10 @@ export function RecipeBuilder({
   return (
     <div
       data-modal="true"
-      className="fixed inset-0 z-[9999] flex flex-col bg-[#171622] text-white h-[100dvh] w-full overflow-hidden animate-fadeIn pad-safe"
+      className="fixed inset-0 z-[9999] flex flex-col bg-app text-white h-[100dvh] w-full overflow-hidden animate-fadeIn pad-safe"
     >
       {/* Header Bar */}
-      <div className="flex items-center justify-between px-4 py-3.5 sm:px-6 border-b border-white/10 flex-none bg-[#171622]">
+      <div className="flex items-center justify-between px-4 py-3.5 sm:px-6 border-b border-white/10 flex-none bg-app">
         <button
           type="button"
           onClick={handleUserClose}
@@ -336,7 +336,7 @@ export function RecipeBuilder({
                     <label className="block">
                       <span className="text-xs font-semibold text-white/70 block mb-1">Hafızadaki Besin</span>
                       <select
-                        className="w-full px-3 py-2.5 rounded-xl bg-[#191825] border border-white/15 text-xs font-bold text-white focus:outline-none focus:border-carb"
+                        className="w-full px-3 py-2.5 rounded-xl bg-field border border-white/15 text-xs font-bold text-white focus:outline-none focus:border-carb"
                         value={ing.aliasId}
                         onChange={(e) => {
                           const newAliasId = e.target.value;
@@ -350,7 +350,7 @@ export function RecipeBuilder({
                         }}
                       >
                         {aliases.map((a) => (
-                          <option key={a.id} value={a.id} className="bg-[#191825] text-white">
+                          <option key={a.id} value={a.id} className="bg-field text-white">
                             {a.name} ({a.serving_g}g · {a.nutrition.kcal} kcal)
                           </option>
                         ))}
@@ -366,12 +366,12 @@ export function RecipeBuilder({
                       <label className="block">
                         <span className="text-xs font-semibold text-white/70 block mb-1">Birim</span>
                         <select
-                          className="w-full px-3 py-2.5 rounded-xl bg-[#191825] border border-white/15 text-xs font-bold text-white focus:outline-none focus:border-carb"
+                          className="w-full px-3 py-2.5 rounded-xl bg-field border border-white/15 text-xs font-bold text-white focus:outline-none focus:border-carb"
                           value={ing.unit}
                           onChange={(e) => updateRow(ing.id, (prev) => ({ ...prev, unit: e.target.value }))}
                         >
                           {units.map((u) => (
-                            <option key={u.name} value={u.name} className="bg-[#191825] text-white">
+                            <option key={u.name} value={u.name} className="bg-field text-white">
                               {u.name} {u.name !== "g" ? `(${u.grams}g)` : ""}
                             </option>
                           ))}
@@ -478,7 +478,7 @@ export function RecipeBuilder({
       </div>
 
       {/* Bottom Save Button */}
-      <div className="p-4 sm:p-5 border-t border-white/10 bg-[#13121b] flex-none">
+      <div className="p-4 sm:p-5 border-t border-white/10 bg-footer flex-none">
         <button
           type="button"
           onClick={save}

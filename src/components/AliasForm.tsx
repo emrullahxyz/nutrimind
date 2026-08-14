@@ -20,6 +20,7 @@ import type { Alias, AliasUnit, Nutrition } from "../types";
 
 import { useBodyScrollLock } from "../hooks/useBodyScrollLock";
 import { useModalHistory } from "../hooks/useModalHistory";
+import { haptic } from "../lib/haptics";
 
 interface UnitDraft {
   id: string;
@@ -125,6 +126,7 @@ export function AliasForm({ initial, onClose }: { initial: Alias | null; onClose
         ...(barcode.trim() ? { barcode: barcode.trim() } : {}),
         ...(offId.trim() ? { off_id: offId.trim() } : {}),
       });
+      haptic("light");
       handleUserClose();
     } catch (e) {
       setErr(String((e as Error)?.message ?? e));
@@ -135,10 +137,10 @@ export function AliasForm({ initial, onClose }: { initial: Alias | null; onClose
   return (
     <div
       data-modal="true"
-      className="fixed inset-0 z-[9999] flex flex-col bg-[#171622] text-white h-[100dvh] w-full overflow-hidden animate-fadeIn pad-safe"
+      className="fixed inset-0 z-[9999] flex flex-col bg-app text-white h-[100dvh] w-full overflow-hidden animate-fadeIn pad-safe"
     >
       {/* Header Bar */}
-      <div className="flex items-center justify-between px-4 py-3.5 sm:px-6 border-b border-white/10 flex-none bg-[#171622]">
+      <div className="flex items-center justify-between px-4 py-3.5 sm:px-6 border-b border-white/10 flex-none bg-app">
         <button
           type="button"
           onClick={handleUserClose}
@@ -319,7 +321,7 @@ export function AliasForm({ initial, onClose }: { initial: Alias | null; onClose
       </div>
 
       {/* Bottom Save Button */}
-      <div className="p-4 sm:p-5 border-t border-white/10 bg-[#13121b] flex-none">
+      <div className="p-4 sm:p-5 border-t border-white/10 bg-footer flex-none">
         <button
           type="button"
           onClick={save}

@@ -30,6 +30,7 @@ import type { AIParseItem, Alias, MealCategory, MealPayload, MealSource, Nutriti
 import { usualQuantity } from "../lib/quantity";
 import { AliasPicker } from "./AliasPicker";
 import { useBodyScrollLock } from "../hooks/useBodyScrollLock";
+import { haptic } from "../lib/haptics";
 
 type Mode = "alias" | "manual" | "ai";
 
@@ -615,6 +616,7 @@ export function MealForm({
       else next[editIndex] = entry;
 
       await setDayMeals(date, next);
+      haptic("success");
       handleUserClose();
     } catch (e) {
       setErr(String((e as Error)?.message ?? e));
@@ -627,10 +629,10 @@ export function MealForm({
   return (
     <div
       data-modal="true"
-      className="fixed inset-0 z-[9999] flex flex-col bg-[#171622] text-white h-[100dvh] w-full overflow-hidden animate-fadeIn pad-safe"
+      className="fixed inset-0 z-[9999] flex flex-col bg-app text-white h-[100dvh] w-full overflow-hidden animate-fadeIn pad-safe"
     >
       {/* Top Header */}
-      <div className="flex items-center justify-between px-4 py-3.5 sm:px-6 border-b border-white/10 flex-none bg-[#171622]">
+      <div className="flex items-center justify-between px-4 py-3.5 sm:px-6 border-b border-white/10 flex-none bg-app">
         <button
           type="button"
           onClick={handleUserClose}
@@ -731,7 +733,7 @@ export function MealForm({
                       onChange={(e) => handleUnitChange(e.target.value)}
                     >
                       {availableUnits.map((u) => (
-                        <option key={u.name} value={u.name} className="bg-[#191825] text-white">
+                        <option key={u.name} value={u.name} className="bg-field text-white">
                           {u.name}
                         </option>
                       ))}
@@ -920,7 +922,7 @@ export function MealForm({
       </div>
 
       {/* Full Width Bottom Save Button */}
-      <div className="p-4 sm:p-5 border-t border-white/10 bg-[#171622] flex-none">
+      <div className="p-4 sm:p-5 border-t border-white/10 bg-app flex-none">
         <button
           type="button"
           onClick={save}
