@@ -72,7 +72,7 @@ export function WeekStrip({ selectedDate, onSelectDate }: WeekStripProps) {
             onClick={() => onSelectDate(dateIso)}
             className={`flex flex-1 min-w-[44px] max-w-[56px] flex-col items-center justify-center rounded-[22px] py-2 px-1 transition-all duration-200 ${
               isSelected
-                ? "bg-[#282638] text-white border border-white/20 shadow-md scale-105 font-bold"
+                ? "bg-day-selected text-white border border-white/20 shadow-md scale-105 font-bold"
                 : isToday
                   ? "bg-white/10 text-white font-semibold"
                   : "text-ink-secondary hover:text-white hover:bg-white/5"

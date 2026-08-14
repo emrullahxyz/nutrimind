@@ -4,6 +4,7 @@
 export const PREF = {
   supplementsOpen: "nutrimind.ui.supplementsOpen",
   microsOpen: "nutrimind.ui.microsOpen",
+  theme: "nutrimind.ui.theme",
 } as const;
 
 export type PrefKey = (typeof PREF)[keyof typeof PREF];
@@ -38,6 +39,27 @@ export function writeBoolPref(key: PrefKey, value: boolean): void {
   if (!hasLocalStorage()) return;
   try {
     window.localStorage.setItem(key, value ? "1" : "0");
+  } catch {
+    // sessizce yut — pref kalıcılığı kritik değil, kullanıcı akışını bozmasın
+  }
+}
+
+/** `localStorage` yoksa (SSR/node/gizli sekme) veya erişim patlarsa sessizce
+ *  `fallback` döner; aksi hâlde kayıtlı string'i olduğu gibi verir. */
+export function readStringPref(key: string, fallback: string): string {
+  if (!hasLocalStorage()) return fallback;
+  try {
+    const raw = window.localStorage.getItem(key);
+    return raw === null ? fallback : raw;
+  } catch {
+    return fallback;
+  }
+}
+
+export function writeStringPref(key: string, value: string): void {
+  if (!hasLocalStorage()) return;
+  try {
+    window.localStorage.setItem(key, value);
   } catch {
     // sessizce yut — pref kalıcılığı kritik değil, kullanıcı akışını bozmasın
   }

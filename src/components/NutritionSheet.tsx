@@ -122,10 +122,10 @@ export function NutritionSheet({ isOpen, onClose, meal, onSave, onDelete, onEdit
   return (
     <div
       data-modal="true"
-      className="fixed inset-0 z-[9999] flex flex-col bg-[#171622] text-white h-[100dvh] w-full overflow-hidden animate-fadeIn pad-safe"
+      className="fixed inset-0 z-[9999] flex flex-col bg-app text-white h-[100dvh] w-full overflow-hidden animate-fadeIn pad-safe"
     >
       {/* Top Header */}
-      <div className="flex items-center justify-between px-4 py-3.5 sm:px-6 border-b border-white/10 flex-none bg-[#171622]">
+      <div className="flex items-center justify-between px-4 py-3.5 sm:px-6 border-b border-white/10 flex-none bg-app">
         <button
           type="button"
           onClick={handleUserClose}
@@ -261,7 +261,7 @@ export function NutritionSheet({ isOpen, onClose, meal, onSave, onDelete, onEdit
           {/* Protein */}
           <label htmlFor="macro-protein" className="rounded-2xl border border-white/10 bg-white/[0.04] p-3 flex flex-col justify-between min-h-[80px] cursor-text">
             <div className="flex items-center gap-1.5 text-xs font-semibold text-white/80">
-              <Beef className="w-3.5 h-3.5 text-[#FF6B8A]" />
+              <Beef className="w-3.5 h-3.5 text-protein-bright" />
               <span>Protein</span>
             </div>
             <div className="flex items-baseline gap-0.5 mt-1">
@@ -278,7 +278,7 @@ export function NutritionSheet({ isOpen, onClose, meal, onSave, onDelete, onEdit
           {/* Karbonhidrat */}
           <label htmlFor="macro-carbs" className="rounded-2xl border border-white/10 bg-white/[0.04] p-3 flex flex-col justify-between min-h-[80px] cursor-text">
             <div className="flex items-center gap-1.5 text-xs font-semibold text-white/80">
-              <Wheat className="w-3.5 h-3.5 text-[#FFB84D]" />
+              <Wheat className="w-3.5 h-3.5 text-carb-bright" />
               <span>Karb</span>
             </div>
             <div className="flex items-baseline gap-0.5 mt-1">
@@ -295,7 +295,7 @@ export function NutritionSheet({ isOpen, onClose, meal, onSave, onDelete, onEdit
           {/* Yağ */}
           <label htmlFor="macro-fat" className="rounded-2xl border border-white/10 bg-white/[0.04] p-3 flex flex-col justify-between min-h-[80px] cursor-text">
             <div className="flex items-center gap-1.5 text-xs font-semibold text-white/80">
-              <Droplet className="w-3.5 h-3.5 text-[#5B8DEF]" />
+              <Droplet className="w-3.5 h-3.5 text-fat-bright" />
               <span>Yağ</span>
             </div>
             <div className="flex items-baseline gap-0.5 mt-1">
@@ -371,7 +371,7 @@ export function NutritionSheet({ isOpen, onClose, meal, onSave, onDelete, onEdit
       </div>
 
       {/* Full Width Bottom Save Button */}
-      <div className="p-4 sm:p-5 border-t border-white/10 bg-[#171622] flex-none">
+      <div className="p-4 sm:p-5 border-t border-white/10 bg-app flex-none">
         <button
           type="button"
           onClick={handleApplySave}

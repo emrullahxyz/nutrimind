@@ -74,7 +74,7 @@ export function Modal({
 
   const modalEl = (
     <div
-      className="fixed inset-0 z-[9999] flex items-end justify-center bg-black/85 backdrop-blur-md p-0 sm:items-center sm:p-4"
+      className="anim-scrim fixed inset-0 z-[9999] flex items-end justify-center bg-black/85 backdrop-blur-md p-0 sm:items-center sm:p-4"
       onMouseDown={(e) => {
         mouseDownTargetRef.current = e.target;
       }}
@@ -99,7 +99,7 @@ export function Modal({
             : "max-h-[85dvh] rounded-t-card border border-line sm:max-w-lg sm:max-h-[85vh] sm:rounded-card"
         }`}
       >
-        <div className="flex-none p-3.5 sm:p-4 flex items-center justify-between gap-3 border-b border-line/40 bg-[#16171e] pad-safe-top">
+        <div className="flex-none p-3.5 sm:p-4 flex items-center justify-between gap-3 border-b border-line-faint bg-bar pad-safe-top">
           <h3 className="text-base font-extrabold text-ink-primary">{title}</h3>
           <button
             type="button"
@@ -117,7 +117,7 @@ export function Modal({
           {children}
         </div>
         {footer && (
-          <div className="flex-none border-t border-line/40 bg-[#16171e] px-4 py-3 sm:px-5 sm:py-3.5 pb-[calc(0.75rem+env(safe-area-inset-bottom,0px))]">
+          <div className="flex-none border-t border-line-faint bg-bar px-4 py-3 sm:px-5 sm:py-3.5 pb-[calc(0.75rem+env(safe-area-inset-bottom,0px))]">
             {footer}
           </div>
         )}

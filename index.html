@@ -12,6 +12,16 @@
     <link rel="icon" href="/favicon.ico" sizes="any" />
     <link rel="apple-touch-icon" href="/icon-192.png" />
     <title>Nutrimind — Besin Hafızası</title>
+    <script>
+      (function () {
+        try {
+          if (window.localStorage.getItem("nutrimind.ui.theme") === "glass") {
+            document.documentElement.setAttribute("data-theme", "glass");
+            document.querySelector("meta[name='theme-color']")?.setAttribute("content", "#05050a");
+          }
+        } catch (e) {}
+      })();
+    </script>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
