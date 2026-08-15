@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import { useModalHistory } from "../hooks/useModalHistory";
+import { useModalExit } from "../hooks/useModalExit";
 import { ArrowLeft, Sparkles, Plus, Check } from "lucide-react";
 import {
   EMPTY_DRAFT,
@@ -200,6 +201,7 @@ export function MealForm({
   // kapanışta `replaceState` kullanıyordu, bu da her açılışta geçmiş
   // yığınında boş bir girdi bırakıyordu — hook `history.back()` kullanıyor).
   const { requestClose: handleUserClose } = useModalHistory({ active: isOpen, onClose });
+  const { closing, beginClose } = useModalExit(handleUserClose);
 
   const { aliases, days, usageIndex, goals, setDayMeals } = useData();
   const existing = editIndex === null ? undefined : mealsOf(days, date)[editIndex];
@@ -617,7 +619,7 @@ export function MealForm({
 
       await setDayMeals(date, next);
       haptic("success");
-      handleUserClose();
+      beginClose();
     } catch (e) {
       setErr(String((e as Error)?.message ?? e));
       setSaving(false);
@@ -629,13 +631,15 @@ export function MealForm({
   return (
     <div
       data-modal="true"
-      className="fixed inset-0 z-[9999] flex flex-col bg-app text-white h-[100dvh] w-full overflow-hidden animate-fadeIn pad-safe"
+      className={`fixed inset-0 z-[9999] flex flex-col bg-app text-white h-[100dvh] w-full overflow-hidden animate-fadeIn pad-safe glass-screen ${
+        closing ? "glass-screen-out" : ""
+      }`}
     >
       {/* Top Header */}
       <div className="flex items-center justify-between px-4 py-3.5 sm:px-6 border-b border-white/10 flex-none bg-app">
         <button
           type="button"
-          onClick={handleUserClose}
+          onClick={beginClose}
           className="w-10 h-10 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white transition active:scale-95"
           aria-label="Geri"
         >

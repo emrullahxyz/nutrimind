@@ -114,7 +114,7 @@ function SectionGroup({ title, children }: { title: string; children: React.Reac
       <h4 className="px-1 text-[11px] font-bold tracking-wider text-white/40 uppercase">
         {title}
       </h4>
-      <div className="divide-y divide-white/[0.06] overflow-hidden rounded-2xl border border-white/10 bg-row">
+      <div className="glass-card divide-y divide-white/[0.06] overflow-hidden rounded-2xl border border-white/10 bg-row">
         {children}
       </div>
     </div>
@@ -467,7 +467,7 @@ export function SettingsSheet({
 
         {/* ==================== SUB-VIEW BİLEŞENLERİ ==================== */}
         {subView !== null && (
-          <div className="flex flex-col gap-4">
+          <div className="glass-push flex flex-col gap-4">
             {/* Alt Ekran Başlığı & Geri Butonu */}
             <div className="flex items-center gap-2 border-b border-white/10 pb-3">
               <button

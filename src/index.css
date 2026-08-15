@@ -237,6 +237,90 @@
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.12), 0 20px 50px -22px rgba(0, 0, 0, 0.7);
 }
 
+/* ---- Modal ailesi: premium glass yüzeyler (hepsi glass-kapsamlı, velvet etkisiz) ---- */
+
+/* Modal başlığı — negatif tracking (Apple §15: büyük ekran metni sıkılaşır). */
+[data-theme="glass"] .modal-title {
+  letter-spacing: -0.02em;
+}
+
+/* İnce ikon dili — soft-skill "ultra-light lines" imzası. lucide svg kökündeki
+   stroke-width=2 presentation attribute'unu CSS ezer, path'ler inherit eder.
+   Glass'ta uygulama geneli (bilinçli). */
+[data-theme="glass"] .lucide {
+  stroke-width: 1.5;
+}
+
+/* Legacy tam-ekran overlay'ler: sade düzlemin üstüne aurora derinliği.
+   ::before pozisyonlu olduğu için akan içeriğin üzerinde çizer; pointer-events
+   yok, yalnızca inceltilmiş tepe ışığı (mor + camgöbeği orb renkleri). */
+[data-theme="glass"] .glass-screen::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(130% 45% at 50% -8%, rgba(139, 124, 232, 0.14), transparent 60%),
+    radial-gradient(90% 30% at 90% -4%, rgba(77, 212, 230, 0.08), transparent 55%);
+}
+
+/* Egzersiz varyantı — enerjik turuncu: sıcak saç teli + üstte ember parlaması.
+   ::before yuvarlatılmış köşeleri izler; içerik parlamanın altından akar. */
+[data-theme="glass"] .glass-exercise {
+  position: relative;
+  border: 1px solid rgba(255, 180, 90, 0.10);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.10),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.05),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.30),
+    0 8px 32px -16px rgba(0, 0, 0, 0.40),
+    0 24px 60px -40px rgba(0, 0, 0, 0.55);
+}
+[data-theme="glass"] .glass-exercise::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  background: radial-gradient(120% 70% at 50% 0%, rgba(255, 138, 61, 0.18), transparent 62%);
+}
+
+/* FAB 2×2 menüsü — island materyali. `.glass-card`'ın backdrop-filter:none'ı
+   istemiyoruz (menünün blur'u kalır), o yüzden ayrı sınıf. */
+[data-theme="glass"] .glass-island {
+  border-color: rgba(255, 255, 255, 0.12);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.10),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.05),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.30),
+    0 8px 32px -16px rgba(0, 0, 0, 0.40),
+    0 24px 60px -40px rgba(0, 0, 0, 0.55);
+}
+
+/* Modal footer'ı — sert kenar yerine orta-yanan degrade saç teli
+   (Apple §12: "scroll edge effects, not hard dividers"). */
+[data-theme="glass"] .glass-footer {
+  position: relative;
+}
+[data-theme="glass"] .glass-footer::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 8%;
+  right: 8%;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.14), transparent);
+}
+
+/* Ayarlar alt-sayfa geçişi — sakin push slide. */
+[data-theme="glass"] .glass-push {
+  animation: glassPush 0.32s both;
+  animation-timing-function: var(--ease-glass);
+}
+@keyframes glassPush {
+  from { opacity: 0; transform: translateX(18px); }
+}
+
 /* giriş animasyonu — yalnızca transform/opacity; rise-d-* ile kademeli.
    Easing bir longhand'e taşındı: animasyon KISAYOLUNDA var() olursa tüm grup
    pending-substitution olur, computed-value zamanında uygulanır ve cascade'de
@@ -299,6 +383,26 @@
   animation-timing-function: var(--ease-glass);
 }
 
+/* Paylaşılan Modal'ı KULLANMAYAN overlay'ler (MealForm, AliasForm, NutritionSheet,
+   ExerciseModal, RecipeBuilder, OnboardingModal, SupplementCard) `animate-fadeIn`
+   sınıfını taşıyordu ama karşılığı hiç tanımlanmamıştı — aynı reçeteyle diriltilir. */
+[data-theme="glass"] .animate-fadeIn {
+  animation: fadeUp 0.4s both;
+  animation-timing-function: var(--ease-glass);
+}
+
+/* Modal paneli — materyal girişi: fade'e ek hafif scale'li "materialize"
+   (Apple §12: glass/blur yüzeyi salt opacity değil, malzeme gibi gelir).
+   Eşit özgüllükte `.anim-fadeup`'tan SONRA tanımlanır => ikisi aynı elementte
+   varsa (Modal paneli) bu kazanır; kartlardaki yalnız `anim-fadeup` etkilenmez. */
+[data-theme="glass"] .glass-sheet-in {
+  animation: glassSheetIn 0.42s both;
+  animation-timing-function: var(--ease-glass);
+}
+@keyframes glassSheetIn {
+  from { opacity: 0; transform: scale(0.985) translateY(10px); }
+}
+
 /* Giriş animasyonunun `both` fill'i inline basınç spring'inin transform'unu
    eziyordu (CSS animasyonları normal stillerin üstünde). spring-press + giriş
    animasyonu kombinasyonunda animasyon BİTİNCE fill kalkar ki spring'in
@@ -339,16 +443,60 @@
   from { opacity: 0; }
 }
 
-/* Apple a11y: azaltılmış saydamlık → yüzeyler daha mat, orblar sönük. */
+/* Modal çıkışı: kapanışta giriş animasyonunu DEĞİŞTİRİR (animation swap — fill
+   tuzağından kaçınır; yalnız `to` keyframe akım değerden başlar, atlama yok).
+   Velvet'te bu sınıflar tanımsız kalır (byte-identity); çıkış yalnızca glass. */
+[data-theme="glass"] .modal-out {
+  animation: modalOut 0.18s var(--ease-glass) both;
+}
+[data-theme="glass"] .scrim-out {
+  animation: scrimFadeOut 0.18s var(--ease-glass) both;
+}
+@keyframes modalOut {
+  to { opacity: 0; transform: scale(0.98) translateY(8px); }
+}
+@keyframes scrimFadeOut {
+  to { opacity: 0; }
+}
+
+/* Legacy tam-ekran çıkışı — scale YOK (kenar açılmasın), yalnızca yumuşak
+   aşağı kayma + solma. Velvet'te tanımsız (byte-identity); `.animate-fadeIn`
+   girişini animation swap ile değiştirir (yalnız `to` keyframe => atlama yok). */
+[data-theme="glass"] .glass-screen-out {
+  animation: glassScreenOut 0.18s var(--ease-glass) both;
+}
+@keyframes glassScreenOut {
+  to { opacity: 0; transform: translateY(12px); }
+}
+
+/* Apple a11y: azaltılmış saydamlık → yüzeyler "beyaz üçlü + düşük alfa" yerine
+   koyu solid (velvet'in doğrulanmış yüzey üçlüleri). Beyaz üçlünün alfasını
+   yükseltmek kartları bembeyaz yapardı; koyu üçlü + yüksek alfa = mat, solid. */
 @media (prefers-reduced-transparency: reduce) {
   [data-theme="glass"] {
-    --cal-card-a: 0.90;
-    --elevated-2-a: 0.92;
-    --row-a: 0.80;
-    --bar-a: 0.85;
-    --well-a: 0.85;
-    --nav-item-a: 0.85;
-    --fab-panel-a: 0.90;
+    --cal-card: 34 32 46;       --cal-card-a: 0.97;
+    --elevated-2: 34 32 46;     --elevated-2-a: 0.98;
+    --row: 20 21 32;            --row-a: 0.96;
+    --bar: 22 23 30;            --bar-a: 0.97;
+    --panel-alt: 21 20 33;      --panel-alt-a: 0.96;
+    --footer: 19 18 27;         --footer-a: 0.98;
+    --toast: 18 19 25;          --toast-a: 0.99;
+    --field: 25 24 37;          --field-a: 0.95;
+    --popover: 25 26 34;        --popover-a: 0.98;
+    --nav-item: 30 32 42;       --nav-item-a: 0.96;
+    --nav-item-hover: 38 40 54; --nav-item-hover-a: 0.95;
+    --fab-panel: 31 30 44;      --fab-panel-a: 0.98;
+    --macro-chip: 30 28 40;     --macro-chip-a: 0.96;
+    --well: 42 40 58;           --well-a: 0.97;
+    --well-hover: 52 50 72;     --well-hover-a: 0.95;
+    --cal-hover: 40 38 55;      --cal-hover-a: 0.95;
+    --day-selected: 40 38 56;   --day-selected-a: 0.95;
+    --icon-well: 32 31 46;      --icon-well-a: 0.95;
+    --grad-top: 27 28 43;       --grad-top-a: 0.97;
+    --grad-mid: 20 21 34;       --grad-mid-a: 0.97;
+    --grad-bot: 14 15 24;       --grad-bot-a: 0.97;
+    --grad-hover: 34 36 54;     --grad-hover-a: 0.95;
+    --streak-bg: 40 37 55;      --streak-bg-a: 0.97;
   }
   [data-theme="glass"] .glass-orb-1,
   [data-theme="glass"] .glass-orb-2,
@@ -644,10 +792,14 @@ body {
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
   }
+  .animate-fadeIn,
   .anim-fadeup,
   .anim-grow,
   .anim-grow-spring,
-  .anim-zoom {
+  .anim-zoom,
+  .glass-sheet-in,
+  .glass-push,
+  .glass-screen-out {
     animation: none !important;
     opacity: 1 !important;
     transform: none !important;
@@ -689,10 +841,14 @@ body {
   }
 
   /* Animasyonları dondur ve tam görünür yap */
+  .animate-fadeIn,
   .anim-fadeup,
   .anim-grow,
   .anim-grow-spring,
-  .anim-zoom {
+  .anim-zoom,
+  .glass-sheet-in,
+  .glass-push,
+  .glass-screen-out {
     animation: none !important;
     opacity: 1 !important;
     transform: none !important;

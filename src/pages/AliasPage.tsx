@@ -140,7 +140,7 @@ export function AliasPage({
 
       {/* Aliases Grid */}
       {aliases.length === 0 ? (
-        <div className="rounded-[24px] border border-white/10 bg-white/[0.03] p-8 text-center flex flex-col items-center gap-3 w-full">
+        <div className="anim-fadeup rounded-[24px] border border-white/10 bg-white/[0.03] p-8 text-center flex flex-col items-center gap-3 w-full">
           <BookOpen className="w-8 h-8 text-white/30" />
           <p className="text-sm font-semibold text-white/60">Henüz hafızada besin yok.</p>
           <p className="text-xs text-white/40">"+ Tarif Oluştur" veya "+ Yeni Besin" butonları ile ekleyebilirsin.</p>

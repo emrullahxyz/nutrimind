@@ -439,7 +439,7 @@ export function DayView({
             type="button"
             onClick={() => setEditIndex(null)}
             disabled={busy}
-            className="flex flex-col items-center justify-center gap-3 rounded-card bg-calCard border border-calBorder shadow-card px-4 py-8 text-center transition hover:border-white/20 hover:bg-white/[0.07] disabled:opacity-40"
+            className="anim-fadeup flex flex-col items-center justify-center gap-3 rounded-card bg-calCard border border-calBorder shadow-card px-4 py-8 text-center transition hover:border-white/20 hover:bg-white/[0.07] disabled:opacity-40"
           >
             <span className="flex h-12 w-12 items-center justify-center rounded-full bg-icon-well text-white">
               <UtensilsCrossed className="h-5 w-5" />
