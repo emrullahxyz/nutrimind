@@ -138,11 +138,21 @@ function verifyIdToken({ token, jwks, clientId, now }) {
  * doğrulanmamış bir e-postayla Google hesabı açan biri, buradaki hesabı ele
  * geçirebilirdi.
  *
- * @returns {"giris" | "bagla" | "yeni" | "reddet"}
+ * `allowlist` ("İzinli E-postalar") BOŞ küme ya da tanımsızsa eski davranış:
+ * yeni hesap `"yeni"` ile onaylanır. DOLUYSa yalnızca listedeki e-postalar yeni
+ * hesap açabilir — listede olmayan biri `"izinsiz"` döner (botların kapısı).
+ * Karşılaştırma NORMALİZE edilmiş e-postayla yapılır: Google `payload.email`'i
+ * olduğu gibi döner, "User@Example.com" ile "user@example.com" aynı kişidir.
+ *
+ * @returns {"giris" | "bagla" | "yeni" | "izinsiz" | "reddet"}
  */
-function linkDecision({ payload, bySub, byEmail }) {
+function linkDecision({ payload, bySub, byEmail, email, allowlist }) {
   if (bySub) return "giris"; // bu Google hesabı zaten bağlı
-  if (!byEmail) return payload.email_verified === true ? "yeni" : "reddet";
+  if (!byEmail) {
+    if (payload.email_verified !== true) return "reddet";
+    if (allowlist && allowlist.size > 0 && !allowlist.has(email)) return "izinsiz";
+    return "yeni";
+  }
   if (payload.email_verified !== true) return "reddet";
   if (byEmail.google_sub) return "reddet"; // e-posta başka bir Google hesabına bağlı
   return "bagla";

@@ -17,7 +17,13 @@ const V0_SCHEMA = `
   CREATE TABLE IF NOT EXISTS aliases (id TEXT PRIMARY KEY, data TEXT NOT NULL);
 `;
 
-const BAYRAKLAR = ["NUTRIMIND_AUTH_ENABLED", "NUTRIMIND_ALLOW_SIGNUP", "NUTRI_SECURE_COOKIE", "NUTRIMIND_PUBLIC_ORIGIN"];
+const BAYRAKLAR = [
+  "NUTRIMIND_AUTH_ENABLED",
+  "NUTRIMIND_ALLOW_SIGNUP",
+  "NUTRI_SECURE_COOKIE",
+  "NUTRIMIND_PUBLIC_ORIGIN",
+  "NUTRIMIND_OWNER_EMAIL",
+];
 const yedek = {};
 
 beforeEach(() => {
@@ -150,6 +156,73 @@ describe("kayıt", () => {
       readBody: govde({ email: "abc", password: "parola1234" }),
     });
     expect(bozuk.status).toBe(400);
+    db.close();
+  });
+});
+
+describe("kayıt — izinli e-postalar kapısı", () => {
+  async function hazir() {
+    const R = await yukle({
+      NUTRIMIND_AUTH_ENABLED: "1",
+      NUTRIMIND_ALLOW_SIGNUP: "1",
+      NUTRIMIND_OWNER_EMAIL: "sahip@x.co",
+    });
+    const db = yeniDb();
+    // Tabloyu production'da handleAuth lazy kurar; test doğrudan dolduruyor.
+    db.exec("CREATE TABLE IF NOT EXISTS signup_allowlist (email TEXT PRIMARY KEY)");
+    return { R, db };
+  }
+
+  it("liste DOLUYSA yalnızca listedeki e-posta kayıt olabilir", async () => {
+    const { R, db } = await hazir();
+    db.prepare("INSERT INTO signup_allowlist (email) VALUES (?)").run("davetli@x.co");
+
+    const listede = await R.handleAuth({
+      db, req: istek(), method: "POST", path: "/api/auth/register",
+      readBody: govde({ email: "davetli@x.co", password: "parola1234" }),
+    });
+    expect(listede.status).toBe(201);
+
+    const listedeDegil = await R.handleAuth({
+      db, req: istek(), method: "POST", path: "/api/auth/register",
+      readBody: govde({ email: "yabanci@x.co", password: "parola1234" }),
+    });
+    expect(listedeDegil.status).toBe(403);
+    expect(listedeDegil.body.error).toContain("izinli değil");
+    db.close();
+  });
+
+  it("liste BOŞSA eski davranış: herkes kayıt olabilir", async () => {
+    const { R, db } = await hazir();
+    const r = await R.handleAuth({
+      db, req: istek(), method: "POST", path: "/api/auth/register",
+      readBody: govde({ email: "davetli@x.co", password: "parola1234" }),
+    });
+    expect(r.status).toBe(201);
+    db.close();
+  });
+
+  it("eşleşme NORMALİZE edilmiş e-postayla yapılır (büyük/küçük harf, boşluk)", async () => {
+    const { R, db } = await hazir();
+    db.prepare("INSERT INTO signup_allowlist (email) VALUES (?)").run("davetli@x.co");
+    const r = await R.handleAuth({
+      db, req: istek(), method: "POST", path: "/api/auth/register",
+      readBody: govde({ email: "  Davetli@X.CO ", password: "parola1234" }),
+    });
+    expect(r.status).toBe(201);
+    db.close();
+  });
+
+  it("kayıt bayrağı kapalıysa listedeki e-posta bile reddedilir (kill-switch önceliği)", async () => {
+    const R = await yukle({ NUTRIMIND_AUTH_ENABLED: "1", NUTRIMIND_OWNER_EMAIL: "sahip@x.co" });
+    const db = yeniDb();
+    db.exec("CREATE TABLE IF NOT EXISTS signup_allowlist (email TEXT PRIMARY KEY)");
+    db.prepare("INSERT INTO signup_allowlist (email) VALUES (?)").run("davetli@x.co");
+    const r = await R.handleAuth({
+      db, req: istek(), method: "POST", path: "/api/auth/register",
+      readBody: govde({ email: "davetli@x.co", password: "parola1234" }),
+    });
+    expect(r.status).toBe(403);
     db.close();
   });
 });
@@ -447,5 +520,145 @@ describe("CSRF ve hız sınırı", () => {
     const R = await yukle({ NUTRIMIND_AUTH_ENABLED: "1" });
     expect(R.clientIp({ headers: {}, socket: { remoteAddress: "10.0.0.1" } })).toBe("10.0.0.1");
     expect(R.clientIp({})).toBe("bilinmiyor");
+  });
+});
+
+// ============================================================================
+// "İzinli E-postalar" yönetici uçları: listeyi yalnızca sahip
+// (NUTRIMIND_OWNER_EMAIL ile eşleşen hesap) görebilir ve düzenleyebilir.
+// Göçten gelen sahip `u_owner` / `sahip@x.co` (bkz. yeniDb).
+// ============================================================================
+describe("izinli e-postalar (yönetici uçları)", () => {
+  async function hazir() {
+    const R = await yukle({
+      NUTRIMIND_AUTH_ENABLED: "1",
+      NUTRIMIND_ALLOW_SIGNUP: "1",
+      NUTRIMIND_OWNER_EMAIL: "sahip@x.co",
+    });
+    const db = yeniDb();
+    // Sahibin hesabı parolasız (göçten) — oturumu elle açıyoruz.
+    const { sessionId } = R.createSession(db, "u_owner", istek(), Date.now());
+    return { R, db, sahipCerez: `${R.COOKIE_NAME}=${sessionId}` };
+  }
+
+  it("sahip listeyi görür, ekler (normalize edilir), siler", async () => {
+    const { R, db, sahipCerez } = await hazir();
+    const bos = await R.handleAuth({
+      db, req: istek(sahipCerez), method: "GET", path: "/api/auth/admin/allowlist", readBody: govde({}),
+    });
+    expect(bos.status).toBe(200);
+    expect(bos.body.emails).toEqual([]);
+
+    const ekle = await R.handleAuth({
+      db, req: istek(sahipCerez), method: "POST", path: "/api/auth/admin/allowlist",
+      readBody: govde({ email: "  Davetli@X.CO " }),
+    });
+    expect(ekle.status).toBe(201);
+    expect(ekle.body.email).toBe("davetli@x.co");
+
+    const liste = await R.handleAuth({
+      db, req: istek(sahipCerez), method: "GET", path: "/api/auth/admin/allowlist", readBody: govde({}),
+    });
+    expect(liste.body.emails).toEqual(["davetli@x.co"]);
+
+    const sil = await R.handleAuth({
+      db, req: istek(sahipCerez), method: "DELETE", path: "/api/auth/admin/allowlist",
+      readBody: govde({ email: "davetli@x.co" }),
+    });
+    expect(sil.status).toBe(200);
+
+    const son = await R.handleAuth({
+      db, req: istek(sahipCerez), method: "GET", path: "/api/auth/admin/allowlist", readBody: govde({}),
+    });
+    expect(son.body.emails).toEqual([]);
+    db.close();
+  });
+
+  it("aynı e-posta ikinci kez eklenemez (409)", async () => {
+    const { R, db, sahipCerez } = await hazir();
+    const g = govde({ email: "davetli@x.co" });
+    const ilk = await R.handleAuth({ db, req: istek(sahipCerez), method: "POST", path: "/api/auth/admin/allowlist", readBody: g });
+    expect(ilk.status).toBe(201);
+    const ikinci = await R.handleAuth({ db, req: istek(sahipCerez), method: "POST", path: "/api/auth/admin/allowlist", readBody: g });
+    expect(ikinci.status).toBe(409);
+    db.close();
+  });
+
+  it("geçersiz e-posta eklenemez (400)", async () => {
+    const { R, db, sahipCerez } = await hazir();
+    const r = await R.handleAuth({
+      db, req: istek(sahipCerez), method: "POST", path: "/api/auth/admin/allowlist",
+      readBody: govde({ email: "abc" }),
+    });
+    expect(r.status).toBe(400);
+    db.close();
+  });
+
+  it("listedeki olmayanı silmek 404 döner", async () => {
+    const { R, db, sahipCerez } = await hazir();
+    const r = await R.handleAuth({
+      db, req: istek(sahipCerez), method: "DELETE", path: "/api/auth/admin/allowlist",
+      readBody: govde({ email: "yok@x.co" }),
+    });
+    expect(r.status).toBe(404);
+    db.close();
+  });
+
+  it("SAHİP OLMAYAN (oturumsuz ya da başka kullanıcı) her istekte 403 alır", async () => {
+    const { R, db } = await hazir();
+
+    const oturumsuz = await R.handleAuth({
+      db, req: istek(), method: "GET", path: "/api/auth/admin/allowlist", readBody: govde({}),
+    });
+    expect(oturumsuz.status).toBe(403);
+
+    // Başka bir kullanıcı (liste boşken kayıt açık)
+    const kayit = await R.handleAuth({
+      db, req: istek(), method: "POST", path: "/api/auth/register",
+      readBody: govde({ email: "baska@x.co", password: "parola1234" }),
+    });
+    const baskaCerez = cerezden(kayit);
+
+    const oku = await R.handleAuth({
+      db, req: istek(baskaCerez), method: "GET", path: "/api/auth/admin/allowlist", readBody: govde({}),
+    });
+    expect(oku.status).toBe(403);
+
+    const yaz = await R.handleAuth({
+      db, req: istek(baskaCerez), method: "POST", path: "/api/auth/admin/allowlist",
+      readBody: govde({ email: "x@x.co" }),
+    });
+    expect(yaz.status).toBe(403);
+    db.close();
+  });
+
+  it("me ucu isAdmin'i yalnızca sahibe verir", async () => {
+    const { R, db, sahipCerez } = await hazir();
+    const sahip = await R.handleAuth({ db, req: istek(sahipCerez), method: "GET", path: "/api/auth/me", readBody: govde({}) });
+    expect(sahip.status).toBe(200);
+    expect(sahip.body.isAdmin).toBe(true);
+
+    const kayit = await R.handleAuth({
+      db, req: istek(), method: "POST", path: "/api/auth/register",
+      readBody: govde({ email: "baska@x.co", password: "parola1234" }),
+    });
+    const diger = await R.handleAuth({
+      db, req: istek(cerezden(kayit)), method: "GET", path: "/api/auth/me", readBody: govde({}),
+    });
+    expect(diger.status).toBe(200);
+    expect(diger.body.isAdmin).toBe(false);
+    db.close();
+  });
+
+  it("NUTRIMIND_OWNER_EMAIL BOŞSA hiçbir oturum yönetici değildir", async () => {
+    const R = await yukle({ NUTRIMIND_AUTH_ENABLED: "1", NUTRIMIND_ALLOW_SIGNUP: "1" });
+    const db = yeniDb();
+    const { sessionId } = R.createSession(db, "u_owner", istek(), Date.now());
+    const cerez = `${R.COOKIE_NAME}=${sessionId}`;
+    const r = await R.handleAuth({ db, req: istek(cerez), method: "GET", path: "/api/auth/admin/allowlist", readBody: govde({}) });
+    expect(r.status).toBe(403);
+    const me = await R.handleAuth({ db, req: istek(cerez), method: "GET", path: "/api/auth/me", readBody: govde({}) });
+    expect(me.body.isAdmin).toBe(false);
+    db.close();
   });
 });

@@ -23,6 +23,8 @@ const google = require("./googleAuth.js");
 
 const AUTH_ENABLED = process.env.NUTRIMIND_AUTH_ENABLED === "1";
 const ALLOW_SIGNUP = process.env.NUTRIMIND_ALLOW_SIGNUP === "1";
+/** "İzinli E-postalar" listesini yönetebilecek TEK hesap. Boşsa yönetici yok. */
+const OWNER_EMAIL = auth.normalizeEmail(process.env.NUTRIMIND_OWNER_EMAIL || "");
 const SECURE_COOKIE = process.env.NUTRI_SECURE_COOKIE === "1";
 const SESSION_DAYS = Math.max(1, Number(process.env.NUTRI_SESSION_DAYS) || 30);
 const PUBLIC_ORIGIN = process.env.NUTRIMIND_PUBLIC_ORIGIN || "";
@@ -138,6 +140,13 @@ function destroySession(db, sessionId) {
   db.prepare("DELETE FROM sessions WHERE id_hash = ?").run(auth.hashSessionId(sessionId));
 }
 
+// --- İzinli e-postalar ----------------------------------------------------------
+
+/** Listeyi küme olarak döndürür. BOŞ küme = kapı kapalı (eski davranış). */
+function allowlistSet(db) {
+  return new Set(db.prepare("SELECT email FROM signup_allowlist").all().map((r) => r.email));
+}
+
 // --- Yardımcılar ---------------------------------------------------------------
 
 const publicUser = (row) =>
@@ -160,6 +169,10 @@ async function handleAuth({ db, req, method, path, readBody, now }) {
   const t = typeof now === "number" ? now : Date.now();
 
   try {
+    // "İzinli e-postalar" tablosu LAZY kurulur: `server/index.js` donmuş, göç
+    // akışına dokunulmuyor. İşlem yok sayılan bir CREATE — her istekte 1-2µs.
+    db.exec("CREATE TABLE IF NOT EXISTS signup_allowlist (email TEXT PRIMARY KEY)");
+
     // ---- GET /api/auth/me ----
     if (method === "GET" && path === "/api/auth/me") {
       // Bayrak kapalıyken kapı GEÇİRGEN: istemci `authDisabled` görüp giriş
@@ -169,13 +182,18 @@ async function handleAuth({ db, req, method, path, readBody, now }) {
       const s = resolveSession(db, req, t);
       // Oturumsuzken de yetenekleri bildiriyoruz: giriş ekranı Google düğmesini
       // gösterip göstermeyeceğine buna bakarak karar veriyor.
-      const yetenekler = { signupAllowed: ALLOW_SIGNUP, googleEnabled: GOOGLE_ENABLED };
+      const yetenekler = { signupAllowed: ALLOW_SIGNUP, googleEnabled: GOOGLE_ENABLED, isAdmin: false };
       if (!s) return { status: 401, body: { error: "oturum yok", ...yetenekler } };
       const row = db.prepare("SELECT id, email, display_name FROM users WHERE id = ?").get(s.userId);
       if (!row) return { status: 401, body: { error: "oturum yok", ...yetenekler } };
       return {
         status: 200,
-        body: { ok: true, user: publicUser(row), ...yetenekler },
+        body: {
+          ok: true,
+          user: publicUser(row),
+          ...yetenekler,
+          isAdmin: OWNER_EMAIL !== "" && row.email === OWNER_EMAIL,
+        },
         ...(s.refreshed ? { headers: setCookieHeader(s.sessionId) } : {}),
       };
     }
@@ -347,7 +365,7 @@ async function handleAuth({ db, req, method, path, readBody, now }) {
         ? db.prepare("SELECT id, email, display_name, google_sub FROM users WHERE email = ?").get(email)
         : null;
 
-      const karar = google.linkDecision({ payload: p, bySub, byEmail });
+      const karar = google.linkDecision({ payload: p, bySub, byEmail, email, allowlist: allowlistSet(db) });
       let userId;
       if (karar === "giris") {
         userId = bySub.id;
@@ -366,6 +384,9 @@ async function handleAuth({ db, req, method, path, readBody, now }) {
         db.prepare(
           "INSERT INTO users (id, email, password_hash, google_sub, display_name, created_at) VALUES (?, ?, NULL, ?, ?, ?)",
         ).run(userId, email, p.sub, p.name || null, new Date(t).toISOString());
+      } else if (karar === "izinsiz") {
+        // Liste DOLU ve bu e-posta listede yok — botların/istenmeyenlerin kapısı.
+        return hata("kayit_izinsiz");
       } else {
         return hata("hesap_baglanamadi");
       }
@@ -382,6 +403,46 @@ async function handleAuth({ db, req, method, path, readBody, now }) {
           ],
         },
       };
+    }
+
+    // ---- "İzinli E-postalar" listesi (yalnızca sahip) ----
+    // Kayıt kapısını besleyen liste; Ayarlar'dan yönetilir. Yönetici = oturumdaki
+    // e-posta `NUTRIMIND_OWNER_EMAIL` ile eşleşen TEK hesap. Varlığını bile
+    // sızdırmamak için yönetici olmayana her istek aynı 403'ü döner.
+    if (path === "/api/auth/admin/allowlist") {
+      const s = resolveSession(db, req, t);
+      const sahip = s ? db.prepare("SELECT email FROM users WHERE id = ?").get(s.userId) : null;
+      if (!sahip || OWNER_EMAIL === "" || sahip.email !== OWNER_EMAIL) {
+        return { status: 403, body: { error: "bu işlem için yetkin yok" } };
+      }
+
+      if (method === "GET") {
+        const emails = db
+          .prepare("SELECT email FROM signup_allowlist ORDER BY email")
+          .all()
+          .map((r) => r.email);
+        return { status: 200, body: { ok: true, emails } };
+      }
+
+      const b2 = (await readBody(req)) || {};
+      const eposta = auth.normalizeEmail(b2.email);
+
+      if (method === "POST") {
+        const problem = auth.emailProblem(b2.email);
+        if (problem) return { status: 400, body: { error: problem } };
+        const varMi = db.prepare("SELECT 1 FROM signup_allowlist WHERE email = ?").get(eposta);
+        if (varMi) return { status: 409, body: { error: "bu e-posta zaten listede" } };
+        db.prepare("INSERT INTO signup_allowlist (email) VALUES (?)").run(eposta);
+        return { status: 201, body: { ok: true, email: eposta } };
+      }
+
+      if (method === "DELETE") {
+        const silinen = db.prepare("DELETE FROM signup_allowlist WHERE email = ?").run(eposta);
+        if (!silinen.changes) return { status: 404, body: { error: "bu e-posta listede yok" } };
+        return { status: 200, body: { ok: true, email: eposta } };
+      }
+
+      return { status: 405, body: { error: "metoda izin verilmiyor" } };
     }
 
     const isRegister = method === "POST" && path === "/api/auth/register";
@@ -407,6 +468,13 @@ async function handleAuth({ db, req, method, path, readBody, now }) {
       if (!ALLOW_SIGNUP) return { status: 403, body: { error: "yeni kayıt kapalı" } };
       const problem = auth.emailProblem(b.email) || auth.passwordProblem(password);
       if (problem) return { status: 400, body: { error: problem } };
+
+      // "İzinli e-postalar" kapısı: liste DOLUYSA yalnızca listedekiler kayıt
+      // olabilir. Boş liste = kapı yok (yalnızca ALLOW_SIGNUP bayrağı geçerli).
+      const izinli = allowlistSet(db);
+      if (izinli.size > 0 && !izinli.has(email)) {
+        return { status: 403, body: { error: "bu e-posta kayıt için izinli değil" } };
+      }
 
       const exists = db.prepare("SELECT 1 FROM users WHERE email = ?").get(email);
       // UNIQUE kısıt zaten varlığı sızdırıyor; 1-5 kullanıcılık bir uygulamada

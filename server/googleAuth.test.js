@@ -162,6 +162,42 @@ describe("linkDecision", () => {
   });
 });
 
+describe("linkDecision — izinli e-postalar (allowlist)", () => {
+  const dogrulanmis = { email: "a@x.co", email_verified: true, sub: "g1" };
+  const liste = new Set(["a@x.co"]);
+
+  it("listede olan + hesap yok → yeni", () => {
+    expect(linkDecision({ payload: dogrulanmis, bySub: null, byEmail: null, email: "a@x.co", allowlist: liste })).toBe("yeni");
+  });
+
+  it("listede OLMAYAN + hesap yok → izinsiz (botların kapısı)", () => {
+    expect(linkDecision({ payload: dogrulanmis, bySub: null, byEmail: null, email: "yabanci@x.co", allowlist: liste })).toBe("izinsiz");
+  });
+
+  it("liste BOŞSA eski davranış: yeni", () => {
+    expect(linkDecision({ payload: dogrulanmis, bySub: null, byEmail: null, email: "a@x.co", allowlist: new Set() })).toBe("yeni");
+  });
+
+  it("allowlist parametresi verilmezse eski davranış: yeni", () => {
+    expect(linkDecision({ payload: dogrulanmis, bySub: null, byEmail: null })).toBe("yeni");
+  });
+
+  it("karşılaştırma NORMALİZE edilmiş e-postayla yapılır (Google ham e-posta döner)", () => {
+    const ham = { email: "A@X.CO", email_verified: true, sub: "g1" };
+    expect(linkDecision({ payload: ham, bySub: null, byEmail: null, email: "a@x.co", allowlist: liste })).toBe("yeni");
+  });
+
+  it("ZATEN BAĞLI hesap listede olmasa bile giriş yapar (mevcut kullanıcılar etkilenmez)", () => {
+    const dolu = new Set(["baska@x.co"]);
+    expect(linkDecision({ payload: dogrulanmis, bySub: { id: "u1" }, byEmail: null, email: "a@x.co", allowlist: dolu })).toBe("giris");
+  });
+
+  it("mevcut hesaba bağlama (bagla) listeden ETKİLENMEZ", () => {
+    const dolu = new Set(["baska@x.co"]);
+    expect(linkDecision({ payload: dogrulanmis, bySub: null, byEmail: { id: "u1", google_sub: null }, email: "a@x.co", allowlist: dolu })).toBe("bagla");
+  });
+});
+
 describe("PKCE ve yetkilendirme adresi", () => {
   it("her çağrıda farklı verifier üretir ve challenge ondan türer", () => {
     const a = pkcePair();
