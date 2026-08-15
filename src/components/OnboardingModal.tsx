@@ -24,6 +24,7 @@ import {
   type Gender,
 } from "../lib/tdee";
 import { useBodyScrollLock } from "../hooks/useBodyScrollLock";
+import { useModalExit } from "../hooks/useModalExit";
 import type { GoalConfig } from "../types";
 import { singleProfileConfig } from "../lib/goals";
 
@@ -44,6 +45,7 @@ export function OnboardingModal({
   initialName = "",
 }: OnboardingModalProps) {
   useBodyScrollLock(isOpen);
+  const { closing, beginClose } = useModalExit(onClose);
 
   const [step, setStep] = useState<1 | 2 | 3 | 4 | 5>(1);
   const [saving, setSaving] = useState(false);
@@ -124,7 +126,7 @@ export function OnboardingModal({
         },
         goalConfig
       );
-      onClose();
+      beginClose();
     } finally {
       setSaving(false);
     }
@@ -133,7 +135,9 @@ export function OnboardingModal({
   return (
     <div
       data-modal="true"
-      className="fixed inset-0 z-[9999] flex flex-col bg-app text-white h-[100dvh] w-full overflow-hidden animate-fadeIn pad-safe"
+      className={`fixed inset-0 z-[9999] flex flex-col bg-app text-white h-[100dvh] w-full overflow-hidden animate-fadeIn pad-safe glass-screen ${
+        closing ? "glass-screen-out" : ""
+      }`}
     >
       {/* Header Bar */}
       <div className="flex items-center justify-between px-4 py-3.5 sm:px-6 border-b border-white/10 flex-none bg-app">
@@ -155,7 +159,7 @@ export function OnboardingModal({
           </div>
           <button
             type="button"
-            onClick={onClose}
+            onClick={beginClose}
             className="p-1.5 text-ink-secondary hover:text-white rounded-full hover:bg-calCard transition active:scale-95"
           >
             <X className="w-5 h-5" />

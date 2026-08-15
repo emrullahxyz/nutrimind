@@ -10,12 +10,19 @@ import { acquireOverlayLock, releaseOverlayLock } from "../lib/overlayLock";
 // DOM'a hiç dokunmaz.
 let savedOverflow = "";
 let savedTouchAction = "";
+let savedHtmlOverflow = "";
 
 /**
- * Modal/overlay açıkken document body kaydırmasını kilitler. Referans
- * sayaçlıdır: aynı anda birden çok overlay (ör. bir bileşenin KENDİSİ +
- * sardığı `<Modal>`, ya da iç içe iki modal) kilitlenmiş olabilir; arka plan
- * yalnızca HEPSİ kapandığında kilitten çıkar.
+ * Modal/overlay açıkken arka plan kaydırmasını kilitler. Referans sayaçlıdır:
+ * aynı anda birden çok overlay (ör. bir bileşenin KENDİSİ + sardığı `<Modal>`,
+ * ya da iç içe iki modal) kilitlenmiş olabilir; arka plan yalnızca HEPSİ
+ * kapandığında kilitten çıkar.
+ *
+ * HEM `document.body` HEM `document.documentElement` (html) kilitlenir:
+ * index.css `html { overflow-x: hidden }` koyduğu için html overflow'u
+ * "non-visible"dır ve viewport scroll'u CSS spec gereği body'ye değil html'in
+ * KENDİ overflow'una bağlanır — yalnızca body'yi kilitlemek hiçbir şey yapmaz
+ * (arka plan kaymaya devam eder). Viewport'u kilitleyen eleman html'dir.
  */
 export function useBodyScrollLock(isLocked: boolean = true) {
   useEffect(() => {
@@ -25,8 +32,10 @@ export function useBodyScrollLock(isLocked: boolean = true) {
     if (didLock) {
       savedOverflow = document.body.style.overflow;
       savedTouchAction = document.body.style.touchAction;
+      savedHtmlOverflow = document.documentElement.style.overflow;
       document.body.style.overflow = "hidden";
       document.body.style.touchAction = "none";
+      document.documentElement.style.overflow = "hidden";
     }
 
     return () => {
@@ -34,6 +43,7 @@ export function useBodyScrollLock(isLocked: boolean = true) {
       if (didUnlock) {
         document.body.style.overflow = savedOverflow;
         document.body.style.touchAction = savedTouchAction;
+        document.documentElement.style.overflow = savedHtmlOverflow;
       }
     };
   }, [isLocked]);

@@ -4,6 +4,7 @@ import { ZERO_NUTRITION } from "../types";
 import type { MealCategory, MealItem, Nutrition } from "../types";
 import { useBodyScrollLock } from "../hooks/useBodyScrollLock";
 import { useModalHistory } from "../hooks/useModalHistory";
+import { useModalExit } from "../hooks/useModalExit";
 import { scaleMealSources } from "../lib/nutrition";
 import { EditableStat, toDraft, fromDraft } from "./FormBits";
 import type { NutritionDraft } from "./FormBits";
@@ -80,6 +81,7 @@ export function NutritionSheet({ isOpen, onClose, meal, onSave, onDelete, onEdit
       onClose();
     },
   });
+  const { closing, beginClose } = useModalExit(handleUserClose);
 
   if (!isOpen || !meal) return null;
 
@@ -116,19 +118,21 @@ export function NutritionSheet({ isOpen, onClose, meal, onSave, onDelete, onEdit
       ...(finalSources ? { sources: finalSources } : {}),
     };
     onSave(updated);
-    handleUserClose();
+    beginClose();
   };
 
   return (
     <div
       data-modal="true"
-      className="fixed inset-0 z-[9999] flex flex-col bg-app text-white h-[100dvh] w-full overflow-hidden animate-fadeIn pad-safe"
+      className={`fixed inset-0 z-[9999] flex flex-col bg-app text-white h-[100dvh] w-full overflow-hidden animate-fadeIn pad-safe glass-screen ${
+        closing ? "glass-screen-out" : ""
+      }`}
     >
       {/* Top Header */}
       <div className="flex items-center justify-between px-4 py-3.5 sm:px-6 border-b border-white/10 flex-none bg-app">
         <button
           type="button"
-          onClick={handleUserClose}
+          onClick={beginClose}
           className="w-10 h-10 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white transition active:scale-95"
           aria-label="Geri"
         >
@@ -144,7 +148,7 @@ export function NutritionSheet({ isOpen, onClose, meal, onSave, onDelete, onEdit
             type="button"
             onClick={() => {
               onDelete(meal.id);
-              handleUserClose();
+              beginClose();
             }}
             className="w-10 h-10 rounded-full bg-red-500/10 hover:bg-red-500/20 text-red-400 flex items-center justify-center transition active:scale-95"
             title="Öğünü Sil"
@@ -201,7 +205,7 @@ export function NutritionSheet({ isOpen, onClose, meal, onSave, onDelete, onEdit
           <button
             type="button"
             onClick={() => {
-              handleUserClose();
+              beginClose();
               onEditMealItems();
             }}
             className="w-full py-3 px-4 rounded-2xl border border-amber-400/30 bg-amber-400/10 hover:bg-amber-400/20 text-amber-300 font-extrabold text-xs transition active:scale-[0.98] flex items-center justify-center gap-2"

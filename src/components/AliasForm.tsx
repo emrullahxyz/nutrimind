@@ -20,6 +20,7 @@ import type { Alias, AliasUnit, Nutrition } from "../types";
 
 import { useBodyScrollLock } from "../hooks/useBodyScrollLock";
 import { useModalHistory } from "../hooks/useModalHistory";
+import { useModalExit } from "../hooks/useModalExit";
 import { haptic } from "../lib/haptics";
 
 interface UnitDraft {
@@ -38,6 +39,7 @@ export function AliasForm({ initial, onClose }: { initial: Alias | null; onClose
   // kapanışta `replaceState` kullanıyordu, bu da her açılışta geçmiş
   // yığınında boş bir girdi bırakıyordu — hook `history.back()` kullanıyor).
   const { requestClose: handleUserClose } = useModalHistory({ active: true, onClose });
+  const { closing, beginClose } = useModalExit(handleUserClose);
 
   const { upsertAlias } = useData();
 
@@ -127,7 +129,7 @@ export function AliasForm({ initial, onClose }: { initial: Alias | null; onClose
         ...(offId.trim() ? { off_id: offId.trim() } : {}),
       });
       haptic("light");
-      handleUserClose();
+      beginClose();
     } catch (e) {
       setErr(String((e as Error)?.message ?? e));
       setSaving(false);
@@ -137,13 +139,15 @@ export function AliasForm({ initial, onClose }: { initial: Alias | null; onClose
   return (
     <div
       data-modal="true"
-      className="fixed inset-0 z-[9999] flex flex-col bg-app text-white h-[100dvh] w-full overflow-hidden animate-fadeIn pad-safe"
+      className={`fixed inset-0 z-[9999] flex flex-col bg-app text-white h-[100dvh] w-full overflow-hidden animate-fadeIn pad-safe glass-screen ${
+        closing ? "glass-screen-out" : ""
+      }`}
     >
       {/* Header Bar */}
       <div className="flex items-center justify-between px-4 py-3.5 sm:px-6 border-b border-white/10 flex-none bg-app">
         <button
           type="button"
-          onClick={handleUserClose}
+          onClick={beginClose}
           className="w-10 h-10 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white transition active:scale-95"
           aria-label="Geri"
         >

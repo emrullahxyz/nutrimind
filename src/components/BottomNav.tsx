@@ -126,7 +126,7 @@ export function BottomNav({
               dizisiyle uygulamadan çıkışa yol açtığı doğrulandı. Bkz.
               `backStack.ts`'teki fonksiyon yorumu. */}
           {open && (
-            <div className="anim-zoom fab-menu absolute bottom-20 right-3 mb-2 grid w-64 grid-cols-2 gap-2.5 rounded-3xl border border-white/15 bg-fab-panel/98 p-3 shadow-float backdrop-blur-2xl z-50">
+            <div className="anim-zoom fab-menu glass-island absolute bottom-20 right-3 mb-2 grid w-64 grid-cols-2 gap-2.5 rounded-3xl border border-white/15 bg-fab-panel/98 p-3 shadow-float backdrop-blur-2xl z-50">
               <FabMenuItem
                 icon={Footprints}
                 label="Egzersiz Kaydet"

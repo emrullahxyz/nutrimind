@@ -193,7 +193,7 @@ export function HistoryPage({ resetKey = 0 }: { resetKey?: number }) {
           </span>
         </div>
         {all.length === 0 ? (
-          <p className="text-sm text-ink-tertiary">Henüz geçmiş kaydı yok.</p>
+          <p className="anim-fadeup text-sm text-ink-tertiary">Henüz geçmiş kaydı yok.</p>
         ) : (
           <>
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
