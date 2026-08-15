@@ -18,6 +18,8 @@ import {
   Check,
   LogOut,
   KeyRound,
+  ListPlus,
+  Trash2,
 } from "lucide-react";
 import { Modal } from "./Modal";
 import { GoalsForm } from "./GoalsForm";
@@ -29,9 +31,9 @@ import { todayISO } from "../lib/format";
 import { parseWeightConfig, withWeightEntry } from "../lib/weight";
 import { useSubViewRegistration } from "../hooks/useSubViewRegistration";
 import { useAuth } from "../lib/auth";
-import { changePassword } from "../lib/authApi";
-import { passwordProblem } from "../lib/authRules";
-import { TextField, FormActions, ErrorText } from "./FormBits";
+import { addAllowlistEmail, changePassword, fetchAllowlist, removeAllowlistEmail } from "../lib/authApi";
+import { emailProblem, passwordProblem } from "../lib/authRules";
+import { ErrorText, FormActions, Label, TextField, fieldCls } from "./FormBits";
 import { useTheme } from "../lib/theme";
 import { haptic } from "../lib/haptics";
 
@@ -47,7 +49,8 @@ type SubView =
   | "widgets"
   | "feedback"
   | "privacy"
-  | "password";
+  | "password"
+  | "allowlist";
 
 interface MenuItemProps {
   icon: React.ComponentType<{ className?: string }>;
@@ -144,7 +147,7 @@ export function SettingsSheet({
   }, [resetKey]);
   const [cacheStatus, setCacheStatus] = useState<string | null>(null);
   const dataCtx = useData();
-  const { user, authDisabled, logout } = useAuth();
+const { user, authDisabled, capabilities, logout } = useAuth();
   const { theme, setTheme } = useTheme();
 
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -338,6 +341,16 @@ export function SettingsSheet({
                   onClick={() => openSubView("password")}
                 />
               )}
+              {!authDisabled && capabilities.isAdmin && (
+                <MenuItem
+                  icon={ListPlus}
+                  iconBg="bg-teal-500/15"
+                  iconColor="text-teal-400"
+                  title="İzinli E-postalar"
+                  subtitle="Yeni kayıt olabilecek kişiler"
+                  onClick={() => openSubView("allowlist")}
+                />
+              )}
             </SectionGroup>
 
             {/* HEDEFLER & TAKİP */}
@@ -490,6 +503,7 @@ export function SettingsSheet({
                 {subView === "feedback" && "Özellik İste & Geri Bildirim"}
                 {subView === "privacy" && "Gizlilik & Veri Güvenliği"}
                 {subView === "password" && "Parola Değiştir"}
+                {subView === "allowlist" && "İzinli E-postalar"}
               </h3>
             </div>
 
@@ -696,6 +710,9 @@ export function SettingsSheet({
 
         {/* 12. PAROLA DEĞİŞTİR */}
         {subView === "password" && <PasswordForm goBack={goBack} />}
+
+        {/* 13. İZİNLİ E-POSTALAR */}
+        {subView === "allowlist" && <AllowlistForm />}
           </div>
         )}
       </div>
@@ -819,6 +836,152 @@ function PasswordForm({ goBack }: { goBack: () => void }) {
           />
         </div>
       </div>
+    </div>
+  );
+}
+
+/**
+ * "İzinli E-postalar" — yeni kayıt olabilecek kişilerin listesi. Yalnızca sahip
+ * (NUTRIMIND_OWNER_EMAIL) görür; liste DOLUYSA kayıt yalnızca listedekilere
+ * açıktır, boşsa sunucu bayrağı (ALLOW_SIGNUP) tek başına karar verir.
+ * Desen PasswordForm'dan: `saving`/`err`/`successMsg` üçlüsü + aynı kart dili.
+ */
+function AllowlistForm() {
+  const [emails, setEmails] = useState<string[] | null>(null); // null = yükleniyor
+  const [yeni, setYeni] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+  const [successMsg, setSuccessMsg] = useState<string | null>(null);
+
+  useEffect(() => {
+    let canli = true;
+    fetchAllowlist()
+      .then((liste) => {
+        if (canli) setEmails(liste);
+      })
+      .catch((e) => {
+        if (canli) setErr(String((e as Error)?.message ?? e));
+      });
+    return () => {
+      canli = false;
+    };
+  }, []);
+
+  const problem = emailProblem(yeni);
+  const canEkle = problem === null && yeni.trim() !== "" && !saving;
+
+  async function ekle() {
+    if (!canEkle) return;
+    setSaving(true);
+    setErr(null);
+    setSuccessMsg(null);
+    try {
+      const eklenen = await addAllowlistEmail(yeni);
+      setYeni("");
+      // Sunucunun NORMALİZE ettiği hâli listeye yaz (küçük harf, trimsiz).
+      setEmails((es) => (es ? [...es.filter((e) => e !== eklenen), eklenen].sort() : es));
+      setSuccessMsg(`"${eklenen}" listeye eklendi. Bu kişi artık kayıt olabilir.`);
+    } catch (e) {
+      setErr(String((e as Error)?.message ?? e));
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function sil(email: string) {
+    if (saving) return;
+    setSaving(true);
+    setErr(null);
+    setSuccessMsg(null);
+    try {
+      await removeAllowlistEmail(email);
+      setEmails((es) => (es ? es.filter((e) => e !== email) : es));
+      setSuccessMsg(`"${email}" listeden çıkarıldı. Artık kayıt olamaz.`);
+    } catch (e) {
+      setErr(String((e as Error)?.message ?? e));
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <div className="flex flex-col gap-4">
+      <div className="glass-card flex flex-col gap-3 rounded-card border border-line bg-calCard p-4">
+        <div>
+          <Label>E-posta ekle</Label>
+          <div className="mt-1 flex gap-2">
+            <input
+              type="email"
+              inputMode="email"
+              autoComplete="off"
+              value={yeni}
+              onChange={(e) => {
+                setYeni(e.target.value);
+                setSuccessMsg(null);
+              }}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  void ekle();
+                }
+              }}
+              className={`${fieldCls} flex-1`}
+              placeholder="ornek@eposta.com"
+            />
+            <button
+              type="button"
+              onClick={() => void ekle()}
+              disabled={!canEkle}
+              className="flex-none rounded-xl bg-accent px-4 py-2.5 text-xs font-extrabold text-accent-ink transition hover:bg-accent/90 active:scale-95 disabled:opacity-40"
+            >
+              {saving ? "…" : "Ekle"}
+            </button>
+          </div>
+          {problem && yeni !== "" && <p className="mt-1 text-xs text-amber-400">{problem}</p>}
+        </div>
+
+        {err && <ErrorText>{err}</ErrorText>}
+
+        {successMsg && (
+          <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-3 text-center text-xs font-bold text-emerald-400">
+            {successMsg}
+          </div>
+        )}
+      </div>
+
+      <div className="glass-card flex flex-col gap-2 rounded-card border border-line bg-calCard p-4">
+        <h4 className="text-xs font-bold text-white/70">Listedekiler</h4>
+        {emails === null ? (
+          <p className="text-xs text-white/50">Yükleniyor…</p>
+        ) : emails.length === 0 ? (
+          <p className="text-xs text-white/50 leading-relaxed">
+            Liste boşken kayıtlar herkese açık kalır. İzin vereceğin kişilerin e-postalarını yukarıdan ekle —
+            kaydettiğin anda listede olmayanlar kayıt olamaz.
+          </p>
+        ) : (
+          <ul className="flex flex-col divide-y divide-white/[0.06]">
+            {emails.map((email) => (
+              <li key={email} className="flex items-center justify-between gap-3 py-2.5">
+                <span className="truncate text-xs font-semibold text-white">{email}</span>
+                <button
+                  type="button"
+                  onClick={() => void sil(email)}
+                  disabled={saving}
+                  aria-label={`${email} listesinden çıkar`}
+                  className="flex h-8 w-8 flex-none items-center justify-center rounded-lg text-white/40 transition hover:bg-rose-500/15 hover:text-rose-400 active:scale-90 disabled:opacity-40"
+                >
+                  <Trash2 className="h-4 w-4" />
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+
+      <p className="px-1 text-[11px] leading-relaxed text-white/40">
+        Not: Google ile kayıt olacak kişileri ayrıca Google Cloud Console'daki "Test users" listesine eklemelisin
+        — Google'ın kendi kapısı ayrıdır. Parola ile kayıt olacaklar için yalnızca bu liste yeterli.
+      </p>
     </div>
   );
 }
