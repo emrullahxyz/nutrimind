@@ -420,3 +420,29 @@ düzeltmesi (animasyon bitince inline spring transform'u görünsün) ve `.sprin
 none !important }` (MacroBar genişliğini glass'ta spring yönetir) CSS denetiminde yerinde.
 
 **Ders:** `tasks/lessons.md` → CSS `var()`'ı animation kısayolundan uzak tut (L15).
+
+---
+
+## Kayıt sistemi: "İzinli E-postalar" davet listesi (2026-08-15)
+
+Onaylanan plan: `ok-teknik-detay-vermi-sin-recursive-wreath.md`. Yalnızca listeye
+eklenen e-postalar kayıt olabilir (Google "yeni" **ve** parola yolu); liste
+uygulama içinden (Ayarlar → Hesap & Profil → İzinli E-postalar), yalnızca sahibin
+gördüğü ekrandan yönetilir. `server/index.js` dokunulmadı (donmuş).
+
+- [x] `server/googleAuth.js`: `linkDecision`'a `email` + `allowlist` parametreleri; yeni karar `"izinsiz"` (liste dolu + listede değil)
+- [x] `server/authRoutes.js`: lazy `signup_allowlist` tablosu, `OWNER_EMAIL`, register kapısı, Google callback `"izinsiz"` → `kayit_izinsiz`, `/api/auth/admin/allowlist` (GET/POST/DELETE, yönetici dışı 403), `/me` → `isAdmin`
+- [x] Frontend: `types.ts` `AuthCapabilities.isAdmin`, `authApi.ts` (`kayit_izinsiz` mesajı + 3 çağrı), `auth.tsx` NO_CAPS, `SettingsSheet.tsx` AllowlistForm (ekle/sil, yönetici menü satırı)
+- [x] `.env.example`: ALLOW_SIGNUP + OWNER_EMAIL yorumları
+- [x] Testler: 37 yeni (linkDecision 7, kapı 4, admin uçları 8, BAYRAKLAR'a OWNER_EMAIL) → 611/611
+
+**Doğrulama:** `pnpm test` 611/611, `pnpm typecheck` 0 hata, `pnpm build` ✓.
+HTTP smoke testi (geçici DB, 8791): sahip girişi → `isAdmin:true`; ekle → normalize
+`"  Davetli@X.CO "` → `davetli@x.co`; tekrar ekle 409; listedeki kayıt 201; listede
+olmayan 403; sil 404/200; sahip olmayan admin uçlarına 403. Temizlik: scratch DB
+silindi, `server/data.db` dokunulmadı.
+
+**Prod kalan (kullanıcı onayıyla):** yedek → `{authRoutes,googleAuth}.js` kopyala
+(md5) → `.env`'e `NUTRIMIND_ALLOW_SIGNUP=1` → `systemctl restart nutri-api` →
+`pnpm run deploy` → telefonla canlı doğrulama. Dikkat: liste boşken kayıt herkese
+açık kalır — deploy sonrası hemen kişi eklenmeli.
