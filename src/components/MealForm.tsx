@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import { useModalHistory } from "../hooks/useModalHistory";
+import { useModalExit } from "../hooks/useModalExit";
 import { ArrowLeft, Sparkles, Plus, Check } from "lucide-react";
 import {
   EMPTY_DRAFT,
@@ -30,6 +31,9 @@ import type { AIParseItem, Alias, MealCategory, MealPayload, MealSource, Nutriti
 import { usualQuantity } from "../lib/quantity";
 import { AliasPicker } from "./AliasPicker";
 import { useBodyScrollLock } from "../hooks/useBodyScrollLock";
+import { haptic } from "../lib/haptics";
+import { useToast } from "./Toast";
+import { ScrambleText } from "./ScrambleText";
 
 type Mode = "alias" | "manual" | "ai";
 
@@ -199,7 +203,9 @@ export function MealForm({
   // kapanışta `replaceState` kullanıyordu, bu da her açılışta geçmiş
   // yığınında boş bir girdi bırakıyordu — hook `history.back()` kullanıyor).
   const { requestClose: handleUserClose } = useModalHistory({ active: isOpen, onClose });
+  const { closing, beginClose } = useModalExit(handleUserClose);
 
+  const { showToast } = useToast();
   const { aliases, days, usageIndex, goals, setDayMeals } = useData();
   const existing = editIndex === null ? undefined : mealsOf(days, date)[editIndex];
 
@@ -615,7 +621,9 @@ export function MealForm({
       else next[editIndex] = entry;
 
       await setDayMeals(date, next);
-      handleUserClose();
+      haptic("success");
+      showToast(editIndex === null ? "Öğün kaydedildi" : "Öğün güncellendi", "success");
+      beginClose();
     } catch (e) {
       setErr(String((e as Error)?.message ?? e));
       setSaving(false);
@@ -627,13 +635,15 @@ export function MealForm({
   return (
     <div
       data-modal="true"
-      className="fixed inset-0 z-[9999] flex flex-col bg-[#171622] text-white h-[100dvh] w-full overflow-hidden animate-fadeIn pad-safe"
+      className={`fixed inset-0 z-[9999] flex flex-col bg-app text-white h-[100dvh] w-full overflow-hidden animate-fadeIn pad-safe glass-screen ${
+        closing ? "glass-screen-out" : ""
+      }`}
     >
       {/* Top Header */}
-      <div className="flex items-center justify-between px-4 py-3.5 sm:px-6 border-b border-white/10 flex-none bg-[#171622]">
+      <div className="flex items-center justify-between px-4 py-3.5 sm:px-6 border-b border-white/10 flex-none bg-app">
         <button
           type="button"
-          onClick={handleUserClose}
+          onClick={beginClose}
           className="w-10 h-10 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white transition active:scale-95"
           aria-label="Geri"
         >
@@ -731,7 +741,7 @@ export function MealForm({
                       onChange={(e) => handleUnitChange(e.target.value)}
                     >
                       {availableUnits.map((u) => (
-                        <option key={u.name} value={u.name} className="bg-[#191825] text-white">
+                        <option key={u.name} value={u.name} className="bg-field text-white">
                           {u.name}
                         </option>
                       ))}
@@ -876,7 +886,11 @@ export function MealForm({
                   className="rounded-full bg-amber-400 px-5 py-2 text-xs font-extrabold text-black transition hover:bg-amber-300 disabled:opacity-40 flex items-center gap-1.5"
                 >
                   <Sparkles className="w-3.5 h-3.5" />
-                  {aiLoading ? "Analiz ediliyor…" : "Analiz Et"}
+                  {aiLoading ? (
+                    <ScrambleText text="Analiz ediliyor…" durationMs={1500} />
+                  ) : (
+                    "Analiz Et"
+                  )}
                 </button>
               </div>
 
@@ -920,7 +934,7 @@ export function MealForm({
       </div>
 
       {/* Full Width Bottom Save Button */}
-      <div className="p-4 sm:p-5 border-t border-white/10 bg-[#171622] flex-none">
+      <div className="p-4 sm:p-5 border-t border-white/10 bg-app flex-none">
         <button
           type="button"
           onClick={save}

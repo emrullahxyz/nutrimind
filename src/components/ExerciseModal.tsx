@@ -4,6 +4,9 @@ import type { Exercise, ExerciseCategory } from "../types";
 import { useData } from "../lib/data";
 import { useBodyScrollLock } from "../hooks/useBodyScrollLock";
 import { useModalHistory } from "../hooks/useModalHistory";
+import { useModalExit } from "../hooks/useModalExit";
+import { haptic } from "../lib/haptics";
+import { useTheme } from "../lib/theme";
 
 import { EXERCISE_CONFIG_KEY, exercisesFor, parseExerciseEntries, withExercises } from "../lib/exercise";
 
@@ -48,6 +51,8 @@ export function ExerciseModal({ isOpen, onClose, date }: Props) {
   // Geri tuşu/kaydırma/X entegrasyonu — bkz. `useModalHistory` (7 bileşende
   // elle kopyalanmış aynı deseni tek yere topluyor).
   const { requestClose: handleUserClose } = useModalHistory({ active: isOpen, onClose });
+  const { closing, beginClose } = useModalExit(handleUserClose);
+  const { theme } = useTheme();
 
   const [busy, setBusy] = useState(false);
 
@@ -95,8 +100,16 @@ export function ExerciseModal({ isOpen, onClose, date }: Props) {
   const totalBurned = currentExercises.reduce((acc, curr) => acc + curr.caloriesBurned, 0);
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/75 p-0 sm:p-4 backdrop-blur-sm animate-fadeIn">
-      <div className="w-full max-w-lg rounded-t-3xl sm:rounded-3xl bg-[#151421] border border-white/10 p-5 text-white shadow-2xl max-h-[90vh] flex flex-col overflow-hidden">
+    <div
+      className={`fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/75 p-0 sm:p-4 backdrop-blur-sm animate-fadeIn ${
+        closing ? "scrim-out" : ""
+      }`}
+    >
+      <div
+        className={`w-full max-w-lg rounded-t-3xl sm:rounded-3xl bg-panel-alt border border-white/10 p-5 text-white shadow-2xl max-h-[90vh] flex flex-col overflow-hidden relative glass-exercise ${
+          closing ? "modal-out" : ""
+        }`}
+      >
         {/* Header */}
         <div className="flex items-center justify-between pb-4 border-b border-white/10">
           <div className="flex items-center gap-2.5">
@@ -109,8 +122,12 @@ export function ExerciseModal({ isOpen, onClose, date }: Props) {
             </div>
           </div>
           <button
-            onClick={handleUserClose}
-            className="w-8 h-8 rounded-full bg-white/5 hover:bg-white/10 flex items-center justify-center text-white/70 transition-colors"
+            onClick={beginClose}
+            className={
+              theme === "glass"
+                ? "w-9 h-9 rounded-full bg-orange-500/10 hover:bg-orange-500/20 flex items-center justify-center text-orange-300 transition-colors"
+                : "w-8 h-8 rounded-full bg-white/5 hover:bg-white/10 flex items-center justify-center text-white/70 transition-colors"
+            }
           >
             <X className="w-5 h-5" />
           </button>
@@ -129,15 +146,16 @@ export function ExerciseModal({ isOpen, onClose, date }: Props) {
                   <button
                     key={p.name}
                     disabled={busy}
-                    onClick={() =>
+                    onClick={() => {
+                      if (theme === "glass") haptic("light");
                       handleSaveExercise({
                         name: p.name,
                         category: p.category,
                         durationMinutes: p.durationMinutes,
                         caloriesBurned: p.caloriesBurned,
-                      })
-                    }
-                    className="flex items-center gap-2.5 p-3 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/5 hover:border-orange-500/30 text-left transition-all group active:scale-95 disabled:opacity-40"
+                      });
+                    }}
+                    className="flex items-center gap-2.5 p-3 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/5 hover:border-orange-500/30 text-left transition-all group active:scale-95 spring-press disabled:opacity-40"
                   >
                     <div className="w-8 h-8 rounded-xl bg-orange-500/10 group-hover:bg-orange-500/20 text-orange-400 flex items-center justify-center shrink-0">
                       <Icon className="w-4 h-4" />
@@ -171,7 +189,7 @@ export function ExerciseModal({ isOpen, onClose, date }: Props) {
               <select
                 value={category}
                 onChange={(e) => setCategory(e.target.value as ExerciseCategory)}
-                className="w-full px-3 py-2 rounded-xl bg-[#151421] border border-white/10 text-xs text-white focus:outline-none focus:border-accent"
+                className="w-full px-3 py-2 rounded-xl bg-panel-alt border border-white/10 text-xs text-white focus:outline-none focus:border-accent"
               >
                 <option value="run">Koşu</option>
                 <option value="weights">Ağırlık</option>

@@ -41,7 +41,7 @@ export function useAuth(): AuthValue {
   return v;
 }
 
-const NO_CAPS: AuthCapabilities = { signupAllowed: false, googleEnabled: false };
+const NO_CAPS: AuthCapabilities = { signupAllowed: false, googleEnabled: false, isAdmin: false };
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [status, setStatus] = useState<Status>("loading");

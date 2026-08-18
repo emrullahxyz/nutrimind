@@ -3,7 +3,7 @@ import { useData } from "../lib/data";
 import { effectiveGoal } from "../lib/goals";
 import { formatNumber } from "../lib/format";
 import type { Week } from "../lib/weeks";
-import { useAnimatedValue } from "../lib/useAnimatedValue";
+import { useValueSpring } from "../hooks/useValueSpring";
 import { easeShowcase } from "../lib/animation";
 
 const DOW = ["Pzt", "Sal", "Çar", "Per", "Cum", "Cmt", "Paz"];
@@ -11,10 +11,10 @@ const BEAM_SPEEDS = ["3.0s", "3.6s", "2.8s", "4.0s", "3.4s", "3.2s", "3.8s"];
 
 /** Sona doğru erkenden yavaşlayan canlı kalori sayıcı komponenti */
 function AnimatedKcal({ value, delayMs }: { value: number; delayMs: number }) {
-  const display = useAnimatedValue(value, {
-    durationMs: 2000,
-    delayMs,
-    ease: easeShowcase,
+  const display = useValueSpring(value, {
+    tweenDurationMs: 2000,
+    tweenDelayMs: delayMs,
+    tweenEase: easeShowcase,
     round: "floor",
   });
   return <>{formatNumber(display)}</>;
@@ -55,13 +55,17 @@ export function WeekBars({
       <div className="flex h-12 items-end gap-1.5 overflow-hidden rounded-lg bg-black/40 p-1.5 inset-0 border border-white/[0.06]">
         {week.days.map((d, i) => {
           const over = avgGoal > 0 && d.total.kcal > avgGoal;
+          const springH = useValueSpring(Math.max((d.total.kcal / max) * 100, 10), {
+            tweenDurationMs: 0,
+            round: "none",
+          });
           return (
             <div key={d.date} className="relative flex-1 h-full flex flex-col justify-end">
               {d.hasData ? (
                 <div
                   className="anim-grow-spring relative w-full overflow-hidden rounded-t-[4px] shadow-[0_0_8px_rgba(45,212,191,0.2)] transition-transform duration-200 group-hover:-translate-y-0.5"
                   style={{
-                    height: `${Math.max((d.total.kcal / max) * 100, 10)}%`,
+                    height: `${springH}%`,
                     animationDelay: `${i * 45}ms`,
                   }}
                 >
@@ -70,8 +74,8 @@ export function WeekBars({
                     className="relative z-10 h-full w-full overflow-hidden rounded-t-[4px]"
                     style={{
                       background: over
-                        ? "linear-gradient(180deg, #fb7185 0%, #e11d48 35%, #9f1239 70%, #4c0519 100%)"
-                        : "linear-gradient(180deg, #5eead4 0%, #2dd4bf 30%, #0d9488 70%, #042f2e 100%)",
+                        ? "linear-gradient(180deg, var(--bar-rose-0) 0%, var(--bar-rose-1) 35%, var(--bar-rose-2) 70%, var(--bar-rose-3) 100%)"
+                        : "linear-gradient(180deg, var(--bar-teal-0) 0%, var(--bar-teal-1) 30%, var(--bar-teal-2) 70%, var(--bar-teal-3) 100%)",
                       boxShadow: "inset 1px 1px 1px rgba(255,255,255,0.3), inset -1px -1px 3px rgba(0,0,0,0.5)",
                       filter: "brightness(0.96)",
                     }}
@@ -111,7 +115,7 @@ export function WeekBars({
             className="pointer-events-none absolute inset-x-0 z-10 border-t border-dashed border-teal-400/40 shadow-[0_0_8px_rgba(45,212,191,0.25)]"
             style={{ bottom: `${goalPct}%` }}
           >
-            <span className="absolute -top-4 right-0 rounded-full border border-teal-400/30 bg-[#0d1e1c]/90 px-2 py-0.5 font-mono text-[9px] font-bold text-teal-200 shadow-sm backdrop-blur-md">
+            <span className="absolute -top-4 right-0 rounded-full border border-teal-400/30 bg-goal-chip/90 px-2 py-0.5 font-mono text-[9px] font-bold text-teal-200 shadow-sm backdrop-blur-md">
               hedef {goalVaries && "ort. "}
               {formatNumber(avgGoal)}
             </span>
@@ -119,6 +123,7 @@ export function WeekBars({
 
           {week.days.map((d, i) => {
             const h = d.hasData ? Math.max((d.total.kcal / max) * 100, 3) : 1.5;
+            const springH = useValueSpring(h, { tweenDurationMs: 0, round: "none" });
             const over = avgGoal > 0 && d.total.kcal > avgGoal;
             const clickable = d.hasData && !!onSelectDay;
             const beamSpeed = BEAM_SPEEDS[i % BEAM_SPEEDS.length];
@@ -134,7 +139,7 @@ export function WeekBars({
                 }`}
                 aria-label={d.date}
               >
-                <div className="relative w-full" style={{ height: `${h}%` }}>
+                <div className="relative w-full" style={{ height: `${springH}%` }}>
                   {d.hasData && (
                     <div className="anim-zoom absolute -top-6 inset-x-0 z-30 text-center font-mono text-[10px] font-bold text-white" style={{ animationDelay: `${i * 90 + 350}ms` }}>
                       <span className="inline-block rounded-full border border-white/20 bg-white/12 px-2 py-0.5 shadow-md backdrop-blur-md">
@@ -164,8 +169,8 @@ export function WeekBars({
                         className="relative z-10 h-full w-full overflow-hidden rounded-t-[6px]"
                         style={{
                           background: over
-                            ? "linear-gradient(180deg, #fb7185 0%, #e11d48 35%, #9f1239 70%, #4c0519 100%)"
-                            : "linear-gradient(180deg, #5eead4 0%, #2dd4bf 30%, #0d9488 70%, #042f2e 100%)",
+                            ? "linear-gradient(180deg, var(--bar-rose-0) 0%, var(--bar-rose-1) 35%, var(--bar-rose-2) 70%, var(--bar-rose-3) 100%)"
+                            : "linear-gradient(180deg, var(--bar-teal-0) 0%, var(--bar-teal-1) 30%, var(--bar-teal-2) 70%, var(--bar-teal-3) 100%)",
                           boxShadow:
                             "inset 1px 1px 2px rgba(255,255,255,0.35), inset -2px -2px 6px rgba(0,0,0,0.55)",
                           filter: "brightness(0.96)",

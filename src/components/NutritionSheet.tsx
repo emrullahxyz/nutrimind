@@ -4,6 +4,7 @@ import { ZERO_NUTRITION } from "../types";
 import type { MealCategory, MealItem, Nutrition } from "../types";
 import { useBodyScrollLock } from "../hooks/useBodyScrollLock";
 import { useModalHistory } from "../hooks/useModalHistory";
+import { useModalExit } from "../hooks/useModalExit";
 import { scaleMealSources } from "../lib/nutrition";
 import { EditableStat, toDraft, fromDraft } from "./FormBits";
 import type { NutritionDraft } from "./FormBits";
@@ -80,6 +81,7 @@ export function NutritionSheet({ isOpen, onClose, meal, onSave, onDelete, onEdit
       onClose();
     },
   });
+  const { closing, beginClose } = useModalExit(handleUserClose);
 
   if (!isOpen || !meal) return null;
 
@@ -116,19 +118,21 @@ export function NutritionSheet({ isOpen, onClose, meal, onSave, onDelete, onEdit
       ...(finalSources ? { sources: finalSources } : {}),
     };
     onSave(updated);
-    handleUserClose();
+    beginClose();
   };
 
   return (
     <div
       data-modal="true"
-      className="fixed inset-0 z-[9999] flex flex-col bg-[#171622] text-white h-[100dvh] w-full overflow-hidden animate-fadeIn pad-safe"
+      className={`fixed inset-0 z-[9999] flex flex-col bg-app text-white h-[100dvh] w-full overflow-hidden animate-fadeIn pad-safe glass-screen ${
+        closing ? "glass-screen-out" : ""
+      }`}
     >
       {/* Top Header */}
-      <div className="flex items-center justify-between px-4 py-3.5 sm:px-6 border-b border-white/10 flex-none bg-[#171622]">
+      <div className="flex items-center justify-between px-4 py-3.5 sm:px-6 border-b border-white/10 flex-none bg-app">
         <button
           type="button"
-          onClick={handleUserClose}
+          onClick={beginClose}
           className="w-10 h-10 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white transition active:scale-95"
           aria-label="Geri"
         >
@@ -144,7 +148,7 @@ export function NutritionSheet({ isOpen, onClose, meal, onSave, onDelete, onEdit
             type="button"
             onClick={() => {
               onDelete(meal.id);
-              handleUserClose();
+              beginClose();
             }}
             className="w-10 h-10 rounded-full bg-red-500/10 hover:bg-red-500/20 text-red-400 flex items-center justify-center transition active:scale-95"
             title="Öğünü Sil"
@@ -201,7 +205,7 @@ export function NutritionSheet({ isOpen, onClose, meal, onSave, onDelete, onEdit
           <button
             type="button"
             onClick={() => {
-              handleUserClose();
+              beginClose();
               onEditMealItems();
             }}
             className="w-full py-3 px-4 rounded-2xl border border-amber-400/30 bg-amber-400/10 hover:bg-amber-400/20 text-amber-300 font-extrabold text-xs transition active:scale-[0.98] flex items-center justify-center gap-2"
@@ -261,7 +265,7 @@ export function NutritionSheet({ isOpen, onClose, meal, onSave, onDelete, onEdit
           {/* Protein */}
           <label htmlFor="macro-protein" className="rounded-2xl border border-white/10 bg-white/[0.04] p-3 flex flex-col justify-between min-h-[80px] cursor-text">
             <div className="flex items-center gap-1.5 text-xs font-semibold text-white/80">
-              <Beef className="w-3.5 h-3.5 text-[#FF6B8A]" />
+              <Beef className="w-3.5 h-3.5 text-protein-bright" />
               <span>Protein</span>
             </div>
             <div className="flex items-baseline gap-0.5 mt-1">
@@ -278,7 +282,7 @@ export function NutritionSheet({ isOpen, onClose, meal, onSave, onDelete, onEdit
           {/* Karbonhidrat */}
           <label htmlFor="macro-carbs" className="rounded-2xl border border-white/10 bg-white/[0.04] p-3 flex flex-col justify-between min-h-[80px] cursor-text">
             <div className="flex items-center gap-1.5 text-xs font-semibold text-white/80">
-              <Wheat className="w-3.5 h-3.5 text-[#FFB84D]" />
+              <Wheat className="w-3.5 h-3.5 text-carb-bright" />
               <span>Karb</span>
             </div>
             <div className="flex items-baseline gap-0.5 mt-1">
@@ -295,7 +299,7 @@ export function NutritionSheet({ isOpen, onClose, meal, onSave, onDelete, onEdit
           {/* Yağ */}
           <label htmlFor="macro-fat" className="rounded-2xl border border-white/10 bg-white/[0.04] p-3 flex flex-col justify-between min-h-[80px] cursor-text">
             <div className="flex items-center gap-1.5 text-xs font-semibold text-white/80">
-              <Droplet className="w-3.5 h-3.5 text-[#5B8DEF]" />
+              <Droplet className="w-3.5 h-3.5 text-fat-bright" />
               <span>Yağ</span>
             </div>
             <div className="flex items-baseline gap-0.5 mt-1">
@@ -371,7 +375,7 @@ export function NutritionSheet({ isOpen, onClose, meal, onSave, onDelete, onEdit
       </div>
 
       {/* Full Width Bottom Save Button */}
-      <div className="p-4 sm:p-5 border-t border-white/10 bg-[#171622] flex-none">
+      <div className="p-4 sm:p-5 border-t border-white/10 bg-app flex-none">
         <button
           type="button"
           onClick={handleApplySave}

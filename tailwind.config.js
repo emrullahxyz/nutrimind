@@ -1,35 +1,77 @@
 /** @type {import('tailwindcss').Config} */
+
+// CSS değişkenine alfa desteği ekleyen yardımcı: bir token adını alıp
+// `rgb(var(--X) / calc(var(--X-a, 1) * <alpha-value>))` kalıbına yerleştirir.
+// `<alpha-value>` Tailwind'in kendi alfa yer tutucusudur; `bg-app/50` gibi
+// kullanımlarda gerçek opaklıkla değiştirilir. `-a` refakatçi değişkeni
+// (örn. --cal-card-a) glass temasında yarı saydam dolgular için kullanılır.
+function withAlpha(n) {
+  return `rgb(var(--${n}) / calc(var(--${n}-a, 1) * <alpha-value>))`;
+}
+
 export default {
   content: ["./index.html", "./src/**/*.{ts,tsx}"],
   theme: {
     extend: {
       colors: {
-        // Cal AI Soft Velvet Dark design tokens (Screenshot Replica)
-        app: "#171622",
-        calCard: "#22202E",
-        calBorder: "rgba(255,255,255,0.06)",
-        line: "rgba(255,255,255,0.06)",
-        "elevated-2": "#22202E",
+        // Cal AI Soft Velvet Dark design tokens (Screenshot Replica).
+        // Değerler artık src/index.css `:root` içindeki CSS değişkenleriyle
+        // çözülür; "glass" teması aynı değişkenleri data-theme="glass" ile ezer.
+        app: withAlpha("app"),
+        calCard: withAlpha("cal-card"),
+        calBorder: "var(--cal-border)",
+        line: "var(--line)",
+        "line-faint": "var(--line-faint)",
+        "elevated-2": withAlpha("elevated-2"),
         ink: {
-          primary: "#FFFFFF",
-          secondary: "#A5A2B8", // Soft lavender-gray muted label text
-          tertiary: "#7A7791",
-          faint: "#56546B",
+          primary: withAlpha("ink-primary"),
+          secondary: withAlpha("ink-secondary"), // Soft lavender-gray muted label text
+          tertiary: withAlpha("ink-tertiary"),
+          faint: withAlpha("ink-faint"),
         },
-        protein: "#B88996", // Sönük toz pastel gül (muted dusty rose)
-        carb: "#AB996F", // Sönük toz pastel şampanya altını
-        fat: "#7D9CBF", // Sönük toz pastel pudra mavisi
-        fab: "#FFFFFF",
-        streak: { bg: "#282537", text: "#FFFFFF" },
-        memory: "#9A8CBA", // Dumanlı lavanta (muted smoky lavender)
-        "memory-deep": "#7C4DFF",
-        "memory-ink": "#1E1B4B",
-        micro: "#A5A2B8",
-        accent: "#E8E6F0",
-        "accent-ink": "#1A1926",
-        warn: "#F5A623",
-        danger: "#E57373",
-        under: "#8FB8F0",
+        protein: withAlpha("protein"), // Sönük toz pastel gül (muted dusty rose)
+        "protein-bright": withAlpha("protein-bright"),
+        "protein-ink": withAlpha("protein-ink"),
+        carb: withAlpha("carb"), // Sönük toz pastel şampanya altını
+        "carb-bright": withAlpha("carb-bright"),
+        "carb-ink": withAlpha("carb-ink"),
+        fat: withAlpha("fat"), // Sönük toz pastel pudra mavisi
+        "fat-bright": withAlpha("fat-bright"),
+        "fat-ink": withAlpha("fat-ink"),
+        fab: withAlpha("fab"),
+        streak: { bg: withAlpha("streak-bg"), text: withAlpha("streak-text") },
+        memory: withAlpha("memory"), // Dumanlı lavanta (muted smoky lavender)
+        "memory-deep": withAlpha("memory-deep"),
+        "memory-ink": withAlpha("memory-ink"),
+        micro: withAlpha("micro"),
+        accent: withAlpha("accent"),
+        "accent-ink": withAlpha("accent-ink"),
+        warn: withAlpha("warn"),
+        danger: withAlpha("danger"),
+        under: withAlpha("under"),
+        // Yeni yüzey/durum token'ları (hepsi withAlpha — glass temasında yarı
+        // saydam beyaz dolgulara dönüşebilir):
+        bar: withAlpha("bar"),
+        row: withAlpha("row"),
+        "panel-alt": withAlpha("panel-alt"),
+        footer: withAlpha("footer"),
+        toast: withAlpha("toast"),
+        field: withAlpha("field"),
+        popover: withAlpha("popover"),
+        "nav-item": withAlpha("nav-item"),
+        "nav-item-hover": withAlpha("nav-item-hover"),
+        "fab-panel": withAlpha("fab-panel"),
+        "macro-chip": withAlpha("macro-chip"),
+        well: withAlpha("well"),
+        "well-hover": withAlpha("well-hover"),
+        "cal-hover": withAlpha("cal-hover"),
+        "day-selected": withAlpha("day-selected"),
+        "icon-well": withAlpha("icon-well"),
+        "grad-top": withAlpha("grad-top"),
+        "grad-mid": withAlpha("grad-mid"),
+        "grad-bot": withAlpha("grad-bot"),
+        "grad-hover": withAlpha("grad-hover"),
+        "goal-chip": withAlpha("goal-chip"),
       },
       fontFamily: {
         sans: ["Manrope", "system-ui", "sans-serif"],

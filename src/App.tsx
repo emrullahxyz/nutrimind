@@ -18,9 +18,11 @@ import { classifyPopState, consumeProgrammaticBack, shouldExitOnSecondPress } fr
 import { AuthProvider, useAuth } from "./lib/auth";
 import { AuthScreen } from "./components/AuthScreen";
 import { OnboardingModal } from "./components/OnboardingModal";
+import { ToastProvider } from "./components/Toast";
 import type { UserProfileInput } from "./lib/tdee";
 import { hasOpenOverlay } from "./lib/overlayLock";
 import { hasActiveSubView } from "./lib/subViewRegistry";
+import { ThemeProvider, useTheme } from "./lib/theme";
 
 function MainContent() {
   const [tab, setTab] = useState<TabType>("daily");
@@ -51,6 +53,7 @@ function MainContent() {
   const lastBackPressRef = useRef<number>(0);
 
   const { days, config, updateGoals, updateConfig } = useData();
+  const { theme } = useTheme();
 
   // --- Kayıt sihirbazı -------------------------------------------------------
   // Tetik İKİ koşula bağlı, tek koşula değil: profil kurulmamış OLMASI yetmez,
@@ -213,8 +216,21 @@ function MainContent() {
   return (
     <>
       <div className="ambient-glow fixed top-0 left-0 right-0 h-72 pointer-events-none z-0" />
+      {theme === "glass" && (
+        <div className="glass-orbs fixed inset-0 z-0 pointer-events-none overflow-hidden" aria-hidden="true">
+          <div className="glass-orb glass-orb-1" />
+          <div className="glass-orb glass-orb-2" />
+          <div className="glass-orb glass-orb-3" />
+        </div>
+      )}
 
-      <header className="no-print relative z-10 mb-4 flex items-center justify-between">
+      <header
+        className={
+          theme === "glass"
+            ? "no-print relative z-10 mb-4 flex items-center justify-between glass-header mx-auto w-max gap-3 rounded-full border border-white/10 bg-white/[0.06] px-4 py-2 backdrop-blur-xl shadow-[0_20px_50px_-22px_rgba(0,0,0,0.7)]"
+            : "no-print relative z-10 mb-4 flex items-center justify-between"
+        }
+      >
         <div className="flex items-center gap-2">
           <img src="/NutriMind_Logo.png" alt="NutriMind" className="h-7 w-7 rounded-lg" />
           <h1 className="text-xl font-extrabold text-white sm:text-2xl">
@@ -222,7 +238,13 @@ function MainContent() {
           </h1>
         </div>
 
-        <div className="flex items-center gap-1.5 rounded-full bg-white/10 px-3 py-1 text-xs font-bold text-white border border-white/15 backdrop-blur-md">
+        <div
+          className={
+            theme === "glass"
+              ? "flex items-center gap-1.5 rounded-full bg-white/5 px-3 py-1 text-xs font-bold text-white"
+              : "flex items-center gap-1.5 rounded-full bg-white/10 px-3 py-1 text-xs font-bold text-white border border-white/15 backdrop-blur-md"
+          }
+        >
           <Flame className="h-4 w-4 text-accent" />
           <span>{streak}</span>
         </div>
@@ -289,7 +311,7 @@ function MainContent() {
 
       {/* Çift Geri Basma / Çıkış Toast Uyarısı */}
       {showExitToast && (
-        <div className="fixed bottom-20 left-1/2 z-[99999] -translate-x-1/2 rounded-full border border-white/20 bg-[#121319]/95 px-4 py-2.5 text-center text-xs font-extrabold text-white shadow-2xl backdrop-blur-md anim-fadeup">
+        <div className="fixed bottom-20 left-1/2 z-[99999] -translate-x-1/2 rounded-full border border-white/20 bg-toast/95 px-4 py-2.5 text-center text-xs font-extrabold text-white shadow-2xl backdrop-blur-md anim-fadeup">
           Uygulamadan çıkmak için bir kez daha geri kaydırın / geri tuşuna basın
         </div>
       )}
@@ -299,17 +321,21 @@ function MainContent() {
 
 export function App() {
   return (
-    <div className="mx-auto min-h-screen w-full max-w-md px-4 py-5 pad-safe sm:px-6 md:max-w-5xl md:px-10 md:py-8">
-      <ErrorBoundary>
-        <AuthProvider>
-          <AuthGate>
-            <DataProvider>
-              <MainContent />
-            </DataProvider>
-          </AuthGate>
-        </AuthProvider>
-      </ErrorBoundary>
-    </div>
+    <ThemeProvider>
+      <div className="mx-auto min-h-screen w-full max-w-md px-4 py-5 pad-safe sm:px-6 md:max-w-5xl md:px-10 md:py-8">
+        <ErrorBoundary>
+          <AuthProvider>
+            <AuthGate>
+              <DataProvider>
+                <ToastProvider>
+                  <MainContent />
+                </ToastProvider>
+              </DataProvider>
+            </AuthGate>
+          </AuthProvider>
+        </ErrorBoundary>
+      </div>
+    </ThemeProvider>
   );
 }
 

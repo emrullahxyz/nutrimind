@@ -1,6 +1,6 @@
 import { Flame } from "lucide-react";
 import { ringState, ringGradient } from "../lib/ring";
-import { useAnimatedValue } from "../lib/useAnimatedValue";
+import { useValueSpring } from "../hooks/useValueSpring";
 import { formatNumber } from "../lib/format";
 import { bigNumCls } from "./FormBits";
 
@@ -12,13 +12,13 @@ interface CalorieRingProps {
 
 export function CalorieRing({ consumed, target, size }: CalorieRingProps) {
   const state = ringState(consumed, target);
-  const animPct = useAnimatedValue(state.pct, { durationMs: 800, round: "none" });
+  const animPct = useValueSpring(state.pct, { round: "none" });
   // isMet: `headline` tam hedefte "kalan" (~0) değil, tamamlanan tüketimi
   // gösterir (ring.ts'teki headline semantiğiyle birebir) — aksi halde
   // "Hedefe ulaşıldı" yazarken sayı 0 görünürdü.
-  const animNum = useAnimatedValue(
+  const animNum = useValueSpring(
     state.isOver ? Math.abs(state.diff) : state.isMet ? consumed : state.hasTarget ? state.diff : consumed,
-    { durationMs: 800 },
+    {},
   );
 
   const gradient = ringGradient(state.isOver, animPct);
@@ -40,7 +40,7 @@ export function CalorieRing({ consumed, target, size }: CalorieRingProps) {
       }}
     >
       <div
-        className="flex h-full w-full flex-col items-center justify-center rounded-full bg-[#2A283A]"
+        className="flex h-full w-full flex-col items-center justify-center rounded-full bg-well glass-card"
         aria-hidden="true"
       >
         {size ? (

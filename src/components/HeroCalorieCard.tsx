@@ -3,6 +3,7 @@ import { CalorieRing } from "./CalorieRing";
 import { ringState } from "../lib/ring";
 import { formatNumber } from "../lib/format";
 import { useAnimatedNumber } from "../hooks/useAnimatedNumber";
+import { usePressSpring } from "../hooks/usePressSpring";
 import { DirectionalTextSwap, type SwapMode } from "./DirectionalTextSwap";
 
 interface HeroCalorieCardProps {
@@ -29,6 +30,8 @@ export function HeroCalorieCard({
   const animTarget = useAnimatedNumber(adjustedTarget, 700);
   const animRemaining = useAnimatedNumber(Math.max(0, adjustedTarget - consumed), 700);
   const animOver = useAnimatedNumber(Math.max(0, consumed - adjustedTarget), 700);
+
+  const press = usePressSpring({ pressScale: 0.98 });
 
   const mode: SwapMode = showRatio ? "EATEN" : "LEFT";
 
@@ -73,14 +76,14 @@ export function HeroCalorieCard({
         : "text-3xl sm:text-4xl font-black";
 
   const subtextNode = state.hasTarget ? (
-    <div className="mt-1.5 flex items-center flex-wrap gap-2 text-xs font-mono text-[#A5A2B8]">
+    <div className="mt-1.5 flex items-center flex-wrap gap-2 text-xs font-mono text-ink-secondary">
       {showRatio ? (
-        <span className="text-[#A5A2B8] hover:text-white font-medium transition-colors">Kalanı göster →</span>
+        <span className="text-ink-secondary hover:text-white font-medium transition-colors">Kalanı göster →</span>
       ) : (
         <>
           <span>{formatNumber(animConsumed)}</span>
-          <span className="text-[#A5A2B8]/40">/</span>
-          <span className="text-[#A5A2B8]/60">{formatNumber(animTarget)} kcal</span>
+          <span className="text-ink-secondary/40">/</span>
+          <span className="text-ink-secondary/60">{formatNumber(animTarget)} kcal</span>
         </>
       )}
 
@@ -95,8 +98,10 @@ export function HeroCalorieCard({
   return (
     <div
       onClick={onToggleRatio}
-      className="relative overflow-hidden rounded-[24px] bg-[#22202E] p-5 shadow-card backdrop-blur-md cursor-pointer select-none transition-all duration-200 hover:bg-[#282637] active:scale-[0.99] flex items-center justify-between gap-3 h-[180px] sm:h-[188px] group"
+      className="relative overflow-hidden rounded-[24px] bg-calCard p-5 shadow-card backdrop-blur-md cursor-pointer select-none transition-all duration-200 hover:bg-cal-hover active:scale-[0.99] flex items-center justify-between gap-3 h-[180px] sm:h-[188px] group glass-card anim-glass-rise rise-d-80 spring-press"
       title="Tıklayarak Tüketilen/Kalan görünümünü değiştir"
+      {...press.handlers}
+      style={press.style}
     >
       {/* Left Column: Title, Compact Number, Subtext, Exercise Button */}
       <div className="flex flex-col justify-center min-w-0 flex-1">
@@ -104,7 +109,7 @@ export function HeroCalorieCard({
           mode={mode}
           layout="label-first"
           label={
-            <div className="flex items-center gap-1.5 text-xs font-semibold text-[#A5A2B8] mb-1.5">
+            <div className="flex items-center gap-1.5 text-xs font-semibold text-ink-secondary mb-1.5">
               <Flame className="h-4 w-4 text-carb" />
               <span>{subtitleLabel}</span>
             </div>
@@ -114,7 +119,7 @@ export function HeroCalorieCard({
               {showRatio && state.hasTarget ? (
                 <>
                   <span className={consumedBigClass}>{formatNumber(animConsumed)}</span>
-                  <span className="text-[12px] sm:text-sm font-semibold text-[#A5A2B8] font-mono whitespace-nowrap">
+                  <span className="text-[12px] sm:text-sm font-semibold text-ink-secondary font-mono whitespace-nowrap">
                     <span style={{ marginRight: 3 }}>/</span>
                     {formatNumber(animTarget)} kcal
                   </span>
@@ -122,7 +127,7 @@ export function HeroCalorieCard({
               ) : (
                 <>
                   <span className={textSizeClass}>{displayBigVal}</span>
-                  <span className="text-[11px] font-semibold text-[#A5A2B8] font-mono whitespace-nowrap">kcal</span>
+                  <span className="text-[11px] font-semibold text-ink-secondary font-mono whitespace-nowrap">kcal</span>
                 </>
               )}
             </div>
@@ -138,7 +143,7 @@ export function HeroCalorieCard({
                 e.stopPropagation();
                 onOpenExercise();
               }}
-              className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-[#2A283A] hover:bg-[#343248] text-xs font-bold text-white transition active:scale-95"
+              className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-well hover:bg-well-hover text-xs font-bold text-white transition active:scale-95"
             >
               <Dumbbell className="w-3.5 h-3.5 text-carb" />
               <span>Egzersiz Ekle</span>

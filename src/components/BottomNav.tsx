@@ -43,7 +43,7 @@ function FabMenuItem({
       type="button"
       onClick={onClick}
       disabled={disabled}
-      className="flex flex-col items-center justify-center gap-2 rounded-2xl border border-white/15 bg-[#1e202a] p-3 text-center shadow-float backdrop-blur-xl transition hover:border-white/30 hover:bg-[#262836] active:scale-95 disabled:opacity-40 disabled:hover:border-white/15 disabled:hover:bg-[#1e202a]"
+      className="flex flex-col items-center justify-center gap-2 rounded-2xl border border-white/15 bg-nav-item p-3 text-center shadow-float backdrop-blur-xl transition hover:border-white/30 hover:bg-nav-item-hover active:scale-95 disabled:opacity-40 disabled:hover:border-white/15 disabled:hover:bg-nav-item"
     >
       <span className="flex h-10 w-10 items-center justify-center rounded-full bg-white text-black shadow-md">
         <Icon className="h-5 w-5" />
@@ -115,7 +115,7 @@ export function BottomNav({
 
       <nav
         ref={containerRef}
-        className="fixed bottom-0 left-0 right-0 z-40 border-t border-white/10 bg-[#1A1926]/95 backdrop-blur-xl"
+        className="fixed bottom-0 left-0 right-0 z-40 border-t border-white/10 bg-accent-ink/95 backdrop-blur-xl"
       >
         <div className="relative mx-auto flex max-w-md items-center justify-between px-3 py-2 sm:max-w-lg">
           {/* 2x2 FAB Popup Menu — her öğe `afterHistoryBackSettles` ile sarılı:
@@ -126,7 +126,7 @@ export function BottomNav({
               dizisiyle uygulamadan çıkışa yol açtığı doğrulandı. Bkz.
               `backStack.ts`'teki fonksiyon yorumu. */}
           {open && (
-            <div className="anim-zoom absolute bottom-20 right-3 mb-2 grid w-64 grid-cols-2 gap-2.5 rounded-3xl border border-white/15 bg-[#1F1E2C]/98 p-3 shadow-float backdrop-blur-2xl z-50">
+            <div className="anim-zoom fab-menu glass-island absolute bottom-20 right-3 mb-2 grid w-64 grid-cols-2 gap-2.5 rounded-3xl border border-white/15 bg-fab-panel/98 p-3 shadow-float backdrop-blur-2xl z-50">
               <FabMenuItem
                 icon={Footprints}
                 label="Egzersiz Kaydet"
@@ -177,7 +177,7 @@ export function BottomNav({
                     onTabChange(tab.id as TabType);
                   }}
                   className={`flex flex-col items-center justify-center py-1 px-2 transition-colors duration-200 ${
-                    isActive ? "text-white font-bold" : "text-[#A5A2B8] hover:text-white font-normal"
+                    isActive ? "text-white font-bold" : "text-ink-secondary hover:text-white font-normal"
                   }`}
                 >
                   <Icon className="h-5 w-5" />

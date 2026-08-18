@@ -191,3 +191,24 @@ diff'iyle yakalandı.
 Dolayısıyla gösterim katmanındaki herhangi bir yuvarlama/biçim dönüşümü kalıcı veri mutasyonu olur.
 Dönüşümü ölçekleme yoluna (m≠1) ayır; temel değer kayıpsız kalmalı. Bir form işlevini değiştirirken
 "gösterilen değer kaydediliyor mu, gösterim veriyi tırnaklıyor mu" diye aç-kaydet testi yaz.
+
+## L15 — `animation` kısayolunun içine `var()` koyma: pending-substitution cascade'i ezer
+
+**Olay (2026-08-14, Gece Camı motion pası):** FAB menüsünün stagger gecikmeleri (nth-child
+0/30/60/90ms) hep "0s" görünüyordu. Önce JSX boşluk metin düğümlerini suçladım (yanlış — DOM'da
+tam 4 buton vardı). Gerçek mekanizma: `animation: fabItemIn 0.38s var(--ease-glass-hover) backwards`
+gibi bir kısayolda `var()` varsa, kısayol "pending-substitution" değeri olur — parse zamanında
+açılamadığı için computed-value zamanında uygulanır ve **longhand'lerinin tüm non-important
+bildirimlerini, özgüllük/sıra/inline fark etmeksizin ezer**. `animation-delay: 30ms` (nth-child,
+özgüllük 0,3,0) bile inline `animationDelay`'i bile base kurala karşı kaybediyordu; yalnızca
+`!important` kazanıyordu. (Ayrı bir confound: preview ortamı `prefers-reduced-motion: reduce`'u
+force ediyor ve küresel blok `animation-delay: 0ms !important` yapıyor — "0s" aslında doğru a11y
+davranışıydı. Test cascade'i ancak @media bloğunu `sheet.deleteRule()` ile geçici kaldırarak
+görüldü.)
+
+**Kural:** `animation` KISAYOLUNA `var()` KOYMA — özellikle `animation-delay` veya
+`animation-duration`'ı var() ile vermek istiyorsan. Kısayol temiz kalır, easing'i
+`animation-timing-function: var(...)` longhand'ine taşı. Kısayol böylece normal cascade'e katılır
+(implicit delay 0s, alt özgüllüklü `.rise-d-*`/`:nth-child`/inline `animationDelay` kazanabilir);
+var() longhand'i yalnızca kendi longhand'ini etkiler (rakip bildirim yoksa zararsız). Bunu kısayola
+dokunan her giriş animasyonu kuralında uygula.

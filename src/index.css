@@ -10,6 +10,499 @@
   --ring-over: #e57373;
   --ring-over-deep: #38222b;
   --ring-track: #2a283a;
+
+  /* ---- Velvet tema token'ları (varsayılan — bugünkü görünümle birebir) ---- */
+  /* Tam renk değerleri — asla Tailwind alfa değiştiricisiyle kullanılmaz: */
+  --bg: #171622;
+  --ambient-glow: radial-gradient(ellipse at 50% 0%, rgba(40, 37, 56, 0.6) 0%, transparent 70%);
+  --line: rgba(255,255,255,0.06);
+  --cal-border: rgba(255,255,255,0.06);
+  --line-faint: rgb(255 255 255 / 0.024);
+
+  /* Yüzey token'ları — boşlukla ayrılmış RGB üçlüsü
+     (withAlpha kalıbı `rgb(var(--x) / …)` ile çözülür): */
+  --app: 23 22 34;
+  --cal-card: 34 32 46;
+  --elevated-2: 34 32 46;
+  --ink-primary: 255 255 255;
+  --ink-secondary: 165 162 184;
+  --ink-tertiary: 122 119 145;
+  --ink-faint: 86 84 107;
+  --protein: 184 137 150;
+  --protein-bright: 255 107 138;
+  --protein-ink: 42 29 34;
+  --carb: 171 153 111;
+  --carb-bright: 255 184 77;
+  --carb-ink: 41 34 18;
+  --fat: 125 156 191;
+  --fat-bright: 91 141 239;
+  --fat-ink: 22 32 45;
+  --fab: 255 255 255;
+  --streak-bg: 40 37 55;
+  --streak-text: 255 255 255;
+  --memory: 154 140 186;
+  --memory-deep: 124 79 255;
+  --memory-ink: 30 27 75;
+  --micro: 165 162 184;
+  --accent: 232 230 240;
+  --accent-ink: 26 25 38;
+  --warn: 245 166 35;
+  --danger: 229 115 115;
+  --under: 143 184 240;
+  --bar: 22 23 30;
+  --row: 20 21 32;
+  --panel-alt: 21 20 33;
+  --footer: 19 18 27;
+  --toast: 18 19 25;
+  --field: 25 24 37;
+  --popover: 25 26 34;
+  --nav-item: 30 32 42;
+  --nav-item-hover: 38 40 54;
+  --fab-panel: 31 30 44;
+  --macro-chip: 30 28 40;
+  --well: 42 40 58;
+  --well-hover: 52 50 72;
+  --cal-hover: 40 38 55;
+  --day-selected: 40 38 56;
+  --icon-well: 32 31 46;
+  --grad-top: 27 28 43;
+  --grad-mid: 20 21 34;
+  --grad-bot: 14 15 24;
+  --grad-hover: 34 36 54;
+  --goal-chip: 13 30 28;
+
+  /* Çalışma zamanı çizelge/SVG renkleri (nutrients.ts def.hex + grafikler): */
+  --nutr-kcal: #34d399;
+  --nutr-protein: #34d399;
+  --nutr-carbs: #fb923c;
+  --nutr-fat: #fbbf24;
+  --nutr-fiber: #a78bfa;
+  --nutr-micro: #94a3b8;
+
+  /* Haftalık bar gradyan durakları (WeekBars.tsx'ten birebir): */
+  --bar-teal-0: #5eead4;
+  --bar-teal-1: #2dd4bf;
+  --bar-teal-2: #0d9488;
+  --bar-teal-3: #042f2e;
+  --bar-rose-0: #fb7185;
+  --bar-rose-1: #e11d48;
+  --bar-rose-2: #9f1239;
+  --bar-rose-3: #4c0519;
+
+  /* SVG stroke/fill renkleri — RGB üçlüsü DEĞİL tam renk (MacroCardGrid SmallDonut):
+     `stroke="var(--x)"` üçlüyü çözemez, tam renk şart. */
+  --svg-well: #2a283a;
+  --svg-protein: #b88996;
+  --svg-carb: #ab996f;
+  --svg-fat: #7d9cbf;
+}
+
+/* ---- Glass tema (ikinci tema) — `data-theme="glass"` atandığında `:root`'u
+   ezer. Aynı özgüllük, daha geç kaynak sırası => attribute varken bu kazanır. ---- */
+[data-theme="glass"] {
+  color-scheme: dark;
+  --bg: #05050a;
+  --app: 14 14 22;
+  --ambient-glow: radial-gradient(ellipse at 50% 0%, rgba(124, 104, 232, 0.14) 0%, transparent 62%),
+    radial-gradient(ellipse at 85% 8%, rgba(77, 212, 230, 0.10) 0%, transparent 55%),
+    radial-gradient(ellipse at 12% 20%, rgba(139, 124, 232, 0.08) 0%, transparent 50%);
+
+  /* yarı saydam yüzeyler: beyaz RGB üçlüsü + alfa refakatçisi */
+  --cal-card: 255 255 255; --cal-card-a: 0.05;
+  --elevated-2: 255 255 255; --elevated-2-a: 0.06;
+  --row: 255 255 255; --row-a: 0.03;
+  --bar: 255 255 255; --bar-a: 0.04;
+  --panel-alt: 255 255 255; --panel-alt-a: 0.05;
+  --footer: 255 255 255; --footer-a: 0.06;
+  --toast: 255 255 255; --toast-a: 0.10;
+  --field: 255 255 255; --field-a: 0.05;
+  --popover: 255 255 255; --popover-a: 0.06;
+  --nav-item: 255 255 255; --nav-item-a: 0.04;
+  --nav-item-hover: 255 255 255; --nav-item-hover-a: 0.09;
+  --fab-panel: 255 255 255; --fab-panel-a: 0.08;
+  --macro-chip: 255 255 255; --macro-chip-a: 0.06;
+  --well: 255 255 255; --well-a: 0.07;
+  --well-hover: 255 255 255; --well-hover-a: 0.12;
+  --cal-hover: 255 255 255; --cal-hover-a: 0.09;
+  --day-selected: 255 255 255; --day-selected-a: 0.14;
+  --icon-well: 255 255 255; --icon-well-a: 0.05;
+  --grad-top: 255 255 255; --grad-top-a: 0.04;
+  --grad-mid: 255 255 255; --grad-mid-a: 0.03;
+  --grad-bot: 255 255 255; --grad-bot-a: 0.05;
+  --grad-hover: 255 255 255; --grad-hover-a: 0.08;
+  --goal-chip: 127 232 198; --goal-chip-a: 0.12;
+  --streak-bg: 255 255 255; --streak-bg-a: 0.08;
+
+  /* ince çizgiler */
+  --line: rgba(255, 255, 255, 0.07);
+  --cal-border: rgba(255, 255, 255, 0.08);
+  --line-faint: rgb(255 255 255 / 0.05);
+
+  /* ink */
+  --ink-primary: 255 255 255;
+  --ink-secondary: 185 181 205;
+  --ink-tertiary: 142 138 166;
+  --ink-faint: 107 104 127;
+  --micro: 185 181 205;
+
+  /* makrolar — parlak ama uyumlu */
+  --protein: 242 115 159;
+  --carb: 233 184 100;
+  --fat: 127 178 240;
+  --memory: 176 155 245;
+  --memory-deep: 124 79 255;
+  --memory-ink: 255 255 255;
+  --accent: 240 238 249;
+  --accent-ink: 26 25 38;
+  --fab: 255 255 255;
+  --warn: 255 184 77;
+  --danger: 255 122 122;
+  --under: 155 196 255;
+  --protein-bright: 255 107 138;
+  --carb-bright: 255 184 77;
+  --fat-bright: 91 141 239;
+  --protein-ink: 42 29 34;
+  --carb-ink: 41 34 18;
+  --fat-ink: 22 32 45;
+
+  /* halkalar */
+  --ring-deep: #8b7ce8;
+  --ring-mid: #ffc861;
+  --ring-bright: #ff7a7a;
+  --ring-over: #ff7a7a;
+  --ring-over-deep: #b94a66;
+  --ring-track: rgba(255, 255, 255, 0.07);
+
+  /* çizelge renkleri */
+  --nutr-kcal: #6ee7b7;
+  --nutr-protein: #6ee7b7;
+  --nutr-carbs: #ffd79a;
+  --nutr-fat: #9cc5ff;
+  --nutr-fiber: #c4b5fd;
+  --nutr-micro: #b9b5cd;
+
+  /* haftalık bar gradyanları — velvet'in daha açık/cam tonları */
+  --bar-teal-0: #8ef7e6;
+  --bar-teal-1: #4fd9cf;
+  --bar-teal-2: #2bb8a8;
+  --bar-teal-3: #0b4d46;
+  --bar-rose-0: #ff9db0;
+  --bar-rose-1: #fb7185;
+  --bar-rose-2: #d94a6d;
+  --bar-rose-3: #6b1f3a;
+
+  /* SVG stroke/fill — glass tonları */
+  --svg-well: rgba(255, 255, 255, 0.14);
+  --svg-protein: #f2739f;
+  --svg-carb: #e9b864;
+  --svg-fat: #7fb2f0;
+
+  /* yumuşatma */
+  --ease-glass: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-glass-hover: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-glass-io: cubic-bezier(0.65, 0, 0.35, 1);
+}
+
+@keyframes glassRise {
+  from { opacity: 0; transform: translateY(18px); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes orbDrift {
+  from { transform: translate3d(0, 0, 0) scale(1); }
+  to { transform: translate3d(40px, -30px, 0) scale(1.12); }
+}
+
+/* Glass yüzey reçetesi — glass'a kapsamlı olduğu için velvet'te ETKİSİZ
+   (byte-identity güvenli). */
+[data-theme="glass"] .glass-card {
+  /* materyal derinliği: üst iç ışık (ışık yakalar) + alt iç gölge (kalınlık) +
+     saç teli + yakın temas gölgesi + uzak dağınık gölge. */
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.10),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.05),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.30),
+    0 8px 32px -16px rgba(0, 0, 0, 0.40),
+    0 24px 60px -40px rgba(0, 0, 0, 0.55);
+  /* Apple: akan içerikte blur değil, translucency — scroll'lu kartların
+     `backdrop-blur-*` sınıflarını glass'ta kapatır (unlayered kazanır). */
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+[data-theme="glass"] .glass-chip {
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.10),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.04);
+}
+[data-theme="glass"] .glass-header {
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.12), 0 20px 50px -22px rgba(0, 0, 0, 0.7);
+}
+
+/* ---- Modal ailesi: premium glass yüzeyler (hepsi glass-kapsamlı, velvet etkisiz) ---- */
+
+/* Modal başlığı — negatif tracking (Apple §15: büyük ekran metni sıkılaşır). */
+[data-theme="glass"] .modal-title {
+  letter-spacing: -0.02em;
+}
+
+/* İnce ikon dili — soft-skill "ultra-light lines" imzası. lucide svg kökündeki
+   stroke-width=2 presentation attribute'unu CSS ezer, path'ler inherit eder.
+   Glass'ta uygulama geneli (bilinçli). */
+[data-theme="glass"] .lucide {
+  stroke-width: 1.5;
+}
+
+/* Legacy tam-ekran overlay'ler: sade düzlemin üstüne aurora derinliği.
+   ::before pozisyonlu olduğu için akan içeriğin üzerinde çizer; pointer-events
+   yok, yalnızca inceltilmiş tepe ışığı (mor + camgöbeği orb renkleri). */
+[data-theme="glass"] .glass-screen::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(130% 45% at 50% -8%, rgba(139, 124, 232, 0.14), transparent 60%),
+    radial-gradient(90% 30% at 90% -4%, rgba(77, 212, 230, 0.08), transparent 55%);
+}
+
+/* Egzersiz varyantı — enerjik turuncu: sıcak saç teli + üstte ember parlaması.
+   ::before yuvarlatılmış köşeleri izler; içerik parlamanın altından akar. */
+[data-theme="glass"] .glass-exercise {
+  position: relative;
+  border: 1px solid rgba(255, 180, 90, 0.10);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.10),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.05),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.30),
+    0 8px 32px -16px rgba(0, 0, 0, 0.40),
+    0 24px 60px -40px rgba(0, 0, 0, 0.55);
+}
+[data-theme="glass"] .glass-exercise::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  background: radial-gradient(120% 70% at 50% 0%, rgba(255, 138, 61, 0.18), transparent 62%);
+}
+
+/* FAB 2×2 menüsü — island materyali. `.glass-card`'ın backdrop-filter:none'ı
+   istemiyoruz (menünün blur'u kalır), o yüzden ayrı sınıf. */
+[data-theme="glass"] .glass-island {
+  border-color: rgba(255, 255, 255, 0.12);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.10),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.05),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.30),
+    0 8px 32px -16px rgba(0, 0, 0, 0.40),
+    0 24px 60px -40px rgba(0, 0, 0, 0.55);
+}
+
+/* Modal footer'ı — sert kenar yerine orta-yanan degrade saç teli
+   (Apple §12: "scroll edge effects, not hard dividers"). */
+[data-theme="glass"] .glass-footer {
+  position: relative;
+}
+[data-theme="glass"] .glass-footer::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 8%;
+  right: 8%;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.14), transparent);
+}
+
+/* Ayarlar alt-sayfa geçişi — sakin push slide. */
+[data-theme="glass"] .glass-push {
+  animation: glassPush 0.32s both;
+  animation-timing-function: var(--ease-glass);
+}
+@keyframes glassPush {
+  from { opacity: 0; transform: translateX(18px); }
+}
+
+/* giriş animasyonu — yalnızca transform/opacity; rise-d-* ile kademeli.
+   Easing bir longhand'e taşındı: animasyon KISAYOLUNDA var() olursa tüm grup
+   pending-substitution olur, computed-value zamanında uygulanır ve cascade'de
+   herkesi ezer (inline animationDelay, .rise-d-*, :nth-child — hepsi). Kısayol
+   temiz kalınca implicit delay 0s normal cascade'e katılır; alt özgüllüklü
+   kural/longhand kazanabilir. Easing longhand'i var() olsa bile delay'ı etkilemez. */
+[data-theme="glass"] .anim-glass-rise {
+  animation: glassRise 0.7s both;
+  animation-timing-function: var(--ease-glass);
+}
+[data-theme="glass"] .rise-d-80 { animation-delay: 80ms; }
+[data-theme="glass"] .rise-d-140 { animation-delay: 140ms; }
+[data-theme="glass"] .rise-d-190 { animation-delay: 190ms; }
+[data-theme="glass"] .rise-d-240 { animation-delay: 240ms; }
+
+/* küreler (yalnızca glass'ta render edilir; yalnızca transform sürüklenmesi) */
+.glass-orb {
+  position: absolute;
+  border-radius: 9999px;
+}
+.glass-orb-1 {
+  width: 460px; height: 460px; top: -180px; left: -160px;
+  background: radial-gradient(circle at 40% 40%, rgba(139, 124, 232, 0.55), rgba(139, 124, 232, 0) 70%);
+  animation: orbDrift 34s var(--ease-glass, cubic-bezier(0.16, 1, 0.3, 1)) infinite alternate;
+}
+.glass-orb-2 {
+  width: 380px; height: 380px; top: 60px; right: -180px;
+  background: radial-gradient(circle at 60% 40%, rgba(77, 212, 230, 0.45), rgba(77, 212, 230, 0) 70%);
+  animation: orbDrift 41s var(--ease-glass, cubic-bezier(0.16, 1, 0.3, 1)) infinite alternate-reverse;
+}
+.glass-orb-3 {
+  width: 420px; height: 420px; top: 520px; left: 50%; margin-left: -210px;
+  background: radial-gradient(circle at 50% 40%, rgba(91, 141, 239, 0.32), rgba(91, 141, 239, 0) 70%);
+  animation: orbDrift 47s var(--ease-glass, cubic-bezier(0.16, 1, 0.3, 1)) infinite alternate;
+}
+
+/* ---- Apple Design: basınç / materyal / giriş (yalnızca glass; velvet etkisiz) ---- */
+
+/* Basınç: tüm butonlarda pointer-DOWN'da anında küçülme. Özgüllük (0,3,1) >
+   Tailwind `active:scale-*` (0,2,0) => glass'ta tutarlı 0.97; bırakınca
+   elementin kendi transition'ı geri döndürür. */
+[data-theme="glass"] button:not(:disabled):active {
+  transform: scale(0.97);
+  transition: transform 120ms var(--ease-glass);
+}
+
+/* spring-press: inline spring transform'una CSS transition karışmasın.
+   Renk/gölge geçişleri kalır (hover:bg-cal-hover vb.), transform hariç. */
+[data-theme="glass"] .spring-press {
+  transition-property: background-color, border-color, box-shadow, color, opacity;
+  transition-duration: 200ms;
+  transition-timing-function: var(--ease-glass);
+}
+
+/* Ölü `.anim-fadeup` sınıfı glass'ta diriltilir (mevcut @keyframes fadeUp;
+   inline animationDelay stagger'ıyla çalışır). Reduced-motion + print
+   blokları zaten !important ile kapatıyor. */
+[data-theme="glass"] .anim-fadeup {
+  animation: fadeUp 0.4s both;
+  animation-timing-function: var(--ease-glass);
+}
+
+/* Paylaşılan Modal'ı KULLANMAYAN overlay'ler (MealForm, AliasForm, NutritionSheet,
+   ExerciseModal, RecipeBuilder, OnboardingModal, SupplementCard) `animate-fadeIn`
+   sınıfını taşıyordu ama karşılığı hiç tanımlanmamıştı — aynı reçeteyle diriltilir. */
+[data-theme="glass"] .animate-fadeIn {
+  animation: fadeUp 0.4s both;
+  animation-timing-function: var(--ease-glass);
+}
+
+/* Modal paneli — materyal girişi: fade'e ek hafif scale'li "materialize"
+   (Apple §12: glass/blur yüzeyi salt opacity değil, malzeme gibi gelir).
+   Eşit özgüllükte `.anim-fadeup`'tan SONRA tanımlanır => ikisi aynı elementte
+   varsa (Modal paneli) bu kazanır; kartlardaki yalnız `anim-fadeup` etkilenmez. */
+[data-theme="glass"] .glass-sheet-in {
+  animation: glassSheetIn 0.42s both;
+  animation-timing-function: var(--ease-glass);
+}
+@keyframes glassSheetIn {
+  from { opacity: 0; transform: scale(0.985) translateY(10px); }
+}
+
+/* Giriş animasyonunun `both` fill'i inline basınç spring'inin transform'unu
+   eziyordu (CSS animasyonları normal stillerin üstünde). spring-press + giriş
+   animasyonu kombinasyonunda animasyon BİTİNCE fill kalkar ki spring'in
+   transform'u görünsün; `backwards` yalnızca gecikme sırasında `from` karesini
+   korur, yani girişin görünümü değişmez. Özgüllük (0,3,0) > (0,2,0). */
+[data-theme="glass"] .spring-press.anim-glass-rise,
+[data-theme="glass"] .spring-press.anim-fadeup {
+  animation-fill-mode: backwards;
+}
+
+/* FAB 2x2 menüsü: tetikleyiciden (bottom-right) büyür + kademeli giriş. */
+[data-theme="glass"] .fab-menu {
+  transform-origin: bottom right;
+}
+[data-theme="glass"] .fab-menu > * {
+  animation: fabItemIn 0.38s backwards;
+  animation-timing-function: var(--ease-glass-hover);
+}
+[data-theme="glass"] .fab-menu > *:nth-child(2) { animation-delay: 30ms; }
+[data-theme="glass"] .fab-menu > *:nth-child(3) { animation-delay: 60ms; }
+[data-theme="glass"] .fab-menu > *:nth-child(4) { animation-delay: 90ms; }
+@keyframes fabItemIn {
+  from { opacity: 0; transform: translateY(6px) scale(0.95); }
+  to { opacity: 1; transform: none; }
+}
+
+/* MacroBar: genişliği glass'ta spring yönetir — paylaşılan CSS transition'ı kapat. */
+[data-theme="glass"] .spring-bar {
+  transition: none !important;
+}
+
+/* Modal perdesi: kabukla birlikte soluklaşır (opacity yalnız — Apple). */
+[data-theme="glass"] .anim-scrim {
+  animation: scrimFade 0.25s both;
+  animation-timing-function: var(--ease-glass);
+}
+@keyframes scrimFade {
+  from { opacity: 0; }
+}
+
+/* Modal çıkışı: kapanışta giriş animasyonunu DEĞİŞTİRİR (animation swap — fill
+   tuzağından kaçınır; yalnız `to` keyframe akım değerden başlar, atlama yok).
+   Velvet'te bu sınıflar tanımsız kalır (byte-identity); çıkış yalnızca glass. */
+[data-theme="glass"] .modal-out {
+  animation: modalOut 0.18s var(--ease-glass) both;
+}
+[data-theme="glass"] .scrim-out {
+  animation: scrimFadeOut 0.18s var(--ease-glass) both;
+}
+@keyframes modalOut {
+  to { opacity: 0; transform: scale(0.98) translateY(8px); }
+}
+@keyframes scrimFadeOut {
+  to { opacity: 0; }
+}
+
+/* Legacy tam-ekran çıkışı — scale YOK (kenar açılmasın), yalnızca yumuşak
+   aşağı kayma + solma. Velvet'te tanımsız (byte-identity); `.animate-fadeIn`
+   girişini animation swap ile değiştirir (yalnız `to` keyframe => atlama yok). */
+[data-theme="glass"] .glass-screen-out {
+  animation: glassScreenOut 0.18s var(--ease-glass) both;
+}
+@keyframes glassScreenOut {
+  to { opacity: 0; transform: translateY(12px); }
+}
+
+/* Apple a11y: azaltılmış saydamlık → yüzeyler "beyaz üçlü + düşük alfa" yerine
+   koyu solid (velvet'in doğrulanmış yüzey üçlüleri). Beyaz üçlünün alfasını
+   yükseltmek kartları bembeyaz yapardı; koyu üçlü + yüksek alfa = mat, solid. */
+@media (prefers-reduced-transparency: reduce) {
+  [data-theme="glass"] {
+    --cal-card: 34 32 46;       --cal-card-a: 0.97;
+    --elevated-2: 34 32 46;     --elevated-2-a: 0.98;
+    --row: 20 21 32;            --row-a: 0.96;
+    --bar: 22 23 30;            --bar-a: 0.97;
+    --panel-alt: 21 20 33;      --panel-alt-a: 0.96;
+    --footer: 19 18 27;         --footer-a: 0.98;
+    --toast: 18 19 25;          --toast-a: 0.99;
+    --field: 25 24 37;          --field-a: 0.95;
+    --popover: 25 26 34;        --popover-a: 0.98;
+    --nav-item: 30 32 42;       --nav-item-a: 0.96;
+    --nav-item-hover: 38 40 54; --nav-item-hover-a: 0.95;
+    --fab-panel: 31 30 44;      --fab-panel-a: 0.98;
+    --macro-chip: 30 28 40;     --macro-chip-a: 0.96;
+    --well: 42 40 58;           --well-a: 0.97;
+    --well-hover: 52 50 72;     --well-hover-a: 0.95;
+    --cal-hover: 40 38 55;      --cal-hover-a: 0.95;
+    --day-selected: 40 38 56;   --day-selected-a: 0.95;
+    --icon-well: 32 31 46;      --icon-well-a: 0.95;
+    --grad-top: 27 28 43;       --grad-top-a: 0.97;
+    --grad-mid: 20 21 34;       --grad-mid-a: 0.97;
+    --grad-bot: 14 15 24;       --grad-bot-a: 0.97;
+    --grad-hover: 34 36 54;     --grad-hover-a: 0.95;
+    --streak-bg: 40 37 55;      --streak-bg-a: 0.97;
+  }
+  [data-theme="glass"] .glass-orb-1,
+  [data-theme="glass"] .glass-orb-2,
+  [data-theme="glass"] .glass-orb-3 {
+    opacity: 0.35;
+  }
 }
 
 html {
@@ -28,7 +521,7 @@ body,
 
 body {
   margin: 0;
-  background: #171622;
+  background: var(--bg);
   color: #ffffff;
   font-family: "Manrope", system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
@@ -45,7 +538,7 @@ body {
 }
 
 .ambient-glow {
-  background: radial-gradient(ellipse at 50% 0%, rgba(40, 37, 56, 0.6) 0%, transparent 70%);
+  background: var(--ambient-glow);
 }
 
 /* thin dark scrollbars to match the premium dark theme */
@@ -299,10 +792,14 @@ body {
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
   }
+  .animate-fadeIn,
   .anim-fadeup,
   .anim-grow,
   .anim-grow-spring,
-  .anim-zoom {
+  .anim-zoom,
+  .glass-sheet-in,
+  .glass-push,
+  .glass-screen-out {
     animation: none !important;
     opacity: 1 !important;
     transform: none !important;
@@ -344,10 +841,14 @@ body {
   }
 
   /* Animasyonları dondur ve tam görünür yap */
+  .animate-fadeIn,
   .anim-fadeup,
   .anim-grow,
   .anim-grow-spring,
-  .anim-zoom {
+  .anim-zoom,
+  .glass-sheet-in,
+  .glass-push,
+  .glass-screen-out {
     animation: none !important;
     opacity: 1 !important;
     transform: none !important;

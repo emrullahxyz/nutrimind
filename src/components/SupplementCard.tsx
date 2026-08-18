@@ -4,12 +4,15 @@ import { useData } from "../lib/data";
 import { parseSupplementsConfig } from "../lib/supplements";
 import { PREF } from "../lib/prefs";
 import { usePersistedBool } from "../lib/usePersistedBool";
+import { usePressSpring } from "../hooks/usePressSpring";
 
 export function SupplementCard({ date }: { date: string }) {
   const { config, updateConfig } = useData();
   const suppConfig = parseSupplementsConfig(config);
   const [busy, setBusy] = useState(false);
   const [open, setOpen] = usePersistedBool(PREF.supplementsOpen, false);
+
+  const press = usePressSpring({ pressScale: 0.97 });
 
   if (suppConfig.items.length === 0) {
     return null;
@@ -42,14 +45,16 @@ export function SupplementCard({ date }: { date: string }) {
   }
 
   return (
-    <div className="rounded-[24px] bg-[#22202E] p-4 sm:p-5 flex flex-col gap-3 shadow-card backdrop-blur-sm transition-all">
+    <div className="rounded-[24px] bg-calCard glass-card p-4 sm:p-5 flex flex-col gap-3 shadow-card backdrop-blur-sm transition-all">
       {/* Card Header (Collapsible Trigger) */}
       <div
         onClick={() => setOpen(!open)}
-        className="flex items-center justify-between cursor-pointer select-none"
+        className="flex items-center justify-between cursor-pointer select-none spring-press"
+        {...press.handlers}
+        style={press.style}
       >
         <div className="flex items-center gap-3 min-w-0">
-          <div className="w-9 h-9 rounded-full bg-[#2A283A] text-memory flex items-center justify-center shrink-0">
+          <div className="w-9 h-9 rounded-full bg-well text-memory flex items-center justify-center shrink-0">
             <Pill className="w-4.5 h-4.5" />
           </div>
           <div className="min-w-0">
@@ -58,16 +63,16 @@ export function SupplementCard({ date }: { date: string }) {
               <span className={`px-2.5 py-0.5 rounded-full text-[11px] font-bold font-mono transition-all ${
                 isAllTaken
                   ? "bg-memory/20 text-memory border border-memory/40"
-                  : "bg-white/5 text-[#A5A2B8]"
+                  : "bg-white/5 text-ink-secondary"
               }`}>
                 {isAllTaken ? "✨ Tamamlandı" : `${takenCount}/${totalCount} alındı`}
               </span>
             </div>
-            <p className="text-[11px] text-[#A5A2B8] truncate">Günlük vitamin & gıda takviyeleri</p>
+            <p className="text-[11px] text-ink-secondary truncate">Günlük vitamin & gıda takviyeleri</p>
           </div>
         </div>
 
-        <div className="w-8 h-8 rounded-full bg-[#2A283A] hover:bg-[#343248] flex items-center justify-center text-[#A5A2B8] hover:text-white transition shrink-0 ml-2">
+        <div className="w-8 h-8 rounded-full bg-well hover:bg-well-hover flex items-center justify-center text-ink-secondary hover:text-white transition shrink-0 ml-2">
           {open ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
         </div>
       </div>

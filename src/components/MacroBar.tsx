@@ -1,6 +1,8 @@
 import { formatNumber } from "../lib/format";
 import type { NutrientDef } from "../lib/nutrients";
 import { useAnimatedValue, useAnimatedPct } from "../lib/useAnimatedValue";
+import { useValueSpring } from "../hooks/useValueSpring";
+import { useTheme } from "../lib/theme";
 
 interface MacroBarProps {
   /** Besin kaydındaki tanım — etiket, birim, renk sınıfları ve `direction`. */
@@ -88,6 +90,9 @@ export function MacroBar({ def, value, target }: MacroBarProps) {
   const animatedValue = useAnimatedValue(value);
   const { hasTarget, isOver, isMet, tone } = state;
   const c = def.classes;
+  const isGlass = useTheme().theme === "glass";
+  const springPct = useValueSpring(state.pct, { tweenDurationMs: 0, round: "none" });
+  const widthPct = isGlass ? springPct : pct;
 
   // Limiti girilmemiş bir mikro besinde bar anlamsız: %0 boş bar "hiç yemedin"
   // gibi, dolu kırmızı bar "limiti aştın" gibi okunurdu. Sayı tek başına yazılır.
@@ -135,14 +140,14 @@ export function MacroBar({ def, value, target }: MacroBarProps) {
       </div>
       <div className={`h-2 rounded-full ${c.track} overflow-hidden`}>
         <div
-          className={`h-full rounded-full transition-all duration-700 ease-out ${
+          className={`h-full rounded-full transition-all duration-700 ease-out spring-bar ${
             tone === "danger"
               ? "bg-danger shadow-[0_0_8px_rgba(255,128,128,0.5)]"
               : tone === "warn"
                 ? "bg-warn"
                 : c.bg
           }`}
-          style={{ width: `${pct}%` }}
+          style={{ width: `${widthPct}%` }}
         />
       </div>
     </div>

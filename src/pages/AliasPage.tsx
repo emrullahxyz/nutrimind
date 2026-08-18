@@ -11,6 +11,7 @@ import { filterAliases } from "../lib/aliasFilter";
 import { useData } from "../lib/data";
 import { parseTemplatesConfig } from "../lib/templates";
 import type { Alias } from "../types";
+import { usePressSpring } from "../hooks/usePressSpring";
 
 export function AliasPage({
   resetKey = 0,
@@ -38,6 +39,8 @@ export function AliasPage({
 
   const [err, setErr] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+
+  const press = usePressSpring({ pressScale: 0.98 });
 
   const filteredAliases = filterAliases(aliases, searchQuery);
   const templates = parseTemplatesConfig(config);
@@ -137,7 +140,7 @@ export function AliasPage({
 
       {/* Aliases Grid */}
       {aliases.length === 0 ? (
-        <div className="rounded-[24px] border border-white/10 bg-white/[0.03] p-8 text-center flex flex-col items-center gap-3 w-full">
+        <div className="anim-fadeup rounded-[24px] border border-white/10 bg-white/[0.03] p-8 text-center flex flex-col items-center gap-3 w-full">
           <BookOpen className="w-8 h-8 text-white/30" />
           <p className="text-sm font-semibold text-white/60">Henüz hafızada besin yok.</p>
           <p className="text-xs text-white/40">"+ Tarif Oluştur" veya "+ Yeni Besin" butonları ile ekleyebilirsin.</p>
@@ -157,8 +160,9 @@ export function AliasPage({
                   if (a.recipe) setEditingRecipe(a);
                   else setEditingAlias(a);
                 }}
-                className="anim-fadeup rounded-[24px] bg-[#22202E] p-3.5 sm:p-4 flex flex-col justify-between gap-3 transition-all hover:bg-[#282637] active:scale-[0.99] cursor-pointer shadow-card group w-full min-w-0 overflow-hidden"
-                style={{ animationDelay: `${i * 25}ms` }}
+                className="anim-fadeup rounded-[24px] bg-calCard p-3.5 sm:p-4 flex flex-col justify-between gap-3 transition-all hover:bg-cal-hover active:scale-[0.99] cursor-pointer shadow-card group w-full min-w-0 overflow-hidden spring-press"
+                style={{ animationDelay: `${i * 25}ms`, ...press.style }}
+                {...press.handlers}
               >
                 <div className="space-y-2 min-w-0">
                   {/* Top Row: Name & Calorie Pill */}

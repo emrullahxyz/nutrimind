@@ -94,6 +94,7 @@ function parseUser(raw: unknown): AuthUser | null {
 const parseCaps = (b: Record<string, unknown>): AuthCapabilities => ({
   signupAllowed: b.signupAllowed === true,
   googleEnabled: b.googleEnabled === true,
+  isAdmin: b.isAdmin === true,
 });
 
 export interface MeResult {
@@ -111,7 +112,7 @@ export interface MeResult {
 export async function fetchMe(): Promise<MeResult> {
   const r = await call("/api/auth/me");
   if (r.status === 200 && r.body.authDisabled === true) {
-    return { authDisabled: true, user: null, capabilities: { signupAllowed: false, googleEnabled: false } };
+    return { authDisabled: true, user: null, capabilities: { signupAllowed: false, googleEnabled: false, isAdmin: false } };
   }
   if (r.status === 200) {
     return { authDisabled: false, user: parseUser(r.body.user), capabilities: parseCaps(r.body) };
@@ -171,6 +172,8 @@ export function googleErrorMessage(code: string): string {
       return "Google ile doğrulama başarısız oldu. Biraz sonra tekrar dene.";
     case "yeni_kayit_kapali":
       return "Bu Google hesabına bağlı bir kullanıcı yok ve yeni kayıtlar kapalı.";
+    case "kayit_izinsiz":
+      return "Bu e-posta kayıt için izinli değil.";
     case "hesap_baglanamadi":
       // En sık sebebi: Google e-postası doğrulanmamış ya da e-posta başka bir
       // Google hesabına bağlı. İkisini de ayırmıyoruz — ayırmak bilgi sızdırır.
@@ -185,6 +188,27 @@ export async function changePassword(currentPassword: string, newPassword: strin
     method: "POST",
     body: JSON.stringify({ currentPassword, newPassword }),
   });
+  if (r.status !== 200) throwFrom(r);
+}
+
+// --- "İzinli E-postalar" (yalnızca sahibin çağırabildiği uçlar) -----------------
+
+export async function fetchAllowlist(): Promise<string[]> {
+  const r = await call("/api/auth/admin/allowlist");
+  if (r.status !== 200) throwFrom(r);
+  return Array.isArray(r.body.emails) ? r.body.emails.filter((e): e is string => typeof e === "string") : [];
+}
+
+/** E-postayı listeye ekler; sunucunun NORMALİZE ettiği hâlini döner. */
+export async function addAllowlistEmail(email: string): Promise<string> {
+  const r = await call("/api/auth/admin/allowlist", { method: "POST", body: JSON.stringify({ email }) });
+  if (r.status !== 201 && r.status !== 200) throwFrom(r);
+  if (typeof r.body.email !== "string") throw new AuthError(502, "Sunucu beklenmeyen bir yanıt döndürdü.");
+  return r.body.email;
+}
+
+export async function removeAllowlistEmail(email: string): Promise<void> {
+  const r = await call("/api/auth/admin/allowlist", { method: "DELETE", body: JSON.stringify({ email }) });
   if (r.status !== 200) throwFrom(r);
 }
 
