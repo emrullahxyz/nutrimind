@@ -1,6 +1,7 @@
 import { formatNumber } from "../lib/format";
 import { MACROS } from "../lib/nutrients";
 import type { Nutrition } from "../types";
+import { useValueSpring } from "../hooks/useValueSpring";
 
 // Donut yalnızca kaloriye çevrilebilen makroları gösterir; lifin `kcalPerG`'si
 // olmadığı için kayıttan kendiliğinden düşer.
@@ -28,10 +29,11 @@ export function MacroDonut({ nutrition, size = 200 }: { nutrition: Nutrition; si
           viewBox={`0 0 ${size} ${size}`}
           style={{ transform: "rotate(-90deg)", filter: "drop-shadow(0 10px 22px rgba(0,0,0,0.55))" }}
         >
-          <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="rgba(255,255,255,0.06)" strokeWidth={stroke} />
+          <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="var(--line)" strokeWidth={stroke} />
           {segs.map((s, i) => {
             const frac = s.kcal / total;
-            const len = frac * circ;
+            const springFrac = useValueSpring(frac, { tweenDurationMs: 0, round: "none" });
+            const len = springFrac * circ;
             const el = (
               <circle
                 key={s.def.key}

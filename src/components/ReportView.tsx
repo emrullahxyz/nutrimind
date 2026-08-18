@@ -234,7 +234,7 @@ export function ReportView({ data }: { data: AppData }) {
                 const goal = effectiveGoal(data.goals, date);
 
                 return (
-                  <tr key={date} className="border-b border-line/40 hover:bg-white/[0.02] print-border-light">
+                  <tr key={date} className="border-b border-line-faint hover:bg-white/[0.02] print-border-light">
                     <td className="py-2 pr-2 font-bold print-text-dark">
                       {formatShortDate(date)} <span className="text-[10px] font-normal text-ink-tertiary">({weekdayShort(date)})</span>
                     </td>

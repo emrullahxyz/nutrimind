@@ -333,3 +333,116 @@ sekmesinde öğüne tıklamak ortada açıyor (regresyon yok); FAB menüsü ve h
 tekrar tıkla → kapanır; kartın isim-dışı alanına tıkla → düzenlemeye girer; kısa isim 1 satır
 (yükseklik bozulmadı). Temizlik: server'lar durduruldu, scratch DB silindi, `server/data.db`
 dokunulmadı.
+
+## Gece Camı (Ethereal Glass) — İkinci Tema (2026-08-14)
+
+Kullanıcı `/taste-skill:soft-skill` ile "glass" yönünü seçti; kapsam: mevcut velvet'in YANINA
+ikinci, seçilebilir bir tema. Seçici: **Ayarlar → Uygulama Tercihleri** ("Görünüm" kartları:
+Koyu İnci / Gece Camı). Değişmez ilke: **byte-identity** — velvet birebir aynı görünür.
+
+- **Altyapı (Görev 1-3):** `tailwind.config.js` `withAlpha()` ile tüm renk token'ları
+  `rgb(var(--x) / calc(var(--x-a,1) * <alpha>))` desenine taşındı; `src/index.css` `:root`
+  velvet token bloğu + `[data-theme="glass"]` bloğu (cam yüzeyler, orblar, `glassRise`/
+  `orbDrift`, `.glass-card`/`.glass-chip`/`.glass-header`, `--svg-*` tam-renk SVG var'ları).
+  `src/lib/theme.ts` + `prefs.ts` + `App.tsx` (ThemeProvider en dışta) + `index.html` FOUC
+  scripti (glass kullanıcısına velvet flaşı yok).
+- **Süpürme (Görev 4, agy delegasyonu):** 4 paralel agy + tamamlayıcı agy; 23 dosyada ham-hex →
+  token dönüşümü, her agy `pnpm typecheck` ile doğruladı. Tamamlayıcı agy bucket listemde
+  olmayan `BottomNav.tsx`'i yakaladı (5 site). Benim düzeltmem: `MacroCardGrid`'de `${delayClass}`
+  template literal olmadan literal string kalmıştı (stagger çalışmazdı) — backtick'e çevrildi.
+- **Ayarlar (Görev 5):** statik "Koyu Tema — Varsayılan" satırı → iki kartlı seçici
+  (`aria-pressed`, aktif `accent/10` + `border-accent/40`, `--svg-*` makro swatch'ları),
+  tıklayınca `setTheme` → anında `data-theme` + localStorage + `theme-color` meta.
+- **Doğrulama (Görev 6):** typecheck 0 · 593/593 test · build ✓. Üretim CSS'inde `calc()` alfa
+  sözdizimi doğru, her iki tema token'ları mevcut. Tarayıcı: glass'a geçiş, üst bar cam hapi
+  (blur 24px + inset ışık), orblar, ambient-glow, seçici etkileşimi; velvet'te body
+  `rgb(23,22,34)` (birebir).
+
+**Notlar:** `server/index.js` dokunulmadı; yeni bağımlılık yok. Piksel düzeyi screenshot
+karşılaştırması yapılamadı (Browser pane görünür değildi) — byte-identity diff denetimi +
+computed-style kontrolleriyle güvence altında. Glass localStorage'da `nutrimind.ui.theme`
+anahtarında kalıcı; yoksa varsayılan velvet.
+
+## Review — Glass Motion Pası (Apple Design, 2026-08-14, Görev 7-14 doğrulaması)
+
+`/emil-design-skills:apple-design` + `/emil-design-skills:animate`: kartlara basınç hissi,
+grafiklere kesilebilir spring geçişleri, materyal derinliği, dokunsal geri bildirim. Kapsam
+yalnızca glass; velvet byte-identity. Yeni bağımlılık YOK (sıfır-bağımlılık rAF spring engine).
+`server/index.js` dokunulmadı.
+
+### Merkezî keşif: CSS `var()` pending-substitution tuzağı (FAB stagger "0s" bug'ı)
+
+`animation` KISAYOLUNUN İÇİNDE `var()` varsa kısayol bir "pending-substitution" değeri olur:
+parse zamanında açılamadığı için computed-value zamanında uygulanır ve longhand'lerinin
+(özellikle `animation-delay`) **tüm** non-important bildirimlerini — özgüllük, kaynak sırası,
+inline stiller fark etmeksizin — ezer. Yalnızca `!important` üstesinden gelir. Bu yüzden
+`.rise-d-*`, `:nth-child` ve inline `animationDelay` stagger'ları sessizce ölüyordu.
+
+**Düzeltme (Option 2):** kısayol temiz tutulur (`animation: glassRise 0.7s both`), easing
+`animation-timing-function: var(--ease-glass)` longhand'ine taşınır. Kısayol böylece normal
+cascade'e katılır (implicit delay 0s, alt özgüllüklü kural kazanabilir); var() longhand'i
+yalnızca timing-function'ı etkiler (rakip bildirim yok → zararsız). **Kanıt:** reduced-motion
+kaldırılınca FAB nth-child 0/30/60/90ms, rise-d 80/140/190/240ms, fadeup inline 120ms —
+hepsi uygulanıyor. Dört giriş kuralı da aynı desene taşındı (`.anim-glass-rise`, `.anim-fadeup`,
+`.fab-menu > *`, `.anim-scrim`).
+
+### Test ortamı tuzakları (iki kez yanlış ölçüm)
+
+1. **Preview `prefers-reduced-motion: reduce` + `prefers-reduced-transparency: reduce` FORCE**
+   ediyor (desktop'ta bile kapatılamıyor). Global reduced-motion bloğu (index.css 632-650)
+   tüm `animation-delay: 0ms !important` yapıyor — "0s" ASLINA BAKARSA doğru a11y davranışıydı.
+   Gerçek cascade'i görmek için @media bloğu `sheet.deleteRule()` ile geçici kaldırıldı;
+   yeniden yükleme geri getiriyor.
+2. **CSSOM serileştirme tuzağı:** `el.style.animation` kısayoldan değil longhand'den ayarlandığında
+   `""` döner. Ayrıca bu ortamda HER CSSStyleRule `cssRules`'ı truthy-boş döndürüyor — yanlış
+   özyineleme selectors taramasını boşaltıyordu (815 kuralın hepsi düz style, katman yok).
+
+### Doğrulama kapısı (hepsi geçti)
+
+| Ne | Sonuç |
+|---|---|
+| `pnpm typecheck` | 0 hata |
+| `pnpm test` | 593/593 |
+| `pnpm build` | ✓ (3.01s) |
+| Built CSS denetimi | kısayol temiz + timing longhand'i, 20 glass kuralı, `active:scale-[0.98]` typo düzeltmesi mevcut |
+| FAB stagger | 0/30/60/90ms (reduced-motion kaldırılınca) |
+| rise-d / fadeup stagger | 80/140/190/240ms / inline 120ms |
+| Reduced-motion | FAB delay 0s, fadeup `animation:none`+opacity 1, rise 0s — a11y doğru |
+| Modal perdesi (scrim) | `.anim-scrim` mevcut, `scrimFade` uygulanıyor, bg `rgba(0,0,0,0.85)`, panel `.anim-fadeup` (ScanSheet Modal'ı üzerinden ölçüldü) |
+| Grafik spring | WeekBars çubuk yükseklikleri 450ms arayla iki örnek birebir → spring hedefe oturmuş, sürüklenme yok |
+| Blanket basınç | CSSOM'da `[data-theme="glass"] button:not(:disabled):active { scale(0.97); transform 120ms var(--ease-glass) }` |
+| Reduced-transparency | token'lar azaltma bloğu değerlerinde: cal-card-a 0.90, elevated-2-a 0.92, row-a 0.80, bar-a 0.85, well-a 0.85 |
+| Velvet byte-identity | `data-theme` yok, body `rgb(23,22,34)` (birebir), FAB transition'ı Tailwind default — glass kuralı devre dışı |
+
+**Not:** basınç spring'i (usePressSpring) compaction'dan önce doğrulanmıştı ve CSS değişikliklerinden
+etkilenmedi. `spring-press` + giriş animasyonu kombinasyonunda `animation-fill-mode: backwards`
+düzeltmesi (animasyon bitince inline spring transform'u görünsün) ve `.spring-bar { transition:
+none !important }` (MacroBar genişliğini glass'ta spring yönetir) CSS denetiminde yerinde.
+
+**Ders:** `tasks/lessons.md` → CSS `var()`'ı animation kısayolundan uzak tut (L15).
+
+---
+
+## Kayıt sistemi: "İzinli E-postalar" davet listesi (2026-08-15)
+
+Onaylanan plan: `ok-teknik-detay-vermi-sin-recursive-wreath.md`. Yalnızca listeye
+eklenen e-postalar kayıt olabilir (Google "yeni" **ve** parola yolu); liste
+uygulama içinden (Ayarlar → Hesap & Profil → İzinli E-postalar), yalnızca sahibin
+gördüğü ekrandan yönetilir. `server/index.js` dokunulmadı (donmuş).
+
+- [x] `server/googleAuth.js`: `linkDecision`'a `email` + `allowlist` parametreleri; yeni karar `"izinsiz"` (liste dolu + listede değil)
+- [x] `server/authRoutes.js`: lazy `signup_allowlist` tablosu, `OWNER_EMAIL`, register kapısı, Google callback `"izinsiz"` → `kayit_izinsiz`, `/api/auth/admin/allowlist` (GET/POST/DELETE, yönetici dışı 403), `/me` → `isAdmin`
+- [x] Frontend: `types.ts` `AuthCapabilities.isAdmin`, `authApi.ts` (`kayit_izinsiz` mesajı + 3 çağrı), `auth.tsx` NO_CAPS, `SettingsSheet.tsx` AllowlistForm (ekle/sil, yönetici menü satırı)
+- [x] `.env.example`: ALLOW_SIGNUP + OWNER_EMAIL yorumları
+- [x] Testler: 37 yeni (linkDecision 7, kapı 4, admin uçları 8, BAYRAKLAR'a OWNER_EMAIL) → 611/611
+
+**Doğrulama:** `pnpm test` 611/611, `pnpm typecheck` 0 hata, `pnpm build` ✓.
+HTTP smoke testi (geçici DB, 8791): sahip girişi → `isAdmin:true`; ekle → normalize
+`"  Davetli@X.CO "` → `davetli@x.co`; tekrar ekle 409; listedeki kayıt 201; listede
+olmayan 403; sil 404/200; sahip olmayan admin uçlarına 403. Temizlik: scratch DB
+silindi, `server/data.db` dokunulmadı.
+
+**Prod kalan (kullanıcı onayıyla):** yedek → `{authRoutes,googleAuth}.js` kopyala
+(md5) → `.env`'e `NUTRIMIND_ALLOW_SIGNUP=1` → `systemctl restart nutri-api` →
+`pnpm run deploy` → telefonla canlı doğrulama. Dikkat: liste boşken kayıt herkese
+açık kalır — deploy sonrası hemen kişi eklenmeli.

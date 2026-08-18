@@ -98,6 +98,8 @@ export interface AuthUser {
 export interface AuthCapabilities {
   signupAllowed: boolean;
   googleEnabled: boolean;
+  /** "İzinli E-postalar" listesini yönetebilen hesap (sahip). */
+  isAdmin: boolean;
 }
 
 export interface AliasUnit {
