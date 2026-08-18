@@ -4,11 +4,13 @@ import { scrambleProgress } from "../lib/scramble";
 
 export function ScrambleText({
   text,
-  durationMs = 1200,
+  durationMs = 1800,
+  fps = 16,
   className = "",
 }: {
   text: string;
   durationMs?: number;
+  fps?: number;
   className?: string;
 }) {
   const [display, setDisplay] = useState(text);
@@ -20,22 +22,28 @@ export function ScrambleText({
     }
 
     const start = performance.now();
-    let frameId: number;
+    const frameInterval = 1000 / fps;
+    let lastFrameTime = start;
+    let timerId: number;
 
-    const tick = (now: number) => {
+    const tick = () => {
+      const now = performance.now();
       const elapsed = now - start;
       const progress = Math.min(elapsed / durationMs, 1);
 
-      setDisplay(scrambleProgress(text, progress));
+      if (now - lastFrameTime >= frameInterval || progress >= 1) {
+        setDisplay(scrambleProgress(text, progress));
+        lastFrameTime = now;
+      }
 
       if (progress < 1) {
-        frameId = requestAnimationFrame(tick);
+        timerId = window.setTimeout(tick, frameInterval / 2);
       }
     };
 
-    frameId = requestAnimationFrame(tick);
-    return () => cancelAnimationFrame(frameId);
-  }, [text, durationMs]);
+    timerId = window.setTimeout(tick, 0);
+    return () => clearTimeout(timerId);
+  }, [text, durationMs, fps]);
 
-  return <span className={className}>{display}</span>;
+  return <span className={`inline-block tabular-nums ${className}`}>{display}</span>;
 }
