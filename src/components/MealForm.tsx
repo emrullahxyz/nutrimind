@@ -30,6 +30,8 @@ import type { AIParseItem, Alias, MealCategory, MealPayload, MealSource, Nutriti
 import { usualQuantity } from "../lib/quantity";
 import { AliasPicker } from "./AliasPicker";
 import { useBodyScrollLock } from "../hooks/useBodyScrollLock";
+import { useToast } from "./Toast";
+import { ScrambleText } from "./ScrambleText";
 
 type Mode = "alias" | "manual" | "ai";
 
@@ -200,6 +202,7 @@ export function MealForm({
   // yığınında boş bir girdi bırakıyordu — hook `history.back()` kullanıyor).
   const { requestClose: handleUserClose } = useModalHistory({ active: isOpen, onClose });
 
+  const { showToast } = useToast();
   const { aliases, days, usageIndex, goals, setDayMeals } = useData();
   const existing = editIndex === null ? undefined : mealsOf(days, date)[editIndex];
 
@@ -615,6 +618,7 @@ export function MealForm({
       else next[editIndex] = entry;
 
       await setDayMeals(date, next);
+      showToast(editIndex === null ? "Öğün kaydedildi" : "Öğün güncellendi", "success");
       handleUserClose();
     } catch (e) {
       setErr(String((e as Error)?.message ?? e));
@@ -876,7 +880,11 @@ export function MealForm({
                   className="rounded-full bg-amber-400 px-5 py-2 text-xs font-extrabold text-black transition hover:bg-amber-300 disabled:opacity-40 flex items-center gap-1.5"
                 >
                   <Sparkles className="w-3.5 h-3.5" />
-                  {aiLoading ? "Analiz ediliyor…" : "Analiz Et"}
+                  {aiLoading ? (
+                    <ScrambleText text="Analiz ediliyor…" durationMs={1500} />
+                  ) : (
+                    "Analiz Et"
+                  )}
                 </button>
               </div>
 
