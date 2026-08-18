@@ -1,4 +1,4 @@
-export const GLYPHS = "0123456789!@#$%^&*~+=_";
+export const GLYPHS = "ABCDEFGHJKLMNPQRSTUVWXYZ0123456789";
 
 export function scrambleProgress(
   text: string,
