@@ -18,6 +18,7 @@ import { classifyPopState, consumeProgrammaticBack, shouldExitOnSecondPress } fr
 import { AuthProvider, useAuth } from "./lib/auth";
 import { AuthScreen } from "./components/AuthScreen";
 import { OnboardingModal } from "./components/OnboardingModal";
+import { ToastProvider } from "./components/Toast";
 import type { UserProfileInput } from "./lib/tdee";
 import { hasOpenOverlay } from "./lib/overlayLock";
 import { hasActiveSubView } from "./lib/subViewRegistry";
@@ -326,7 +327,9 @@ export function App() {
           <AuthProvider>
             <AuthGate>
               <DataProvider>
-                <MainContent />
+                <ToastProvider>
+                  <MainContent />
+                </ToastProvider>
               </DataProvider>
             </AuthGate>
           </AuthProvider>
