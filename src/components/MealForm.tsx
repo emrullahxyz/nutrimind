@@ -887,7 +887,7 @@ export function MealForm({
                 >
                   <Sparkles className="w-3.5 h-3.5" />
                   {aiLoading ? (
-                    <ScrambleText text="Analiz ediliyor…" durationMs={1500} />
+                    <ScrambleText text="Analiz ediliyor…" durationMs={3500} fps={12} />
                   ) : (
                     "Analiz Et"
                   )}
