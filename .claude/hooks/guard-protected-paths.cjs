@@ -7,12 +7,10 @@ const PROTECTED_BASENAMES = new Set([
   "support.js",
   "Besin Hafızası.dc.html",
   "Wireframes.dc.html",
-  "eski veriler ('Emrullah' kullanıcısı).json",
   // Live SQLite file — subagents have run `node server/index.js` unprompted
   // and written here (see lessons). Never let an Edit touch it.
   "data.db",
 ]);
-
 // CLAUDE.md: "server/index.js donmuş kabul edilir — değiştirmeden önce sor."
 const FROZEN_ENTRYPOINTS = new Set(["index.js"]);
 
