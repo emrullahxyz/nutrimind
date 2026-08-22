@@ -103,9 +103,10 @@ pnpm install
 pnpm dev          # Vite → http://localhost:5173   ← 127.0.0.1:5173 ÇALIŞMAZ
 pnpm build        # tsc && vite build
 pnpm typecheck    # tsc --noEmit
-pnpm test         # vitest run  (574 test)
+pnpm test         # vitest run  (test sayısı proje büyüdükçe artar)
 pnpm format       # prettier --write .
-pnpm run deploy   # dist/ → nutri.emrullah.xyz   ← "run" ŞART, çıplak `pnpm deploy` pnpm'in kendi komutuna gider
+pnpm run deploy   # dist/ → nutri.emrullah.xyz   ← "run" ŞART, çıplak `pnpm deploy` pnpm'in kendi komutuna gider.
+                    # Canlıya çıkış yalnızca `/deploy-nutri` skill'i ile: kapı + git durumu doğrulanır, Claude doğrudan çalıştırmaz.
 ```
 
 **Yerel geliştirme İKİ terminal ister** — Vite tek başına veri göremez:
@@ -115,7 +116,7 @@ node server/index.js     # backend, 127.0.0.1:8790
 pnpm dev                 # Vite, /api proxy'li
 ```
 
-Doğrulama kapısı: `pnpm typecheck` (0 hata) + `pnpm test` (574/574) + `pnpm build` (✓ built).
+Doğrulama kapısı: `pnpm typecheck` (0 hata) + `pnpm test` (tüm testler geçmeli) + `pnpm build` (✓ built).
 
 `pnpm preview` (4173) artık `/api`'yi de vekilliyor — **üretim derlemesi yerelde uçtan uca
 denenebilir.** Dev'de görünmeyen davranışlar (React StrictMode efektleri iki kez çalıştırır,
