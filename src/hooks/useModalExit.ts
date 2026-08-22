@@ -36,6 +36,7 @@ export function useModalExit(close: () => void): {
     setClosing(true);
     window.setTimeout(() => {
       closingRef.current = false;
+      setClosing(false);
       close();
     }, 180);
   }, [theme, close]);

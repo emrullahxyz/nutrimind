@@ -21,6 +21,10 @@
           {
             "type": "command",
             "command": "node .claude/hooks/format-file.cjs 2>/dev/null || true"
+          },
+          {
+            "type": "command",
+            "command": "node .claude/hooks/test-related.cjs 2>/dev/null || true"
           }
         ]
       }
