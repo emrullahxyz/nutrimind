@@ -212,3 +212,37 @@ export async function removeAllowlistEmail(email: string): Promise<void> {
   if (r.status !== 200) throwFrom(r);
 }
 
+// --- Hesap silme + veri dışa aktarma (KVKK m.7 / GDPR Art.17, Art.20) ---------
+
+/**
+ * Kullanıcının tüm verisini tarayıcı üzerinden JSON dosyası olarak indirir.
+ * Sunucu JSON döner; istemci blob oluşturup click ile indirir. Bu modülün
+ * 401'i HATA SAYMAMA kuralı burada da geçerli — arayan isterse kontrol eder.
+ */
+export async function exportAccount(): Promise<void> {
+  const r = await call("/api/auth/account/export");
+  if (r.status !== 200) throwFrom(r);
+  const blob = new Blob([JSON.stringify(r.body, null, 2)], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `nutrimind-export-${new Date().toISOString().slice(0, 10)}.json`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+/**
+ * Hesap silme. OAuth-only kullanıcılar için `password` boş bırakılabilir;
+ * e-posta+parola hesabı için ZORUNLU. `confirm` her zaman "DELETE" olmalı.
+ * Başarıda sunucu çerezi temizler; arayan sayfayı navigate etmeli.
+ */
+export async function deleteAccount(opts: { password?: string; confirm: string }): Promise<void> {
+  const r = await call("/api/auth/account", {
+    method: "POST",
+    body: JSON.stringify({ confirm: opts.confirm, ...(opts.password ? { password: opts.password } : {}) }),
+  });
+  if (r.status !== 200) throwFrom(r);
+}
+

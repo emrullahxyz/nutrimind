@@ -31,10 +31,11 @@ import { todayISO } from "../lib/format";
 import { parseWeightConfig, withWeightEntry } from "../lib/weight";
 import { useSubViewRegistration } from "../hooks/useSubViewRegistration";
 import { useAuth } from "../lib/auth";
-import { addAllowlistEmail, changePassword, fetchAllowlist, removeAllowlistEmail } from "../lib/authApi";
+import { addAllowlistEmail, changePassword, deleteAccount, exportAccount, fetchAllowlist, removeAllowlistEmail } from "../lib/authApi";
 import { emailProblem, passwordProblem } from "../lib/authRules";
 import { ErrorText, FormActions, Label, TextField, fieldCls } from "./FormBits";
 import { useTheme } from "../lib/theme";
+import { useToast } from "./Toast";
 import { haptic } from "../lib/haptics";
 
 type SubView =
@@ -146,6 +147,12 @@ export function SettingsSheet({
     }
   }, [resetKey]);
   const [cacheStatus, setCacheStatus] = useState<string | null>(null);
+  const [deleteStep, setDeleteStep] = useState<0 | 1 | 2>(0);
+  const [deletePassword, setDeletePassword] = useState("");
+  const [deleteConfirm, setDeleteConfirm] = useState("");
+  const [deleteBusy, setDeleteBusy] = useState(false);
+  const [exportBusy, setExportBusy] = useState(false);
+  const { showToast } = useToast();
   const dataCtx = useData();
 const { user, authDisabled, capabilities, logout } = useAuth();
   const { theme, setTheme } = useTheme();
@@ -459,6 +466,146 @@ const { user, authDisabled, capabilities, logout } = useAuth();
                 />
               )}
             </SectionGroup>
+
+            {/* VERİ & HESAP SİLME — KVKK m.7 / GDPR Art.17, Art.20 */}
+            {!authDisabled && user && (
+              <SectionGroup title="Verilerim">
+                <MenuItem
+                  icon={Download}
+                  iconBg="bg-emerald-500/15"
+                  iconColor="text-emerald-400"
+                  title={exportBusy ? "İndiriliyor..." : "Verilerimi İndir"}
+                  subtitle="Tüm öğün, alias ve ayarların (JSON)"
+                  onClick={async () => {
+                    if (exportBusy) return;
+                    setExportBusy(true);
+                    haptic("light");
+                    try {
+                      await exportAccount();
+                      showToast("Verilerin indirildi", "success");
+                    } catch (e) {
+                      showToast(`İndirme başarısız: ${(e as Error).message}`, "error");
+                    } finally {
+                      setExportBusy(false);
+                    }
+                  }}
+                />
+                <MenuItem
+                  icon={Trash2}
+                  iconBg="bg-rose-500/15"
+                  iconColor="text-rose-400"
+                  title="Hesabımı Sil"
+                  subtitle="Tüm verilerin kalıcı olarak silinir"
+                  onClick={() => {
+                    haptic("medium");
+                    setDeletePassword("");
+                    setDeleteConfirm("");
+                    setDeleteStep(1);
+                  }}
+                  isDanger
+                />
+              </SectionGroup>
+            )}
+
+            {/* HESAP SİLME ONAY MODALI — 2 adımlı, geri alınamaz */}
+            <Modal
+              onClose={() => {
+                if (!deleteBusy) {
+                  setDeleteStep(0);
+                  setDeletePassword("");
+                  setDeleteConfirm("");
+                }
+              }}
+              title="Hesabı Sil"
+            >
+              {deleteStep === 1 && (
+                <div className="space-y-3">
+                  <p className="text-sm text-white/80">
+                    Hesabını silmek istediğinden emin misin? Bu işlem geri alınamaz —
+                    öğünlerin, aliasların ve ayarların kalıcı olarak silinir.
+                  </p>
+                  <div className="flex gap-2 pt-2">
+                    <button
+                      type="button"
+                      onClick={() => setDeleteStep(0)}
+                      className="flex-1 rounded-xl border border-white/10 bg-white/5 py-2.5 text-sm font-semibold text-white/80"
+                    >
+                      Vazgeç
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setDeleteStep(2)}
+                      className="flex-1 rounded-xl bg-rose-500/20 py-2.5 text-sm font-semibold text-rose-300"
+                    >
+                      Devam Et
+                    </button>
+                  </div>
+                </div>
+              )}
+              {deleteStep === 2 && (
+                <div className="space-y-3">
+                  <p className="text-sm text-white/80">
+                    E-posta+parola ile giriş yaptıysan parolanı da girmen gerekir.
+                    Onaylamak için aşağıya <strong className="text-rose-300">SİL</strong> yaz.
+                  </p>
+                  <TextField
+                    type="password"
+                    label="Mevcut parolan (Google ile giriş yaptıysan boş bırak)"
+                    placeholder="Parola"
+                    value={deletePassword}
+                    onChange={setDeletePassword}
+                    autoComplete="current-password"
+                  />
+                  <div>
+                    <Label>Onay</Label>
+                    <input
+                      type="text"
+                      value={deleteConfirm}
+                      onChange={(e) => setDeleteConfirm(e.target.value)}
+                      placeholder='Büyük harflerle "SİL" yaz'
+                      className={fieldCls}
+                      autoComplete="off"
+                    />
+                  </div>
+                  <div className="flex gap-2 pt-2">
+                    <button
+                      type="button"
+                      onClick={() => setDeleteStep(1)}
+                      disabled={deleteBusy}
+                      className="flex-1 rounded-xl border border-white/10 bg-white/5 py-2.5 text-sm font-semibold text-white/80 disabled:opacity-50"
+                    >
+                      Geri
+                    </button>
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        if (deleteConfirm !== "SİL" || deleteBusy) return;
+                        setDeleteBusy(true);
+                        try {
+                          await deleteAccount({
+                            confirm: "DELETE",
+                            ...(deletePassword ? { password: deletePassword } : {}),
+                          });
+                          showToast("Hesabın silindi", "success");
+                          setDeleteStep(0);
+                          // AuthProvider yeniden fetchMe çağırsın → login ekranı.
+                          await logout();
+                          window.location.reload();
+                        } catch (e) {
+                          showToast(`Silme başarısız: ${(e as Error).message}`, "error");
+                        } finally {
+                          setDeleteBusy(false);
+                        }
+                      }}
+                      disabled={deleteConfirm !== "SİL" || deleteBusy}
+                      className="flex-1 rounded-xl bg-rose-500 py-2.5 text-sm font-bold text-white disabled:opacity-40"
+                    >
+                      {deleteBusy ? "Siliniyor..." : "Hesabımı Sil"}
+                    </button>
+                  </div>
+                </div>
+              )}
+            </Modal>
 
             {cacheStatus && (
               <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-3 text-center text-xs font-bold text-emerald-400">
