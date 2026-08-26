@@ -3,6 +3,25 @@
   "private": true,
   "version": "0.1.0",
   "type": "module",
+  "description": "Türkçe, koyu temalı, mobil öncelikli beslenme takip uygulaması. Öğrenen alias hafızası.",
+  "homepage": "https://nutri.emrullah.xyz",
+  "license": "UNLICENSED",
+  "engines": {
+    "node": ">=22.0.0",
+    "pnpm": ">=10.0.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Emrullah/nutrimind.git"
+  },
+  "keywords": [
+    "nutrition",
+    "meal-tracking",
+    "turkish",
+    "pwa",
+    "tdee",
+    "macro"
+  ],
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
