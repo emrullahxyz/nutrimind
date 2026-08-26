@@ -1,4 +1,6 @@
 import { useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
+import type { TFunction } from "i18next";
 import { useModalHistory } from "../hooks/useModalHistory";
 import { useModalExit } from "../hooks/useModalExit";
 import { ArrowLeft, Sparkles, Plus, Check } from "lucide-react";
@@ -26,7 +28,7 @@ import { GRAM_UNIT, clampMinGrams, parseNum, scaleNutrition, toGrams, unitOption
 import { formatKcal, todayISO, weekdayIndex } from "../lib/format";
 import { effectiveProfile } from "../lib/goals";
 import { rankAliases } from "../lib/aliasRank";
-import { categoryForHour, MEAL_CATEGORIES, MEAL_CATEGORY_LABELS } from "../lib/mealCategory";
+import { categoryForHour, MEAL_CATEGORIES } from "../lib/mealCategory";
 import type { AIParseItem, Alias, MealCategory, MealPayload, MealSource, Nutrition } from "../types";
 import { usualQuantity } from "../lib/quantity";
 import { AliasPicker } from "./AliasPicker";
@@ -38,8 +40,7 @@ import { ScrambleText } from "./ScrambleText";
 type Mode = "alias" | "manual" | "ai";
 
 /** Kaydet'te aktif sekmede listeye eklenmemiş kalem bulununca gösterilen mesaj. */
-const UNSAVED_ENTRY_ERROR =
-  "Girdiğin kalem henüz listeye eklenmedi. '+ Öğüne Bir Kalem Daha Ekle' ile ekle ya da alanları temizle.";
+// UNSAVED_ENTRY_ERROR — bkz. `t('meal.unsavedEntry')` (i18n)
 
 interface BasketItem {
   id: string;
@@ -50,6 +51,7 @@ interface BasketItem {
 }
 
 function BasketSection({
+  t,
   basket,
   aliases,
   editingIndex,
@@ -62,6 +64,7 @@ function BasketSection({
   setEditDraft,
   basketTotal,
 }: {
+  t: TFunction;
   basket: BasketItem[];
   aliases: Alias[];
   editingIndex: number | null;
@@ -80,14 +83,14 @@ function BasketSection({
     <div className="flex flex-col gap-2.5 rounded-2xl border border-white/10 bg-white/[0.03] p-4">
       <div className="flex items-center justify-between">
         <span className="font-bold text-xs text-white/80">
-          Öğün Kalemleri ({basket.length})
+          {t("meal.basketTitle", { count: basket.length })}
         </span>
         <button
           type="button"
           onClick={onClear}
           className="text-xs font-semibold text-red-400 hover:underline"
         >
-          Temizle
+          {t("meal.basketClear")}
         </button>
       </div>
       <ul className="flex flex-col gap-2">
@@ -100,7 +103,7 @@ function BasketSection({
                 className="flex flex-col gap-3 rounded-xl border border-white/20 bg-white/[0.06] p-3 text-white"
               >
                 <TextField
-                  label="Kalem Adı"
+                  label={t("meal.basketItemName")}
                   value={editDraft.name}
                   onChange={(name) => setEditDraft({ ...editDraft, name })}
                 />
@@ -111,14 +114,14 @@ function BasketSection({
                     onClick={onCancelEdit}
                     className="rounded-full border border-white/20 px-3 py-1.5 text-xs text-white/70 hover:text-white"
                   >
-                    Vazgeç
+                    {t("meal.basketCancel")}
                   </button>
                   <button
                     type="button"
                     onClick={() => onSaveEdit(idx)}
                     className="rounded-full bg-white px-3 py-1.5 text-xs font-bold text-black"
                   >
-                    Tamam
+                    {t("meal.basketSave")}
                   </button>
                 </div>
               </li>
@@ -135,7 +138,7 @@ function BasketSection({
                   <ExpandableMealName name={item.name} className="text-white" />
                   {item.needsReview && (
                     <span
-                      title="AI bu değerden emin değil"
+                      title={t("meal.basketReview")}
                       className="h-2 w-2 flex-none rounded-full bg-amber-400"
                     />
                   )}
@@ -153,7 +156,7 @@ function BasketSection({
                   onClick={() => onStartEdit(idx)}
                   className="text-xs text-white/60 hover:text-white font-sans"
                 >
-                  Düzenle
+                  {t("meal.basketEdit")}
                 </button>
                 <button
                   type="button"
@@ -197,6 +200,8 @@ export function MealForm({
 }) {
   // Lock background body scroll when modal is open
   useBodyScrollLock(isOpen);
+
+  const { t } = useTranslation();
 
   // Geri tuşu/kaydırma/X entegrasyonu — bkz. `useModalHistory` (7 bileşende
   // elle kopyalanmış aynı deseni tek yere topluyor; bu dosyadaki eski sürüm
@@ -483,7 +488,7 @@ export function MealForm({
       ];
     }
 
-    const itemName = manualItemName.trim() || (existing ? "Ek Kalem" : "Kalem");
+    const itemName = manualItemName.trim() || (existing ? t("meal.defaultExtraItem") : t("meal.defaultNewItem"));
     const newItem: BasketItem = {
       id: `manual-${Date.now()}-${Math.random()}`,
       name: itemName,
@@ -535,7 +540,7 @@ export function MealForm({
     try {
       const result = await parseWithAI(aiText.trim());
       if (result.items.length === 0) {
-        setAiError("AI bu metinden bir besin çıkaramadı. Daha açık yazmayı dene.");
+        setAiError(t("meal.aiEmpty"));
       } else {
         addAIItemsToBasket(result.items);
         setAiText("");
@@ -573,7 +578,7 @@ export function MealForm({
         aliasAddable: scaled !== null,
       })
     ) {
-      setErr(UNSAVED_ENTRY_ERROR);
+      setErr(t("meal.unsavedEntry"));
       return;
     }
     setSaving(true);
@@ -622,7 +627,7 @@ export function MealForm({
 
       await setDayMeals(date, next);
       haptic("success");
-      showToast(editIndex === null ? "Öğün kaydedildi" : "Öğün güncellendi", "success");
+      showToast(editIndex === null ? t("meal.savedToast") : t("meal.updatedToast"), "success");
       beginClose();
     } catch (e) {
       setErr(String((e as Error)?.message ?? e));
@@ -645,13 +650,13 @@ export function MealForm({
           type="button"
           onClick={beginClose}
           className="w-10 h-10 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white transition active:scale-95"
-          aria-label="Geri"
+          aria-label={t("meal.back")}
         >
           <ArrowLeft className="w-5 h-5" />
         </button>
 
         <h2 className="text-lg font-extrabold text-white tracking-wide">
-          {editIndex === null ? "Öğün Ekle" : "Öğünü Düzenle"}
+          {editIndex === null ? t("meal.titleAdd") : t("meal.titleEdit")}
         </h2>
 
         <div className="w-10 h-10" />
@@ -668,7 +673,7 @@ export function MealForm({
               mode === "alias" ? "bg-white text-black shadow-md" : "text-white/70 hover:text-white"
             }`}
           >
-            Hafızadan
+            {t("meal.tabMemory")}
           </button>
           <button
             type="button"
@@ -677,7 +682,7 @@ export function MealForm({
               mode === "manual" ? "bg-white text-black shadow-md" : "text-white/70 hover:text-white"
             }`}
           >
-            Elle
+            {t("meal.tabManual")}
           </button>
           <button
             type="button"
@@ -686,13 +691,13 @@ export function MealForm({
               mode === "ai" ? "bg-white text-black shadow-md" : "text-white/70 hover:text-white"
             }`}
           >
-            <Sparkles className="w-3.5 h-3.5 text-amber-400" /> AI ile
+            <Sparkles className="w-3.5 h-3.5 text-amber-400" /> {t("meal.tabAI")}
           </button>
         </div>
 
         {/* Category Selector Pills (Kahvaltı, Öğle, Akşam, Atıştırmalık) */}
         <div className="space-y-2">
-          <label className="text-xs font-semibold text-white/80 block">Öğün Kategorisi</label>
+          <label className="text-xs font-semibold text-white/80 block">{t("meal.categoryLabel")}</label>
           <div className="flex items-center gap-2 overflow-x-auto no-scrollbar pb-1">
             {MEAL_CATEGORIES.map((c) => {
               const isSelected = category === c;
@@ -707,7 +712,7 @@ export function MealForm({
                       : "border border-white/15 bg-white/[0.04] text-white/70 hover:bg-white/10"
                   }`}
                 >
-                  {MEAL_CATEGORY_LABELS[c]}
+                  {t(`meal.category${c.charAt(0).toUpperCase() + c.slice(1)}`)}
                 </button>
               );
             })}
@@ -717,7 +722,7 @@ export function MealForm({
         {/* Form Body depending on Mode */}
         {mode === "alias" ? (
           aliases.length === 0 ? (
-            <p className="text-sm text-white/60">Hafızada besin yok. "Elle" sekmesinden ekleyebilirsin.</p>
+            <p className="text-sm text-white/60">{t("meal.emptyMemory")}</p>
           ) : (
             <div className="space-y-4">
               <div className="space-y-3 rounded-2xl border border-white/10 bg-white/[0.04] p-4 text-white">
@@ -725,16 +730,16 @@ export function MealForm({
                   aliases={aliases}
                   selectedAliasId={aliasId}
                   onSelectAlias={pickAlias}
-                  label="Hafızadan besin seç"
+                  label={t("meal.memorySelectLabel")}
                   mealIndex={mealIndex}
                 />
 
                 <div className="flex items-end gap-2 pt-1">
                   <div className="flex-1">
-                    <NumField label="Miktar" value={grams} onChange={handleGramsChange} />
+                    <NumField label={t("meal.amountLabel")} value={grams} onChange={handleGramsChange} />
                   </div>
                   <div className="w-32 flex-none">
-                    <label className="block text-xs text-white/70 font-semibold mb-1">Birim</label>
+                    <label className="block text-xs text-white/70 font-semibold mb-1">{t("meal.unitLabel")}</label>
                     <select
                       className="w-full px-3 py-2.5 rounded-xl bg-black/40 border border-white/10 text-xs font-bold text-white focus:outline-none focus:border-amber-400"
                       value={unitName}
@@ -757,7 +762,7 @@ export function MealForm({
                         onClick={() => handleGramsChange(String(estimate.value))}
                         className="flex items-center gap-1 text-amber-400 hover:underline font-medium"
                       >
-                        <span>✨ her zamanki {estimate.value} {unitName}</span>
+                        <span>✨ {t("meal.estimatedHint", { value: estimate.value, unit: unitName })}</span>
                       </button>
                     ) : (
                       <span />
@@ -772,7 +777,7 @@ export function MealForm({
                         }}
                         className="text-[11px] text-white/40 hover:text-white font-mono"
                       >
-                        porsiyon: {alias.serving_g}g
+                        {t("meal.servingReset", { grams: alias.serving_g })}
                       </button>
                     )}
                   </div>
@@ -786,12 +791,13 @@ export function MealForm({
                     className="w-full py-3 px-4 rounded-full bg-amber-400/15 border border-amber-400/30 text-xs font-bold text-amber-300 hover:bg-amber-400/25 transition active:scale-95 flex items-center justify-center gap-1.5 disabled:opacity-40 shadow-sm"
                   >
                     <Plus className="w-4 h-4 text-amber-400" />
-                    <span>+ {basket.length > 0 ? "Öğüne Bir Kalem Daha Ekle" : "Bu Besini Öğüne Kalem Olarak Ekle (Çoklu Malzeme)"}</span>
+                    <span>+ {basket.length > 0 ? t("meal.addMoreItem") : t("meal.addAsItem")}</span>
                   </button>
                 </div>
               </div>
 
               <BasketSection
+                t={t}
                 basket={basket}
                 aliases={aliases}
                 editingIndex={editingBasketIndex}
@@ -809,7 +815,7 @@ export function MealForm({
               />
 
               <TextField
-                label={basket.length > 0 ? "Birleşik Öğün Adı" : "Öğün Adı"}
+                label={basket.length > 0 ? t("meal.nameCombined") : t("meal.nameLabel")}
                 value={name}
                 onChange={setName}
                 placeholder={basket.length > 0 ? basket.map((b) => b.name).join(" + ") : alias?.name ?? ""}
@@ -821,10 +827,10 @@ export function MealForm({
             <div className="space-y-3 rounded-2xl border border-white/10 bg-white/[0.04] p-4 text-white">
               {basket.length > 0 && (
                 <TextField
-                  label="Eklenecek Kalem Adı (opsiyonel)"
+                  label={t("meal.manualItemNameLabel")}
                   value={manualItemName}
                   onChange={setManualItemName}
-                  placeholder="örn. Ekstra Yoğurt"
+                  placeholder={t("meal.manualItemNamePlaceholder")}
                 />
               )}
               <NutritionFields draft={draft} onChange={setDraft} />
@@ -836,12 +842,13 @@ export function MealForm({
                   disabled={!hasManualNutrition}
                   className="rounded-full bg-white/10 border border-white/20 px-4 py-2 text-xs font-bold text-white transition hover:bg-white/20 disabled:opacity-40"
                 >
-                  + {basket.length > 0 ? "Listeye ekle" : "Kalem ekle (çoklu malzeme)"}
+                  + {basket.length > 0 ? t("meal.addToList") : t("meal.addItemMulti")}
                 </button>
               </div>
             </div>
 
             <BasketSection
+              t={t}
               basket={basket}
               aliases={aliases}
               editingIndex={editingBasketIndex}
@@ -859,22 +866,22 @@ export function MealForm({
             />
 
             <TextField
-              label={basket.length > 0 ? "Birleşik Öğün Adı" : "Öğün Adı"}
+              label={basket.length > 0 ? t("meal.nameCombined") : t("meal.nameLabel")}
               value={name}
               onChange={setName}
-              placeholder={basket.length > 0 ? basket.map((b) => b.name).join(" + ") : "örn. Yulaf + protein + süt"}
+              placeholder={basket.length > 0 ? basket.map((b) => b.name).join(" + ") : t("meal.namePlaceholderExample")}
             />
           </div>
         ) : (
           <div className="space-y-4">
             <div className="space-y-3 rounded-2xl border border-white/10 bg-white/[0.04] p-4 text-white">
               <label className="block space-y-1.5">
-                <span className="text-xs font-semibold text-white/80 block">Ne yedin? (AI Analiz)</span>
+                <span className="text-xs font-semibold text-white/80 block">{t("meal.aiPromptLabel")}</span>
                 <textarea
                   className="w-full min-h-[96px] p-3 rounded-xl bg-black/40 border border-white/10 text-sm text-white focus:outline-none focus:border-amber-400 resize-none"
                   value={aiText}
                   onChange={(e) => setAiText(e.target.value)}
-                  placeholder="örn. 200g tavuk göğsü ve 1 kase pilav"
+                  placeholder={t("meal.aiPromptPlaceholder")}
                 />
               </label>
 
@@ -887,9 +894,9 @@ export function MealForm({
                 >
                   <Sparkles className="w-3.5 h-3.5" />
                   {aiLoading ? (
-                    <ScrambleText text="Analiz ediliyor…" durationMs={3500} fps={12} />
+                    <ScrambleText text={t("meal.aiAnalyzing")} durationMs={3500} fps={12} />
                   ) : (
-                    "Analiz Et"
+                    t("meal.aiAnalyze")
                   )}
                 </button>
               </div>
@@ -904,6 +911,7 @@ export function MealForm({
               </div>
             ) : (
               <BasketSection
+                t={t}
                 basket={basket}
                 aliases={aliases}
                 editingIndex={editingBasketIndex}
@@ -922,7 +930,7 @@ export function MealForm({
             )}
 
             <TextField
-              label={basket.length > 0 ? "Birleşik Öğün Adı" : "Öğün Adı"}
+              label={basket.length > 0 ? t("meal.nameCombined") : t("meal.nameLabel")}
               value={name}
               onChange={setName}
               placeholder={basket.length > 0 ? basket.map((b) => b.name).join(" + ") : ""}
@@ -941,7 +949,7 @@ export function MealForm({
           disabled={!canSave || saving}
           className="w-full py-4 rounded-full bg-white text-black font-extrabold text-base hover:bg-white/90 transition shadow-xl active:scale-[0.98] disabled:opacity-40 flex items-center justify-center gap-2"
         >
-          <Check className="w-5 h-5" /> {saving ? "Kaydediliyor…" : "Kaydet"}
+          <Check className="w-5 h-5" /> {saving ? t("meal.saving") : t("meal.save")}
         </button>
       </div>
     </div>
