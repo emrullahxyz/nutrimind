@@ -272,6 +272,29 @@
     "savedToast": "Posiłek zapisany",
     "updatedToast": "Posiłek zaktualizowany",
     "save": "Zapisz",
-    "saving": "Zapisywanie..."
+    "saving": "Zapisywanie...",
+    "confirmAreYouSure": "Czy na pewno?"
+  },
+  "nutrition": {
+    "title": "Wartości odżywcze",
+    "deleteMeal": "Usuń posiłek",
+    "foodName": "Nazwa produktu",
+    "addExtraItem": "+ Dodaj dodatkowy produkt / składnik do tego posiłku",
+    "servingAmount": "Wielkość porcji",
+    "calories": "Kalorie",
+    "protein": "Białko",
+    "carbs": "Węglowodany",
+    "fat": "Tłuszcze",
+    "otherNutrients": "Pozostałe wartości odżywcze",
+    "emptyMeansUnknown": "Pozostawienie pustego pola oznacza \"nieznane\" — nie zostanie zapisane jako 0.",
+    "satFat": "Tłuszcze nasycone",
+    "sodium": "Sód",
+    "fiber": "Błonnik",
+    "sugar": "Cukier",
+    "portionMultiplier": "Mnożnik porcji",
+    "manualEditWarning": "Połączenie tego składnika z pamięcią zostanie usunięte przez ręczną edycję.",
+    "microNutrients": "Mikroskładniki",
+    "microEmptyNote": "Pozostawienie pustego mikroskładnika oznacza \"nieznane\" — nie zostanie zapisane jako 0.",
+    "total": "Łącznie:"
   }
 }
