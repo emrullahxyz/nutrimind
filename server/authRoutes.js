@@ -267,6 +267,108 @@ async function handleAuth({ db, req, method, path, readBody, now }) {
       };
     }
 
+    // ---- GET /api/auth/account/export ----
+    // KVKK m.11 / GDPR Art.20: kullanıcının tüm verisini makine-okunabilir
+    // formatta indirme. Oturum ŞART. Yazma YAPMAZ (read-only).
+    if (method === "GET" && path === "/api/auth/account/export") {
+      const s = resolveSession(db, req, t);
+      if (!s) return { status: 401, body: { error: "oturum gerekli" } };
+
+      const user = db.prepare("SELECT id, email, display_name, created_at FROM users WHERE id = ?").get(s.userId);
+      if (!user) return { status: 401, body: { error: "oturum gerekli" } };
+
+      const days = db
+        .prepare("SELECT date, meals FROM days WHERE user_id = ? ORDER BY date")
+        .all(s.userId)
+        .map((r) => ({ date: r.date, meals: JSON.parse(r.meals) }));
+      const aliases = db
+        .prepare("SELECT id, data FROM aliases WHERE user_id = ? ORDER BY id")
+        .all(s.userId)
+        .map((r) => ({ id: r.id, data: JSON.parse(r.data) }));
+      const configRows = db.prepare("SELECT key, value FROM config WHERE user_id = ?").all(s.userId);
+      const config = Object.fromEntries(configRows.map((r) => [r.key, r.value]));
+
+      return {
+        status: 200,
+        body: {
+          exportedAt: new Date(t).toISOString(),
+          user: {
+            id: user.id,
+            email: user.email,
+            displayName: user.display_name,
+            createdAt: user.created_at,
+          },
+          days,
+          aliases,
+          config,
+        },
+      };
+    }
+
+    // ---- POST /api/auth/account ----
+    // Hesap silme. Tüm kullanıcı verisi hard delete (KVKK m.7). OAuth revoke
+    // YAPILMAZ — kullanıcı kararı: yalnızca lokal veri temizlenir, Google hesabı
+    // etkilenmez. Tüm DELETE'ler atomik transaction.
+    if (method === "POST" && path === "/api/auth/account") {
+      const s = resolveSession(db, req, t);
+      if (!s) return { status: 401, body: { error: "oturum gerekli" } };
+
+      const user = db.prepare("SELECT id, email, password_hash FROM users WHERE id = ?").get(s.userId);
+      if (!user) return { status: 401, body: { error: "oturum gerekli" } };
+
+      const b2 = (await readBody(req)) || {};
+      const confirm = typeof b2.confirm === "string" ? b2.confirm : "";
+      if (confirm !== "DELETE") {
+        return { status: 400, body: { error: "onay metni DELETE olmalı" } };
+      }
+
+      // E-posta+parola hesabı: mevcut parola ŞART (OAuth-only ise NULL).
+      // Hız sınırı: kötüye kullanıma karşı parolayı dene/yanıl doldurmayı
+      // kısıtla — ama oturumu olan birinin buna ihtiyacı az, ana saldırı
+      // vektörü çalınmış çerez; o zaten 30 günde düşer.
+      if (user.password_hash !== null) {
+        const parola = typeof b2.password === "string" ? b2.password : "";
+        const kontrol = emailLimiter.take(`del:${user.id}`, t);
+        if (!kontrol.allowed) {
+          return {
+            status: 429,
+            body: { error: "çok fazla deneme, biraz sonra tekrar dene", retryAfter: kontrol.retryAfter },
+            headers: { "Retry-After": String(kontrol.retryAfter) },
+          };
+        }
+        if (!auth.verifyPassword(parola, user.password_hash)) {
+          return { status: 401, body: { error: "e-posta veya parola hatalı" } };
+        }
+      }
+
+      // Tek transaction: ya HEP'si silinir ya HİÇBİRİ. Yarıda kalırsa
+      // kullanıcı "silindi" sanıp verisi hâlâ DB'de kalır — sızıntı riski.
+      // `node:sqlite`'de `db.transaction` YOK; BEGIN/COMMIT/ROLLBACK manuel.
+      const sifir = (sql, ...args) => db.prepare(sql).run(...args).changes;
+      let silinen;
+      try {
+        db.exec("BEGIN");
+        silinen = {
+          days: sifir("DELETE FROM days WHERE user_id = ?", s.userId),
+          config: sifir("DELETE FROM config WHERE user_id = ?", s.userId),
+          aliases: sifir("DELETE FROM aliases WHERE user_id = ?", s.userId),
+          sessions: sifir("DELETE FROM sessions WHERE user_id = ?", s.userId),
+          allowlist: sifir("DELETE FROM signup_allowlist WHERE email = ?", user.email),
+          users: sifir("DELETE FROM users WHERE id = ?", s.userId),
+        };
+        db.exec("COMMIT");
+      } catch (e) {
+        try { db.exec("ROLLBACK"); } catch {}
+        return { status: 500, body: { error: `silme hatası: ${String((e && e.message) || e)}` } };
+      }
+
+      return {
+        status: 200,
+        body: { ok: true, silinen },
+        headers: { "Set-Cookie": auth.clearCookie(COOKIE_NAME, cookieOpts()) },
+      };
+    }
+
     // ---- GET /api/auth/google/start ----
     // Üst seviye navigasyon (GET) olduğu için yukarıdaki CSRF kapısına takılmaz;
     // bu bilinçli. Google'dan dönüş de aynı sebeple GET.
