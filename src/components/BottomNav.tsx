@@ -178,6 +178,8 @@ export function BottomNav({
                     setOpen(false);
                     onTabChange(tab.id as TabType);
                   }}
+                  aria-current={isActive ? "page" : undefined}
+                  aria-label={tab.label}
                   className={`flex flex-col items-center justify-center py-1 px-2 transition-colors duration-200 ${
                     isActive ? "text-white font-bold" : "text-ink-secondary hover:text-white font-normal"
                   }`}
