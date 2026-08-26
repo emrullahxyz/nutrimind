@@ -5,6 +5,7 @@ import type { AliasPayload, AppData } from "./api";
 import type { GoalConfig, MealPayload } from "../types";
 import { buildUsageIndex, type UsageIndex } from "./aliasRank";
 import { AppSkeleton } from "../components/Skeleton";
+import { getSnapshot, putSnapshot } from "./offlineCache";
 
 /** Yazma aksiyonları — hepsi "API çağır → veriyi yeniden çek" desenini izler. */
 export interface Actions {
@@ -83,20 +84,58 @@ export function DataProvider({ children }: { children: ReactNode }) {
   // Yazma başarılı olduktan sonra yenileme başarısız olduysa true: elimizdeki
   // veri bayat, üstüne yazmak veri kaybettirir.
   const [stale, setStale] = useState(false);
+  // Çevrimdışı durumda son görülen cache gösteriliyor: banner + retry UI için.
+  const [offline, setOffline] = useState(false);
+  const [cachedAt, setCachedAt] = useState<string | null>(null);
 
   const refresh = useCallback(async () => {
-    setData(await fetchData());
+    const d = await fetchData();
+    setData(d);
+    // Başarılı fetch → cache'e yaz ve offline bayrağını kaldır.
+    void putSnapshot(d);
+    setOffline(false);
   }, []);
 
   useEffect(() => {
     let alive = true;
     fetchData()
-      .then((d) => alive && setData(d))
-      .catch((e) => alive && setErr(String(e?.message ?? e)));
+      .then((d) => {
+        if (!alive) return;
+        setData(d);
+        void putSnapshot(d);
+      })
+      .catch(async (e) => {
+        if (!alive) return;
+        // Offline: son cache'i dene. Bulunamazsa orijinal hata.
+        const snap = await getSnapshot();
+        if (snap) {
+          setData(snap.data);
+          setOffline(true);
+          setCachedAt(snap.cachedAt);
+        } else {
+          setErr(String(e?.message ?? e));
+        }
+      });
     return () => {
       alive = false;
     };
   }, []);
+
+  // navigator.onLine + online/offline event: online olunca otomatik refetch.
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const goOnline = () => {
+      setOffline(false);
+      void refresh();
+    };
+    const goOffline = () => setOffline(true);
+    window.addEventListener("online", goOnline);
+    window.addEventListener("offline", goOffline);
+    return () => {
+      window.removeEventListener("online", goOnline);
+      window.removeEventListener("offline", goOffline);
+    };
+  }, [refresh]);
 
   // Tüm yazma aksiyonlarının izlediği tek ortak yol: önce yazma işlemini
   // çalıştır (hata varsa olduğu gibi yukarı fırlat), sonra veriyi yenile.
@@ -158,7 +197,55 @@ export function DataProvider({ children }: { children: ReactNode }) {
   );
 
   if (stale) return <StaleFallback refresh={refresh} onResolved={() => setStale(false)} />;
-  if (err) return <Center>Veri alınamadı ({err}). Sunucu çalışıyor mu?</Center>;
+  if (err)
+    return (
+      <Center>
+        <div className="flex flex-col items-center gap-3 p-4">
+          <p>Veri alınamadı ({err}). Sunucu çalışıyor mu?</p>
+          <button
+            type="button"
+            onClick={() => {
+              setErr(null);
+              void refresh();
+            }}
+            className="rounded-chip border border-line bg-white/[0.08] px-4 py-2 text-xs font-semibold text-ink-primary transition hover:bg-white/[0.12] active:scale-95"
+          >
+            Tekrar dene
+          </button>
+        </div>
+      </Center>
+    );
   if (!value) return <AppSkeleton />;
-  return <DataCtx.Provider value={value}>{children}</DataCtx.Provider>;
+  return (
+    <>
+      {offline && (
+        <div
+          role="status"
+          aria-live="polite"
+          className="sticky top-0 z-50 flex items-center justify-between gap-3 border-b border-amber-500/30 bg-amber-500/15 px-4 py-2 text-xs text-amber-100"
+        >
+          <span>
+            Çevrimdışısınız. Son veri:{" "}
+            {cachedAt
+              ? new Date(cachedAt).toLocaleString("tr-TR", {
+                  hour: "2-digit",
+                  minute: "2-digit",
+                  day: "2-digit",
+                  month: "2-digit",
+                })
+              : "bilinmiyor"}
+            . Değişiklikler kaydedilmez.
+          </span>
+          <button
+            type="button"
+            onClick={() => void refresh()}
+            className="rounded-full border border-amber-500/40 bg-amber-500/20 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide"
+          >
+            Yeniden Dene
+          </button>
+        </div>
+      )}
+      <DataCtx.Provider value={value}>{children}</DataCtx.Provider>
+    </>
+  );
 }
