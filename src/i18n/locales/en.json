@@ -16,7 +16,8 @@
     "search": "Search",
     "add": "Add",
     "today": "Today",
-    "yesterday": "Yesterday"
+    "yesterday": "Yesterday",
+    "releaseToRefresh": "Release to refresh"
   },
   "nav": {
     "today": "Today",
@@ -122,5 +123,15 @@
     "tr": "Türkçe",
     "en": "English",
     "pl": "Polski"
+  },
+  "history": {
+    "title": "History",
+    "weight": "Weight",
+    "weeks": "Weeks",
+    "trend": "Trend",
+    "showLess": "Show less"
+  },
+  "onboarding": {
+    "saveAndStart": "Save my goals and start"
   }
 }

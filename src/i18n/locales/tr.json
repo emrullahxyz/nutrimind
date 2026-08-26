@@ -16,7 +16,8 @@
     "search": "Ara",
     "add": "Ekle",
     "today": "Bugün",
-    "yesterday": "Dün"
+    "yesterday": "Dün",
+    "releaseToRefresh": "Bırak, yenile"
   },
   "nav": {
     "today": "Bugün",
@@ -122,5 +123,15 @@
     "tr": "Türkçe",
     "en": "English",
     "pl": "Polski"
+  },
+  "history": {
+    "title": "Geçmiş",
+    "weight": "Kilo",
+    "weeks": "Haftalar",
+    "trend": "Trend",
+    "showLess": "Daha Az Göster"
+  },
+  "onboarding": {
+    "saveAndStart": "Hedeflerimi Kaydet ve Başla"
   }
 }

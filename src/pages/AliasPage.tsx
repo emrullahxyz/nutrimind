@@ -12,6 +12,7 @@ import { useData } from "../lib/data";
 import { parseTemplatesConfig } from "../lib/templates";
 import type { Alias } from "../types";
 import { usePressSpring } from "../hooks/usePressSpring";
+import { useTranslation } from "react-i18next";
 
 export function AliasPage({
   resetKey = 0,
@@ -22,6 +23,7 @@ export function AliasPage({
    *  Barkod yolu ScanSheet'in kendi içinde hafızaya kaydediyor, buraya düşmez. */
   onVisionResult: (items: AIParseItem[]) => void;
 }) {
+  const { t } = useTranslation();
   const { aliases, removeAlias, config, updateConfig } = useData();
   const [editingAlias, setEditingAlias] = useState<Alias | null | undefined>(undefined);
   const [editingRecipe, setEditingRecipe] = useState<Alias | null | undefined>(undefined);
@@ -142,10 +144,9 @@ export function AliasPage({
       {aliases.length === 0 ? (
         <div className="anim-fadeup rounded-[24px] border border-white/10 bg-white/[0.03] p-8 text-center flex flex-col items-center gap-3 w-full">
           <BookOpen className="w-8 h-8 text-white/30" />
-          <p className="text-sm font-semibold text-white/60">Henüz hafızada besin yok.</p>
+          <p className="text-sm font-semibold text-white/60">{t("empty.aliasTitle")}</p>
           <p className="text-xs text-white/40">
-            Takma ad, sık kullandığın besinlere vereceğin kısayol. Örn. “smoothie” → “1 muz, 1 yulaf, süt, protein tozu”.
-            "+ Tarif Oluştur" veya "+ Yeni Besin" butonları ile ekleyebilirsin.
+            {t("empty.aliasBody")}
           </p>
         </div>
       ) : filteredAliases.length === 0 ? (

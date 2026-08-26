@@ -4,6 +4,7 @@ import { WeekStrip } from "../components/WeekStrip";
 import { formatLongDate, todayISO } from "../lib/format";
 import { useData } from "../lib/data";
 import { usePullToRefresh } from "../lib/usePullToRefresh";
+import { useTranslation } from "react-i18next";
 
 interface DailyPageProps {
   triggerAddMeal?: boolean;
@@ -24,6 +25,7 @@ export function DailyPage({
   onResetTriggerExercise,
   resetKey = 0,
 }: DailyPageProps = {}) {
+  const { t } = useTranslation();
   const [selectedDate, setSelectedDate] = useState<string>(todayISO());
   const { refresh } = useData();
   const { pulling, distance, refreshing } = usePullToRefresh(refresh);
@@ -35,7 +37,7 @@ export function DailyPage({
           className="flex items-center justify-center overflow-hidden text-xs text-ink-tertiary transition-[height]"
           style={{ height: refreshing ? 32 : Math.min(distance, 48) }}
         >
-          {refreshing ? "Yenileniyor…" : "Bırak, yenile"}
+          {refreshing ? t("common.loading") : t("common.releaseToRefresh")}
         </div>
       )}
       <WeekStrip selectedDate={selectedDate} onSelectDate={setSelectedDate} />
@@ -44,7 +46,7 @@ export function DailyPage({
 
       <DayView
         date={selectedDate}
-        emptyLabel="Bu gün henüz bir şey yok. Örnek: “2 yumurta, yoğurt, ekmek” yaz — sistem hatırlar."
+        emptyLabel={t("empty.dayView")}
         enableScan
         showWeightCard={false}
         triggerAddMeal={triggerAddMeal}
