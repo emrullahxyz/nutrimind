@@ -14,6 +14,7 @@ import {
 import { useBodyScrollLock } from "../hooks/useBodyScrollLock";
 import { useModalHistory } from "../hooks/useModalHistory";
 import { afterHistoryBackSettles } from "../lib/backStack";
+import { useTranslation } from "react-i18next";
 
 export type TabType = "daily" | "history" | "aliases" | "settings";
 
@@ -95,11 +96,12 @@ export function BottomNav({
   // giriyor, ayrı bir `requestClose()` çağrısına gerek yok.
   useModalHistory({ active: open, onClose: () => setOpen(false) });
 
+  const { t } = useTranslation();
   const tabs = [
-    { id: "daily" as TabType, label: "Bugün", icon: Home },
-    { id: "history" as TabType, label: "İlerleme", icon: BarChart3 },
-    { id: "aliases" as TabType, label: "Hafıza", icon: Brain },
-    { id: "settings" as const, label: "Ayarlar", icon: Settings },
+    { id: "daily" as TabType, label: t("nav.today"), icon: Home },
+    { id: "history" as TabType, label: t("nav.progress"), icon: BarChart3 },
+    { id: "aliases" as TabType, label: t("nav.memory"), icon: Brain },
+    { id: "settings" as const, label: t("nav.settings"), icon: Settings },
   ];
 
   return (
@@ -137,7 +139,7 @@ export function BottomNav({
               />
               <FabMenuItem
                 icon={Bookmark}
-                label="Kayıtlı Besinler"
+                label={t("nav.savedFoods")}
                 onClick={() => {
                   setOpen(false);
                   afterHistoryBackSettles(() => onSavedFoods?.());

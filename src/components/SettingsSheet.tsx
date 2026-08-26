@@ -35,6 +35,8 @@ import { addAllowlistEmail, changePassword, deleteAccount, exportAccount, fetchA
 import { emailProblem, passwordProblem } from "../lib/authRules";
 import { ErrorText, FormActions, Label, TextField, fieldCls } from "./FormBits";
 import { useTheme } from "../lib/theme";
+import { useTranslation } from "react-i18next";
+import { setLang, SUPPORTED_LANGS, type Lang } from "../i18n/i18n";
 import { useToast } from "./Toast";
 import { haptic } from "../lib/haptics";
 
@@ -156,6 +158,8 @@ export function SettingsSheet({
   const dataCtx = useData();
 const { user, authDisabled, capabilities, logout } = useAuth();
   const { theme, setTheme } = useTheme();
+  const { t, i18n } = useTranslation();
+  const currentLang = (i18n.resolvedLanguage || i18n.language || "en") as Lang;
 
   const scrollRef = useRef<HTMLDivElement>(null);
   const savedScrollTopRef = useRef<number>(0);
@@ -442,6 +446,28 @@ const { user, authDisabled, capabilities, logout } = useAuth();
                 subtitle="SQLite yerel şifreli saklama"
                 onClick={() => openSubView("privacy")}
               />
+            </SectionGroup>
+
+            {/* DİL — i18n seçici (Faz 5) */}
+            <SectionGroup title={t("settings.language")}>
+              <div className="flex gap-2 px-1 pb-1" role="group" aria-label={t("settings.language")}>
+                {SUPPORTED_LANGS.map((lng) => (
+                  <button
+                    key={lng}
+                    type="button"
+                    onClick={() => setLang(lng)}
+                    aria-pressed={currentLang === lng}
+                    className={
+                      "flex-1 rounded-pill border px-3 py-2 text-sm font-semibold transition " +
+                      (currentLang === lng
+                        ? "border-emerald-500/50 bg-emerald-500/15 text-emerald-200"
+                        : "border-line bg-white/[0.04] text-ink-secondary hover:text-ink-primary")
+                    }
+                  >
+                    {lng === "tr" ? t("settings.languageTr") : lng === "en" ? t("settings.languageEn") : t("settings.languagePl")}
+                  </button>
+                ))}
+              </div>
             </SectionGroup>
 
             {/* HESAP İŞLEMLERİ */}
