@@ -100,7 +100,18 @@
     "cameraUnavailable": "Camera is not available in this browser.",
     "cameraFallback": "Pick a photo from gallery or enter the barcode manually.",
     "retry": "Try again",
-    "cooldown": "Too many requests. Open Food Facts quota is protected — try again in {{seconds}}s."
+    "cooldown": "Too many requests. Open Food Facts quota is protected — try again in {{seconds}}s.",
+    "barcodeInvalid": "Barcode must be 4-20 digits.",
+    "barcodeNotFound": "{{code}} not found in Open Food Facts — you can enter it manually.",
+    "barcodeLabel": "Barcode (manual)",
+    "barcodePlaceholder": "5900531004544",
+    "triggersLabel": "Triggers (comma-separated)",
+    "triggersPlaceholder": "e.g. skyr",
+    "unitLabel": "Unit",
+    "title": "Camera / Scan",
+    "titleReview": "Review and save",
+    "titleFoodLabel": "Review label",
+    "titleFoodPhoto": "Review meal"
   },
   "offline": {
     "banner": "You're offline. Last data: {{time}}. Changes will not be saved.",

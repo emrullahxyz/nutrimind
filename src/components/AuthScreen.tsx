@@ -15,10 +15,12 @@ import { ErrorText, Label, TextField, fieldCls } from "./FormBits";
 import { useAuth } from "../lib/auth";
 import { GOOGLE_START_URL, googleErrorMessage } from "../lib/authApi";
 import { emailProblem, passwordProblem, registerProblem } from "../lib/authRules";
+import { useTranslation } from "react-i18next";
 
 type Mode = "giris" | "kayit";
 
 export function AuthScreen() {
+  const { t } = useTranslation();
   const { capabilities, login, register } = useAuth();
   const [mode, setMode] = useState<Mode>("giris");
   const [email, setEmail] = useState("");
@@ -87,11 +89,11 @@ export function AuthScreen() {
 
       <form onSubmit={submit} className="flex flex-col gap-3">
         {kayitMi && (
-          <TextField label="Adın (isteğe bağlı)" value={name} onChange={setName} placeholder="Emrullah" autoComplete="name" />
+          <TextField label={t("auth.name") + " (opsiyonel)"} value={name} onChange={setName} placeholder="Emrullah" autoComplete="name" />
         )}
 
         <TextField
-          label="E-posta"
+          label={t("auth.email")}
           value={email}
           onChange={setEmail}
           placeholder="ornek@eposta.com"
@@ -102,7 +104,7 @@ export function AuthScreen() {
         />
 
         <label className="block">
-          <Label>Parola</Label>
+          <Label>{t("auth.password")}</Label>
           <div className="relative">
             <input
               className={`${fieldCls} pr-11`}
@@ -112,7 +114,7 @@ export function AuthScreen() {
               // Yeni parola ile mevcut parola AYRI ipuçları: parola yöneticisi
               // kayıtta "kaydet mi?", girişte "doldur mu?" diye sorabilsin.
               autoComplete={kayitMi ? "new-password" : "current-password"}
-              placeholder={kayitMi ? "en az 8 karakter" : "••••••••"}
+              placeholder={kayitMi ? t("auth.passwordMin") : "••••••••"}
             />
             <button
               type="button"
@@ -142,7 +144,7 @@ export function AuthScreen() {
           disabled={!canSubmit}
           className="mt-1 w-full rounded-pill bg-accent px-4 py-3 text-sm font-extrabold text-accent-ink transition disabled:opacity-40"
         >
-          {saving ? "…" : kayitMi ? "Hesap oluştur" : "Giriş yap"}
+          {saving ? "…" : kayitMi ? t("auth.createAccount") : t("auth.login")}
         </button>
 
         {/* Kullanıcı bir şey yazmaya başlamadan hata göstermek can sıkıcı;
@@ -166,7 +168,7 @@ export function AuthScreen() {
             className="flex w-full items-center justify-center gap-2.5 rounded-pill border border-line bg-white/[0.04] px-4 py-3 text-sm font-bold text-ink-primary transition hover:bg-white/[0.08]"
           >
             <GoogleLogo />
-            Google ile devam et
+            {t("auth.signInWithGoogle")}
           </a>
         </>
       )}
@@ -174,22 +176,22 @@ export function AuthScreen() {
       <div className="mt-6 text-center text-[12px] text-ink-tertiary">
         {kayitMi ? (
           <>
-            Zaten hesabın var mı?{" "}
+            {t("auth.alreadyHaveAccount")}{" "}
             <button type="button" onClick={modDegistir} className="font-bold text-accent underline">
-              Giriş yap
+              {t("auth.login")}
             </button>
           </>
         ) : capabilities.signupAllowed ? (
           <>
-            Hesabın yok mu?{" "}
+            {t("auth.noAccount")}{" "}
             <button type="button" onClick={modDegistir} className="font-bold text-accent underline">
-              Kayıt ol
+              {t("auth.register")}
             </button>
           </>
         ) : (
           // Kayıt kapalıyken var olmayan bir düğme göstermek yerine sebebini
           // söylüyoruz — kişisel bir uygulamada bu normal bir durum.
-          <span className="text-ink-faint">Yeni kayıtlar şu an kapalı.</span>
+          <span className="text-ink-faint">{t("auth.signupClosed")}</span>
         )}
       </div>
     </div>

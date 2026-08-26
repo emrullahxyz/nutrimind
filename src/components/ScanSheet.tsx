@@ -62,6 +62,7 @@ import type { ScanMode } from "../lib/camera";
 import { todayISO } from "../lib/format";
 import type { AIParseItem, MealPayload, MealSource, VisionMode } from "../types";
 import { AiError, grantAiConsent, hasAiConsent, parseMealImage } from "../lib/ai";
+import { useTranslation } from "react-i18next";
 import { captureVideoFrame, compressImageToBase64 } from "../lib/image";
 import { useBodyScrollLock } from "../hooks/useBodyScrollLock";
 
@@ -100,6 +101,7 @@ export function ScanSheet({
   onVisionResult: (items: AIParseItem[]) => void;
 }) {
   useBodyScrollLock(true);
+  const { t } = useTranslation();
   const { aliases, upsertAlias, setDayMeals } = useData();
 
   // --- Tarama adımı ---
@@ -200,14 +202,14 @@ export function ScanSheet({
   async function lookupBarcode(raw: string) {
     const code = raw.trim();
     if (!isValidBarcode(code)) {
-      setStatus({ kind: "error", message: "Barkod 4-20 haneli bir sayı olmalı." });
+      setStatus({ kind: "error", message: t("scan.barcodeInvalid") });
       return;
     }
     setStatus({ kind: "loading" });
     try {
       const found = await fetchOffProduct(code);
       if (!found) {
-        setStatus({ kind: "error", message: `${code} Open Food Facts'te bulunamadı — elle girebilirsin.` });
+        setStatus({ kind: "error", message: t("scan.barcodeNotFound", { code }) });
         return;
       }
       setStatus({ kind: "idle" });
@@ -529,12 +531,12 @@ export function ScanSheet({
       }}
     >
       <label className="block flex-1">
-        <Label>Barkod (elle)</Label>
+        <Label>{t("scan.barcodeLabel")}</Label>
         <input
           className={`${fieldCls} font-mono`}
           inputMode="numeric"
           value={barcode}
-          placeholder="5900531004544"
+          placeholder={t("scan.barcodePlaceholder")}
           onChange={(e) => setBarcode(e.target.value)}
         />
       </label>
@@ -565,13 +567,13 @@ export function ScanSheet({
     ) : null;
 
   const visionTitle =
-    visionMode === "food_label" ? "Etiketi onayla" : visionMode === "food_photo" ? "Yemeği onayla" : "Kamera / Tara";
+    visionMode === "food_label" ? t("scan.titleFoodLabel") : visionMode === "food_photo" ? t("scan.titleFoodPhoto") : t("scan.title");
 
   return (
     <Modal
       fullScreen
       bleed={scanning}
-      title={food ? "Onayla ve kaydet" : visionItems && visionMode ? visionTitle : "Kamera / Tara"}
+      title={food ? t("scan.titleReview") : visionItems && visionMode ? visionTitle : t("scan.title")}
       // SABİT referans — capturedPreview'a göre koşullu DEĞİL. Kararı kendi
       // içinde senkron ref'ten okuyor (bkz. `handleModalClose` yorumu); render
       // bekleyen bir koşullu swap, arka arkaya hızlı iki geri basışta yarışa
@@ -793,7 +795,7 @@ export function ScanSheet({
           )}
 
           <label className="block">
-            <Label>İfadeler (virgülle ayır)</Label>
+            <Label>{t("scan.triggersLabel")}</Label>
             {/* Ürün zaten hafızadaysa kayıt yeniden yazılmıyor, dolayısıyla bu
                 alanı düzenlemek bir işe yaramazdı — kapalı ve mevcut değerleri
                 gösteriyor. Değiştirmek için Hafıza ekranından düzenlenir. */}
@@ -801,7 +803,7 @@ export function ScanSheet({
               className={`${fieldCls} disabled:opacity-60`}
               value={triggers}
               disabled={!!knownAlias}
-              placeholder="örn. skyr"
+              placeholder={t("scan.triggersPlaceholder")}
               onChange={(e) => setTriggers(e.target.value)}
             />
           </label>
@@ -829,7 +831,7 @@ export function ScanSheet({
             </div>
             <div className="w-24 flex-none">
               <label className="block">
-                <Label>Birim</Label>
+                <Label>{t("scan.unitLabel")}</Label>
                 <select className={fieldCls} value={unitName} onChange={(e) => setUnitName(e.target.value)}>
                   {availableUnits.map((u) => (
                     <option key={u.name} value={u.name} className="bg-elevated-2">

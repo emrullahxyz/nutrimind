@@ -22,6 +22,7 @@ const { DatabaseSync } = require("node:sqlite");
 const { parseMealText, parseMealImage } = require("./ai.js");
 const { migrate, OWNER_ID } = require("./migrate.js");
 const authRoutes = require("./authRoutes.js");
+const { OFF_UA } = require("./offUA.js");
 
 const PORT = Number(process.env.NUTRI_PORT || 8790);
 const DB_PATH = process.env.NUTRI_DB || path.join(__dirname, "data.db");
@@ -432,7 +433,6 @@ function newAliasId() {
 // jeton kovası isteğe bağlı süsleme değil, zorunlu koruma.
 // Node 22+ küresel `fetch` ile geliyor — yeni bağımlılık YOK.
 // ============================================================================
-const OFF_UA = "Nutrimind/0.1 (emrullahbayram777@gmail.com)";
 const OFF_TIMEOUT_MS = 8000;
 const OFF_CACHE_TTL_MS = 24 * 60 * 60 * 1000; // 24 saat
 const OFF_MISS_TTL_MS = 10 * 60 * 1000; // "ürün yok" daha kısa yaşar: kullanıcı OFF'a ekleyebilir

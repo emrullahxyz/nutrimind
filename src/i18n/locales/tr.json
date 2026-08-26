@@ -100,7 +100,18 @@
     "cameraUnavailable": "Bu tarayıcıda kamera kullanılamıyor.",
     "cameraFallback": "Galeriden fotoğraf seçebilir veya barkodu elle girebilirsin.",
     "retry": "Tekrar dene",
-    "cooldown": "Çok hızlı arama yapıldı. Open Food Facts kotası korunuyor — {{seconds}} sn sonra tekrar dene."
+    "cooldown": "Çok hızlı arama yapıldı. Open Food Facts kotası korunuyor — {{seconds}} sn sonra tekrar dene.",
+    "barcodeInvalid": "Barkod 4-20 haneli bir sayı olmalı.",
+    "barcodeNotFound": "{{code}} Open Food Facts'te bulunamadı — elle girebilirsin.",
+    "barcodeLabel": "Barkod (elle)",
+    "barcodePlaceholder": "5900531004544",
+    "triggersLabel": "İfadeler (virgülle ayır)",
+    "triggersPlaceholder": "örn. skyr",
+    "unitLabel": "Birim",
+    "title": "Kamera / Tara",
+    "titleReview": "Onayla ve kaydet",
+    "titleFoodLabel": "Etiketi onayla",
+    "titleFoodPhoto": "Yemeği onayla"
   },
   "offline": {
     "banner": "Çevrimdışısınız. Son veri: {{time}}. Değişiklikler kaydedilmez.",
