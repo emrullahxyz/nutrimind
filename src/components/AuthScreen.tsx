@@ -75,7 +75,10 @@ export function AuthScreen() {
   return (
     <div className="mx-auto flex min-h-[100dvh] w-full max-w-sm flex-col justify-center px-6 py-10">
       <div className="mb-8 flex flex-col items-center gap-3">
-        <img src="/NutriMind_Logo.png" alt="" width={56} height={56} className="rounded-2xl" />
+        <picture>
+          <source srcSet="/NutriMind_Logo.webp" type="image/webp" />
+          <img src="/NutriMind_Logo.png" alt="" width={56} height={56} className="rounded-2xl" />
+        </picture>
         <h1 className="text-xl font-extrabold tracking-tight text-ink-primary">Nutrimind</h1>
         <p className="text-center text-[12px] text-ink-tertiary">
           {kayitMi ? "Hesap oluştur ve beslenme hafızanı kurmaya başla." : "Devam etmek için giriş yap."}
