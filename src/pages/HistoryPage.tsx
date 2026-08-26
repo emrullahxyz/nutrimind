@@ -8,6 +8,7 @@ import { StreakCard } from "../components/StreakCard";
 import { WeightCard } from "../components/WeightCard";
 import { formatKcal, formatLongDate, formatNumber, formatRelativeDay, formatShortDate, todayISO } from "../lib/format";
 import { useData } from "../lib/data";
+import { useTranslation } from "react-i18next";
 import { MACROS } from "../lib/nutrients";
 import { weekStart, weeks } from "../lib/weeks";
 import type { Week } from "../lib/weeks";
@@ -43,6 +44,7 @@ function SectionLabel({ children }: { children: string }) {
 }
 
 export function HistoryPage({ resetKey = 0 }: { resetKey?: number }) {
+  const { t } = useTranslation();
   const { days } = useData();
   const all = weeks(days);
   const [selectedWeek, setSelectedWeek] = useState<string | null>(null);
@@ -181,22 +183,22 @@ export function HistoryPage({ resetKey = 0 }: { resetKey?: number }) {
       <StreakCard days={days} streak={calculateStreak(days)} />
 
       <div className="flex flex-col gap-3">
-        <SectionLabel>Kilo</SectionLabel>
+        <SectionLabel>{t("history.weight")}</SectionLabel>
         <WeightCard date={todayISO()} />
       </div>
 
       <div className="flex flex-col gap-4">
         <div className="flex items-center justify-between">
-          <SectionLabel>Haftalar</SectionLabel>
+          <SectionLabel>{t("history.weeks")}</SectionLabel>
           <span className="text-xs text-ink-tertiary font-mono">
             {all.length} haftadan {visibleWeeks.length} tanesi gösteriliyor
           </span>
         </div>
         {all.length === 0 ? (
           <div className="anim-fadeup text-sm text-ink-tertiary space-y-1">
-            <p>Henüz geçmiş kaydı yok.</p>
+            <p>{t("empty.historyTitle")}</p>
             <p className="text-xs text-ink-tertiary/80">
-              Birkaç gün öğün kaydet, sonra 7/30 günlük trendleri görebilirsin.
+              {t("empty.historyBody")}
             </p>
           </div>
         ) : (
@@ -244,7 +246,7 @@ export function HistoryPage({ resetKey = 0 }: { resetKey?: number }) {
                   onClick={() => setVisibleWeeksCount(6)}
                   className="inline-flex items-center gap-2 rounded-full border border-line bg-white/5 px-4 py-2 text-xs font-semibold text-ink-secondary hover:text-ink-primary transition-all active:scale-95"
                 >
-                  <span>Daha Az Göster</span>
+                  <span>{t("history.showLess")}</span>
                 </button>
               </div>
             )}
@@ -253,7 +255,7 @@ export function HistoryPage({ resetKey = 0 }: { resetKey?: number }) {
       </div>
 
       <div className="flex flex-col gap-4">
-        <SectionLabel>Trend</SectionLabel>
+        <SectionLabel>{t("history.trend")}</SectionLabel>
         <TrendPage />
       </div>
     </div>

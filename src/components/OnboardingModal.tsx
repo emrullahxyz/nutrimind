@@ -27,6 +27,7 @@ import { useBodyScrollLock } from "../hooks/useBodyScrollLock";
 import { useModalExit } from "../hooks/useModalExit";
 import type { GoalConfig } from "../types";
 import { singleProfileConfig } from "../lib/goals";
+import { useTranslation } from "react-i18next";
 
 interface OnboardingModalProps {
   isOpen: boolean;
@@ -49,6 +50,7 @@ export function OnboardingModal({
 
   const [step, setStep] = useState<1 | 2 | 3 | 4 | 5>(1);
   const [saving, setSaving] = useState(false);
+  const { t } = useTranslation();
 
   // Form State: Hepsi boş / seçilmemiş başlar
   const [name, setName] = useState(initialName);
@@ -514,7 +516,7 @@ export function OnboardingModal({
               className="px-4 py-3.5 rounded-full bg-calCard hover:bg-white/[0.04] text-xs font-extrabold text-ink-secondary hover:text-white transition flex items-center gap-1.5 active:scale-95"
             >
               <ArrowLeft className="w-4 h-4" />
-              <span>Geri</span>
+              <span>{t("common.back")}</span>
             </button>
           )}
 
@@ -529,7 +531,7 @@ export function OnboardingModal({
                   : "bg-white/10 text-white/40 cursor-not-allowed"
               }`}
             >
-              <span>Devam Et</span>
+              <span>{t("common.continue")}</span>
               <ArrowRight className="w-4 h-4" />
             </button>
           ) : (
@@ -540,7 +542,7 @@ export function OnboardingModal({
               className="flex-1 py-3.5 px-6 rounded-full bg-accent text-accent-ink font-black text-sm shadow-lg hover:opacity-95 transition active:scale-95 flex items-center justify-center gap-2 disabled:opacity-50"
             >
               <CheckCircle2 className="w-5 h-5" />
-              <span>{saving ? "Kaydediliyor..." : "Hedeflerimi Kaydet ve Başla"}</span>
+              <span>{saving ? t("common.loading") : t("onboarding.saveAndStart")}</span>
             </button>
           )}
         </div>
