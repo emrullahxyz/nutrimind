@@ -10,6 +10,12 @@
 // yerine yazma butonu offline'da disable + tooltip ile kullanıcı bilgilendirilir.
 // ============================================================================
 
+// ponytail: IDB overkill. AppData JSON genelde < 100KB, localStorage 5-10MB
+// kapasite veriyor — `localStorage.setItem("nutrimind.cache", JSON.stringify(d))`
+// aynı işi 10 satırda yapar. IDB avantajı: daha büyük quota, structured clone.
+// İleride kullanıcı verisi 1MB'ı aşarsa veya binary eklenecekse (fotoğraf
+// cache) IDB doğru seçim. Şu an fazla mühendislik.
+
 import type { AppData } from "./api";
 
 const DB_NAME = "nutrimind-cache";

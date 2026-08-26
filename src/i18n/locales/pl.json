@@ -100,7 +100,18 @@
     "cameraUnavailable": "Aparat nie jest dostępny w tej przeglądarce.",
     "cameraFallback": "Wybierz zdjęcie z galerii lub wpisz kod kreskowy ręcznie.",
     "retry": "Spróbuj ponownie",
-    "cooldown": "Zbyt wiele żądań. Limit Open Food Facts jest chroniony — spróbuj ponownie za {{seconds}}s."
+    "cooldown": "Zbyt wiele żądań. Limit Open Food Facts jest chroniony — spróbuj ponownie za {{seconds}}s.",
+    "barcodeInvalid": "Kod kreskowy musi mieć 4-20 cyfr.",
+    "barcodeNotFound": "{{code}} nie znaleziono w Open Food Facts — możesz wpisać ręcznie.",
+    "barcodeLabel": "Kod kreskowy (ręcznie)",
+    "barcodePlaceholder": "5900531004544",
+    "triggersLabel": "Wyzwalacze (oddzielone przecinkami)",
+    "triggersPlaceholder": "np. skyr",
+    "unitLabel": "Jednostka",
+    "title": "Aparat / Skanuj",
+    "titleReview": "Sprawdź i zapisz",
+    "titleFoodLabel": "Sprawdź etykietę",
+    "titleFoodPhoto": "Sprawdź posiłek"
   },
   "offline": {
     "banner": "Jesteś offline. Ostatnie dane: {{time}}. Zmiany nie zostaną zapisane.",
