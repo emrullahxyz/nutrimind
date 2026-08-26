@@ -232,7 +232,10 @@ function MainContent() {
         }
       >
         <div className="flex items-center gap-2">
-          <img src="/NutriMind_Logo.png" alt="NutriMind" className="h-7 w-7 rounded-lg" />
+          <picture>
+            <source srcSet="/NutriMind_Logo.webp" type="image/webp" />
+            <img src="/NutriMind_Logo.png" alt="NutriMind" className="h-7 w-7 rounded-lg" />
+          </picture>
           <h1 className="text-xl font-extrabold text-white sm:text-2xl">
             NutriMind
           </h1>
