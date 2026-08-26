@@ -61,7 +61,7 @@ import {
 import type { ScanMode } from "../lib/camera";
 import { todayISO } from "../lib/format";
 import type { AIParseItem, MealPayload, MealSource, VisionMode } from "../types";
-import { AiError, parseMealImage } from "../lib/ai";
+import { AiError, grantAiConsent, hasAiConsent, parseMealImage } from "../lib/ai";
 import { captureVideoFrame, compressImageToBase64 } from "../lib/image";
 import { useBodyScrollLock } from "../hooks/useBodyScrollLock";
 
@@ -146,6 +146,9 @@ export function ScanSheet({
   const [visionItems, setVisionItems] = useState<AIParseItem[] | null>(null);
   const [visionMode, setVisionMode] = useState<VisionMode | null>(null);
   const [visionSaving, setVisionSaving] = useState(false);
+  const [aiConsentOpen, setAiConsentOpen] = useState(false);
+  // Onay bekleyen görsel çağrısı: kullanıcı "Anladım"a basınca otomatik tekrar parse edilir.
+  const pendingVisionRef = useRef<{ base64: string; mimeType: string; mode: VisionMode } | null>(null);
 
   const scanning = food === null && visionItems === null;
 
@@ -227,6 +230,7 @@ export function ScanSheet({
     abortRef.current = ctrl;
     setAnalyzing(true);
     setStatus({ kind: "idle" });
+    pendingVisionRef.current = { base64, mimeType, mode };
     try {
       const result = await parseMealImage(base64, mimeType, mode, ctrl.signal);
       if (result.items.length === 0) {
@@ -245,6 +249,10 @@ export function ScanSheet({
       setVisionMode(mode);
     } catch (e) {
       if ((e as Error | undefined)?.name === "AbortError") return; // kullanıcı iptal etti
+      if ((e as Error | undefined)?.message === "AI_CONSENT_REQUIRED") {
+        setAiConsentOpen(true);
+        return;
+      }
       // `AiError.message` zaten kullanıcıya gösterilebilir Türkçe metin.
       setStatus({
         kind: "error",
@@ -848,6 +856,55 @@ export function ScanSheet({
           onSavingChange={setVisionSaving}
         />
       ) : null}
+
+      {/* AI fotoğraf onay modalı — ilk kullanımda bir kez sorulur, onay
+          localStorage'a yazılır. Play Store 'Data safety' gereği. */}
+      {aiConsentOpen && (
+        <Modal onClose={() => setAiConsentOpen(false)} title="Yapay zeka ile analiz">
+          <div className="space-y-3">
+            <p className="text-sm text-white/80">
+              Fotoğrafların ve öğün metnin Google Gemini'ye gönderilir.
+              Verilerin yapay zeka tarafından işlenir, sunucumuzda saklanmaz.
+            </p>
+            <p className="text-xs text-white/50">
+              Üçüncü taraf gizlilik politikası:{" "}
+              <a
+                href="https://policies.google.com/privacy"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-emerald-400 underline"
+              >
+                policies.google.com/privacy
+              </a>
+            </p>
+            <div className="flex gap-2 pt-2">
+              <button
+                type="button"
+                onClick={() => setAiConsentOpen(false)}
+                className="flex-1 rounded-xl border border-white/10 bg-white/5 py-2.5 text-sm font-semibold text-white/80"
+              >
+                Vazgeç
+              </button>
+              <button
+                type="button"
+                onClick={async () => {
+                  grantAiConsent();
+                  setAiConsentOpen(false);
+                  // Onay öncesi askıya alınmış görseli otomatik tekrar gönder.
+                  const pending = pendingVisionRef.current;
+                  if (pending) {
+                    pendingVisionRef.current = null;
+                    await runVision(pending.base64, pending.mimeType, pending.mode);
+                  }
+                }}
+                className="flex-1 rounded-xl bg-emerald-500/20 py-2.5 text-sm font-semibold text-emerald-300"
+              >
+                Anladım, devam et
+              </button>
+            </div>
+          </div>
+        </Modal>
+      )}
     </Modal>
   );
 }
