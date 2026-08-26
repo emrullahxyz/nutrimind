@@ -57,3 +57,15 @@ maxKeys)
 normalizeCode(v
 null)
 x
+
+# Capacitor (android kaynak kodu commit'lenir, build artifact'leri + keystore HAYIR)
+android/.gradle/
+android/build/
+android/app/build/
+android/local.properties
+android/app/release/
+android/app/*.apk
+android/app/*.aab
+*.jks
+*.keystore
+
