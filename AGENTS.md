@@ -54,12 +54,15 @@ src/
   pages/               # DailyPage, HistoryPage, AliasPage, ...
   hooks/               # useModalHistory, useModalExit, useBodyScrollLock, ...
   lib/                 # yardımcılar: data.tsx (context), api.ts, ai.ts, nutrition.ts, ...
+  i18n/                # react-i18next: i18n.ts, locales/{en,tr,pl}.json
 server/
   index.js             # giriş noktası, node:http + node:sqlite (DONMUŞ, aşağıya bak)
   ai.js                # Gemini proxy — İZole modül
   auth.js, googleAuth.js, authRoutes.js, migrate.js, setpassword.js
   data.db              # SQLite veritabanı (çalışma anında oluşur, repo'da YOK)
-public/                # statik dosyalar, service worker
+public/                # statik dosyalar, service worker, manifest.webmanifest, privacy.html
+android/               # Capacitor Android wrapper (kaynak kodu, build artifact'leri .gitignore'da)
+capacitor.config.ts    # appId: com.emrullah.nutrimind, webDir: dist
 docs/archive/          # arşivlenmiş eski dokümanlar (salt-okunur, silme)
 tasks/                 # todo.md + lessons.md (aktif iş takibi)
 ```
@@ -77,8 +80,14 @@ tasks/                 # todo.md + lessons.md (aktif iş takibi)
 4. **Yerel geliştirme iki terminal ister** (yukarıya bak). Kod değişikliği gerektiren her işten önce
    `pnpm typecheck` çalıştırılmalı.
 5. **Veri güvenliği:** `server/data.db` canlı SQLite dosyasıdır; asla elle düzenleme. Sırlar
-   `.env`'de tutulur, asla commit'lenmez.
-6. Kod yazarken proje dilini takip et (Türkçe UI metinleri, İngilizce değişken/fonksiyon adları).
+   `.env`'de tutulur, asla commit'lenmez. Kullanıcı veri silme (`POST /api/auth/account`)
+   atomik transaction; OAuth revoke YAPILMAZ.
+6. **i18n kuralı (değişti):** UI metinleri hardcode Türkçe DEĞİL — `useTranslation()` + `t('key.path')`
+   kullan. Anahtarlar `src/i18n/locales/{en,tr,pl}.json` içinde. Yeni metin eklerken
+   3 dile de ekle. navigator.language otomatik algılama (EN default). localStorage override.
+7. **Play Store / Capacitor:** TWA için `public/.well-known/assetlinks.json` SHA-256 fingerprint
+   ile dolu olmalı (boşsa placeholder). `android/` kaynak kodu commit'lenir; `*.jks`, `*.keystore`,
+   `android/app/build/` ASLA commit'lenmez.
 
 ## Mimari Notlar
 
