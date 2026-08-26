@@ -143,7 +143,10 @@ export function AliasPage({
         <div className="anim-fadeup rounded-[24px] border border-white/10 bg-white/[0.03] p-8 text-center flex flex-col items-center gap-3 w-full">
           <BookOpen className="w-8 h-8 text-white/30" />
           <p className="text-sm font-semibold text-white/60">Henüz hafızada besin yok.</p>
-          <p className="text-xs text-white/40">"+ Tarif Oluştur" veya "+ Yeni Besin" butonları ile ekleyebilirsin.</p>
+          <p className="text-xs text-white/40">
+            Takma ad, sık kullandığın besinlere vereceğin kısayol. Örn. “smoothie” → “1 muz, 1 yulaf, süt, protein tozu”.
+            "+ Tarif Oluştur" veya "+ Yeni Besin" butonları ile ekleyebilirsin.
+          </p>
         </div>
       ) : filteredAliases.length === 0 ? (
         <div className="rounded-[24px] border border-white/10 bg-white/[0.03] p-6 text-center text-sm text-white/50 w-full">
