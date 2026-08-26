@@ -272,6 +272,29 @@
     "savedToast": "Öğün kaydedildi",
     "updatedToast": "Öğün güncellendi",
     "save": "Kaydet",
-    "saving": "Kaydediliyor..."
+    "saving": "Kaydediliyor...",
+    "confirmAreYouSure": "Emin misin?"
+  },
+  "nutrition": {
+    "title": "Beslenme",
+    "deleteMeal": "Öğünü Sil",
+    "foodName": "Besin Adı",
+    "addExtraItem": "+ Bu Öğüne Ekstra Besin / Kalem Ekle",
+    "servingAmount": "Porsiyon Miktarı",
+    "calories": "Kalori",
+    "protein": "Protein",
+    "carbs": "Karb",
+    "fat": "Yağ",
+    "otherNutrients": "Diğer besin değerleri",
+    "emptyMeansUnknown": "Boş bırakırsan \"bilinmiyor\" sayılır, 0 kaydedilmez.",
+    "satFat": "Doymuş Yağ",
+    "sodium": "Sodyum",
+    "fiber": "Lif",
+    "sugar": "Şeker",
+    "portionMultiplier": "Porsiyon Çarpanı",
+    "manualEditWarning": "Bu kalemin hafıza bağlantısı elle düzenlemeyle kaldırılacak.",
+    "microNutrients": "Mikro besinler",
+    "microEmptyNote": "Boş bıraktığın mikro besin \"bilinmiyor\" sayılır — 0 olarak kaydedilmez.",
+    "total": "Toplam:"
   }
 }

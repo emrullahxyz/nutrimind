@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import { ArrowLeft, Flame, Beef, Wheat, Droplet, Trash2, Plus } from "lucide-react";
 import { ZERO_NUTRITION } from "../types";
 import type { MealCategory, MealItem, Nutrition } from "../types";
@@ -8,7 +9,7 @@ import { useModalExit } from "../hooks/useModalExit";
 import { scaleMealSources } from "../lib/nutrition";
 import { EditableStat, toDraft, fromDraft } from "./FormBits";
 import type { NutritionDraft } from "./FormBits";
-import { MEAL_CATEGORIES, MEAL_CATEGORY_LABELS, categoryForHour } from "../lib/mealCategory";
+import { MEAL_CATEGORIES, categoryForHour } from "../lib/mealCategory";
 
 interface Props {
   isOpen: boolean;
@@ -42,6 +43,7 @@ export function scaleMealNutrition(computed: Nutrition | undefined, multiplier: 
 export function NutritionSheet({ isOpen, onClose, meal, onSave, onDelete, onEditMealItems }: Props) {
   // Lock background body scroll when modal is open
   useBodyScrollLock(isOpen);
+  const { t } = useTranslation();
 
   const [label, setLabel] = useState(meal?.label ?? "");
   const [category, setCategory] = useState<MealCategory>(
@@ -134,13 +136,13 @@ export function NutritionSheet({ isOpen, onClose, meal, onSave, onDelete, onEdit
           type="button"
           onClick={beginClose}
           className="w-10 h-10 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white transition active:scale-95"
-          aria-label="Geri"
+          aria-label={t("meal.back")}
         >
           <ArrowLeft className="w-5 h-5" />
         </button>
 
         <h2 className="text-lg font-extrabold text-white tracking-wide">
-          Nutrition
+          {t("nutrition.title")}
         </h2>
 
         {onDelete ? (
@@ -151,7 +153,7 @@ export function NutritionSheet({ isOpen, onClose, meal, onSave, onDelete, onEdit
               beginClose();
             }}
             className="w-10 h-10 rounded-full bg-red-500/10 hover:bg-red-500/20 text-red-400 flex items-center justify-center transition active:scale-95"
-            title="Öğünü Sil"
+            title={t("nutrition.deleteMeal")}
           >
             <Trash2 className="w-4.5 h-4.5" />
           </button>
@@ -165,20 +167,20 @@ export function NutritionSheet({ isOpen, onClose, meal, onSave, onDelete, onEdit
         {/* Meal Name Input Field (Besin Adı) */}
         <div className="space-y-2">
           <label className="text-xs font-semibold text-white/80 block">
-            Besin Adı
+            {t("nutrition.foodName")}
           </label>
           <input
             type="text"
             value={label}
             onChange={(e) => setLabel(e.target.value)}
             className="w-full px-4 py-3.5 rounded-2xl bg-white/[0.04] border border-white/20 text-sm font-semibold text-white focus:outline-none focus:border-white/40"
-            placeholder="Besin Adı"
+            placeholder={t("nutrition.foodName")}
           />
         </div>
 
         {/* Category Selector Pills */}
         <div className="space-y-2">
-          <label className="text-xs font-semibold text-white/80 block">Öğün Kategorisi</label>
+          <label className="text-xs font-semibold text-white/80 block">{t("meal.categoryLabel")}</label>
           <div className="flex items-center gap-2 overflow-x-auto no-scrollbar pb-1">
             {MEAL_CATEGORIES.map((c) => {
               const isSelected = category === c;
@@ -193,7 +195,7 @@ export function NutritionSheet({ isOpen, onClose, meal, onSave, onDelete, onEdit
                       : "border border-white/15 bg-white/[0.04] text-white/70 hover:bg-white/10"
                   }`}
                 >
-                  {MEAL_CATEGORY_LABELS[c]}
+                  {t(`meal.category${c.charAt(0).toUpperCase() + c.slice(1)}`)}
                 </button>
               );
             })}
@@ -211,14 +213,14 @@ export function NutritionSheet({ isOpen, onClose, meal, onSave, onDelete, onEdit
             className="w-full py-3 px-4 rounded-2xl border border-amber-400/30 bg-amber-400/10 hover:bg-amber-400/20 text-amber-300 font-extrabold text-xs transition active:scale-[0.98] flex items-center justify-center gap-2"
           >
             <Plus className="w-4 h-4 text-amber-400" />
-            <span>+ Bu Öğüne Ekstra Besin / Kalem Ekle</span>
+            <span>{t("nutrition.addExtraItem")}</span>
           </button>
         )}
 
         {/* Serving Amount Stepper (Porsiyon Miktarı) */}
         <div className="flex items-center justify-between gap-4 py-1">
           <span className="text-sm font-semibold text-white/90">
-            Porsiyon Miktarı
+            {t("nutrition.servingAmount")}
           </span>
           <div className="flex items-center gap-4 rounded-2xl border border-white/20 bg-white/[0.04] px-4 py-2.5 min-w-[130px] justify-between">
             <button
@@ -248,7 +250,7 @@ export function NutritionSheet({ isOpen, onClose, meal, onSave, onDelete, onEdit
               <Flame className="w-5 h-5" />
             </div>
             <div>
-              <div className="text-xs font-medium text-white/50">Kalori</div>
+              <div className="text-xs font-medium text-white/50">{t("nutrition.calories")}</div>
               <EditableStat
                 id="macro-kcal"
                 value={draft.kcal ?? ""}
@@ -266,7 +268,7 @@ export function NutritionSheet({ isOpen, onClose, meal, onSave, onDelete, onEdit
           <label htmlFor="macro-protein" className="rounded-2xl border border-white/10 bg-white/[0.04] p-3 flex flex-col justify-between min-h-[80px] cursor-text">
             <div className="flex items-center gap-1.5 text-xs font-semibold text-white/80">
               <Beef className="w-3.5 h-3.5 text-protein-bright" />
-              <span>Protein</span>
+              <span>{t("nutrition.protein")}</span>
             </div>
             <div className="flex items-baseline gap-0.5 mt-1">
               <EditableStat
@@ -283,7 +285,7 @@ export function NutritionSheet({ isOpen, onClose, meal, onSave, onDelete, onEdit
           <label htmlFor="macro-carbs" className="rounded-2xl border border-white/10 bg-white/[0.04] p-3 flex flex-col justify-between min-h-[80px] cursor-text">
             <div className="flex items-center gap-1.5 text-xs font-semibold text-white/80">
               <Wheat className="w-3.5 h-3.5 text-carb-bright" />
-              <span>Karb</span>
+              <span>{t("nutrition.carbs")}</span>
             </div>
             <div className="flex items-baseline gap-0.5 mt-1">
               <EditableStat
@@ -300,7 +302,7 @@ export function NutritionSheet({ isOpen, onClose, meal, onSave, onDelete, onEdit
           <label htmlFor="macro-fat" className="rounded-2xl border border-white/10 bg-white/[0.04] p-3 flex flex-col justify-between min-h-[80px] cursor-text">
             <div className="flex items-center gap-1.5 text-xs font-semibold text-white/80">
               <Droplet className="w-3.5 h-3.5 text-fat-bright" />
-              <span>Yağ</span>
+              <span>{t("nutrition.fat")}</span>
             </div>
             <div className="flex items-baseline gap-0.5 mt-1">
               <EditableStat
@@ -316,12 +318,12 @@ export function NutritionSheet({ isOpen, onClose, meal, onSave, onDelete, onEdit
 
         {/* Other Nutrition Facts List (Diğer Besin Değerleri) */}
         <div className="space-y-2.5 pt-2">
-          <div className="text-sm font-bold text-white/90">Diğer besin değerleri</div>
-          <p className="text-[11px] text-white/40">Boş bırakırsan "bilinmiyor" sayılır, 0 kaydedilmez.</p>
+          <div className="text-sm font-bold text-white/90">{t("nutrition.otherNutrients")}</div>
+          <p className="text-[11px] text-white/40">{t("nutrition.emptyMeansUnknown")}</p>
           <div className="space-y-2">
             {/* Doymuş Yağ */}
             <div className="rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3.5 flex items-center justify-between text-xs sm:text-sm">
-              <span className="font-medium text-white/80">Doymuş Yağ</span>
+              <span className="font-medium text-white/80">{t("nutrition.satFat")}</span>
               <div className="flex items-center gap-1">
                 <EditableStat
                   value={draft.satFat ?? ""}
@@ -334,7 +336,7 @@ export function NutritionSheet({ isOpen, onClose, meal, onSave, onDelete, onEdit
             </div>
             {/* Sodyum */}
             <div className="rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3.5 flex items-center justify-between text-xs sm:text-sm">
-              <span className="font-medium text-white/80">Sodyum</span>
+              <span className="font-medium text-white/80">{t("nutrition.sodium")}</span>
               <div className="flex items-center gap-1">
                 <EditableStat
                   value={draft.sodium ?? ""}
@@ -347,7 +349,7 @@ export function NutritionSheet({ isOpen, onClose, meal, onSave, onDelete, onEdit
             </div>
             {/* Lif */}
             <div className="rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3.5 flex items-center justify-between text-xs sm:text-sm">
-              <span className="font-medium text-white/80">Lif</span>
+              <span className="font-medium text-white/80">{t("nutrition.fiber")}</span>
               <div className="flex items-center gap-1">
                 <EditableStat
                   value={draft.fiber ?? ""}
@@ -359,7 +361,7 @@ export function NutritionSheet({ isOpen, onClose, meal, onSave, onDelete, onEdit
             </div>
             {/* Şeker */}
             <div className="rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3.5 flex items-center justify-between text-xs sm:text-sm">
-              <span className="font-medium text-white/80">Şeker</span>
+              <span className="font-medium text-white/80">{t("nutrition.sugar")}</span>
               <div className="flex items-center gap-1">
                 <EditableStat
                   value={draft.sugar ?? ""}
@@ -381,7 +383,7 @@ export function NutritionSheet({ isOpen, onClose, meal, onSave, onDelete, onEdit
           onClick={handleApplySave}
           className="w-full py-4 rounded-full bg-white text-black font-extrabold text-base hover:bg-white/90 transition shadow-xl active:scale-[0.98]"
         >
-          Kaydet
+          {t("meal.save")}
         </button>
       </div>
     </div>

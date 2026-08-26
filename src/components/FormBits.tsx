@@ -1,5 +1,6 @@
 import { useState } from "react";
 import type { ReactNode } from "react";
+import { useTranslation } from "react-i18next";
 import { parseNum } from "../lib/nutrition";
 import { MACROS, MICROS, NUTRIENTS, makeNutrition } from "../lib/nutrients";
 import type { NutrientDef, NutrientKey } from "../lib/nutrients";
@@ -176,6 +177,7 @@ export function NutritionFields({
   draft: NutritionDraft;
   onChange: (d: NutritionDraft) => void;
 }) {
+  const { t } = useTranslation();
   const set = (k: NutrientKey) => (v: string) => onChange({ ...draft, [k]: v });
   const [open, setOpen] = useState(false);
   const filled = filledMicros(draft);
@@ -203,7 +205,7 @@ export function NutritionFields({
             className="flex w-full items-center justify-between gap-2 px-3 py-2 text-left transition hover:bg-white/[0.03]"
           >
             <span className="flex items-center gap-2">
-              <span className={sectionLabelCls}>Mikro besinler</span>
+              <span className={sectionLabelCls}>{t("nutrition.microNutrients")}</span>
               {filled.length > 0 && (
                 <span className="rounded-pill bg-micro/15 px-2 py-0.5 font-mono text-[10px] font-semibold text-micro">
                   {filled.map((def) => def.short).join(" · ")}
@@ -230,7 +232,7 @@ export function NutritionFields({
 
       {open && (
         <p className="text-[11px] text-ink-faint">
-          Boş bıraktığın mikro besin "bilinmiyor" sayılır — 0 olarak kaydedilmez.
+          {t("nutrition.microEmptyNote")}
         </p>
       )}
     </div>
@@ -266,6 +268,7 @@ export function NutrientSummaryLine({
   as?: "div" | "span";
   className?: string;
 }) {
+  const { t } = useTranslation();
   const summary = nutrientSummary(nutrition, defs, decimals);
 
   if (kcal === "none") return <Tag className={className}>{summary}</Tag>;
@@ -273,7 +276,7 @@ export function NutrientSummaryLine({
   if (kcal === "total")
     return (
       <Tag className={className}>
-        <strong>Toplam: {formatKcal(nutrition.kcal)}</strong> ({summary})
+        <strong>{t("nutrition.total")} {formatKcal(nutrition.kcal)}</strong> ({summary})
       </Tag>
     );
 
@@ -291,7 +294,7 @@ export function FormActions({
   onSave,
   saving,
   disabled,
-  saveLabel = "Kaydet",
+  saveLabel,
 }: {
   onCancel: () => void;
   onSave: () => void;
@@ -299,6 +302,7 @@ export function FormActions({
   disabled: boolean;
   saveLabel?: string;
 }) {
+  const { t } = useTranslation();
   return (
     <div className="flex items-center justify-end gap-2">
       <button
@@ -307,7 +311,7 @@ export function FormActions({
         disabled={saving}
         className="rounded-pill border border-line px-4 py-2 text-sm font-semibold text-ink-secondary transition hover:text-ink-primary disabled:opacity-40 disabled:hover:text-ink-secondary"
       >
-        Vazgeç
+        {t("meal.basketCancel")}
       </button>
       <button
         type="button"
@@ -315,7 +319,7 @@ export function FormActions({
         disabled={disabled || saving}
         className="rounded-pill bg-accent px-4 py-2 text-sm font-extrabold text-accent-ink transition disabled:opacity-40"
       >
-        {saving ? "…" : saveLabel}
+        {saving ? t("meal.saving") : (saveLabel ?? t("meal.save"))}
       </button>
     </div>
   );
@@ -328,7 +332,7 @@ export function ErrorText({ children }: { children: ReactNode }) {
 /** İki adımlı sil onayı: ilk tık "Emin misin?"e döner, ikinci tık siler. */
 export function ConfirmButton({
   onConfirm,
-  label = "Sil",
+  label,
   className = "",
   disabled = false,
 }: {
@@ -337,6 +341,7 @@ export function ConfirmButton({
   className?: string;
   disabled?: boolean;
 }) {
+  const { t } = useTranslation();
   const [armed, setArmed] = useState(false);
   return (
     <button
@@ -353,7 +358,7 @@ export function ConfirmButton({
         armed ? "bg-danger/20 text-danger" : "bg-white/[0.06] text-ink-tertiary hover:text-danger"
       } ${className}`}
     >
-      {armed ? "Emin misin?" : label}
+      {armed ? t("meal.confirmAreYouSure") : (label ?? t("common.delete"))}
     </button>
   );
 }

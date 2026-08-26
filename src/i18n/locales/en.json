@@ -272,6 +272,29 @@
     "savedToast": "Meal saved",
     "updatedToast": "Meal updated",
     "save": "Save",
-    "saving": "Saving..."
+    "saving": "Saving...",
+    "confirmAreYouSure": "Are you sure?"
+  },
+  "nutrition": {
+    "title": "Nutrition",
+    "deleteMeal": "Delete meal",
+    "foodName": "Food Name",
+    "addExtraItem": "Add Extra Food / Item to This Meal",
+    "servingAmount": "Serving Amount",
+    "calories": "Calories",
+    "protein": "Protein",
+    "carbs": "Carbs",
+    "fat": "Fat",
+    "otherNutrients": "Other nutrition facts",
+    "emptyMeansUnknown": "If left empty, it is counted as \"unknown\" and not saved as 0.",
+    "satFat": "Saturated Fat",
+    "sodium": "Sodium",
+    "fiber": "Fiber",
+    "sugar": "Sugar",
+    "portionMultiplier": "Portion Multiplier",
+    "manualEditWarning": "This item's memory link will be removed by manual editing.",
+    "microNutrients": "Micronutrients",
+    "microEmptyNote": "If you leave a micronutrient blank it is counted as \"unknown\" and not saved as 0.",
+    "total": "Total:"
   }
 }

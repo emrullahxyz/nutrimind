@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Label, NumField, NutritionFields, fieldCls, fromDraft, sectionLabelCls, toDraft } from "./FormBits";
 import type { NutritionDraft } from "./FormBits";
 import {
@@ -74,6 +75,7 @@ export function ItemEditFields({
 
   const [basis, setBasis] = useState<Basis>("quantity");
   const [draft, setDraft] = useState<NutritionDraft>(() => toDraft(item.nutrition));
+  const { t } = useTranslation();
 
   const availableUnits = useMemo(() => unitOptions(knownAlias?.units), [knownAlias]);
 
@@ -118,11 +120,11 @@ export function ItemEditFields({
         (mode === "exact" ? (
           <div className="flex items-end gap-2">
             <div className="flex-1">
-              <NumField label="Miktar" value={qty} onChange={(v) => commitExactQuantity(v, unitName)} />
+              <NumField label={t("meal.amountLabel")} value={qty} onChange={(v) => commitExactQuantity(v, unitName)} />
             </div>
             <div className="w-28 flex-none">
               <label className="block">
-                <Label>Birim</Label>
+                <Label>{t("meal.unitLabel")}</Label>
                 <select
                   className={fieldCls}
                   value={unitName}
@@ -139,7 +141,7 @@ export function ItemEditFields({
           </div>
         ) : (
           <div className="flex items-center justify-between gap-4 rounded-chip border border-line bg-white/[0.04] px-4 py-2.5">
-            <span className={sectionLabelCls}>Porsiyon Çarpanı</span>
+            <span className={sectionLabelCls}>{t("nutrition.portionMultiplier")}</span>
             <div className="flex items-center gap-4">
               <button
                 type="button"
@@ -165,7 +167,7 @@ export function ItemEditFields({
       <NutritionFields draft={draft} onChange={handleMacroChange} />
 
       {basis === "manual" && hadSourcesOriginally && (
-        <p className="text-[11px] text-warn">Bu kalemin hafıza bağlantısı elle düzenlemeyle kaldırılacak.</p>
+        <p className="text-[11px] text-warn">{t("nutrition.manualEditWarning")}</p>
       )}
     </div>
   );
