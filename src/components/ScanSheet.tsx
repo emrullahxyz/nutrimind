@@ -619,11 +619,21 @@ export function ScanSheet({
                barkod her cihazda çalışır. */
             <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 px-6 text-center">
               <p className="text-[12px] text-ink-secondary">
-                {cameraError ?? "Bu tarayıcıda kamera kullanılamıyor."}
+                {cameraError && cameraError.toLowerCase().includes("notallowed")
+                  ? "Kamera izni reddedildi."
+                  : (cameraError ?? "Bu tarayıcıda kamera kullanılamıyor.")}
               </p>
-              <p className="text-[11px] text-ink-tertiary">
-                Galeriden fotoğraf seçebilir veya barkodu elle girebilirsin.
-              </p>
+              {cameraError && cameraError.toLowerCase().includes("notallowed") ? (
+                <p className="text-[11px] text-ink-tertiary max-w-xs">
+                  Telefon ayarlarından{" "}
+                  <span className="font-semibold text-white/80">Uygulamalar → Nutrimind → İzinler → Kamera</span>{" "}
+                  yolunu izleyerek izni açabilirsin.
+                </p>
+              ) : (
+                <p className="text-[11px] text-ink-tertiary">
+                  Galeriden fotoğraf seçebilir veya barkodu elle girebilirsin.
+                </p>
+              )}
               {canUseCamera && (
                 <button
                   type="button"

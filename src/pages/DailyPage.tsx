@@ -44,7 +44,7 @@ export function DailyPage({
 
       <DayView
         date={selectedDate}
-        emptyLabel="Bu gün henüz bir şey yok."
+        emptyLabel="Bu gün henüz bir şey yok. Örnek: “2 yumurta, yoğurt, ekmek” yaz — sistem hatırlar."
         enableScan
         showWeightCard={false}
         triggerAddMeal={triggerAddMeal}
