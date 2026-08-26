@@ -1,0 +1,154 @@
+<!doctype html>
+<html lang="tr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#08090a" />
+    <meta name="robots" content="index, follow" />
+    <meta name="description" content="Nutrimind gizlilik politikası — KVKK aydınlatma metni, toplanan veriler, üçüncü taraf hizmetler ve kullanıcı hakları." />
+    <link rel="canonical" href="https://nutri.emrullah.xyz/privacy.html" />
+    <link rel="icon" href="/icon-192.png" type="image/png" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+    <title>Gizlilik Politikası — Nutrimind</title>
+    <style>
+      :root { color-scheme: dark; }
+      * { box-sizing: border-box; }
+      html, body { margin: 0; padding: 0; }
+      body {
+        font-family: "Manrope", system-ui, -apple-system, "Segoe UI", sans-serif;
+        background: #08090a;
+        color: #e6e7ea;
+        line-height: 1.6;
+        -webkit-font-smoothing: antialiased;
+      }
+      main {
+        max-width: 720px;
+        margin: 0 auto;
+        padding: 48px 24px 96px;
+      }
+      h1 { font-size: 32px; font-weight: 800; margin: 0 0 8px; letter-spacing: -0.02em; }
+      h2 { font-size: 22px; font-weight: 700; margin: 40px 0 12px; letter-spacing: -0.01em; }
+      h3 { font-size: 18px; font-weight: 600; margin: 24px 0 8px; }
+      p { margin: 0 0 12px; }
+      .meta { color: #8a8c93; font-size: 14px; margin: 0 0 32px; }
+      .lang-switch { float: right; font-size: 14px; }
+      .lang-switch a { color: #22c55e; text-decoration: none; margin-left: 12px; }
+      .lang-switch a:hover { text-decoration: underline; }
+      ul { padding-left: 20px; }
+      li { margin-bottom: 6px; }
+      strong { color: #ffffff; font-weight: 600; }
+      a { color: #22c55e; }
+      code { background: #14151a; padding: 2px 6px; border-radius: 4px; font-size: 14px; }
+      hr { border: 0; border-top: 1px solid #1c1d22; margin: 32px 0; }
+      .footer { margin-top: 64px; padding-top: 24px; border-top: 1px solid #1c1d22; font-size: 14px; color: #8a8c93; }
+      .footer a { color: #8a8c93; text-decoration: underline; }
+    </style>
+  </head>
+  <body>
+    <main>
+      <div class="lang-switch">
+        <a href="/policies/en.html">EN</a>
+        <a href="/policies/pl.html">PL</a>
+      </div>
+      <h1>Gizlilik Politikası</h1>
+      <p class="meta">Son güncelleme: 26 Ağustos 2026</p>
+
+      <h2>1. Veri Sorumlusu</h2>
+      <p>Bu aydınlatma metni, 6698 sayılı Kişisel Verilerin Korunması Kanunu (KVKK) kapsamında, <strong>Nutrimind ("Besin Hafızası")</strong> uygulamasının veri sorumlusu sıfatıyla hareket eden kişi adına hazırlanmıştır.</p>
+      <p><strong>İletişim:</strong> <a href="mailto:support@emrullah.xyz">support@emrullah.xyz</a></p>
+      <p>Adres talep üzerine iletilir (bireysel girişimci).</p>
+
+      <h2>2. Toplanan Kişisel Veriler</h2>
+      <p>Aşağıdaki veri kategorileri, açık rızanıza dayalı olarak toplanır ve işlenir:</p>
+      <h3>2.1 Hesap verileri</h3>
+      <ul>
+        <li><strong>E-posta adresi</strong> (hesap tanımlayıcısı, giriş)</li>
+        <li><strong>Görünen ad</strong> (display name, opsiyonel)</li>
+        <li><strong>Şifre hash</strong> (scrypt algoritması, salt'lı; asla düz metin saklanmaz)</li>
+        <li><strong>Google OAuth kimliği</strong> (yalnızca "Google ile giriş" kullananlar için; <code>google_sub</code>)</li>
+      </ul>
+      <h3>2.2 Öğün ve sağlık verileri</h3>
+      <ul>
+        <li>Günlük öğün kayıtları (besin adı, kalori, makro besin değerleri, saat)</li>
+        <li>Tanımladığınız takma adlar (alias) ve bunların eşleme kuralları</li>
+        <li>Hedef değerler (TDEE, kalori, makro hedefleri)</li>
+        <li>Bu veriler sağlık verisi niteliği taşıyabilir.</li>
+      </ul>
+      <h3>2.3 Teknik veriler</h3>
+      <ul>
+        <li>IP adresi (rate limit ve kötüye kullanım önleme amacıyla, kısa süreli)</li>
+        <li>User-Agent (off ürün veritabanı sorgularında anonim)</li>
+        <li>Oturum çerezi (<code>__Host-nm_session</code>, HttpOnly, Secure, SameSite=Lax, 30 gün kayan)</li>
+      </ul>
+
+      <h2>3. İşleme Amaçları</h2>
+      <p>Verileriniz aşağıdaki amaçlarla işlenir:</p>
+      <ul>
+        <li>Hesap oluşturma, oturum yönetimi, kimlik doğrulama</li>
+        <li>Beslenme takibi, günlük ve haftalık raporlar, trendler</li>
+        <li>Takma ad hafızası ile serbest metin öğün girişini kolaylaştırma</li>
+        <li><strong>Yapay zeka özelliği</strong> (fotoğraf + metin): yalnızca sizin açık onayınızla; fotoğraf ve metin Google Gemini'ye gönderilir, <strong>sunucumuzda saklanmaz</strong>.</li>
+        <li>Hata ayıklama, güvenlik, kötüye kullanım önleme</li>
+      </ul>
+
+      <h2>4. Üçüncü Taraf Hizmetler ve Veri Aktarımı</h2>
+      <p>Verilerinizin bir kısmı, açık rızanızla aşağıdaki üçüncü taraf hizmetlere aktarılır:</p>
+      <h3>4.1 Google Gemini (AI özelliği)</h3>
+      <p>AI özelliğini kullandığınızda, fotoğraf ve öğün metniniz Google Gemini API'sine gönderilir. Google, bu verileri kendi gizlilik politikası çerçevesinde işler: <a href="https://policies.google.com/privacy" target="_blank" rel="noopener">policies.google.com/privacy</a>. Veriler sunucumuzda saklanmaz.</p>
+      <h3>4.2 Open Food Facts (barkod arama)</h3>
+      <p>Barkod okuttuğunuzda, barkod numarası ve ürün adı Open Food Facts API'sine gönderilir (anonim User-Agent ile). Open Food Facts: <a href="https://world.openfoodfacts.org/privacy" target="_blank" rel="noopener">world.openfoodfacts.org/privacy</a>.</p>
+      <h3>4.3 Google OAuth (giriş)</h3>
+      <p>"Google ile giriş" kullandığınızda, yalnızca <code>email</code> ve <code>profile</code> kapsamları istenir. Hassas kapsam (takvim, kişiler vb.) talep edilmez.</p>
+      <h3>4.4 Vercel / Oracle VPS (hosting)</h3>
+      <p>Uygulama Oracle VPS üzerinde barındırılır; veriler Türkiye dışı veri merkezinde işlenebilir. HTTPS zorunludur.</p>
+
+      <h2>5. Veri Saklama Süresi</h2>
+      <p>Verileriniz hesabınız aktif olduğu sürece saklanır. Hesabınızı sildiğinizde, tüm kişisel verileriniz <strong>anında ve geri dönüşsüz</strong> silinir (veritabanından hard delete). Yedekleme kopyaları en geç 30 gün içinde temizlenir.</p>
+
+      <h2>6. İlgili Kişi Hakları (KVKK m.11)</h2>
+      <p>KVKK'nın 11. maddesi kapsamında aşağıdaki haklara sahipsiniz:</p>
+      <ul>
+        <li>Kişisel verilerinizin işlenip işlenmediğini öğrenme</li>
+        <li>İşlenmişse buna ilişkin bilgi talep etme</li>
+        <li>İşleme amacını ve amacına uygun kullanılıp kullanılmadığını öğrenme</li>
+        <li>Yurt içinde/dışında aktarıldığı üçüncü kişileri öğrenme</li>
+        <li>Eksik/yanlış işlenen verilerin düzeltilmesini isteme</li>
+        <li>Şartlar oluştuğunda <strong>silme</strong> veya yok edilmesini isteme</li>
+        <li><strong>Verilerinizi indirme</strong> (veri taşınabilirliği)</li>
+        <li>İşlemeye itiraz etme</li>
+      </ul>
+      <p>Bu hakları kullanmak için Ayarlar → Hesap bölümünden "Verilerimi İndir" ve "Hesabımı Sil" işlemlerini doğrudan yapabilir, veya <a href="mailto:support@emrullah.xyz">support@emrullah.xyz</a> üzerinden bizimle iletişime geçebilirsiniz. Taleplere 30 gün içinde yanıt verilir.</p>
+
+      <h2>7. Çerezler (Cookies)</h2>
+      <p>Uygulamada yalnızca zorunlu oturum çerezi kullanılır:</p>
+      <ul>
+        <li><code>__Host-nm_session</code>: 32 byte rastgele, SHA-256 hash olarak veritabanında saklanır. HttpOnly, Secure, SameSite=Lax, 30 gün kayan süre. Üçüncü taraf çerez YOKTUR.</li>
+      </ul>
+      <p>Pazarlama/analitik/reklam çerezi <strong>kesinlikle kullanılmaz</strong>.</p>
+
+      <h2>8. Güvenlik</h2>
+      <ul>
+        <li>Şifreler <strong>scrypt</strong> ile hash'lenir (düz metin saklanmaz).</li>
+        <li>Oturum kimlikleri SHA-256 hash olarak veritabanında tutulur.</li>
+        <li>Tüm iletişim HTTPS üzerinden zorunludur.</li>
+        <li>Rate limit (IP ve e-posta başına) kötüye kullanımı önler.</li>
+        <li>CSRF koruması Same-Origin kontrolü ile sağlanır.</li>
+      </ul>
+
+      <h2>9. Çocukların Gizliliği</h2>
+      <p>Nutrimind, sağlık ve beslenme kategorisinde yer aldığından <strong>13 yaş üstü</strong> kullanıcılara yöneliktir. 13 yaş altından bilerek veri toplanmaz. 13 yaş altı bir kullanıcı fark edilirse veriler silinir. 18 yaş altı için veli onayı önerilir.</p>
+
+      <h2>10. Değişiklikler</h2>
+      <p>Bu politika metni güncellenirse, değişiklikler bu sayfada yayınlanır ve kayıtlı e-posta adresinize bildirim gönderilir. Önemli değişikliklerde uygulama içi uyarı gösterilir.</p>
+
+      <h2>11. Uyuşmazlık</h2>
+      <p>Bu politikadan doğan uyuşmazlıklarda Türkiye Cumhuriyeti yargı mercileri yetkilidir. KVKK kapsamında şikâyet hakkınız saklıdır (Kişisel Verileri Koruma Kurumu).</p>
+
+      <div class="footer">
+        <a href="/">← Ana sayfaya dön</a> · <a href="/policies/en.html">English version</a> · <a href="/policies/pl.html">Polska wersja</a>
+      </div>
+    </main>
+  </body>
+</html>

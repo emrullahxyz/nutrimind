@@ -1,0 +1,151 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#08090a" />
+    <meta name="robots" content="index, follow" />
+    <meta name="description" content="Nutrimind privacy policy — data we collect, third-party services, your rights under GDPR." />
+    <link rel="canonical" href="https://nutri.emrullah.xyz/policies/en.html" />
+    <link rel="icon" href="/icon-192.png" type="image/png" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+    <title>Privacy Policy — Nutrimind</title>
+    <style>
+      :root { color-scheme: dark; }
+      * { box-sizing: border-box; }
+      html, body { margin: 0; padding: 0; }
+      body {
+        font-family: "Manrope", system-ui, -apple-system, "Segoe UI", sans-serif;
+        background: #08090a;
+        color: #e6e7ea;
+        line-height: 1.6;
+        -webkit-font-smoothing: antialiased;
+      }
+      main {
+        max-width: 720px;
+        margin: 0 auto;
+        padding: 48px 24px 96px;
+      }
+      h1 { font-size: 32px; font-weight: 800; margin: 0 0 8px; letter-spacing: -0.02em; }
+      h2 { font-size: 22px; font-weight: 700; margin: 40px 0 12px; letter-spacing: -0.01em; }
+      h3 { font-size: 18px; font-weight: 600; margin: 24px 0 8px; }
+      p { margin: 0 0 12px; }
+      .meta { color: #8a8c93; font-size: 14px; margin: 0 0 32px; }
+      .lang-switch { float: right; font-size: 14px; }
+      .lang-switch a { color: #22c55e; text-decoration: none; margin-left: 12px; }
+      .lang-switch a:hover { text-decoration: underline; }
+      ul { padding-left: 20px; }
+      li { margin-bottom: 6px; }
+      strong { color: #ffffff; font-weight: 600; }
+      a { color: #22c55e; }
+      code { background: #14151a; padding: 2px 6px; border-radius: 4px; font-size: 14px; }
+      hr { border: 0; border-top: 1px solid #1c1d22; margin: 32px 0; }
+      .footer { margin-top: 64px; padding-top: 24px; border-top: 1px solid #1c1d22; font-size: 14px; color: #8a8c93; }
+      .footer a { color: #8a8c93; text-decoration: underline; }
+    </style>
+  </head>
+  <body>
+    <main>
+      <div class="lang-switch">
+        <a href="/privacy.html">TR</a>
+        <a href="/policies/pl.html">PL</a>
+      </div>
+      <h1>Privacy Policy</h1>
+      <p class="meta">Last updated: 26 August 2026</p>
+
+      <h2>1. Data Controller</h2>
+      <p>This policy describes how <strong>Nutrimind ("Food Memory")</strong> processes your personal data in compliance with the EU General Data Protection Regulation (GDPR) and applicable local laws.</p>
+      <p><strong>Contact:</strong> <a href="mailto:support@emrullah.xyz">support@emrullah.xyz</a></p>
+
+      <h2>2. Personal Data We Collect</h2>
+      <p>We collect and process the following categories, based on your consent or our legitimate interest:</p>
+      <h3>2.1 Account data</h3>
+      <ul>
+        <li><strong>Email address</strong> (account identifier, login)</li>
+        <li><strong>Display name</strong> (optional)</li>
+        <li><strong>Password hash</strong> (scrypt algorithm with salt; never stored in plaintext)</li>
+        <li><strong>Google OAuth subject ID</strong> (for "Sign in with Google" users only; <code>google_sub</code>)</li>
+      </ul>
+      <h3>2.2 Meal and health data</h3>
+      <ul>
+        <li>Daily meal entries (food name, calories, macronutrients, time)</li>
+        <li>Aliases you define and their mapping rules</li>
+        <li>Goals (TDEE, calorie and macro targets)</li>
+        <li>This data may constitute health-related data.</li>
+      </ul>
+      <h3>2.3 Technical data</h3>
+      <ul>
+        <li>IP address (for rate limiting and abuse prevention, short-lived)</li>
+        <li>User-Agent (anonymized for Open Food Facts queries)</li>
+        <li>Session cookie (<code>__Host-nm_session</code>, HttpOnly, Secure, SameSite=Lax, 30-day sliding)</li>
+      </ul>
+
+      <h2>3. Purposes of Processing</h2>
+      <ul>
+        <li>Account creation, session management, authentication</li>
+        <li>Meal tracking, daily and weekly reports, trends</li>
+        <li>Alias learning to simplify free-text meal entry</li>
+        <li><strong>AI feature</strong> (photo + text): only with your explicit consent; photo and text are sent to Google Gemini and <strong>never stored on our servers</strong>.</li>
+        <li>Debugging, security, abuse prevention</li>
+      </ul>
+
+      <h2>4. Third-Party Services and Data Sharing</h2>
+      <h3>4.1 Google Gemini (AI feature)</h3>
+      <p>When you use the AI feature, your photo and meal text are sent to the Google Gemini API. Google processes this data under their own privacy policy: <a href="https://policies.google.com/privacy" target="_blank" rel="noopener">policies.google.com/privacy</a>. Data is not stored on our servers.</p>
+      <h3>4.2 Open Food Facts (barcode lookup)</h3>
+      <p>When you scan a barcode, the barcode number and product name are sent to the Open Food Facts API with an anonymized User-Agent. See: <a href="https://world.openfoodfacts.org/privacy" target="_blank" rel="noopener">world.openfoodfacts.org/privacy</a>.</p>
+      <h3>4.3 Google OAuth (sign-in)</h3>
+      <p>When you sign in with Google, only the <code>email</code> and <code>profile</code> scopes are requested. We never request sensitive scopes (calendar, contacts, etc.).</p>
+      <h3>4.4 Hosting</h3>
+      <p>The app is hosted on an Oracle VPS. Data may be processed in data centers outside your country. HTTPS is enforced.</p>
+
+      <h2>5. Data Retention</h2>
+      <p>Your data is kept while your account is active. When you delete your account, all personal data is <strong>immediately and irreversibly deleted</strong> (hard delete from the database). Backup copies are purged within 30 days.</p>
+
+      <h2>6. Your Rights (GDPR Art. 15–22)</h2>
+      <p>You have the right to:</p>
+      <ul>
+        <li>Access your personal data (Art. 15)</li>
+        <li>Rectify inaccurate data (Art. 16)</li>
+        <li>Erase your data ("right to be forgotten", Art. 17)</li>
+        <li>Restrict processing (Art. 18)</li>
+        <li><strong>Data portability</strong> — download your data in a machine-readable format (Art. 20)</li>
+        <li>Object to processing (Art. 21)</li>
+        <li>Withdraw consent at any time (Art. 7(3))</li>
+        <li>Lodge a complaint with your supervisory authority (Art. 77)</li>
+      </ul>
+      <p>To exercise these rights, use Settings → Account → "Download my data" or "Delete my account", or contact us at <a href="mailto:support@emrullah.xyz">support@emrullah.xyz</a>. We respond within 30 days.</p>
+
+      <h2>7. Cookies</h2>
+      <p>The app uses only one strictly necessary session cookie:</p>
+      <ul>
+        <li><code>__Host-nm_session</code>: 32 random bytes, stored as SHA-256 hash in the database. HttpOnly, Secure, SameSite=Lax, 30-day sliding. <strong>No third-party cookies.</strong></li>
+      </ul>
+      <p>No marketing, analytics, or advertising cookies are used.</p>
+
+      <h2>8. Security</h2>
+      <ul>
+        <li>Passwords are hashed with <strong>scrypt</strong> (never plaintext).</li>
+        <li>Session IDs are stored as SHA-256 hashes.</li>
+        <li>All traffic is HTTPS-only.</li>
+        <li>Rate limiting (per IP and email) prevents abuse.</li>
+        <li>CSRF protection via Same-Origin checks.</li>
+      </ul>
+
+      <h2>9. Children's Privacy</h2>
+      <p>Nutrimind is categorized as a Health & Fitness app and is intended for users <strong>aged 13 and over</strong>. We do not knowingly collect data from children under 13. If we become aware of such data, it will be deleted. Parental consent is recommended for users under 18.</p>
+
+      <h2>10. Changes to This Policy</h2>
+      <p>Updates to this policy are published on this page. Significant changes are announced in-app and via email to registered users.</p>
+
+      <h2>11. Governing Law</h2>
+      <p>This policy is governed by the laws of the Republic of Türkiye. EU GDPR rights apply to EU residents regardless of governing law.</p>
+
+      <div class="footer">
+        <a href="/">← Back to home</a> · <a href="/privacy.html">Türkçe</a> · <a href="/policies/pl.html">Polski</a>
+      </div>
+    </main>
+  </body>
+</html>

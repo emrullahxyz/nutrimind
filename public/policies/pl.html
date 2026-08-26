@@ -1,0 +1,151 @@
+<!doctype html>
+<html lang="pl">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#08090a" />
+    <meta name="robots" content="index, follow" />
+    <meta name="description" content="Polityka prywatności Nutrimind — jakie dane zbieramy, strony trzecie, Twoje prawa (RODO)." />
+    <link rel="canonical" href="https://nutri.emrullah.xyz/policies/pl.html" />
+    <link rel="icon" href="/icon-192.png" type="image/png" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+    <title>Polityka Prywatności — Nutrimind</title>
+    <style>
+      :root { color-scheme: dark; }
+      * { box-sizing: border-box; }
+      html, body { margin: 0; padding: 0; }
+      body {
+        font-family: "Manrope", system-ui, -apple-system, "Segoe UI", sans-serif;
+        background: #08090a;
+        color: #e6e7ea;
+        line-height: 1.6;
+        -webkit-font-smoothing: antialiased;
+      }
+      main {
+        max-width: 720px;
+        margin: 0 auto;
+        padding: 48px 24px 96px;
+      }
+      h1 { font-size: 32px; font-weight: 800; margin: 0 0 8px; letter-spacing: -0.02em; }
+      h2 { font-size: 22px; font-weight: 700; margin: 40px 0 12px; letter-spacing: -0.01em; }
+      h3 { font-size: 18px; font-weight: 600; margin: 24px 0 8px; }
+      p { margin: 0 0 12px; }
+      .meta { color: #8a8c93; font-size: 14px; margin: 0 0 32px; }
+      .lang-switch { float: right; font-size: 14px; }
+      .lang-switch a { color: #22c55e; text-decoration: none; margin-left: 12px; }
+      .lang-switch a:hover { text-decoration: underline; }
+      ul { padding-left: 20px; }
+      li { margin-bottom: 6px; }
+      strong { color: #ffffff; font-weight: 600; }
+      a { color: #22c55e; }
+      code { background: #14151a; padding: 2px 6px; border-radius: 4px; font-size: 14px; }
+      hr { border: 0; border-top: 1px solid #1c1d22; margin: 32px 0; }
+      .footer { margin-top: 64px; padding-top: 24px; border-top: 1px solid #1c1d22; font-size: 14px; color: #8a8c93; }
+      .footer a { color: #8a8c93; text-decoration: underline; }
+    </style>
+  </head>
+  <body>
+    <main>
+      <div class="lang-switch">
+        <a href="/privacy.html">TR</a>
+        <a href="/policies/en.html">EN</a>
+      </div>
+      <h1>Polityka Prywatności</h1>
+      <p class="meta">Ostatnia aktualizacja: 26 sierpnia 2026</p>
+
+      <h2>1. Administrator danych</h2>
+      <p>Niniejsza polityka opisuje, w jaki sposób <strong>Nutrimind ("Pamięć żywieniowa")</strong> przetwarza dane osobowe zgodnie z Rozporządzeniem o Ochronie Danych Osobowych (RODO) oraz obowiązującym prawem lokalnym.</p>
+      <p><strong>Kontakt:</strong> <a href="mailto:support@emrullah.xyz">support@emrullah.xyz</a></p>
+
+      <h2>2. Jakie dane zbieramy</h2>
+      <p>Na podstawie Twojej zgody lub prawnie uzasadnionego interesu przetwarzamy następujące kategorie:</p>
+      <h3>2.1 Dane konta</h3>
+      <ul>
+        <li><strong>Adres e-mail</strong> (identyfikator konta, logowanie)</li>
+        <li><strong>Nazwa wyświetlana</strong> (opcjonalnie)</li>
+        <li><strong>Hash hasła</strong> (algorytm scrypt z solą; nigdy nie przechowujemy hasła otwartym tekstem)</li>
+        <li><strong>Identyfikator Google OAuth</strong> (tylko dla użytkowników logujących się przez Google; <code>google_sub</code>)</li>
+      </ul>
+      <h3>2.2 Dane posiłków i dane zdrowotne</h3>
+      <ul>
+        <li>Wpisy posiłków (nazwa produktu, kalorie, makroskładniki, godzina)</li>
+        <li>Zdefiniowane przez Ciebie aliasy i ich reguły mapowania</li>
+        <li>Cele (TDEE, dzienne zapotrzebowanie kaloryczne i makro)</li>
+        <li>Te dane mogą stanowić dane o zdrowiu.</li>
+      </ul>
+      <h3>2.3 Dane techniczne</h3>
+      <ul>
+        <li>Adres IP (do rate limit i ochrony przed nadużyciami, krótkotrwałe)</li>
+        <li>User-Agent (zanonimizowany w zapytaniach do Open Food Facts)</li>
+        <li>Cookie sesyjne (<code>__Host-nm_session</code>, HttpOnly, Secure, SameSite=Lax, 30 dni przesuwne)</li>
+      </ul>
+
+      <h2>3. Cele przetwarzania</h2>
+      <ul>
+        <li>Tworzenie konta, zarządzanie sesją, uwierzytelnianie</li>
+        <li>Śledzenie posiłków, raporty dzienne i tygodniowe, trendy</li>
+        <li>Uczenie się aliasów w celu ułatwienia wprowadzania posiłków</li>
+        <li><strong>Funkcja AI</strong> (zdjęcie + tekst): tylko za Twoją wyraźną zgodą; zdjęcie i tekst są wysyłane do Google Gemini i <strong>nigdy nie są przechowywane na naszym serwerze</strong>.</li>
+        <li>Debugowanie, bezpieczeństwo, ochrona przed nadużyciami</li>
+      </ul>
+
+      <h2>4. Strony trzecie i udostępnianie danych</h2>
+      <h3>4.1 Google Gemini (funkcja AI)</h3>
+      <p>Gdy korzystasz z funkcji AI, Twoje zdjęcie i tekst posiłku są wysyłane do API Google Gemini. Google przetwarza te dane zgodnie ze swoją polityką prywatności: <a href="https://policies.google.com/privacy" target="_blank" rel="noopener">policies.google.com/privacy</a>. Dane nie są przechowywane na naszym serwerze.</p>
+      <h3>4.2 Open Food Facts (wyszukiwanie kodów kreskowych)</h3>
+      <p>Po zeskanowaniu kodu kreskowego numer kodu i nazwa produktu są wysyłane do API Open Food Facts z zanonimizowanym User-Agentem. Zobacz: <a href="https://world.openfoodfacts.org/privacy" target="_blank" rel="noopener">world.openfoodfacts.org/privacy</a>.</p>
+      <h3>4.3 Google OAuth (logowanie)</h3>
+      <p>Podczas logowania przez Google żądane są wyłącznie zakresy <code>email</code> i <code>profile</code>. Nigdy nie żądamy zakresów wrażliwych (kalendarz, kontakty itp.).</p>
+      <h3>4.4 Hosting</h3>
+      <p>Aplikacja jest hostowana na Oracle VPS. Dane mogą być przetwarzane w centrach danych poza Twoim krajem. HTTPS jest wymuszane.</p>
+
+      <h2>5. Okres przechowywania danych</h2>
+      <p>Twoje dane są przechowywane tak długo, jak Twoje konto jest aktywne. Po usunięciu konta wszystkie dane osobowe są <strong>natychmiast i nieodwracalnie usuwane</strong> (hard delete z bazy danych). Kopie zapasowe są czyszczone w ciągu 30 dni.</p>
+
+      <h2>6. Prawa użytkownika (RODO art. 15–22)</h2>
+      <p>Masz prawo do:</p>
+      <ul>
+        <li>Dostępu do swoich danych osobowych (art. 15)</li>
+        <li>Sprostowania nieprawidłowych danych (art. 16)</li>
+        <li>Usunięcia danych ("prawo do bycia zapomnianym", art. 17)</li>
+        <li>Ograniczenia przetwarzania (art. 18)</li>
+        <li><strong>Przenoszenia danych</strong> — pobrania danych w formacie czytelnym maszynowo (art. 20)</li>
+        <li>Sprzeciwu wobec przetwarzania (art. 21)</li>
+        <li>Wycofania zgody w dowolnym momencie (art. 7(3))</li>
+        <li>Wniesienia skargi do organu nadzorczego (art. 77)</li>
+      </ul>
+      <p>Aby skorzystać z tych praw, użyj Ustawienia → Konto → "Pobierz moje dane" lub "Usuń moje konto", albo skontaktuj się z nami: <a href="mailto:support@emrullah.xyz">support@emrullah.xyz</a>. Odpowiadamy w ciągu 30 dni.</p>
+
+      <h2>7. Pliki cookie</h2>
+      <p>Aplikacja używa wyłącznie jednego niezbędnego pliku cookie sesyjnego:</p>
+      <ul>
+        <li><code>__Host-nm_session</code>: 32 losowe bajty, przechowywane jako hash SHA-256 w bazie danych. HttpOnly, Secure, SameSite=Lax, 30 dni przesuwne. <strong>Brak plików cookie stron trzecich.</strong></li>
+      </ul>
+      <p>Nie używamy plików cookie marketingowych, analitycznych ani reklamowych.</p>
+
+      <h2>8. Bezpieczeństwo</h2>
+      <ul>
+        <li>Hasła są haszowane za pomocą <strong>scrypt</strong> (nigdy otwartym tekstem).</li>
+        <li>Identyfikatory sesji są przechowywane jako hashe SHA-256.</li>
+        <li>Cały ruch odbywa się wyłącznie przez HTTPS.</li>
+        <li>Rate limiting (na IP i e-mail) zapobiega nadużyciom.</li>
+        <li>Ochrona CSRF poprzez sprawdzanie Same-Origin.</li>
+      </ul>
+
+      <h2>9. Prywatność dzieci</h2>
+      <p>Nutrimind jest skategoryzowany jako aplikacja Zdrowie i Fitness i jest przeznaczony dla użytkowników <strong>w wieku 13 lat i starszych</strong>. Świadomie nie zbieramy danych od dzieci poniżej 13 roku życia. Jeśli dowiemy się o takich danych, zostaną one usunięte. Dla użytkowników poniżej 18 roku życia zalecana jest zgoda rodzica.</p>
+
+      <h2>10. Zmiany w polityce</h2>
+      <p>Aktualizacje tej polityki są publikowane na tej stronie. Istotne zmiany są ogłaszane w aplikacji oraz wysyłane e-mailem do zarejestrowanych użytkowników.</p>
+
+      <h2>11. Prawo właściwe</h2>
+      <p>Niniejsza polityka podlega prawu Republiki Turcji. Prawa RODO mają zastosowanie do mieszkańców UE niezależnie od prawa właściwego.</p>
+
+      <div class="footer">
+        <a href="/">← Powrót do strony głównej</a> · <a href="/privacy.html">Türkçe</a> · <a href="/policies/en.html">English</a>
+      </div>
+    </main>
+  </body>
+</html>
