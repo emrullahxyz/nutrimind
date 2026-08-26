@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useId, useState } from "react";
 import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { parseNum } from "../lib/nutrition";
@@ -14,7 +14,14 @@ export const fieldCls =
 export const sectionLabelCls = "font-mono text-[11px] uppercase tracking-mono text-ink-tertiary";
 export const bigNumCls = "font-extrabold tabular-nums tracking-tight";
 
-export function Label({ children }: { children: ReactNode }) {
+export function Label({ children, htmlFor }: { children: ReactNode; htmlFor?: string }) {
+  if (htmlFor) {
+    return (
+      <label htmlFor={htmlFor} className={`mb-1 block ${sectionLabelCls}`}>
+        {children}
+      </label>
+    );
+  }
   return <span className={`mb-1 block ${sectionLabelCls}`}>{children}</span>;
 }
 
@@ -41,10 +48,12 @@ export function TextField({
   autoComplete?: string;
   autoFocus?: boolean;
 }) {
+  const id = useId();
   return (
-    <label className="block">
-      <Label>{label}</Label>
+    <div className="block">
+      <Label htmlFor={id}>{label}</Label>
       <input
+        id={id}
         className={fieldCls}
         value={value}
         placeholder={placeholder}
@@ -54,7 +63,7 @@ export function TextField({
         autoFocus={autoFocus}
         onChange={(e) => onChange(e.target.value)}
       />
-    </label>
+    </div>
   );
 }
 
@@ -76,10 +85,12 @@ export function NumField({
   onChange: (v: string) => void;
   suffix?: string;
 }) {
+  const id = useId();
   return (
-    <label className="block">
-      <Label>{suffix ? `${label} (${suffix})` : label}</Label>
+    <div className="block">
+      <Label htmlFor={id}>{suffix ? `${label} (${suffix})` : label}</Label>
       <input
+        id={id}
         className={`${fieldCls} font-mono`}
         inputMode="decimal"
         value={value}
@@ -88,7 +99,7 @@ export function NumField({
           if (acceptsNumericEntry(v)) onChange(v);
         }}
       />
-    </label>
+    </div>
   );
 }
 
