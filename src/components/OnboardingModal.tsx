@@ -168,7 +168,14 @@ export function OnboardingModal({
       </div>
 
       {/* Step Progress Bar */}
-      <div className="w-full bg-accent-ink h-1.5 flex-none overflow-hidden">
+      <div
+        className="w-full bg-accent-ink h-1.5 flex-none overflow-hidden"
+        role="progressbar"
+        aria-label={`Adım ${step} / 5`}
+        aria-valuenow={step}
+        aria-valuemin={1}
+        aria-valuemax={5}
+      >
         <div
           className="bg-accent h-full transition-all duration-300"
           style={{ width: `${(step / 5) * 100}%` }}
