@@ -122,10 +122,37 @@ export async function parseMealImage(
   mode: VisionMode,
   signal?: AbortSignal,
 ): Promise<AIParseResult> {
+  if (!hasAiConsent()) throw new Error("AI_CONSENT_REQUIRED");
   const raw = await aiPost<{ items?: unknown[]; healthNote?: string }>("/api/ai/vision", { image: base64, mimeType, mode }, signal);
   const rawItems = Array.isArray(raw?.items) ? raw.items : [];
   const items = rawItems.map(parseAIItem).filter((x): x is AIParseItem => x !== null);
   const healthNote = typeof raw?.healthNote === "string" ? raw.healthNote : undefined;
   return { items, ...(healthNote ? { healthNote } : {}) };
+}
+
+// --- Onay (Play Store 'Data safety' + KVKK fotoğraf gönderimi uyarısı) ---------
+
+const CONSENT_KEY = "nutrimind.ai.consent";
+
+export function hasAiConsent(): boolean {
+  try {
+    return localStorage.getItem(CONSENT_KEY) === "1";
+  } catch {
+    return false;
+  }
+}
+
+export function grantAiConsent(): void {
+  try {
+    localStorage.setItem(CONSENT_KEY, "1");
+  } catch {
+    // private mode / kapalı storage → sessizce yok say; sonraki denemede tekrar sor
+  }
+}
+
+export function revokeAiConsent(): void {
+  try {
+    localStorage.removeItem(CONSENT_KEY);
+  } catch {}
 }
 
