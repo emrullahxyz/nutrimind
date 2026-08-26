@@ -252,9 +252,9 @@ const { user, authDisabled, capabilities, logout } = useAuth();
           await caches.delete(name);
         }
       }
-      setCacheStatus("Önbellek ve Service Worker temizlendi!");
+      setCacheStatus(t("settings.cacheCleared"));
     } catch {
-      setCacheStatus("Önbellek temizlenirken hata oluştu.");
+      setCacheStatus(t("settings.cacheError"));
     } finally {
       setTimeout(() => {
         window.location.reload();
@@ -289,13 +289,13 @@ const { user, authDisabled, capabilities, logout } = useAuth();
                     {userName}
                   </div>
                   <div className="text-xs text-white/50">
-                    {userAge ? `${userAge} yaşında` : "Nutrimind Üyesi"} • {userWeight} kg
+                    {userAge ? t("settings.yearsOld", { age: userAge }) : t("settings.defaultMember")} • {userWeight} kg
                   </div>
                 </div>
               </div>
 
               <div className="flex items-center gap-1.5 rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs font-bold text-white/80 transition group-hover:bg-white/10">
-                <span>Düzenle</span>
+                <span>{t("settings.editProfile")}</span>
                 <ChevronRight className="h-3.5 w-3.5 text-white/40" />
               </div>
             </div>
@@ -309,14 +309,14 @@ const { user, authDisabled, capabilities, logout } = useAuth();
                 <div className="flex-1">
                   <div className="flex items-center gap-2">
                     <span className="text-xs font-extrabold text-white">
-                      Nutrimind Pro Hafıza
+                      {t("settings.proMemoryTitle")}
                     </span>
                     <span className="rounded-full bg-accent/20 px-2 py-0.5 text-[9px] font-black text-accent border border-accent/30">
-                      AKTİF
+                      {t("settings.active")}
                     </span>
                   </div>
                   <p className="mt-0.5 text-[11px] text-white/70">
-                    Tüm öğünleriniz ve besin alias'larınız SQLite yerel hafızasında anında senkronize olur.
+                    {t("settings.proMemoryDesc")}
                   </p>
                 </div>
               </div>
@@ -325,21 +325,21 @@ const { user, authDisabled, capabilities, logout } = useAuth();
             {/* 3. GRUPLANDIRILMIŞ KARTLAR (CAL AI STİLİ) */}
 
             {/* HESAP & KİŞİSEL */}
-            <SectionGroup title="Hesap & Profil">
+            <SectionGroup title={t("settings.sectionAccount")}>
               <MenuItem
                 icon={User}
                 iconBg="bg-blue-500/15"
                 iconColor="text-blue-400"
-                title="Profil Bilgileri"
-                subtitle="İsim, yaş, boy ve kilo verileri"
+                title={t("settings.profileTitle")}
+                subtitle={t("settings.profileSubtitle")}
                 onClick={() => openSubView("profile")}
               />
               <MenuItem
                 icon={Sliders}
                 iconBg="bg-purple-500/15"
                 iconColor="text-purple-400"
-                title="Uygulama Tercihleri"
-                subtitle="Koyu tema, makro görünümü"
+                title={t("settings.preferencesTitle")}
+                subtitle={t("settings.preferencesSubtitle")}
                 onClick={() => openSubView("preferences")}
               />
               {!authDisabled && (
@@ -347,8 +347,8 @@ const { user, authDisabled, capabilities, logout } = useAuth();
                   icon={KeyRound}
                   iconBg="bg-amber-500/15"
                   iconColor="text-amber-400"
-                  title="Parola Değiştir"
-                  subtitle="Hesap parolanı güncelle"
+                  title={t("settings.passwordTitle")}
+                  subtitle={t("settings.passwordSubtitle")}
                   onClick={() => openSubView("password")}
                 />
               )}
@@ -357,93 +357,93 @@ const { user, authDisabled, capabilities, logout } = useAuth();
                   icon={ListPlus}
                   iconBg="bg-teal-500/15"
                   iconColor="text-teal-400"
-                  title="İzinli E-postalar"
-                  subtitle="Yeni kayıt olabilecek kişiler"
+                  title={t("settings.allowlistTitle")}
+                  subtitle={t("settings.allowlistSubtitle")}
                   onClick={() => openSubView("allowlist")}
                 />
               )}
             </SectionGroup>
 
             {/* HEDEFLER & TAKİP */}
-            <SectionGroup title="Hedefler & Takip">
+            <SectionGroup title={t("settings.sectionGoals")}>
               <MenuItem
                 icon={Target}
                 iconBg="bg-accent/20"
                 iconColor="text-accent"
-                title="Beslenme Hedeflerini Düzenle"
-                subtitle="Günlük Kcal, Protein, Karbonhidrat, Yağ & Lif"
+                title={t("settings.goalsTitle")}
+                subtitle={t("settings.goalsSubtitle")}
                 onClick={() => openSubView("goals")}
               />
               <MenuItem
                 icon={Pill}
                 iconBg="bg-amber-500/15"
                 iconColor="text-amber-400"
-                title="Takviye & Supplement Takibi"
-                subtitle="Protein tozu, kreatin, vitamin vb."
+                title={t("settings.supplementsTitle")}
+                subtitle={t("settings.supplementsSubtitle")}
                 onClick={() => openSubView("supplements")}
               />
               <MenuItem
                 icon={Scale}
                 iconBg="bg-rose-500/15"
                 iconColor="text-rose-400"
-                title="Kilo & Vücut Geçmişi"
-                subtitle="Mevcut kilo ve hedef grafikler"
+                title={t("settings.weightTitle")}
+                subtitle={t("settings.weightSubtitle")}
                 onClick={() => openSubView("weight")}
               />
             </SectionGroup>
 
             {/* WIDGET'LAR & RAPORLAR */}
-            <SectionGroup title="Raporlar & Widget'lar">
+            <SectionGroup title={t("settings.sectionReports")}>
               <MenuItem
                 icon={FileText}
                 iconBg="bg-teal-500/15"
                 iconColor="text-teal-400"
-                title="Özet PDF Raporu Oluştur"
-                subtitle="Haftalık / aylık beslenme dökümü"
+                title={t("settings.reportTitle")}
+                subtitle={t("settings.reportSubtitle")}
                 onClick={() => openSubView("report")}
               />
               <MenuItem
                 icon={LayoutGrid}
                 iconBg="bg-violet-500/15"
                 iconColor="text-violet-400"
-                title="Ana Ekran Widget Rehberi"
-                subtitle="Hızlı öğün ekleme widget'ları"
+                title={t("settings.widgetsTitle")}
+                subtitle={t("settings.widgetsSubtitle")}
                 onClick={() => openSubView("widgets")}
               />
             </SectionGroup>
 
             {/* VERİ & YASAL */}
-            <SectionGroup title="Veri & Destek">
+            <SectionGroup title={t("settings.sectionData")}>
               <MenuItem
                 icon={Download}
                 iconBg="bg-cyan-500/15"
                 iconColor="text-cyan-400"
-                title="Veri Yedekleme & İçe/Dışa Aktar"
-                subtitle="JSON yedekleme, CSV veri aktarımı"
+                title={t("settings.dataTitle")}
+                subtitle={t("settings.dataSubtitle")}
                 onClick={() => openSubView("data")}
               />
               <MenuItem
                 icon={HelpCircle}
                 iconBg="bg-yellow-500/15"
                 iconColor="text-yellow-400"
-                title="Özellik İste & Geri Bildirim"
-                subtitle="Geliştiriciye talep gönder"
+                title={t("settings.feedbackTitle")}
+                subtitle={t("settings.feedbackSubtitle")}
                 onClick={() => openSubView("feedback")}
               />
               <MenuItem
                 icon={Mail}
                 iconBg="bg-pink-500/15"
                 iconColor="text-pink-400"
-                title="Destek & İletişim"
-                subtitle="support@emrullah.xyz"
+                title={t("settings.supportTitle")}
+                subtitle={t("settings.supportEmail")}
                 onClick={() => window.open("mailto:support@emrullah.xyz")}
               />
               <MenuItem
                 icon={ShieldCheck}
                 iconBg="bg-emerald-500/15"
                 iconColor="text-emerald-400"
-                title="Gizlilik & Veri Güvenliği"
-                subtitle="SQLite yerel şifreli saklama"
+                title={t("settings.privacyTitle")}
+                subtitle={t("settings.privacySubtitle")}
                 onClick={() => openSubView("privacy")}
               />
             </SectionGroup>
@@ -471,13 +471,13 @@ const { user, authDisabled, capabilities, logout } = useAuth();
             </SectionGroup>
 
             {/* HESAP İŞLEMLERİ */}
-            <SectionGroup title="Hesap İşlemleri">
+            <SectionGroup title={t("settings.accountActions")}>
               <MenuItem
                 icon={RefreshCw}
                 iconBg="bg-blue-500/15"
                 iconColor="text-blue-400"
-                title="Önbelleği & Uygulamayı Yenile"
-                subtitle="PWA service worker önbelleğini temizler"
+                title={t("settings.cacheTitle")}
+                subtitle={t("settings.cacheSubtitle")}
                 onClick={handleClearCache}
               />
               {!authDisabled && (
@@ -485,7 +485,7 @@ const { user, authDisabled, capabilities, logout } = useAuth();
                   icon={LogOut}
                   iconBg="bg-rose-500/15"
                   iconColor="text-rose-400"
-                  title="Çıkış Yap"
+                  title={t("settings.logout")}
                   subtitle={user?.email}
                   onClick={() => void logout()}
                   isDanger
@@ -495,22 +495,22 @@ const { user, authDisabled, capabilities, logout } = useAuth();
 
             {/* VERİ & HESAP SİLME — KVKK m.7 / GDPR Art.17, Art.20 */}
             {!authDisabled && user && (
-              <SectionGroup title="Verilerim">
+              <SectionGroup title={t("settings.dataExport")}>
                 <MenuItem
                   icon={Download}
                   iconBg="bg-emerald-500/15"
                   iconColor="text-emerald-400"
-                  title={exportBusy ? "İndiriliyor..." : "Verilerimi İndir"}
-                  subtitle="Tüm öğün, alias ve ayarların (JSON)"
+                  title={exportBusy ? t("settings.exportButtonBusy") : t("settings.exportButton")}
+                  subtitle={t("settings.exportSubtitle")}
                   onClick={async () => {
                     if (exportBusy) return;
                     setExportBusy(true);
                     haptic("light");
                     try {
                       await exportAccount();
-                      showToast("Verilerin indirildi", "success");
+                      showToast(t("settings.exportSuccess"), "success");
                     } catch (e) {
-                      showToast(`İndirme başarısız: ${(e as Error).message}`, "error");
+                      showToast(t("settings.exportError", { message: (e as Error).message }), "error");
                     } finally {
                       setExportBusy(false);
                     }
@@ -520,8 +520,8 @@ const { user, authDisabled, capabilities, logout } = useAuth();
                   icon={Trash2}
                   iconBg="bg-rose-500/15"
                   iconColor="text-rose-400"
-                  title="Hesabımı Sil"
-                  subtitle="Tüm verilerin kalıcı olarak silinir"
+                  title={t("settings.deleteAccount")}
+                  subtitle={t("settings.deleteSubtitle")}
                   onClick={() => {
                     haptic("medium");
                     setDeletePassword("");
@@ -542,13 +542,12 @@ const { user, authDisabled, capabilities, logout } = useAuth();
                   setDeleteConfirm("");
                 }
               }}
-              title="Hesabı Sil"
+              title={t("settings.deleteTitle")}
             >
               {deleteStep === 1 && (
                 <div className="space-y-3">
                   <p className="text-sm text-white/80">
-                    Hesabını silmek istediğinden emin misin? Bu işlem geri alınamaz —
-                    öğünlerin, aliasların ve ayarların kalıcı olarak silinir.
+                    {t("settings.deleteStep1")}
                   </p>
                   <div className="flex gap-2 pt-2">
                     <button
@@ -556,14 +555,14 @@ const { user, authDisabled, capabilities, logout } = useAuth();
                       onClick={() => setDeleteStep(0)}
                       className="flex-1 rounded-xl border border-white/10 bg-white/5 py-2.5 text-sm font-semibold text-white/80"
                     >
-                      Vazgeç
+                      {t("settings.deleteCancel")}
                     </button>
                     <button
                       type="button"
                       onClick={() => setDeleteStep(2)}
                       className="flex-1 rounded-xl bg-rose-500/20 py-2.5 text-sm font-semibold text-rose-300"
                     >
-                      Devam Et
+                      {t("settings.deleteContinue")}
                     </button>
                   </div>
                 </div>
@@ -571,24 +570,23 @@ const { user, authDisabled, capabilities, logout } = useAuth();
               {deleteStep === 2 && (
                 <div className="space-y-3">
                   <p className="text-sm text-white/80">
-                    E-posta+parola ile giriş yaptıysan parolanı da girmen gerekir.
-                    Onaylamak için aşağıya <strong className="text-rose-300">SİL</strong> yaz.
+                    {t("settings.deleteStep2", { confirm: t("settings.deleteConfirmValue") })}
                   </p>
                   <TextField
                     type="password"
-                    label="Mevcut parolan (Google ile giriş yaptıysan boş bırak)"
-                    placeholder="Parola"
+                    label={t("settings.deletePasswordLabel")}
+                    placeholder={t("settings.deletePasswordPlaceholder")}
                     value={deletePassword}
                     onChange={setDeletePassword}
                     autoComplete="current-password"
                   />
                   <div>
-                    <Label>Onay</Label>
+                    <Label>{t("settings.deleteConfirmLabel")}</Label>
                     <input
                       type="text"
                       value={deleteConfirm}
                       onChange={(e) => setDeleteConfirm(e.target.value)}
-                      placeholder='Büyük harflerle "SİL" yaz'
+                      placeholder={t("settings.deleteConfirmPlaceholder", { confirm: t("settings.deleteConfirmValue") })}
                       className={fieldCls}
                       autoComplete="off"
                     />
@@ -600,33 +598,33 @@ const { user, authDisabled, capabilities, logout } = useAuth();
                       disabled={deleteBusy}
                       className="flex-1 rounded-xl border border-white/10 bg-white/5 py-2.5 text-sm font-semibold text-white/80 disabled:opacity-50"
                     >
-                      Geri
+                      {t("settings.deleteBack")}
                     </button>
                     <button
                       type="button"
                       onClick={async () => {
-                        if (deleteConfirm !== "SİL" || deleteBusy) return;
+                        if (deleteConfirm !== t("settings.deleteConfirmValue") || deleteBusy) return;
                         setDeleteBusy(true);
                         try {
                           await deleteAccount({
-                            confirm: "DELETE",
+                            confirm: t("settings.deleteServerConfirm"),
                             ...(deletePassword ? { password: deletePassword } : {}),
                           });
-                          showToast("Hesabın silindi", "success");
+                          showToast(t("settings.deleteSuccess"), "success");
                           setDeleteStep(0);
                           // AuthProvider yeniden fetchMe çağırsın → login ekranı.
                           await logout();
                           window.location.reload();
                         } catch (e) {
-                          showToast(`Silme başarısız: ${(e as Error).message}`, "error");
+                          showToast(t("settings.deleteError", { message: (e as Error).message }), "error");
                         } finally {
                           setDeleteBusy(false);
                         }
                       }}
-                      disabled={deleteConfirm !== "SİL" || deleteBusy}
+                      disabled={deleteConfirm !== t("settings.deleteConfirmValue") || deleteBusy}
                       className="flex-1 rounded-xl bg-rose-500 py-2.5 text-sm font-bold text-white disabled:opacity-40"
                     >
-                      {deleteBusy ? "Siliniyor..." : "Hesabımı Sil"}
+                      {deleteBusy ? t("settings.deleteSubmitting") : t("settings.deleteSubmit")}
                     </button>
                   </div>
                 </div>
@@ -642,10 +640,10 @@ const { user, authDisabled, capabilities, logout } = useAuth();
             {/* FOOTER VERSİYON BİLGİSİ */}
             <div className="mt-2 text-center pb-2">
               <div className="text-[11px] font-bold text-white/30 tracking-widest uppercase">
-                NUTRIMIND VERSION 1.0.0 (PWA)
+                {t("settings.footerVersion")}
               </div>
               <div className="text-[10px] text-white/20 mt-0.5">
-                Emrullah Bayram • Oracle Cloud SQLite Backend
+                {t("settings.footerCredit")}
               </div>
             </div>
           </>
@@ -662,21 +660,21 @@ const { user, authDisabled, capabilities, logout } = useAuth();
                 className="flex items-center gap-1.5 rounded-xl border border-white/15 bg-white/5 px-3 py-1.5 text-xs font-bold text-white transition hover:bg-white/10 active:scale-95"
               >
                 <ArrowLeft className="h-4 w-4" />
-                <span>Geri</span>
+                <span>{t("common.back")}</span>
               </button>
               <h3 className="text-sm font-bold text-white/90">
-                {subView === "goals" && "Beslenme Hedefleri"}
-                {subView === "supplements" && "Takviye & Supplementler"}
-                {subView === "data" && "Veri Yedekleme & İçe/Dışa Aktar"}
-                {subView === "report" && "Özet PDF Raporu"}
-                {subView === "profile" && "Profil Bilgileri"}
-                {subView === "preferences" && "Uygulama Tercihleri"}
-                {subView === "weight" && "Kilo & Vücut Takibi"}
-                {subView === "widgets" && "Ana Ekran Widget Rehberi"}
-                {subView === "feedback" && "Özellik İste & Geri Bildirim"}
-                {subView === "privacy" && "Gizlilik & Veri Güvenliği"}
-                {subView === "password" && "Parola Değiştir"}
-                {subView === "allowlist" && "İzinli E-postalar"}
+                {subView === "goals" && t("settings.subviewGoals")}
+                {subView === "supplements" && t("settings.subviewSupplements")}
+                {subView === "data" && t("settings.subviewData")}
+                {subView === "report" && t("settings.subviewReport")}
+                {subView === "profile" && t("settings.subviewProfile")}
+                {subView === "preferences" && t("settings.subviewPreferences")}
+                {subView === "weight" && t("settings.subviewWeight")}
+                {subView === "widgets" && t("settings.subviewWidgets")}
+                {subView === "feedback" && t("settings.subviewFeedback")}
+                {subView === "privacy" && t("settings.subviewPrivacy")}
+                {subView === "password" && t("settings.subviewPassword")}
+                {subView === "allowlist" && t("settings.subviewAllowlist")}
               </h3>
             </div>
 
@@ -705,7 +703,7 @@ const { user, authDisabled, capabilities, logout } = useAuth();
             <div className="flex flex-col gap-3 rounded-card border border-line bg-calCard p-4">
               <div>
                 <label className="text-xs font-bold text-white/70 block mb-1">
-                  Ad Soyad
+                  {t("settings.fieldFullName")}
                 </label>
                 <input
                   type="text"
@@ -718,7 +716,7 @@ const { user, authDisabled, capabilities, logout } = useAuth();
               <div className="grid grid-cols-3 gap-2.5">
                 <div>
                   <label className="text-xs font-bold text-white/70 block mb-1">
-                    Yaş
+                    {t("settings.fieldAge")}
                   </label>
                   <input
                     type="number"
@@ -729,7 +727,7 @@ const { user, authDisabled, capabilities, logout } = useAuth();
                 </div>
                 <div>
                   <label className="text-xs font-bold text-white/70 block mb-1">
-                    Kilo (kg)
+                    {t("settings.fieldWeight")}
                   </label>
                   <input
                     type="number"
@@ -740,7 +738,7 @@ const { user, authDisabled, capabilities, logout } = useAuth();
                 </div>
                 <div>
                   <label className="text-xs font-bold text-white/70 block mb-1">
-                    Boy (cm)
+                    {t("settings.fieldHeight")}
                   </label>
                   <input
                     type="number"
@@ -757,12 +755,12 @@ const { user, authDisabled, capabilities, logout } = useAuth();
                 className="mt-2 flex items-center justify-center gap-2 rounded-xl bg-accent py-2.5 text-sm font-extrabold text-black transition hover:bg-accent/90 active:scale-[0.98]"
               >
                 <Check className="h-4 w-4" />
-                <span>Profili Kaydet</span>
+                <span>{t("settings.saveProfile")}</span>
               </button>
 
               {savedProfileMsg && (
                 <div className="text-center text-xs font-bold text-emerald-400">
-                  ✓ Profil bilgileri güncellendi!
+                  {t("settings.profileSaved")}
                 </div>
               )}
             </div>
@@ -773,12 +771,12 @@ const { user, authDisabled, capabilities, logout } = useAuth();
         {subView === "weight" && (
           <div className="flex flex-col gap-3 rounded-2xl border border-white/10 bg-row p-4">
             <div className="flex items-center justify-between">
-              <span className="text-xs font-bold text-white/70">Mevcut Kilo</span>
+              <span className="text-xs font-bold text-white/70">{t("settings.currentWeight")}</span>
               <span className="text-base font-extrabold text-white">{userWeight} kg</span>
             </div>
             <div className="flex items-center justify-between">
-              <span className="text-xs font-bold text-white/70">Hedef Kilo</span>
-              <span className="text-base font-extrabold text-accent">75 kg</span>
+              <span className="text-xs font-bold text-white/70">{t("settings.targetWeight")}</span>
+              <span className="text-base font-extrabold text-accent">{t("settings.targetWeightValue")}</span>
             </div>
             <div className="h-2 w-full rounded-full bg-white/10 overflow-hidden mt-1">
               <div className="h-full bg-accent w-3/4 rounded-full" />
@@ -789,9 +787,9 @@ const { user, authDisabled, capabilities, logout } = useAuth();
         {/* 8. WIDGET REHBERİ */}
         {subView === "widgets" && (
           <div className="flex flex-col gap-3 rounded-2xl border border-white/10 bg-row p-4">
-            <div className="text-sm font-extrabold text-white">PWA Hızlı Erişim Widget'ı</div>
+            <div className="text-sm font-extrabold text-white">{t("settings.widgetsHeader")}</div>
             <p className="text-xs text-white/70 leading-relaxed">
-              Android cihazınızda Nutrimind PWA uygulamasını açıp ana ekrana eklediğinizde, telefon uygulamasını tek tıkla açıp hızlıca yemek taraması veya öğün eklemesi yapabilirsiniz.
+              {t("settings.widgetsBody")}
             </p>
           </div>
         )}
@@ -799,16 +797,16 @@ const { user, authDisabled, capabilities, logout } = useAuth();
         {/* 9. DESTEK & BİLDİRİM */}
         {subView === "feedback" && (
           <div className="flex flex-col gap-3 rounded-2xl border border-white/10 bg-row p-4">
-            <div className="text-sm font-extrabold text-white">Geri Bildirim & Özellik Talebi</div>
+            <div className="text-sm font-extrabold text-white">{t("settings.feedbackHeader")}</div>
             <p className="text-xs text-white/70">
-              Yeni bir besin hafızası veya uygulama özelliği talep etmek için doğrudan e-posta gönderebilirsiniz.
+              {t("settings.feedbackBody")}
             </p>
             <a
               href="mailto:support@emrullah.xyz?subject=Nutrimind%20Onerisi"
               className="mt-1 flex items-center justify-center gap-2 rounded-xl bg-white/10 py-2.5 text-xs font-bold text-white hover:bg-white/20"
             >
               <Mail className="h-4 w-4" />
-              <span>Geliştiriciye E-Posta Gönder</span>
+              <span>{t("settings.feedbackSendEmail")}</span>
             </a>
           </div>
         )}
@@ -816,8 +814,8 @@ const { user, authDisabled, capabilities, logout } = useAuth();
         {/* 10. GİZLİLİK & GÜVENLİK */}
         {subView === "privacy" && (
           <div className="flex flex-col gap-3 rounded-2xl border border-white/10 bg-row p-4 text-xs text-white/70 leading-relaxed">
-            <div className="text-sm font-extrabold text-white mb-1">Gizlilik ve Veri Saklama</div>
-            Nutrimind verileriniz doğrudan kendi Oracle Cloud sunucunuz üzerindeki şifreli SQLite veritabanında saklanır. 3. parti hiçbir izleyici veya reklam ağı kullanılmaz.
+            <div className="text-sm font-extrabold text-white mb-1">{t("settings.privacyHeader")}</div>
+            {t("settings.privacyBody")}
           </div>
         )}
 
@@ -825,8 +823,8 @@ const { user, authDisabled, capabilities, logout } = useAuth();
         {subView === "preferences" && (
           <div className="flex flex-col gap-3 rounded-2xl border border-white/10 bg-row p-4">
             <div className="flex flex-col gap-1.5">
-              <span className="text-xs font-bold text-white">Görünüm</span>
-              <p className="text-[11px] leading-relaxed text-ink-tertiary">Tema bu cihazda saklanır.</p>
+              <span className="text-xs font-bold text-white">{t("settings.appearance")}</span>
+              <p className="text-[11px] leading-relaxed text-ink-tertiary">{t("settings.themeStoredLocally")}</p>
               <div className="mt-0.5 grid grid-cols-2 gap-2">
                 <button
                   type="button"
@@ -841,8 +839,8 @@ const { user, authDisabled, capabilities, logout } = useAuth();
                       : "border-white/10 bg-white/[0.03] hover:bg-white/[0.07]"
                   }`}
                 >
-                  <span className="text-xs font-bold text-white">Koyu İnci</span>
-                  <span className="text-[10px] leading-relaxed text-ink-tertiary">Mat kadife görünüm</span>
+                  <span className="text-xs font-bold text-white">{t("settings.themeVelvet")}</span>
+                  <span className="text-[10px] leading-relaxed text-ink-tertiary">{t("settings.themeVelvetDesc")}</span>
                   <span className="flex gap-1.5 pt-0.5" aria-hidden="true">
                     <span className="h-2.5 w-2.5 rounded-full" style={{ background: "var(--svg-protein)" }} />
                     <span className="h-2.5 w-2.5 rounded-full" style={{ background: "var(--svg-carb)" }} />
@@ -862,8 +860,8 @@ const { user, authDisabled, capabilities, logout } = useAuth();
                       : "border-white/10 bg-white/[0.03] hover:bg-white/[0.07]"
                   }`}
                 >
-                  <span className="text-xs font-bold text-white">Gece Camı</span>
-                  <span className="text-[10px] leading-relaxed text-ink-tertiary">Cam yüzeyler ve ışık küreleri</span>
+                  <span className="text-xs font-bold text-white">{t("settings.themeGlass")}</span>
+                  <span className="text-[10px] leading-relaxed text-ink-tertiary">{t("settings.themeGlassDesc")}</span>
                   <span className="flex gap-1.5 pt-0.5" aria-hidden="true">
                     <span className="h-2.5 w-2.5 rounded-full" style={{ background: "var(--svg-protein)" }} />
                     <span className="h-2.5 w-2.5 rounded-full" style={{ background: "var(--svg-carb)" }} />
@@ -873,9 +871,9 @@ const { user, authDisabled, capabilities, logout } = useAuth();
               </div>
             </div>
             <div className="flex items-center justify-between border-t border-white/5 pt-3">
-              <span className="text-xs font-bold text-white">Otomatik Lif / Mikro Takibi</span>
+              <span className="text-xs font-bold text-white">{t("settings.fiberTracking")}</span>
               <span className="rounded-full bg-accent/20 px-2.5 py-0.5 text-[10px] font-bold text-accent">
-                Aktif
+                {t("settings.active")}
               </span>
             </div>
           </div>
@@ -896,13 +894,14 @@ const { user, authDisabled, capabilities, logout } = useAuth();
   }
 
   return (
-    <Modal title={subView ? "Ayarlar" : "Ayarlar & Profil"} onClose={onClose} fullScreen contentRef={scrollRef}>
+    <Modal title={subView ? t("settings.title") : t("settings.titleWithProfile")} onClose={onClose} fullScreen contentRef={scrollRef}>
       {mainBody}
     </Modal>
   );
 }
 
 function PasswordForm({ goBack }: { goBack: () => void }) {
+  const { t } = useTranslation();
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [newPasswordConfirm, setNewPasswordConfirm] = useState("");
@@ -918,7 +917,7 @@ function PasswordForm({ goBack }: { goBack: () => void }) {
     if (passProblem) {
       validationProblem = passProblem;
     } else if (!passwordsMatch) {
-      validationProblem = "Parolalar eşleşmiyor.";
+      validationProblem = t("settings.passwordMismatch");
     }
   }
 
@@ -934,7 +933,7 @@ function PasswordForm({ goBack }: { goBack: () => void }) {
       setCurrentPassword("");
       setNewPassword("");
       setNewPasswordConfirm("");
-      setSuccessMsg("Parolan güncellendi. Diğer cihazlardaki oturumlar kapatıldı.");
+      setSuccessMsg(t("settings.passwordSuccess"));
     } catch (e) {
       setErr(String((e as Error)?.message ?? e));
     } finally {
@@ -947,7 +946,7 @@ function PasswordForm({ goBack }: { goBack: () => void }) {
       <div className="flex flex-col gap-3 rounded-card border border-line bg-calCard p-4">
         <div>
           <TextField
-            label="Mevcut parola"
+            label={t("settings.passwordCurrentLabel")}
             value={currentPassword}
             onChange={(v) => {
               setCurrentPassword(v);
@@ -957,13 +956,13 @@ function PasswordForm({ goBack }: { goBack: () => void }) {
             autoComplete="current-password"
           />
           <p className="mt-1 text-[11px] text-white/50">
-            Hesabını yalnızca Google ile açtıysan burayı boş bırak.
+            {t("settings.passwordGoogleHint")}
           </p>
         </div>
 
         <div>
           <TextField
-            label="Yeni parola"
+            label={t("settings.passwordNewLabel")}
             value={newPassword}
             onChange={(v) => {
               setNewPassword(v);
@@ -976,7 +975,7 @@ function PasswordForm({ goBack }: { goBack: () => void }) {
 
         <div>
           <TextField
-            label="Yeni parola (tekrar)"
+            label={t("settings.passwordRepeatLabel")}
             value={newPasswordConfirm}
             onChange={(v) => {
               setNewPasswordConfirm(v);
@@ -1005,7 +1004,7 @@ function PasswordForm({ goBack }: { goBack: () => void }) {
             onSave={() => void handleSave()}
             saving={saving}
             disabled={!canSave}
-            saveLabel="Kaydet"
+            saveLabel={t("common.save")}
           />
         </div>
       </div>
@@ -1020,6 +1019,7 @@ function PasswordForm({ goBack }: { goBack: () => void }) {
  * Desen PasswordForm'dan: `saving`/`err`/`successMsg` üçlüsü + aynı kart dili.
  */
 function AllowlistForm() {
+  const { t } = useTranslation();
   const [emails, setEmails] = useState<string[] | null>(null); // null = yükleniyor
   const [yeni, setYeni] = useState("");
   const [saving, setSaving] = useState(false);
@@ -1053,7 +1053,7 @@ function AllowlistForm() {
       setYeni("");
       // Sunucunun NORMALİZE ettiği hâli listeye yaz (küçük harf, trimsiz).
       setEmails((es) => (es ? [...es.filter((e) => e !== eklenen), eklenen].sort() : es));
-      setSuccessMsg(`"${eklenen}" listeye eklendi. Bu kişi artık kayıt olabilir.`);
+      setSuccessMsg(t("settings.allowlistAdded", { email: eklenen }));
     } catch (e) {
       setErr(String((e as Error)?.message ?? e));
     } finally {
@@ -1069,7 +1069,7 @@ function AllowlistForm() {
     try {
       await removeAllowlistEmail(email);
       setEmails((es) => (es ? es.filter((e) => e !== email) : es));
-      setSuccessMsg(`"${email}" listeden çıkarıldı. Artık kayıt olamaz.`);
+      setSuccessMsg(t("settings.allowlistRemoved", { email }));
     } catch (e) {
       setErr(String((e as Error)?.message ?? e));
     } finally {
@@ -1081,7 +1081,7 @@ function AllowlistForm() {
     <div className="flex flex-col gap-4">
       <div className="glass-card flex flex-col gap-3 rounded-card border border-line bg-calCard p-4">
         <div>
-          <Label>E-posta ekle</Label>
+          <Label>{t("settings.allowlistAddLabel")}</Label>
           <div className="mt-1 flex gap-2">
             <input
               type="email"
@@ -1099,7 +1099,7 @@ function AllowlistForm() {
                 }
               }}
               className={`${fieldCls} flex-1`}
-              placeholder="ornek@eposta.com"
+              placeholder={t("settings.allowlistEmailPlaceholder")}
             />
             <button
               type="button"
@@ -1107,7 +1107,7 @@ function AllowlistForm() {
               disabled={!canEkle}
               className="flex-none rounded-xl bg-accent px-4 py-2.5 text-xs font-extrabold text-accent-ink transition hover:bg-accent/90 active:scale-95 disabled:opacity-40"
             >
-              {saving ? "…" : "Ekle"}
+              {saving ? "…" : t("common.add")}
             </button>
           </div>
           {problem && yeni !== "" && <p className="mt-1 text-xs text-amber-400">{problem}</p>}
@@ -1123,13 +1123,12 @@ function AllowlistForm() {
       </div>
 
       <div className="glass-card flex flex-col gap-2 rounded-card border border-line bg-calCard p-4">
-        <h4 className="text-xs font-bold text-white/70">Listedekiler</h4>
+        <h4 className="text-xs font-bold text-white/70">{t("settings.allowlistCurrentList")}</h4>
         {emails === null ? (
-          <p className="text-xs text-white/50">Yükleniyor…</p>
+          <p className="text-xs text-white/50">{t("common.loading")}</p>
         ) : emails.length === 0 ? (
           <p className="text-xs text-white/50 leading-relaxed">
-            Liste boşken kayıtlar herkese açık kalır. İzin vereceğin kişilerin e-postalarını yukarıdan ekle —
-            kaydettiğin anda listede olmayanlar kayıt olamaz.
+            {t("settings.allowlistEmpty")}
           </p>
         ) : (
           <ul className="flex flex-col divide-y divide-white/[0.06]">
@@ -1140,7 +1139,7 @@ function AllowlistForm() {
                   type="button"
                   onClick={() => void sil(email)}
                   disabled={saving}
-                  aria-label={`${email} listesinden çıkar`}
+                  aria-label={t("settings.allowlistRemove", { email })}
                   className="flex h-8 w-8 flex-none items-center justify-center rounded-lg text-white/40 transition hover:bg-rose-500/15 hover:text-rose-400 active:scale-90 disabled:opacity-40"
                 >
                   <Trash2 className="h-4 w-4" />
@@ -1152,8 +1151,7 @@ function AllowlistForm() {
       </div>
 
       <p className="px-1 text-[11px] leading-relaxed text-white/40">
-        Not: Google ile kayıt olacak kişileri ayrıca Google Cloud Console'daki "Test users" listesine eklemelisin
-        — Google'ın kendi kapısı ayrıdır. Parola ile kayıt olacaklar için yalnızca bu liste yeterli.
+        {t("settings.allowlistGoogleNote")}
       </p>
     </div>
   );
