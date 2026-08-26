@@ -428,7 +428,7 @@ export function OnboardingModal({
                     type="number"
                     value={finalKcal}
                     onChange={(e) => setCustomKcal(Number(e.target.value))}
-                    className="w-24 bg-white/[0.06] border border-accent/30 rounded-xl px-3 py-1.5 text-right font-black text-base text-white font-mono focus:border-accent outline-none"
+                    className="w-20 sm:w-24 bg-white/[0.06] border border-accent/30 rounded-xl px-3 py-1.5 text-right font-black text-base text-white font-mono focus:border-accent outline-none"
                   />
                   <span className="text-xs font-bold text-ink-secondary">kcal</span>
                 </div>
