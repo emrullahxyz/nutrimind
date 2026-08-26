@@ -662,3 +662,142 @@ describe("izinli e-postalar (yönetici uçları)", () => {
     db.close();
   });
 });
+
+describe("GET /api/auth/account/export (veri dışa aktarma)", () => {
+  it("oturum yoksa 401 döner", async () => {
+    const R = await yukle({ NUTRIMIND_AUTH_ENABLED: "1", NUTRIMIND_ALLOW_SIGNUP: "1" });
+    const db = yeniDb();
+    const r = await R.handleAuth({
+      db, req: istek(), method: "GET", path: "/api/auth/account/export", readBody: govde({}),
+    });
+    expect(r.status).toBe(401);
+    db.close();
+  });
+
+  it("kullanıcının tüm verisini JSON olarak döner", async () => {
+    const R = await yukle({ NUTRIMIND_AUTH_ENABLED: "1", NUTRIMIND_ALLOW_SIGNUP: "1" });
+    const db = yeniDb();
+    const cerez = await kayitVeCerez(R, db, "exp@x.co");
+
+    // Kullanıcıya öğün + alias + config ekle
+    db.prepare("INSERT INTO days (user_id, date, meals) VALUES (?, ?, ?)").run(
+      db.prepare("SELECT id FROM users WHERE email = ?").get("exp@x.co").id,
+      "2026-08-26",
+      JSON.stringify([{ saat: "08:00", ad: "yumurta", kcal: 100 }]),
+    );
+    db.prepare("INSERT INTO config (user_id, key, value) VALUES (?, ?, ?)").run(
+      db.prepare("SELECT id FROM users WHERE email = ?").get("exp@x.co").id, "kcal", "2000",
+    );
+
+    const r = await R.handleAuth({
+      db, req: istek(cerez), method: "GET", path: "/api/auth/account/export", readBody: govde({}),
+    });
+    expect(r.status).toBe(200);
+    expect(r.body.user.email).toBe("exp@x.co");
+    expect(r.body.days).toHaveLength(1);
+    expect(r.body.days[0].meals[0].ad).toBe("yumurta");
+    expect(r.body.config.kcal).toBe("2000");
+    expect(typeof r.body.exportedAt).toBe("string");
+    db.close();
+  });
+});
+
+describe("POST /api/auth/account (hesap silme)", () => {
+  it("confirm yanlışsa 400 döner", async () => {
+    const R = await yukle({ NUTRIMIND_AUTH_ENABLED: "1", NUTRIMIND_ALLOW_SIGNUP: "1" });
+    const db = yeniDb();
+    const cerez = await kayitVeCerez(R, db, "x@x.co");
+    const r = await R.handleAuth({
+      db, req: istek(cerez), method: "POST", path: "/api/auth/account",
+      readBody: govde({ confirm: "sil" }),
+    });
+    expect(r.status).toBe(400);
+    db.close();
+  });
+
+  it("e-posta+parola kullanıcısı: parola yanlışsa 401 döner, kullanıcı silinmez", async () => {
+    const R = await yukle({ NUTRIMIND_AUTH_ENABLED: "1", NUTRIMIND_ALLOW_SIGNUP: "1" });
+    const db = yeniDb();
+    const cerez = await kayitVeCerez(R, db, "kalan@x.co", "parola1234");
+    const r = await R.handleAuth({
+      db, req: istek(cerez), method: "POST", path: "/api/auth/account",
+      readBody: govde({ confirm: "DELETE", password: "yanlısparola" }),
+    });
+    expect(r.status).toBe(401);
+    // Hâlâ DB'de mi?
+    const hala = db.prepare("SELECT 1 FROM users WHERE email = ?").get("kalan@x.co");
+    expect(hala).toBeTruthy();
+    db.close();
+  });
+
+  it("e-posta+parola kullanıcısı: doğru confirm+parola → tüm tablolar temizlenir", async () => {
+    const R = await yukle({ NUTRIMIND_AUTH_ENABLED: "1", NUTRIMIND_ALLOW_SIGNUP: "1" });
+    const db = yeniDb();
+    const cerez = await kayitVeCerez(R, db, "tamam@x.co", "parola1234");
+    const uid = db.prepare("SELECT id FROM users WHERE email = ?").get("tamam@x.co").id;
+    db.prepare("INSERT INTO days (user_id, date, meals) VALUES (?, ?, ?)").run(uid, "2026-08-26", "[]");
+    db.prepare("INSERT INTO config (user_id, key, value) VALUES (?, ?, ?)").run(uid, "kcal", "2000");
+    db.prepare("INSERT INTO signup_allowlist (email) VALUES (?)").run("tamam@x.co");
+
+    const r = await R.handleAuth({
+      db, req: istek(cerez), method: "POST", path: "/api/auth/account",
+      readBody: govde({ confirm: "DELETE", password: "parola1234" }),
+    });
+    expect(r.status).toBe(200);
+    expect(r.body.silinen.users).toBe(1);
+    expect(r.body.silinen.days).toBe(1);
+    expect(r.body.silinen.config).toBe(1);
+    expect(r.body.silinen.allowlist).toBe(1);
+
+    expect(db.prepare("SELECT 1 FROM users WHERE id = ?").get(uid)).toBeFalsy();
+    expect(db.prepare("SELECT 1 FROM days WHERE user_id = ?").get(uid)).toBeFalsy();
+    expect(db.prepare("SELECT 1 FROM signup_allowlist WHERE email = ?").get("tamam@x.co")).toBeFalsy();
+    // Çerez temizlendi mi?
+    expect(r.headers["Set-Cookie"]).toContain("Max-Age=0");
+    db.close();
+  });
+
+  it("OAuth-only kullanıcısı: parola olmadan silinebilir", async () => {
+    const R = await yukle({
+      NUTRIMIND_AUTH_ENABLED: "1",
+      NUTRIMIND_ALLOW_SIGNUP: "1",
+      GOOGLE_CLIENT_ID: "x",
+      GOOGLE_CLIENT_SECRET: "y",
+    });
+    const db = yeniDb();
+    const uid = `u_oauth${Date.now().toString(36)}`;
+    db.prepare(
+      "INSERT INTO users (id, email, password_hash, google_sub, display_name, created_at) VALUES (?, ?, NULL, ?, ?, ?)",
+    ).run(uid, "oauth@x.co", "google-sub-1", "OAuth", new Date().toISOString());
+    const { sessionId } = R.createSession(db, uid, istek(), Date.now());
+    const cerez = `${R.COOKIE_NAME}=${sessionId}`;
+
+    const r = await R.handleAuth({
+      db, req: istek(cerez), method: "POST", path: "/api/auth/account",
+      readBody: govde({ confirm: "DELETE" }),
+    });
+    expect(r.status).toBe(200);
+    expect(r.body.silinen.users).toBe(1);
+    expect(db.prepare("SELECT 1 FROM users WHERE id = ?").get(uid)).toBeFalsy();
+    db.close();
+  });
+
+  it("oturum yoksa 401 döner", async () => {
+    const R = await yukle({ NUTRIMIND_AUTH_ENABLED: "1", NUTRIMIND_ALLOW_SIGNUP: "1" });
+    const db = yeniDb();
+    const r = await R.handleAuth({
+      db, req: istek(), method: "POST", path: "/api/auth/account",
+      readBody: govde({ confirm: "DELETE" }),
+    });
+    expect(r.status).toBe(401);
+    db.close();
+  });
+});
+
+async function kayitVeCerez(R, db, email, password = "parola1234") {
+  const r = await R.handleAuth({
+    db, req: istek(), method: "POST", path: "/api/auth/register",
+    readBody: govde({ email, password }),
+  });
+  return cerezden(r);
+}
