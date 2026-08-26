@@ -1,0 +1,202 @@
+<!doctype html>
+<html lang="tr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Nutrimind Play Store Plan İlerlemesi</title>
+    <script src="https://unpkg.com/cytoscape@3.30.2/dist/cytoscape.min.js"></script>
+    <script src="https://unpkg.com/dagre@0.8.5/dist/dagre.min.js"></script>
+    <script src="https://unpkg.com/cytoscape-dagre@2.5.0/cytoscape-dagre.js"></script>
+    <style>
+      :root { color-scheme: dark; }
+      * { box-sizing: border-box; }
+      html, body { margin: 0; padding: 0; height: 100%; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; background: #08090a; color: #e6e7ea; }
+      #app { display: grid; grid-template-columns: 240px 1fr 320px; height: 100vh; }
+      @media (max-width: 900px) { #app { grid-template-columns: 1fr; grid-template-rows: auto 1fr auto; } }
+      #left, #right { background: #14151a; border: 1px solid #1c1d22; padding: 16px; overflow-y: auto; }
+      #right { border-left: none; }
+      #left { border-right: none; }
+      h1 { font-size: 18px; margin: 0 0 16px; }
+      h2 { font-size: 13px; text-transform: uppercase; letter-spacing: 0.05em; color: #8a8c93; margin: 16px 0 8px; }
+      .stat { display: flex; justify-content: space-between; padding: 6px 0; font-size: 13px; border-bottom: 1px solid #1c1d22; }
+      .stat:last-child { border-bottom: none; }
+      .dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 8px; vertical-align: middle; }
+      .dot.done { background: #22c55e; }
+      .dot.partial { background: #eab308; }
+      .dot.todo { background: #6b7280; }
+      .dot.blocked { background: #ef4444; }
+      .filter { display: flex; align-items: center; padding: 6px 0; cursor: pointer; user-select: none; }
+      .filter input { margin-right: 8px; }
+      .filter:hover { color: #fff; }
+      .layout-btn { display: block; width: 100%; padding: 8px; margin: 4px 0; background: #1c1d22; color: #e6e7ea; border: 1px solid #2c2d32; border-radius: 6px; cursor: pointer; font-size: 13px; }
+      .layout-btn:hover { background: #2c2d32; }
+      .layout-btn.active { background: #22c55e; color: #08090a; border-color: #22c55e; }
+      #cy { width: 100%; height: 100%; background: #0a0b0f; }
+      .detail { font-size: 14px; }
+      .detail .label { color: #8a8c93; font-size: 12px; text-transform: uppercase; letter-spacing: 0.05em; margin-top: 12px; }
+      .detail .value { margin-top: 4px; }
+      .detail code { background: #1c1d22; padding: 2px 6px; border-radius: 4px; font-size: 12px; color: #facc15; }
+      .detail .files { list-style: none; padding: 0; margin: 4px 0 0; }
+      .detail .files li { font-family: ui-monospace, monospace; font-size: 12px; padding: 2px 0; color: #a3a8b0; }
+      .detail .notes { background: #1c1d22; padding: 8px; border-radius: 6px; margin-top: 4px; font-size: 13px; }
+      .empty { color: #6b7280; font-size: 13px; font-style: italic; }
+      .legend { display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: 12px; font-size: 12px; }
+    </style>
+  </head>
+  <body>
+    <div id="app">
+      <aside id="left">
+        <h1>📊 Plan İlerlemesi</h1>
+        <div id="stats"></div>
+        <h2>Filtre (Durum)</h2>
+        <div id="filters"></div>
+        <h2>Layout</h2>
+        <button class="layout-btn active" data-layout="dagre">Dagre (akış)</button>
+        <button class="layout-btn" data-layout="cose">COSE (kuvvet)</button>
+        <button class="layout-btn" data-layout="breadthfirst">Breadth-first</button>
+        <button class="layout-btn" data-layout="concentric">Concentric</button>
+      </aside>
+      <main id="cy"></main>
+      <aside id="right">
+        <h1>📋 Detay</h1>
+        <div id="detail" class="empty">Bir node tıkla.</div>
+      </aside>
+    </div>
+    <script>
+      const NODES = [
+        { id: "f0", label: "Faz 0: Tarama + baseline", status: "done", commit: "e479510", files: [".gitignore"], notes: "621/621 test, build OK" },
+        { id: "f1-1", label: "Privacy policy (TR/EN/PL)", status: "done", commit: "3d7db15", files: ["public/privacy.html", "public/policies/en.html", "public/policies/pl.html"] },
+        { id: "f1-3", label: "Hesap silme + export API", status: "done", commit: "9dbc50e", files: ["server/authRoutes.js", "server/authRoutes.test.js"], notes: "7 yeni test" },
+        { id: "f1-5", label: "Settings UI (sil + indir)", status: "done", commit: "369361b", files: ["src/components/SettingsSheet.tsx"] },
+        { id: "f1-7", label: "SEO + CHANGELOG", status: "done", commit: "1d49979", files: ["index.html", "public/robots.txt", "public/sitemap.xml", "CHANGELOG.md"] },
+        { id: "f1-11", label: "AI fotoğraf onay modalı", status: "done", commit: "2338977", files: ["src/components/ScanSheet.tsx"] },
+        { id: "ai-helpers", label: "ai.ts consent helpers", status: "done", commit: "87f35f1", files: ["src/lib/ai.ts"] },
+        { id: "f2", label: "Offline cache (IndexedDB)", status: "done", commit: "7e38a2a", files: ["src/lib/offlineCache.ts", "src/lib/data.tsx"], notes: "IDB overkill, localStorage yeterli olurdu" },
+        { id: "f3-ux", label: "UX (boş state + kamera)", status: "done", commit: "e08af84", files: ["src/pages/{DailyPage,AliasPage,HistoryPage}.tsx", "src/components/ScanSheet.tsx"] },
+        { id: "f3-asset", label: "Logo WebP optimizasyonu", status: "done", commit: "56f1b8c", files: ["public/NutriMind_Logo.webp", "src/App.tsx", "src/components/AuthScreen.tsx"], notes: "1.6M → 37.7K (%97)" },
+        { id: "f4-off", label: "OFF UA anonimleştirme", status: "done", commit: "3cd16ac", files: ["server/offUA.js", "server/index.js"], notes: "Kullanıcı manuel değiştirdi" },
+        { id: "f5-i18n-base", label: "i18n altyapısı + 2 örnek", status: "done", commit: "3a36fd3", files: ["src/i18n/", "src/main.tsx"] },
+        { id: "f5-i18n-pages", label: "i18n 6 sayfa daha", status: "done", commit: "3bb617d", files: ["ScanSheet, AuthScreen, History, Alias, Daily, Onboarding"], notes: "SettingsSheet + MealForm + NutritionSheet kaldı" },
+        { id: "f6", label: "A11y (progressbar + nav)", status: "partial", commit: "1783703", notes: "< 360px layout, focus trap, label-for-id kaldı" },
+        { id: "f7-cap", label: "Capacitor + android", status: "partial", commit: "b2ff68a", notes: "Keystore + signed AAB + Play Console yükleme kullanıcıda" },
+        { id: "f8", label: "AGENTS.md güncelleme", status: "done", commit: "50b876e", files: ["AGENTS.md"] },
+      ];
+      const EDGES = [
+        ["f0","f1-1"], ["f1-1","f1-3"], ["f1-3","f1-5"],
+        ["f0","f1-7"],
+        ["f1-3","ai-helpers"], ["ai-helpers","f1-11"],
+        ["f0","f2"], ["f0","f3-ux"], ["f0","f3-asset"], ["f0","f4-off"],
+        ["f0","f5-i18n-base"], ["f5-i18n-base","f5-i18n-pages"],
+        ["f0","f6"], ["f0","f7-cap"],
+        ["f1-5","f8"], ["f1-11","f8"], ["f2","f8"], ["f5-i18n-base","f8"],
+      ];
+      const STATUS_COLOR = { done: "#22c55e", partial: "#eab308", todo: "#6b7280", blocked: "#ef4444" };
+      const STATUS_LABEL = { done: "Tamam", partial: "Kısmen", todo: "Yapılmadı", blocked: "Bloklu" };
+
+      // Stats
+      const counts = { done: 0, partial: 0, todo: 0, blocked: 0 };
+      NODES.forEach(n => counts[n.status]++);
+      const statsEl = document.getElementById("stats");
+      statsEl.innerHTML = `<div class="legend">${Object.keys(STATUS_LABEL).map(s => `<span><span class="dot ${s}"></span>${STATUS_LABEL[s]}: ${counts[s]}</span>`).join("")}</div>` +
+        `<div class="stat"><span>Toplam</span><strong>${NODES.length}</strong></div>` +
+        `<div class="stat"><span>İlerleme</span><strong>${Math.round((counts.done + counts.partial * 0.5) / NODES.length * 100)}%</strong></div>`;
+
+      // Filters
+      const filterState = { done: true, partial: true, todo: true, blocked: true };
+      const filtersEl = document.getElementById("filters");
+      filtersEl.innerHTML = Object.keys(STATUS_LABEL).map(s =>
+        `<label class="filter"><input type="checkbox" data-status="${s}" ${filterState[s] ? "checked" : ""}><span class="dot ${s}"></span>${STATUS_LABEL[s]}</label>`
+      ).join("");
+      filtersEl.addEventListener("change", e => {
+        const s = e.target.dataset.status;
+        filterState[s] = e.target.checked;
+        cy.nodes().forEach(n => { n.style("display", filterState[n.data("status")] ? "element" : "none"); });
+      });
+
+      // Cytoscape
+      cytoscape.use(cytoscapeDagre);
+      const cy = cytoscape({
+        container: document.getElementById("cy"),
+        elements: [
+          ...NODES.map(n => ({ data: { id: n.id, label: n.label, status: n.status, commit: n.commit, files: n.files || [], notes: n.notes || "" } })),
+          ...EDGES.map(([s, t]) => ({ data: { id: `${s}-${t}`, source: s, target: t } })),
+        ],
+        style: [
+          { selector: "node", style: {
+            "background-color": "data(status)" ? null : "#6b7280",
+            "background-color": ele => STATUS_COLOR[ele.data("status")] || "#6b7280",
+            "label": "data(label)",
+            "color": "#e6e7ea",
+            "font-size": "11px",
+            "text-valign": "center",
+            "text-halign": "center",
+            "text-wrap": "wrap",
+            "text-max-width": "120px",
+            "width": "140px",
+            "height": "50px",
+            "border-width": 2,
+            "border-color": "#1c1d22",
+            "shape": "round-rectangle",
+          } },
+          { selector: "edge", style: {
+            "curve-style": "bezier",
+            "target-arrow-shape": "triangle",
+            "line-color": "#3c3d42",
+            "target-arrow-color": "#3c3d42",
+            "width": 1.5,
+          } },
+          { selector: "node:selected", style: { "border-color": "#22c55e", "border-width": 4 } },
+          { selector: "node.highlighted", style: { "border-color": "#facc15", "border-width": 3 } },
+          { selector: "node.dimmed", style: { "opacity": 0.25 } },
+          { selector: "edge.highlighted", style: { "line-color": "#facc15", "target-arrow-color": "#facc15", "width": 3 } },
+          { selector: "edge.dimmed", style: { "opacity": 0.15 } },
+        ],
+        layout: { name: "dagre", rankDir: "LR", nodeSep: 30, rankSep: 60, padding: 20 },
+        wheelSensitivity: 0.2,
+      });
+
+      // Layout buttons
+      document.querySelectorAll(".layout-btn").forEach(btn => {
+        btn.addEventListener("click", () => {
+          document.querySelectorAll(".layout-btn").forEach(b => b.classList.remove("active"));
+          btn.classList.add("active");
+          const name = btn.dataset.layout;
+          const opts = { name, padding: 20, animate: true };
+          if (name === "dagre") { opts.rankDir = "LR"; opts.nodeSep = 30; opts.rankSep = 60; }
+          if (name === "concentric") { opts.minNodeSpacing = 40; }
+          cy.layout(opts).run();
+        });
+      });
+
+      // Detail panel
+      const detailEl = document.getElementById("detail");
+      function showDetail(node) {
+        if (!node) { detailEl.className = "empty"; detailEl.textContent = "Bir node tıkla."; return; }
+        const files = (node.data("files") || []).map(f => `<li>${f}</li>`).join("");
+        detailEl.className = "detail";
+        detailEl.innerHTML = `
+          <div class="value"><strong>${node.data("label")}</strong></div>
+          <div class="label">Durum</div>
+          <div class="value"><span class="dot ${node.data("status")}"></span>${STATUS_LABEL[node.data("status")]}</div>
+          <div class="label">Commit</div>
+          <div class="value"><code>${node.data("commit") || "—"}</code></div>
+          ${files ? `<div class="label">Dosyalar</div><ul class="files">${files}</ul>` : ""}
+          ${node.data("notes") ? `<div class="label">Notlar</div><div class="notes">${node.data("notes")}</div>` : ""}
+        `;
+      }
+      cy.on("tap", "node", evt => {
+        cy.elements().removeClass("highlighted dimmed");
+        const n = evt.target;
+        n.closedNeighborhood().addClass("highlighted");
+        cy.elements().not(n.closedNeighborhood()).addClass("dimmed");
+        showDetail(n);
+      });
+      cy.on("tap", evt => {
+        if (evt.target === cy) {
+          cy.elements().removeClass("highlighted dimmed");
+          showDetail(null);
+        }
+      });
+    </script>
+  </body>
+</html>
