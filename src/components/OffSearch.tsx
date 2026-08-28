@@ -14,6 +14,8 @@
 // kota geri sayımı `../lib/offScanner`'da, ScanSheet (Faz S3) ile PAYLAŞILIYOR).
 // ============================================================================
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
+import { useData } from "../lib/data";
 import {
   OFF_ATTRIBUTION,
   fetchOffProduct,
@@ -34,6 +36,8 @@ const MIN_QUERY = 2;
 const RESULT_LIMIT = 20;
 
 export function OffSearch({ onPick }: { onPick: (food: OffFood) => void }) {
+  const { t } = useTranslation();
+  const { offline } = useData();
   const [query, setQuery] = useState("");
   const [barcode, setBarcode] = useState("");
   const [foods, setFoods] = useState<OffFood[] | null>(null);
@@ -53,7 +57,7 @@ export function OffSearch({ onPick }: { onPick: (food: OffFood) => void }) {
       setStatus((s) => (s.kind === "cooldown" ? s : { kind: "idle" }));
       return;
     }
-    if (blocked) return; // kota korumasında yeni istek yok
+    if (blocked || offline) return; // kota koruması ya da çevrimdışı: yeni istek yok
 
     const timer = window.setTimeout(() => {
       abortRef.current?.abort();
@@ -75,11 +79,15 @@ export function OffSearch({ onPick }: { onPick: (food: OffFood) => void }) {
 
     return () => window.clearTimeout(timer);
     // `blocked` bağımlılığı bilinçli: geri sayım bitince son sorgu tekrar denenir.
-  }, [query, blocked, applyError, setStatus]);
+  }, [query, blocked, offline, applyError, setStatus]);
 
   // --- Barkodla tek ürün ----------------------------------------------------
   const lookupBarcode = useCallback(
     async (raw: string) => {
+      if (offline) {
+        setStatus({ kind: "error", message: t("offline.featureUnavailable") });
+        return;
+      }
       const code = raw.trim();
       if (!isValidBarcode(code)) {
         setStatus({ kind: "error", message: "Barkod 4-20 haneli bir sayı olmalı." });
@@ -110,7 +118,7 @@ export function OffSearch({ onPick }: { onPick: (food: OffFood) => void }) {
 
   // --- Kamera: OffSearch + ScanSheet'in PAYLAŞTIĞI hook ----------------------
   const { scanning, setScanning, videoRef, canScan, cameraError } = useOffScanner({
-    blocked,
+    blocked: blocked || offline,
     onDetected: (value) => {
       setBarcode(value);
       void lookupBarcode(value);
@@ -146,7 +154,7 @@ export function OffSearch({ onPick }: { onPick: (food: OffFood) => void }) {
               setStatus({ kind: "idle" });
               setScanning((s) => !s);
             }}
-            disabled={blocked && !scanning}
+            disabled={(blocked || offline) && !scanning}
             aria-pressed={scanning}
             className="flex-none rounded-pill border border-line px-3 py-2 text-sm text-ink-secondary transition hover:text-ink-primary disabled:opacity-40"
           >
@@ -172,7 +180,7 @@ export function OffSearch({ onPick }: { onPick: (food: OffFood) => void }) {
         className="flex items-end gap-2"
         onSubmit={(e) => {
           e.preventDefault();
-          if (!blocked) void lookupBarcode(barcode);
+          if (!blocked && !offline) void lookupBarcode(barcode);
         }}
       >
         <label className="block flex-1">
@@ -189,7 +197,7 @@ export function OffSearch({ onPick }: { onPick: (food: OffFood) => void }) {
         </label>
         <button
           type="submit"
-          disabled={blocked || barcode.trim() === ""}
+          disabled={blocked || offline || barcode.trim() === ""}
           className="flex-none rounded-pill border border-line px-3 py-2 text-sm text-ink-secondary transition hover:text-ink-primary disabled:opacity-40"
         >
           Getir
@@ -206,6 +214,11 @@ export function OffSearch({ onPick }: { onPick: (food: OffFood) => void }) {
           Çok hızlı arama yapıldı. Open Food Facts kotası korunuyor —{" "}
           <span className="font-mono font-semibold">{cooldownLeft} sn</span> sonra kendiliğinden
           tekrar denenecek.
+        </p>
+      )}
+      {offline && (
+        <p className="rounded-chip bg-warn/10 px-3 py-2 text-[11px] text-warn">
+          {t("offline.featureUnavailable")}
         </p>
       )}
       {showEmpty && (
