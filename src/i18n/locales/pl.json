@@ -273,7 +273,43 @@
     "protein": "Białko",
     "carbs": "Węgl.",
     "fat": "Tłuszcz",
-    "dailyFiber": "Dzienny cel błonnika"
+    "dailyFiber": "Dzienny cel błonnika",
+    "activity": {
+      "sedentary": {
+        "title": "Siedzący",
+        "desc": "Praca biurowa lub szkoła, mało/brak ćwiczeń"
+      },
+      "light": {
+        "title": "Lekko aktywny",
+        "desc": "Lekkie ćwiczenia lub spacery 1-3 dni w tygodniu"
+      },
+      "moderate": {
+        "title": "Umiarkowanie aktywny",
+        "desc": "Regularne treningi lub umiarkowana aktywność 3-5 dni w tygodniu"
+      },
+      "active": {
+        "title": "Bardzo aktywny",
+        "desc": "Intensywny sport lub wymagająca fizycznie praca 6-7 dni w tygodniu"
+      },
+      "extra_active": {
+        "title": "Ekstremalnie aktywny / atleta",
+        "desc": "Dwa intensywne treningi dziennie lub tempo profesjonalnego sportowca"
+      }
+    },
+    "goal": {
+      "weight_loss": {
+        "title": "Schudnij i spal tłuszcz",
+        "desc": "Deficyt 500 kcal dla bezpiecznej i trwałej utraty tłuszczu"
+      },
+      "maintenance": {
+        "title": "Utrzymaj wagę i formę",
+        "desc": "Utrzymaj obecną wagę i zachowaj równowagę"
+      },
+      "weight_gain": {
+        "title": "Przybierz na wadze i zbuduj mięśnie",
+        "desc": "Nadwyżka 350 kcal dla masy mięśniowej i objętości"
+      }
+    }
   },
   "meal": {
     "titleAdd": "Dodaj posiłek",

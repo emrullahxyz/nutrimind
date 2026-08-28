@@ -345,12 +345,12 @@ export function OnboardingModal({
                     <span className="text-2xl shrink-0">{item.icon}</span>
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center justify-between">
-                        <h4 className="font-extrabold text-sm text-white">{item.title}</h4>
+                        <h4 className="font-extrabold text-sm text-white">{t(`onboarding.activity.${key}.title`)}</h4>
                         <span className="text-[10px] font-mono font-bold text-accent bg-accent/10 px-2.5 py-0.5 rounded-full border border-accent/20">
                           x{item.multiplier}
                         </span>
                       </div>
-                      <p className="text-xs text-ink-secondary mt-1 leading-snug">{item.desc}</p>
+                      <p className="text-xs text-ink-secondary mt-1 leading-snug">{t(`onboarding.activity.${key}.desc`)}</p>
                     </div>
                     {isSelected && <CheckCircle2 className="w-5 h-5 text-accent shrink-0" />}
                   </button>
@@ -390,8 +390,8 @@ export function OnboardingModal({
                   >
                     <span className="text-3xl shrink-0">{item.icon}</span>
                     <div className="min-w-0 flex-1">
-                      <h4 className="font-extrabold text-base text-white">{item.title}</h4>
-                      <p className="text-xs text-ink-secondary mt-1 leading-snug">{item.desc}</p>
+                      <h4 className="font-extrabold text-base text-white">{t(`onboarding.goal.${key}.title`)}</h4>
+                      <p className="text-xs text-ink-secondary mt-1 leading-snug">{t(`onboarding.goal.${key}.desc`)}</p>
                     </div>
                     {isSelected && <CheckCircle2 className="w-5 h-5 text-accent shrink-0" />}
                   </button>
