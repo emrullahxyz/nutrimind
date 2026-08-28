@@ -230,6 +230,42 @@ describe("syncPending — çift sekme kilidi", () => {
   });
 });
 
+describe("syncPending — uç senaryolar", () => {
+  it("StrictMode/çift event: aynı anda iki syncPending tek çalıştırmayı paylaşır", async () => {
+    apiMocks.fetchData.mockResolvedValue(makeData());
+
+    const [a, b] = await Promise.all([syncPending(), syncPending()]);
+
+    expect(apiMocks.fetchData).toHaveBeenCalledTimes(1);
+    expect(a).toEqual(b);
+  });
+
+  it("kuyruk ortasında ağ kesilirse tamamlananlar düşer, kalanlar korunur", async () => {
+    apiMocks.fetchData.mockResolvedValue(
+      makeData({
+        "2026-08-28": [mealItem("2026-08-28", "a")],
+        "2026-08-29": [mealItem("2026-08-29", "a")],
+        "2026-08-30": [mealItem("2026-08-30", "a")],
+      }),
+    );
+    apiMocks.saveDay
+      .mockResolvedValueOnce({ ok: true })
+      .mockRejectedValueOnce(new TypeError("Failed to fetch"));
+    queue = [
+      op({ id: "op1", kind: "save-day", date: "2026-08-28", meals: [MEAL_PAYLOAD], base: makeData({ "2026-08-28": [mealItem("2026-08-28", "a")] }) }),
+      op({ id: "op2", kind: "save-day", date: "2026-08-29", meals: [MEAL_PAYLOAD], base: makeData({ "2026-08-29": [mealItem("2026-08-29", "a")] }) }),
+      op({ id: "op3", kind: "save-day", date: "2026-08-30", meals: [MEAL_PAYLOAD], base: makeData({ "2026-08-30": [mealItem("2026-08-30", "a")] }) }),
+    ];
+
+    const result = await syncPending();
+
+    expect(cacheMocks.removeOperation).toHaveBeenCalledWith("op1");
+    expect(queue.map((o) => o.id)).toEqual(["op2", "op3"]);
+    expect(result.synced).toBe(1);
+    expect(result.interrupted).toBe(true);
+  });
+});
+
 describe("syncPending — hata sınıflandırması", () => {
   it("ağ hatası: kuyruk korunur, sync durur", async () => {
     apiMocks.fetchData.mockResolvedValue(makeData({ "2026-08-28": [mealItem("2026-08-28", "a")] }));
