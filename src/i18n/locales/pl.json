@@ -353,5 +353,14 @@
     "newFood": "Nowy produkt",
     "searchPlaceholder": "Szukaj nazwy produktu, marki lub frazy...",
     "templates": "Szablony"
+  },
+  "relative": {
+    "today": "dziś",
+    "yesterday": "wczoraj",
+    "daysAgo": "{{count}} dni temu",
+    "goodNight": "Dobranoc",
+    "goodMorning": "Dzień dobry",
+    "goodDay": "Miłego dnia",
+    "goodEvening": "Dobry wieczór"
   }
 }

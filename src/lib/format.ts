@@ -67,7 +67,19 @@ export function formatShortDate(iso: string): string {
   return d.toLocaleDateString(activeLocale(), { day: "numeric", month: "short" });
 }
 
-export const WEEKDAY_SHORT = ["Paz", "Pzt", "Sal", "Çar", "Per", "Cum", "Cmt"];
+/** Gün adları 0=Pazar…6=Cumartesi. Intl ile aktif locale'e göre üretilir;
+ *  Pazar-bazlı diziyi korumak için Pazar günü (2026-01-04) referans alınır. */
+function weekdaysShortFor(locale: string): string[] {
+  const fmt = new Intl.DateTimeFormat(locale, { weekday: "short", timeZone: "UTC" });
+  const out: string[] = [];
+  for (let i = 0; i < 7; i++) {
+    const d = new Date(Date.UTC(2026, 0, 4 + i)); // 2026-01-04 = Pazar
+    out.push(fmt.format(d));
+  }
+  return out;
+}
+
+export const WEEKDAY_SHORT = weekdaysShortFor(activeLocale());
 
 /** Haftanın günü: 0=Pazar … 6=Cumartesi.
  *  `addDaysISO` ile AYNI sözleşme (saf tarih, UTC) — gün-tipli hedeflerin
@@ -81,23 +93,24 @@ export function weekdayShort(iso: string): string {
   return WEEKDAY_SHORT[weekdayIndex(iso)] ?? "";
 }
 
-/** "bugün" / "dün" / "3g önce" / "22 Tem" */
+/** "bugün" / "dün" / "3g önce" / "22 Tem" — locale-aware. */
 export function formatRelativeDay(iso: string): string {
   const dateOnly = iso.slice(0, 10);
   const today = todayISO();
-  if (dateOnly === today) return "bugün";
-  if (dateOnly === addDaysISO(today, -1)) return "dün";
+  const locale = activeLocale();
+  if (dateOnly === today) return i18n.t("relative.today");
+  if (dateOnly === addDaysISO(today, -1)) return i18n.t("relative.yesterday");
   const diffMs = new Date(`${today}T00:00:00`).getTime() - new Date(`${dateOnly}T00:00:00`).getTime();
   const days = Math.round(diffMs / 86_400_000);
-  if (days > 0 && days < 14) return `${days}g önce`;
+  if (days > 0 && days < 14) return i18n.t("relative.daysAgo", { count: days });
   return formatShortDate(dateOnly);
 }
 
 function greetingForHour(hour: number): string {
-  if (hour < 6) return "İyi geceler";
-  if (hour < 12) return "Günaydın";
-  if (hour < 18) return "İyi günler";
-  return "İyi akşamlar";
+  if (hour < 6) return i18n.t("relative.goodNight");
+  if (hour < 12) return i18n.t("relative.goodMorning");
+  if (hour < 18) return i18n.t("relative.goodDay");
+  return i18n.t("relative.goodEvening");
 }
 
 export function currentGreeting(): string {

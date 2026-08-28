@@ -353,5 +353,14 @@
     "newFood": "New Food",
     "searchPlaceholder": "Search food name, brand or phrase...",
     "templates": "Templates"
+  },
+  "relative": {
+    "today": "today",
+    "yesterday": "yesterday",
+    "daysAgo": "{{count}}d ago",
+    "goodNight": "Good night",
+    "goodMorning": "Good morning",
+    "goodDay": "Good day",
+    "goodEvening": "Good evening"
   }
 }
