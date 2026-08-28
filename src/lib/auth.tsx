@@ -19,6 +19,7 @@ import * as authApi from "./authApi";
 import { setUnauthorizedHandler } from "./api";
 import { AppSkeleton } from "../components/Skeleton";
 import type { AuthCapabilities, AuthUser } from "../types";
+import { useTranslation } from "react-i18next";
 
 type Status = "loading" | "authed" | "anon";
 
@@ -44,6 +45,7 @@ export function useAuth(): AuthValue {
 const NO_CAPS: AuthCapabilities = { signupAllowed: false, googleEnabled: false, isAdmin: false };
 
 export function AuthProvider({ children }: { children: ReactNode }) {
+  const { t } = useTranslation();
   const [status, setStatus] = useState<Status>("loading");
   const [user, setUser] = useState<AuthUser | null>(null);
   const [capabilities, setCapabilities] = useState<AuthCapabilities>(NO_CAPS);
@@ -108,13 +110,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   if (err) {
     return (
       <Center>
-        <p className="text-sm text-ink-secondary">Sunucuya ulaşılamadı ({err}).</p>
+        <p className="text-sm text-ink-secondary">{t("auth.errorNetwork")} ({err})</p>
         <button
           type="button"
           onClick={() => setTekrar((n) => n + 1)}
           className="mt-3 rounded-pill bg-accent px-4 py-2 text-sm font-extrabold text-accent-ink"
         >
-          Tekrar dene
+          {t("common.retry")}
         </button>
       </Center>
     );

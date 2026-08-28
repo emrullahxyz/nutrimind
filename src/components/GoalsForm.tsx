@@ -20,6 +20,7 @@ import {
 } from "../lib/goals";
 import { NUTRIENTS } from "../lib/nutrients";
 import type { GoalConfig } from "../types";
+import { useTranslation } from "react-i18next";
 
 interface ProfileDraft {
   id: string;
@@ -41,18 +42,20 @@ function toProfileDrafts(config: GoalConfig): ProfileDraft[] {
   return config.profiles.map((p) => ({ id: p.id, name: p.name, nutrition: toDraft(p.nutrition) }));
 }
 
-function profileErrorOf(p: ProfileDraft): string | null {
-  if (p.name.trim() === "") return "Profil adı boş olamaz.";
-  if (!(draftNum(p.nutrition, "kcal") > 0)) return "Kalori hedefi 0'dan büyük olmalı.";
+function profileErrorOf(p: ProfileDraft, t: (k: string, o?: Record<string, string>) => string): string | null {
+  if (p.name.trim() === "") return t("goals.profileNameRequired");
+  if (!(draftNum(p.nutrition, "kcal") > 0)) return t("goals.kcalPositive");
   for (const def of NUTRIENTS) {
     if (def.key === "kcal") continue;
     if (def.group === "micro" && (p.nutrition[def.key] ?? "").trim() === "") continue;
-    if (draftNum(p.nutrition, def.key) < 0) return `${def.label} negatif olamaz.`;
+    if (draftNum(p.nutrition, def.key) < 0)
+      return t("goals.negativeNotAllowed", { nutrient: t(`nutrient.${def.key}`) });
   }
   return null;
 }
 
 export function GoalsForm({ onClose, embedded = false }: { onClose: () => void; embedded?: boolean }) {
+  const { t } = useTranslation();
   const { goals, updateGoals } = useData();
 
   const [profiles, setProfiles] = useState<ProfileDraft[]>(() => toProfileDrafts(goals));
@@ -68,7 +71,7 @@ export function GoalsForm({ onClose, embedded = false }: { onClose: () => void; 
   const [err, setErr] = useState<string | null>(null);
 
   const selected = profiles.find((p) => p.id === selectedId) ?? profiles[0];
-  const invalid = profiles.map(profileErrorOf);
+  const invalid = profiles.map((p) => profileErrorOf(p, t));
   const firstInvalid = invalid.findIndex((e) => e !== null);
   const canSave = firstInvalid === -1;
 
@@ -182,7 +185,7 @@ export function GoalsForm({ onClose, embedded = false }: { onClose: () => void; 
       <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-4 flex flex-col gap-3">
         <div className="flex items-end gap-3">
           <label className="block flex-1">
-            <span className="text-xs font-semibold text-white/80 block mb-1">Profil Adı</span>
+            <span className="text-xs font-semibold text-white/80 block mb-1">{t("goals.profileName")}</span>
             <input
               className="w-full px-3.5 py-2.5 rounded-xl bg-black/40 border border-white/15 text-sm font-semibold text-white focus:border-amber-400 focus:outline-none"
               value={selected.name}
@@ -229,7 +232,7 @@ export function GoalsForm({ onClose, embedded = false }: { onClose: () => void; 
         <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-4 flex flex-col gap-3">
           <div className="flex items-center gap-2">
             <Calendar className="w-4 h-4 text-purple-400" />
-            <h4 className="text-sm font-bold text-white">Haftalık Gün Atamaları</h4>
+            <h4 className="text-sm font-bold text-white">{t("goals.weeklyAssignments")}</h4>
           </div>
           <div className="grid grid-cols-7 gap-1.5 pt-1">
             {WEEK_ORDER.map((dow) => {
@@ -258,7 +261,7 @@ export function GoalsForm({ onClose, embedded = false }: { onClose: () => void; 
             })}
           </div>
           <p className="text-[11px] text-white/50">
-            Bir güne dokunarak o güne atanan profili hızlıca değiştirebilirsin.
+            {t("goals.weekdayTapHint")}
           </p>
         </div>
       )}
@@ -268,14 +271,14 @@ export function GoalsForm({ onClose, embedded = false }: { onClose: () => void; 
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Sparkles className="w-4 h-4 text-amber-400" />
-            <h4 className="text-sm font-bold text-white">Antrenman / Dinlenme Ayrımı</h4>
+            <h4 className="text-sm font-bold text-white">{t("goals.trainingSplitTitle")}</h4>
           </div>
           <span className="text-xs font-bold text-amber-300 font-mono">
-            {trainingDays} gün spora gidiyorsun
+            {t("goals.trainingDays", { count: trainingDays })}
           </span>
         </div>
         <p className="text-xs text-white/70">
-          Haftada kaç gün antrenman yapıyorsun? Otomatik kalori ve makro dağıtımı hesaplanabilir.
+          {t("goals.trainingSplitDesc")}
         </p>
 
         <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-1">
@@ -300,7 +303,7 @@ export function GoalsForm({ onClose, embedded = false }: { onClose: () => void; 
           onClick={applySuggested}
           className="w-full py-3 rounded-full bg-amber-400 text-black font-extrabold text-xs hover:bg-amber-300 transition shadow-md active:scale-[0.98] flex items-center justify-center gap-1.5"
         >
-          <Award className="w-4 h-4" /> Önerilen Ayarları Uygula
+          <Award className="w-4 h-4" /> {t("goals.applySuggested")}
         </button>
       </div>
 

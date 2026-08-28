@@ -319,7 +319,7 @@ export function AliasForm({ initial, onClose }: { initial: Alias | null; onClose
         {/* Nutrition Values Card */}
         <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-4 text-white space-y-3">
           <p className="text-xs text-white/70 font-medium">
-            Aşağıdaki makro değerler <strong className="text-carb">{parseNum(servingG) || 0} g</strong> porsiyon içindir.
+            {t("aliasForm.macroValuesNote", { grams: parseNum(servingG) || 0 })}
           </p>
           <NutritionFields draft={draft} onChange={setDraft} />
         </div>
