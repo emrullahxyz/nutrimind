@@ -244,23 +244,23 @@ export function AliasPage({
           </p>
         ) : (
           <div className="grid w-full min-w-0 grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
-            {templates.list.map((t, i) => (
+            {templates.list.map((tmpl, i) => (
               <div
-                key={t.id}
+                key={tmpl.id}
                 className="anim-fadeup rounded-[22px] border border-white/10 bg-white/[0.04] p-3.5 sm:p-4 flex flex-col justify-between gap-3 shadow-card w-full min-w-0 overflow-hidden"
                 style={{ animationDelay: `${i * 30}ms` }}
               >
                 <div className="flex items-start justify-between gap-2 min-w-0">
-                  <h4 className="font-bold text-white text-sm truncate flex-1 min-w-0" title={t.name}>
-                    {t.name}
+                  <h4 className="font-bold text-white text-sm truncate flex-1 min-w-0" title={tmpl.name}>
+                    {tmpl.name}
                   </h4>
                   <span className="shrink-0 font-mono text-xs font-bold text-white/60">
-                    {t.items.length} {t("aliasPage.items")}
+                    {tmpl.items.length} {t("aliasPage.items")}
                   </span>
                 </div>
 
                 <div className="flex items-center justify-end border-t border-white/10 pt-2 w-full">
-                  <ConfirmButton onConfirm={() => removeTemplate(t.id)} disabled={busy} />
+                  <ConfirmButton onConfirm={() => removeTemplate(tmpl.id)} disabled={busy} />
                 </div>
               </div>
             ))}
