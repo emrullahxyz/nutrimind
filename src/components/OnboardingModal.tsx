@@ -149,9 +149,9 @@ export function OnboardingModal({
           </div>
           <div>
             <h2 className="text-base sm:text-lg font-black text-white tracking-wide leading-none">
-              Profil & TDEE Kurulum Sihirbazı
+              {t("onboarding.title")}
             </h2>
-            <p className="text-[11px] text-ink-secondary mt-0.5">Soft Velvet Dark • Özel Beslenme Planı</p>
+            <p className="text-[11px] text-ink-secondary mt-0.5">{t("onboarding.subtitle")}</p>
           </div>
         </div>
 
@@ -173,7 +173,7 @@ export function OnboardingModal({
       <div
         className="w-full bg-accent-ink h-1.5 flex-none overflow-hidden"
         role="progressbar"
-        aria-label={`Adım ${step} / 5`}
+        aria-label={t("onboarding.stepStatus", { step })}
         aria-valuenow={step}
         aria-valuemin={1}
         aria-valuemax={5}
@@ -192,29 +192,29 @@ export function OnboardingModal({
             <div className="space-y-1">
               <h3 className="text-xl font-extrabold text-white flex items-center gap-2">
                 <User className="w-5 h-5 text-accent" />
-                <span>Seni Tanıyalım</span>
+                <span>{t("onboarding.step1Title")}</span>
               </h3>
               <p className="text-xs text-ink-secondary">
-                BMR ve metabolizma hesaplamaların için temel kişisel bilgilerin.
+                {t("onboarding.step1Desc")}
               </p>
             </div>
 
             <div className="space-y-4 bg-calCard p-4 sm:p-6 rounded-card border border-white/10 shadow-card">
               {/* Name */}
               <div className="space-y-1.5">
-                <label className="text-xs font-bold text-ink-secondary">Adın & Soyadın</label>
+                <label className="text-xs font-bold text-ink-secondary">{t("onboarding.nameLabel")}</label>
                 <input
                   type="text"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
-                  placeholder="Adınız Soyadınız"
+                  placeholder={t("onboarding.namePlaceholder")}
                   className="w-full bg-accent-ink border border-white/10 rounded-2xl px-4 py-3.5 text-sm text-white font-bold placeholder:text-ink-secondary/30 focus:border-accent focus:ring-2 focus:ring-accent/20 focus:outline-none transition"
                 />
               </div>
 
               {/* Gender */}
               <div className="space-y-1.5">
-                <label className="text-xs font-bold text-ink-secondary">Cinsiyet Seçimi</label>
+                <label className="text-xs font-bold text-ink-secondary">{t("onboarding.genderLabel")}</label>
                 <div className="grid grid-cols-2 gap-3">
                   <button
                     type="button"
@@ -225,7 +225,7 @@ export function OnboardingModal({
                         : "bg-accent-ink text-ink-secondary border-white/10 hover:text-white hover:bg-calCard"
                     }`}
                   >
-                    <span>👩 Kadın</span>
+                    <span>👩 {t("onboarding.female")}</span>
                     {gender === "female" && <CheckCircle2 className="w-4 h-4 text-accent" />}
                   </button>
 
@@ -238,7 +238,7 @@ export function OnboardingModal({
                         : "bg-accent-ink text-ink-secondary border-white/10 hover:text-white hover:bg-calCard"
                     }`}
                   >
-                    <span>👨 Erkek</span>
+                    <span>👨 {t("onboarding.male")}</span>
                     {gender === "male" && <CheckCircle2 className="w-4 h-4 text-accent" />}
                   </button>
                 </div>
@@ -246,12 +246,12 @@ export function OnboardingModal({
 
               {/* Age */}
               <div className="space-y-1.5">
-                <label className="text-xs font-bold text-ink-secondary">Yaşın</label>
+                <label className="text-xs font-bold text-ink-secondary">{t("onboarding.ageLabel")}</label>
                 <input
                   type="number"
                   value={age}
                   onChange={(e) => setAge(e.target.value)}
-                  placeholder="Yaşınız"
+                  placeholder={t("onboarding.agePlaceholder")}
                   className="w-full bg-accent-ink border border-white/10 rounded-2xl px-4 py-3.5 text-sm text-white font-bold placeholder:text-ink-secondary/30 focus:border-accent focus:ring-2 focus:ring-accent/20 focus:outline-none transition font-mono"
                 />
               </div>
@@ -265,48 +265,48 @@ export function OnboardingModal({
             <div className="space-y-1">
               <h3 className="text-xl font-extrabold text-white flex items-center gap-2">
                 <Scale className="w-5 h-5 text-accent" />
-                <span>Vücut Ölçülerin</span>
+                <span>{t("onboarding.step2Title")}</span>
               </h3>
               <p className="text-xs text-ink-secondary">
-                Metabolizma hızını ve kalori ihtiyacını hesaplamak için ölçülerin.
+                {t("onboarding.step2Desc")}
               </p>
             </div>
 
             <div className="space-y-4 bg-calCard p-4 sm:p-6 rounded-card border border-white/10 shadow-card">
               {/* Current Weight */}
               <div className="space-y-1.5">
-                <label className="text-xs font-bold text-ink-secondary">Mevcut Kilon (kg)</label>
+                <label className="text-xs font-bold text-ink-secondary">{t("onboarding.weightLabel")}</label>
                 <input
                   type="number"
                   step="0.1"
                   value={weightKg}
                   onChange={(e) => setWeightKg(e.target.value)}
-                  placeholder="Kilonuz (kg)"
+                  placeholder={t("onboarding.weightPlaceholder")}
                   className="w-full bg-accent-ink border border-white/10 rounded-2xl px-4 py-3.5 text-sm text-white font-bold placeholder:text-ink-secondary/30 focus:border-accent focus:ring-2 focus:ring-accent/20 focus:outline-none transition font-mono"
                 />
               </div>
 
               {/* Height */}
               <div className="space-y-1.5">
-                <label className="text-xs font-bold text-ink-secondary">Boyun (cm)</label>
+                <label className="text-xs font-bold text-ink-secondary">{t("onboarding.heightLabel")}</label>
                 <input
                   type="number"
                   value={heightCm}
                   onChange={(e) => setHeightCm(e.target.value)}
-                  placeholder="Boyunuz (cm)"
+                  placeholder={t("onboarding.heightPlaceholder")}
                   className="w-full bg-accent-ink border border-white/10 rounded-2xl px-4 py-3.5 text-sm text-white font-bold placeholder:text-ink-secondary/30 focus:border-accent focus:ring-2 focus:ring-accent/20 focus:outline-none transition font-mono"
                 />
               </div>
 
               {/* Target Weight */}
               <div className="space-y-1.5">
-                <label className="text-xs font-bold text-ink-secondary">Hedef Kilon (kg)</label>
+                <label className="text-xs font-bold text-ink-secondary">{t("onboarding.targetWeightLabel")}</label>
                 <input
                   type="number"
                   step="0.1"
                   value={targetWeightKg}
                   onChange={(e) => setTargetWeightKg(e.target.value)}
-                  placeholder="Hedef kilonuz (kg)"
+                  placeholder={t("onboarding.targetWeightPlaceholder")}
                   className="w-full bg-accent-ink border border-white/10 rounded-2xl px-4 py-3.5 text-sm text-white font-bold placeholder:text-ink-secondary/30 focus:border-accent focus:ring-2 focus:ring-accent/20 focus:outline-none transition font-mono"
                 />
               </div>
@@ -320,10 +320,10 @@ export function OnboardingModal({
             <div className="space-y-1">
               <h3 className="text-xl font-extrabold text-white flex items-center gap-2">
                 <Activity className="w-5 h-5 text-accent" />
-                <span>Günlük Aktivite Düzeyin</span>
+                <span>{t("onboarding.step3Title")}</span>
               </h3>
               <p className="text-xs text-ink-secondary">
-                Gün içindeki genel hareketliliğini seç.
+                {t("onboarding.step3Desc")}
               </p>
             </div>
 
@@ -366,10 +366,10 @@ export function OnboardingModal({
             <div className="space-y-1">
               <h3 className="text-xl font-extrabold text-white flex items-center gap-2">
                 <Target className="w-5 h-5 text-accent" />
-                <span>Temel Hedefin</span>
+                <span>{t("onboarding.step4Title")}</span>
               </h3>
               <p className="text-xs text-ink-secondary">
-                Hedefine uygun kalori dengesini seç.
+                {t("onboarding.step4Desc")}
               </p>
             </div>
 
@@ -407,11 +407,11 @@ export function OnboardingModal({
             <div className="space-y-1 text-center">
               <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-accent/20 text-accent text-xs font-bold border border-accent/30 mb-1">
                 <Sparkles className="w-3.5 h-3.5" />
-                <span>Hesaplama Tamamlandı</span>
+                <span>{t("onboarding.step5Badge")}</span>
               </div>
-              <h3 className="text-2xl font-black text-white tracking-tight">Sana Özel Beslenme Planı</h3>
+              <h3 className="text-2xl font-black text-white tracking-tight">{t("onboarding.step5Title")}</h3>
               <p className="text-xs text-ink-secondary max-w-md mx-auto">
-                BMR ({calculated.bmr} kcal) ve TDEE ({calculated.tdee} kcal) değerlerine göre önerildi. İstersen değerleri özelleştirebilirsin.
+                {t("onboarding.step5Desc", { bmr: calculated.bmr, tdee: calculated.tdee })}
               </p>
             </div>
 
@@ -421,7 +421,7 @@ export function OnboardingModal({
               <div className="flex items-center justify-between p-4 rounded-2xl bg-accent-ink border border-white/5">
                 <div className="flex items-center gap-2.5">
                   <Flame className="w-5 h-5 text-accent" />
-                  <span className="text-xs font-extrabold text-white">Günlük Kalori Hedefi</span>
+                  <span className="text-xs font-extrabold text-white">{t("onboarding.dailyKcal")}</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <input
@@ -440,7 +440,7 @@ export function OnboardingModal({
                 <div className="p-3 rounded-2xl bg-accent-ink border border-white/5 flex flex-col justify-between">
                   <div className="flex items-center gap-1 text-[11px] font-bold text-protein">
                     <Beef className="w-3.5 h-3.5" />
-                    <span>Protein</span>
+                    <span>{t("onboarding.protein")}</span>
                   </div>
                   <div className="flex items-center gap-1 mt-2.5">
                     <input
@@ -457,7 +457,7 @@ export function OnboardingModal({
                 <div className="p-3 rounded-2xl bg-accent-ink border border-white/5 flex flex-col justify-between">
                   <div className="flex items-center gap-1 text-[11px] font-bold text-carb">
                     <Wheat className="w-3.5 h-3.5" />
-                    <span>Karb</span>
+                    <span>{t("onboarding.carbs")}</span>
                   </div>
                   <div className="flex items-center gap-1 mt-2.5">
                     <input
@@ -474,7 +474,7 @@ export function OnboardingModal({
                 <div className="p-3 rounded-2xl bg-accent-ink border border-white/5 flex flex-col justify-between">
                   <div className="flex items-center gap-1 text-[11px] font-bold text-fat">
                     <Droplet className="w-3.5 h-3.5" />
-                    <span>Yağ</span>
+                    <span>{t("onboarding.fat")}</span>
                   </div>
                   <div className="flex items-center gap-1 mt-2.5">
                     <input
@@ -490,7 +490,7 @@ export function OnboardingModal({
 
               {/* Fiber */}
               <div className="flex items-center justify-between p-3.5 rounded-2xl bg-accent-ink border border-white/5">
-                <span className="text-xs font-bold text-memory">🌿 Günlük Lif Hedefi</span>
+                <span className="text-xs font-bold text-memory">🌿 {t("onboarding.dailyFiber")}</span>
                 <div className="flex items-center gap-1.5">
                   <input
                     type="number"
