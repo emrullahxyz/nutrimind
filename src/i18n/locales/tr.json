@@ -222,10 +222,31 @@
     "understoodContinue": "Anladım, devam et"
   },
   "offline": {
-    "banner": "Çevrimdışısınız. Son veri: {{time}}. Değişiklikler kaydedilmez.",
+    "banner": "Çevrimdışısınız. Değişiklikler cihaza kaydedilir, bağlantı gelince senkronize edilir. Son veri: {{time}}.",
     "bannerRetry": "Yeniden Dene",
     "fetchError": "Veri alınamadı ({{error}}). Sunucu çalışıyor mu?",
-    "unknownTime": "bilinmiyor"
+    "unknownTime": "bilinmiyor",
+    "writeUnavailable": "Bu özellik çevrimdışıyken kullanılamaz. Bağlantı gelince tekrar deneyin.",
+    "queueFailed": "Değişiklik cihaza kaydedilemedi. Depolama alanını kontrol edin.",
+    "syncing": "Senkronize ediliyor…",
+    "pendingCount": "{{count}} değişiklik bekliyor",
+    "failedCount": "{{count}} başarısız",
+    "conflictCount": "{{count}} çakışma",
+    "retryingSoon": "Bağlantı yeniden denenecek…",
+    "details": "Ayrıntılar",
+    "hideDetails": "Gizle",
+    "opRetry": "Tekrar dene",
+    "cancelOp": "İptal et",
+    "keepDevice": "Cihaz sürümünü kullan",
+    "keepServer": "Sunucu sürümünü kullan",
+    "statusPending": "Bekliyor",
+    "statusFailed": "Başarısız",
+    "statusConflict": "Çakışma",
+    "opDay": "Gün {{date}}",
+    "opDeleteDay": "Gün {{date}} sil",
+    "opAlias": "Hafıza: {{name}}",
+    "opDeleteAlias": "Hafıza sil: {{name}}",
+    "featureUnavailable": "Bu özellik internet gerektirir. Bağlantı gelince tekrar deneyin."
   },
   "privacy": {
     "tr": "Türkçe",
