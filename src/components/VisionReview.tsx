@@ -38,6 +38,7 @@ import { fetchData } from "../lib/api";
 import { mealsOf, toPayload } from "../lib/days";
 import { MACROS } from "../lib/nutrients";
 import { parseNum, scaleNutritionByFactor } from "../lib/nutrition";
+import { useTranslation } from "react-i18next";
 import {
   combineVisionItems,
   multiplierFromGrams,
@@ -96,6 +97,7 @@ function VisionReviewRow({
   needsReview: boolean;
   onRemove?: () => void;
 }) {
+  const { t } = useTranslation();
   const [gramsText, setGramsText] = useState(() => multiplierToGramsText(multiplier));
   const gramsInputRef = useRef<HTMLInputElement>(null);
   const focusedRef = useRef(false);
@@ -138,11 +140,11 @@ function VisionReviewRow({
     <div className="flex flex-col gap-3 rounded-chip border border-line bg-white/[0.03] p-3">
       <div className="flex items-start gap-2">
         <div className="flex-1">
-          <TextField label="Ad" value={name} onChange={onNameChange} />
+          <TextField label={t("vision.nameLabel")} value={name} onChange={onNameChange} />
         </div>
         {needsReview && (
           <span
-            title="AI bu değerden emin değil"
+            title={t("vision.unsureTitle")}
             className="mt-6 h-2 w-2 flex-none rounded-full bg-amber-400"
           />
         )}
@@ -150,7 +152,7 @@ function VisionReviewRow({
           <button
             type="button"
             onClick={onRemove}
-            aria-label="Kalemi kaldır"
+            aria-label={t("vision.removeItem")}
             className="mt-5 flex-none rounded-pill border border-line px-2.5 py-2 text-xs font-semibold text-ink-tertiary transition hover:border-danger/60 hover:text-danger"
           >
             ✕
@@ -159,7 +161,7 @@ function VisionReviewRow({
       </div>
 
       <div className="flex items-center justify-between gap-4">
-        <span className={sectionLabelCls}>Porsiyon</span>
+        <span className={sectionLabelCls}>{t("vision.portionLabel")}</span>
         <div className="flex items-center gap-3">
           <div className="flex items-center gap-2 rounded-chip border border-line bg-white/[0.04] px-2 py-1.5">
             <button
@@ -217,6 +219,7 @@ export function VisionReviewScreen({
   /** ScanSheet'in üst Modal'ı kapanışı bir yazma sürerken engelleyebilsin diye. */
   onSavingChange?: (saving: boolean) => void;
 }) {
+  const { t } = useTranslation();
   const { upsertAlias, setDayMeals } = useData();
   const [rows, setRows] = useState<Row[]>(() => rowsFromItems(items));
   const [triggers, setTriggers] = useState("");
@@ -417,11 +420,11 @@ export function VisionReviewScreen({
         )}
 
         <label className="block">
-          <Label>İfadeler (virgülle ayır)</Label>
+          <Label>{t("scan.triggersLabel")}</Label>
           <input
             className={fieldCls}
             value={triggers}
-            placeholder="örn. yulaf gevreği"
+            placeholder={t("vision.triggersPlaceholder")}
             onChange={(e) => setTriggers(e.target.value)}
           />
         </label>
@@ -435,8 +438,7 @@ export function VisionReviewScreen({
           </div>
         ) : (
           <p className="text-[11px] text-ink-tertiary">
-            Kısa bir ifade yazarsan bu besin <span className="font-semibold text-memory">hafızana</span> kaydedilir
-            ve bir dahakine adıyla yazman yeter. Boş bırakırsan yalnızca bugüne eklenir.
+            {t("scan.memoryHint", { memory: t("scan.memoryWord") })}
           </p>
         )}
 
@@ -450,7 +452,7 @@ export function VisionReviewScreen({
               disabled={!canLogWithMemory || !!saving}
               className="w-full rounded-pill bg-accent px-4 py-2.5 text-sm font-extrabold text-accent-ink transition disabled:opacity-40"
             >
-              {saving === "today" ? "…" : "Öğüne + hafızaya ekle"}
+              {saving === "today" ? "…" : t("scan.saveToDayAndMemory")}
             </button>
             <div className="grid grid-cols-2 gap-2">
               <button
@@ -459,7 +461,7 @@ export function VisionReviewScreen({
                 disabled={!canLogOnly || !!saving}
                 className="rounded-pill border border-line bg-white/[0.04] px-4 py-2 text-sm font-bold text-ink-primary transition hover:bg-white/[0.08] disabled:opacity-40"
               >
-                {saving === "dayOnly" ? "…" : "Sadece öğüne"}
+                {saving === "dayOnly" ? "…" : t("scan.saveToDayOnly")}
               </button>
               <button
                 type="button"
@@ -467,7 +469,7 @@ export function VisionReviewScreen({
                 disabled={!canSaveAlias || !!saving}
                 className="rounded-pill border border-memory bg-memory/10 px-4 py-2 text-sm font-bold text-memory transition hover:bg-memory hover:text-memory-ink disabled:opacity-40"
               >
-                {saving === "memory" ? "…" : "Sadece hafızaya"}
+                {saving === "memory" ? "…" : t("scan.saveToMemoryOnly")}
               </button>
             </div>
             <button
@@ -476,7 +478,7 @@ export function VisionReviewScreen({
               disabled={!!saving}
               className="self-center text-[11px] font-semibold text-ink-tertiary underline transition hover:text-ink-primary disabled:opacity-40"
             >
-              Vazgeç
+              {t("common.cancel")}
             </button>
           </div>
         </div>
@@ -536,7 +538,7 @@ export function VisionReviewScreen({
             disabled={!canAddMeal || !!saving}
             className="w-full rounded-pill bg-accent px-4 py-2.5 text-sm font-extrabold text-accent-ink transition disabled:opacity-40"
           >
-            {saving === "add" ? "…" : "Öğüne ekle"}
+            {saving === "add" ? "…" : t("vision.addToMeal")}
           </button>
           <button
             type="button"
@@ -544,7 +546,7 @@ export function VisionReviewScreen({
             disabled={!!saving}
             className="self-center text-[11px] font-semibold text-ink-tertiary underline transition hover:text-ink-primary disabled:opacity-40"
           >
-            Vazgeç
+            {t("common.cancel")}
           </button>
         </div>
       </div>

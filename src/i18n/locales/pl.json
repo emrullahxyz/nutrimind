@@ -675,6 +675,14 @@
     "templatesEmpty": "Brak szablonów. Na karcie Dziś możesz zapisać posiłek opcją 'Zrób szablon'.",
     "items": "składników"
   },
+  "vision": {
+    "unsureTitle": "AI nie jest pewne tej wartości",
+    "removeItem": "Usuń składnik",
+    "nameLabel": "Nazwa",
+    "portionLabel": "Porcja",
+    "addToMeal": "Dodaj do posiłku",
+    "triggersPlaceholder": "np. płatki owsiane"
+  },
   "relative": {
     "today": "dziś",
     "yesterday": "wczoraj",
