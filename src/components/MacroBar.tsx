@@ -3,6 +3,7 @@ import type { NutrientDef } from "../lib/nutrients";
 import { useAnimatedValue, useAnimatedPct } from "../lib/useAnimatedValue";
 import { useValueSpring } from "../hooks/useValueSpring";
 import { useTheme } from "../lib/theme";
+import { useTranslation } from "react-i18next";
 
 interface MacroBarProps {
   /** Besin kaydındaki tanım — etiket, birim, renk sınıfları ve `direction`. */
@@ -23,17 +24,20 @@ const LIMIT_WARN_PCT = 80;
  *  `limit` (sodyum, şeker, doymuş yağ): hedef AŞILMAYACAK bir üst sınır. Limite
  *  ulaşmak bir başarı olmadığı için "✓ Tamamlandı" bu dalda HİÇ görünmez —
  *  tam limitte metin "limitte", altında kalan pay, üstünde aşım. */
-function statusText(def: NutrientDef, diff: number, isOver: boolean, isMet: boolean): string {
+type StatusFn = (key: string, opts?: { value?: string }) => string;
+
+function statusText(def: NutrientDef, diff: number, isOver: boolean, isMet: boolean, t: StatusFn): string {
+  const value = `${formatNumber(Math.abs(diff), def.decimals)}${def.unit}`;
   if (def.direction === "limit") {
-    if (isOver) return `+${formatNumber(Math.abs(diff), def.decimals)}${def.unit} limit aşıldı!`;
-    if (isMet) return "limitte";
-    return `${formatNumber(diff, def.decimals)}${def.unit} kullanılabilir`;
+    if (isOver) return t("cards.limitExceeded", { value });
+    if (isMet) return t("cards.atLimit");
+    return t("cards.limitAvailable", { value });
   }
   return isOver
-    ? `+${formatNumber(Math.abs(diff), def.decimals)}${def.unit} aşıldı!`
+    ? t("cards.targetExceeded", { value })
     : isMet
-      ? "✓ Tamamlandı"
-      : `${formatNumber(diff, def.decimals)}${def.unit} kaldı`;
+      ? t("cards.targetMetShort")
+      : t("cards.targetRemaining", { value });
 }
 
 /** Barın tonu — hangi rengin devraldığı.
@@ -62,7 +66,7 @@ export interface BarState {
  *
  *  `0.05` eşiği bilinçli: 1 ondalıkla gösterilen bir değer 145,04 iken "aşıldı"
  *  demek kullanıcıya ekranda 145,0 / 145,0 gösterirken yalan söylemek olurdu. */
-export function barState(def: NutrientDef, value: number, target: number): BarState {
+export function barState(def: NutrientDef, value: number, target: number, t?: StatusFn): BarState {
   const hasTarget = target > 0;
   const diff = target - value;
   const isOver = hasTarget && diff < -0.05;
@@ -77,7 +81,7 @@ export function barState(def: NutrientDef, value: number, target: number): BarSt
 
   // Hedef yokken durum metni de yok: "0 mg kullanılabilir" ya da "aşıldı"
   // demek, konmamış bir limit hakkında hüküm vermek olurdu.
-  const status = hasTarget ? statusText(def, diff, isOver, isMet) : "";
+  const status = hasTarget ? statusText(def, diff, isOver, isMet, t ?? ((k) => k)) : "";
 
   return { hasTarget, pct, isOver, isMet, tone, status };
 }
@@ -85,7 +89,8 @@ export function barState(def: NutrientDef, value: number, target: number): BarSt
 
 /** Labeled nutrient progress bar (protein/carb/fat/fiber) with count-up number animation & smooth bar fill. */
 export function MacroBar({ def, value, target }: MacroBarProps) {
-  const state = barState(def, value, target);
+  const { t } = useTranslation();
+  const state = barState(def, value, target, t);
   const pct = useAnimatedPct(state.pct);
   const animatedValue = useAnimatedValue(value);
   const { hasTarget, isOver, isMet, tone } = state;
@@ -107,7 +112,7 @@ export function MacroBar({ def, value, target }: MacroBarProps) {
             {def.unit}
           </span>
         </div>
-        <p className="mt-0.5 text-[11px] text-ink-faint">limit girilmemiş</p>
+        <p className="mt-0.5 text-[11px] text-ink-faint">{t("cards.noLimit")}</p>
       </div>
     );
   }

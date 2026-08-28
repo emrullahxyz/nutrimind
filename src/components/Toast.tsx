@@ -10,6 +10,7 @@ import {
 import { createPortal } from "react-dom";
 import { CheckCircle2, AlertCircle, Info, X } from "lucide-react";
 import { prefersReducedMotion } from "../lib/animation";
+import { useTranslation } from "react-i18next";
 
 export type ToastVariant = "success" | "info" | "error";
 
@@ -70,6 +71,7 @@ function SingleToast({
   onDismiss: (id: string) => void;
 }) {
   const [visible, setVisible] = useState(false);
+  const { t } = useTranslation();
   const Icon = ICONS[toast.variant];
   const style = STYLES[toast.variant];
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -112,7 +114,7 @@ function SingleToast({
           setVisible(false);
           setTimeout(() => onDismiss(toast.id), 150);
         }}
-        aria-label="Kapat"
+        aria-label={t("common.close")}
         className="ml-1 rounded-full p-0.5 text-white/40 transition hover:bg-white/10 hover:text-white"
       >
         <X className="h-3 w-3" />
@@ -122,6 +124,7 @@ function SingleToast({
 }
 
 export function ToastProvider({ children }: { children: ReactNode }) {
+  const { t } = useTranslation();
   const [toasts, setToasts] = useState<ToastItem[]>([]);
 
   const dismissToast = useCallback((id: string) => {
@@ -143,7 +146,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
         createPortal(
           <div
             className="pointer-events-none fixed bottom-20 left-0 right-0 z-[10000] flex flex-col items-center gap-2 px-4 sm:bottom-6 sm:left-auto sm:right-6 sm:items-end"
-            aria-label="Bildirimler"
+            aria-label={t("toast.region")}
           >
             {toasts.map((t) => (
               <SingleToast key={t.id} toast={t} onDismiss={dismissToast} />

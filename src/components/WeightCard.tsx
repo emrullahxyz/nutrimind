@@ -5,8 +5,10 @@ import { useData } from "../lib/data";
 import { formatNumber } from "../lib/format";
 import { parseNum } from "../lib/nutrition";
 import { parseWeightConfig, weightDelta } from "../lib/weight";
+import { useTranslation } from "react-i18next";
 
 export function WeightCard({ date }: { date: string }) {
+  const { t } = useTranslation();
   const { config, updateConfig } = useData();
   const weightConfig = parseWeightConfig(config);
   const entries = weightConfig.entries;
@@ -55,7 +57,7 @@ export function WeightCard({ date }: { date: string }) {
     <Card className="p-3 sm:p-4">
       <div className="flex items-end justify-between gap-3">
         <div className="flex-1">
-          <NumField label="Kilo" suffix="kg" value={draft} onChange={setDraft} />
+          <NumField label={t("weight.label")} suffix="kg" value={draft} onChange={setDraft} />
         </div>
         <div className="flex items-center gap-2">
           {date in entries && (
@@ -65,7 +67,7 @@ export function WeightCard({ date }: { date: string }) {
               disabled={busy}
               className="rounded-pill border border-line bg-white/[0.06] px-3 py-1.5 text-xs font-semibold text-ink-tertiary transition hover:text-warn disabled:opacity-40"
             >
-              Sil
+              {t("common.delete")}
             </button>
           )}
           <button
@@ -74,7 +76,7 @@ export function WeightCard({ date }: { date: string }) {
             disabled={busy || !draft.trim()}
             className="rounded-pill bg-accent px-3 py-1.5 text-xs font-extrabold text-accent-ink transition hover:opacity-90 disabled:opacity-40"
           >
-            Kaydet
+            {t("common.save")}
           </button>
         </div>
       </div>
@@ -87,7 +89,7 @@ export function WeightCard({ date }: { date: string }) {
                 ? `▼${formatNumber(Math.abs(delta), 1)} kg`
                 : `0,0 kg`}
           </span>
-          <span className="text-[11px] text-ink-faint">(önceki kayda göre)</span>
+          <span className="text-[11px] text-ink-faint">{t("weight.deltaHint")}</span>
         </div>
       )}
     </Card>

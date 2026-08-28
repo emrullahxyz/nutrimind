@@ -5,6 +5,7 @@ import { formatNumber } from "../lib/format";
 import { useAnimatedNumber } from "../hooks/useAnimatedNumber";
 import { usePressSpring } from "../hooks/usePressSpring";
 import { DirectionalTextSwap, type SwapMode } from "./DirectionalTextSwap";
+import { useTranslation } from "react-i18next";
 
 interface HeroCalorieCardProps {
   consumed: number;
@@ -23,6 +24,7 @@ export function HeroCalorieCard({
   onToggleRatio,
   onOpenExercise,
 }: HeroCalorieCardProps) {
+  const { t } = useTranslation();
   const adjustedTarget = target + burnedKcal;
   const state = ringState(consumed, adjustedTarget);
 
@@ -36,14 +38,14 @@ export function HeroCalorieCard({
   const mode: SwapMode = showRatio ? "EATEN" : "LEFT";
 
   const subtitleLabel = showRatio
-    ? "Tüketilen / Hedef"
+    ? t("cards.eatenOverTarget")
     : state.isOver
-      ? "Aşılan kalori"
+      ? t("cards.overKcal")
       : state.isMet
-        ? "Hedef tamamlandı"
+        ? t("cards.targetMet")
         : state.hasTarget
-          ? "Kalan kalori"
-          : "Tüketilen kalori";
+          ? t("cards.remainingKcal")
+          : t("cards.eatenKcal");
 
   const bigNum = showRatio
     ? animConsumed
@@ -78,7 +80,7 @@ export function HeroCalorieCard({
   const subtextNode = state.hasTarget ? (
     <div className="mt-1.5 flex items-center flex-wrap gap-2 text-xs font-mono text-ink-secondary">
       {showRatio ? (
-        <span className="text-ink-secondary hover:text-white font-medium transition-colors">Kalanı göster →</span>
+        <span className="text-ink-secondary hover:text-white font-medium transition-colors">{t("cards.showRemaining")}</span>
       ) : (
         <>
           <span>{formatNumber(animConsumed)}</span>
@@ -89,7 +91,7 @@ export function HeroCalorieCard({
 
       {burnedKcal > 0 && (
         <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-protein/10 text-protein border border-protein/20 text-[10px] font-bold">
-          🔥 +{burnedKcal} yakıldı
+          🔥 +{burnedKcal} {t("cards.burned")}
         </span>
       )}
     </div>
@@ -99,7 +101,7 @@ export function HeroCalorieCard({
     <div
       onClick={onToggleRatio}
       className="relative overflow-hidden rounded-[24px] bg-calCard p-5 shadow-card backdrop-blur-md cursor-pointer select-none transition-all duration-200 hover:bg-cal-hover active:scale-[0.99] flex items-center justify-between gap-3 h-[180px] sm:h-[188px] group glass-card anim-glass-rise rise-d-80 spring-press"
-      title="Tıklayarak Tüketilen/Kalan görünümünü değiştir"
+      title={t("cards.toggleTitle")}
       {...press.handlers}
       style={press.style}
     >
@@ -146,7 +148,7 @@ export function HeroCalorieCard({
               className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-well hover:bg-well-hover text-xs font-bold text-white transition active:scale-95"
             >
               <Dumbbell className="w-3.5 h-3.5 text-carb" />
-              <span>Egzersiz Ekle</span>
+              <span>{t("cards.addExercise")}</span>
             </button>
           </div>
         )}

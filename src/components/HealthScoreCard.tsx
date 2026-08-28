@@ -1,6 +1,7 @@
 import { Activity } from "lucide-react";
 import { computeHealthScore } from "../lib/healthScore";
 import type { Nutrition } from "../types";
+import { useTranslation } from "react-i18next";
 
 interface HealthScoreCardProps {
   total: Nutrition;
@@ -8,6 +9,7 @@ interface HealthScoreCardProps {
 }
 
 export function HealthScoreCard({ total, goal }: HealthScoreCardProps) {
+  const { t } = useTranslation();
   const { score, message } = computeHealthScore(total, goal);
 
   const barColor = score < 4 ? "bg-danger" : score < 7 ? "bg-warn" : "bg-emerald-500";
@@ -21,7 +23,7 @@ export function HealthScoreCard({ total, goal }: HealthScoreCardProps) {
         <div className="flex items-center justify-between gap-2">
           <div className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-ink-secondary">
             <Activity className="h-4 w-4 text-accent" />
-            <span>Sağlık skoru</span>
+            <span>{t("cards.healthScore")}</span>
           </div>
           <div className="text-3xl sm:text-4xl font-extrabold text-white tracking-tight">
             {score}

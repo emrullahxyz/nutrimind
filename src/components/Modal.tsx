@@ -5,6 +5,7 @@ import { X } from "lucide-react";
 import { useBodyScrollLock } from "../hooks/useBodyScrollLock";
 import { useModalHistory } from "../hooks/useModalHistory";
 import { useTheme } from "../lib/theme";
+import { useTranslation } from "react-i18next";
 
 /** Koyu tema modal kabuğu: masaüstünde ortalı, mobilde alttan sheet.
  *  Esc ya da zemine tıklama kapatır; açıkken arka plan kaydırması kilitlenir. */
@@ -29,6 +30,7 @@ export function Modal({
 }) {
   const dialogRef = useRef<HTMLDivElement>(null);
   const mouseDownTargetRef = useRef<EventTarget | null>(null);
+  const { t } = useTranslation();
 
   // Geri tuşu/kaydırma/X/backdrop/Escape entegrasyonu artık ortak hook'ta —
   // bkz. `useModalHistory` için dosya başındaki not (yedi ayrı yerde elle
@@ -173,7 +175,7 @@ export function Modal({
           <button
             type="button"
             onClick={beginClose}
-            aria-label="Kapat"
+            aria-label={t("common.close")}
             className={
               theme === "glass"
                 ? "flex h-9 w-9 items-center justify-center rounded-full bg-white/[0.06] text-ink-secondary transition hover:bg-white/[0.12] hover:text-ink-primary active:scale-95"

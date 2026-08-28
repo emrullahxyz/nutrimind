@@ -20,6 +20,94 @@
     "or": "or",
     "releaseToRefresh": "Release to refresh"
   },
+  "toast": {
+    "region": "Notifications"
+  },
+  "error": {
+    "fallbackTitle": "Something Went Wrong",
+    "fallbackBody": "An unexpected error occurred in the interface. Please try reloading the page.",
+    "fallbackReload": "Reload Page"
+  },
+  "cards": {
+    "healthScore": "Health score",
+    "eatenOverTarget": "Eaten / Target",
+    "overKcal": "Over goal",
+    "targetMet": "Goal completed",
+    "remainingKcal": "kcal left",
+    "eatenKcal": "Eaten kcal",
+    "showRemaining": "Show remaining →",
+    "toggleTitle": "Click to switch between eaten/remaining view",
+    "toggleAllTitle": "Click to toggle all values",
+    "burned": "burned",
+    "addExercise": "Add Exercise",
+    "limitExceeded": "+{{value}} over limit!",
+    "atLimit": "at limit",
+    "limitAvailable": "{{value}} available",
+    "targetExceeded": "+{{value}} over!",
+    "targetMetShort": "✓ Completed",
+    "targetRemaining": "{{value}} left",
+    "noLimit": "no limit set",
+    "protein": "Protein",
+    "carbs": "Carbs",
+    "fat": "Fat",
+    "fiber": "Fiber",
+    "remainingProtein": "Remaining Protein",
+    "remainingCarbs": "Remaining Carbs",
+    "remainingFat": "Remaining Fat",
+    "remainingFiber": "Remaining Fiber",
+    "remainingSugar": "Remaining Sugar",
+    "remainingSodium": "Remaining Sodium",
+    "eatenSugar": "Eaten Sugar",
+    "eatenSodium": "Eaten Sodium"
+  },
+  "day": {
+    "weekdaysShort": ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"],
+    "streak": "Day streak",
+    "mergeDialogTitle": "Merge {{count}} Meals",
+    "mergeSave": "Merge",
+    "mergeNameLabel": "Combined meal name",
+    "mergeNamePlaceholder": "e.g. Breakfast",
+    "mergeListHeader": "Meals to merge",
+    "emptyLabel": "No entry for this day.",
+    "addMeal": "Add meal"
+  },
+  "weight": {
+    "label": "Weight",
+    "deltaHint": "(vs. previous entry)",
+    "trendTitle": "Weight Trend",
+    "lastEntry": "Last entry:",
+    "inRange": "in this range",
+    "gapNote": "The line breaks on days without an entry — it shows days where weight was tracked."
+  },
+  "supplements": {
+    "title": "Supplements",
+    "done": "✨ Completed",
+    "takenCount": "{{taken}}/{{total}} taken",
+    "subtitle": "Daily vitamins & food supplements",
+    "nameRequired": "Supplement name is required.",
+    "definedTitle": "Defined Supplements ({{count}})",
+    "emptyList": "No supplements defined yet.",
+    "addTitle": "Add New Supplement",
+    "nameLabel": "Supplement Name",
+    "namePlaceholder": "e.g. D3-K2 Drops, Omega 3, Magnesium",
+    "doseLabel": "Dose (optional)",
+    "dosePlaceholder": "e.g. 1000 IU, 500 mg, 1 scoop"
+  },
+  "offSearch": {
+    "fetch": "Fetch",
+    "searching": "Searching…",
+    "cooldown": "Too many requests. Open Food Facts quota is protected — will auto-retry in {{seconds}}s.",
+    "emptyPolish": "No results in the Polish catalog. You can enter the product manually or try its barcode.",
+    "postFilterNote": "The Polish filter is applied after multi-word search — the list may be shorter than expected."
+  },
+  "aliasPicker": {
+    "noResults": "No results found"
+  },
+  "dayType": {
+    "changeTitle": "Change this day's type",
+    "backToTemplate": "this day only · back to template",
+    "fromTemplate": "from weekly template"
+  },
   "nav": {
     "today": "Today",
     "history": "History",

@@ -6,8 +6,10 @@ import {
   parseSupplementsConfig,
   type SupplementItem,
 } from "../lib/supplements";
+import { useTranslation } from "react-i18next";
 
 export function SupplementSettings() {
+  const { t } = useTranslation();
   const { config, updateConfig } = useData();
   const suppConfig = parseSupplementsConfig(config);
   const { items, log } = suppConfig;
@@ -20,7 +22,7 @@ export function SupplementSettings() {
   async function handleAdd() {
     const trimmedName = name.trim();
     if (!trimmedName) {
-      setErr("Takviye adı zorunludur.");
+      setErr(t("supplements.nameRequired"));
       return;
     }
     if (busy) return;
@@ -71,11 +73,11 @@ export function SupplementSettings() {
       {/* Mevcut Takviyeler Listesi */}
       <div className="flex flex-col gap-2.5">
         <h4 className="font-mono text-[11px] uppercase tracking-mono text-ink-tertiary">
-          Tanımlı Takviyeler ({items.length})
+          {t("supplements.definedTitle", { count: items.length })}
         </h4>
 
         {items.length === 0 ? (
-          <p className="text-xs text-ink-tertiary">Henüz tanımlı takviye yok.</p>
+          <p className="text-xs text-ink-tertiary">{t("supplements.emptyList")}</p>
         ) : (
           <ul className="flex flex-col gap-2">
             {items.map((item) => (
@@ -92,7 +94,7 @@ export function SupplementSettings() {
                 <ConfirmButton
                   onConfirm={() => handleDelete(item.id)}
                   disabled={busy}
-                  label="Sil"
+                  label={t("common.delete")}
                 />
               </li>
             ))}
@@ -103,27 +105,27 @@ export function SupplementSettings() {
       {/* Yeni Takviye Ekleme Formu */}
       <div className="flex flex-col gap-3 border-t border-line pt-4">
         <h4 className="font-mono text-[11px] uppercase tracking-mono text-ink-tertiary">
-          Yeni Takviye Ekle
+          {t("supplements.addTitle")}
         </h4>
 
         <div className="flex flex-col gap-3">
           <TextField
-            label="Takviye Adı"
+            label={t("supplements.nameLabel")}
             value={name}
             onChange={(v) => {
               setName(v);
               if (err) setErr(null);
             }}
-            placeholder="örn. D3-K2 Damla, Omega 3, Magnezyum"
+            placeholder={t("supplements.namePlaceholder")}
           />
           <TextField
-            label="Doz (opsiyonel)"
+            label={t("supplements.doseLabel")}
             value={dose}
             onChange={(v) => {
               setDose(v);
               if (err) setErr(null);
             }}
-            placeholder="örn. 1000 IU, 500 mg, 1 ölçek"
+            placeholder={t("supplements.dosePlaceholder")}
           />
 
           <div className="flex justify-end pt-1">
@@ -133,7 +135,7 @@ export function SupplementSettings() {
               disabled={busy || !name.trim()}
               className="rounded-pill bg-accent px-4 py-2 text-xs font-extrabold text-accent-ink transition disabled:opacity-40"
             >
-              {busy ? "…" : "+ Ekle"}
+              {busy ? "…" : `+ ${t("common.add")}`}
             </button>
           </div>
         </div>

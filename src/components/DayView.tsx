@@ -24,6 +24,7 @@ import type { AIParseItem, Exercise, MealItem, MealPayload } from "../types";
 import { PREF } from "../lib/prefs";
 import { usePersistedBool } from "../lib/usePersistedBool";
 import { categoryForLoggedAt, groupMealsByCategory, MEAL_CATEGORY_LABELS } from "../lib/mealCategory";
+import { useTranslation } from "react-i18next";
 
 function MergeModal({
   selectedMeals,
@@ -36,13 +37,14 @@ function MergeModal({
   onClose: () => void;
   busy: boolean;
 }) {
+  const { t } = useTranslation();
   const defaultName = selectedMeals.map((m) => m.label).join(" + ");
   const [name, setName] = useState(defaultName);
   const totalNutrition = sumMeals(selectedMeals);
 
   return (
     <Modal
-      title={`${selectedMeals.length} Öğünü Birleştir`}
+      title={t("day.mergeDialogTitle", { count: selectedMeals.length })}
       onClose={onClose}
       footer={
         <FormActions
@@ -50,14 +52,14 @@ function MergeModal({
           onSave={() => onConfirm(name.trim() || defaultName)}
           saving={busy}
           disabled={!name.trim()}
-          saveLabel="Birleştir"
+          saveLabel={t("day.mergeSave")}
         />
       }
     >
       <div className="flex flex-col gap-4">
-        <TextField label="Birleşik öğün adı" value={name} onChange={setName} placeholder="örn. Kahvaltı" />
+        <TextField label={t("day.mergeNameLabel")} value={name} onChange={setName} placeholder={t("day.mergeNamePlaceholder")} />
         <div className="rounded-chip border border-line bg-white/[0.03] p-3">
-          <p className="mb-2 text-xs font-semibold text-ink-secondary">Birleşecek Öğünler:</p>
+          <p className="mb-2 text-xs font-semibold text-ink-secondary">{t("day.mergeListHeader")}:</p>
           <ul className="space-y-1.5 text-xs text-ink-tertiary">
             {selectedMeals.map((m) => (
               <li key={m.id} className="flex justify-between items-baseline gap-2">
@@ -93,7 +95,7 @@ function MergeModal({
 
 export function DayView({
   date,
-  emptyLabel = "Bu gün için kayıt yok.",
+  emptyLabel,
   enableScan = false,
   triggerAddMeal,
   onResetTriggerAddMeal,
@@ -106,6 +108,9 @@ export function DayView({
 }: {
   date: string;
   emptyLabel?: string;
+  // emptyLabel verilmezse `day.emptyLabel` kullanılır (Geçmiş gün detayında TR kalma hatası)
+  // — DailyPage kendi özelleştirilmiş `empty.dayView` metnini geçmeye devam eder.
+
   enableScan?: boolean;
   triggerAddMeal?: boolean;
   onResetTriggerAddMeal?: () => void;
@@ -116,6 +121,7 @@ export function DayView({
   showWeightCard?: boolean;
   resetKey?: number;
 }) {
+  const { t } = useTranslation();
   const { goals, days, setDayMeals, config, updateConfig } = useData();
   const goal = effectiveGoal(goals, date);
   const meals = mealsOf(days, date);
@@ -444,9 +450,9 @@ export function DayView({
             <span className="flex h-12 w-12 items-center justify-center rounded-full bg-icon-well text-white">
               <UtensilsCrossed className="h-5 w-5" />
             </span>
-            <span className="text-sm text-ink-tertiary">{emptyLabel}</span>
+            <span className="text-sm text-ink-tertiary">{emptyLabel ?? t("day.emptyLabel")}</span>
             <span className="rounded-pill bg-accent px-3 py-1.5 text-xs font-extrabold text-accent-ink">
-              + Öğün ekle
+              + {t("day.addMeal")}
             </span>
           </button>
         )}

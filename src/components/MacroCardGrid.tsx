@@ -5,6 +5,7 @@ import type { Nutrition } from "../types";
 import { useAnimatedNumber } from "../hooks/useAnimatedNumber";
 import { usePressSpring } from "../hooks/usePressSpring";
 import { DirectionalTextSwap, type SwapMode } from "./DirectionalTextSwap";
+import { useTranslation } from "react-i18next";
 
 interface MacroItem {
   key: keyof Nutrition;
@@ -66,6 +67,7 @@ function MacroCardItem({
   onToggleRatio: () => void;
   delayClass?: string;
 }) {
+  const { t } = useTranslation();
   const remaining = Math.max(0, item.target - item.consumed);
   const pct = item.target > 0 ? item.consumed / item.target : 0;
 
@@ -85,7 +87,7 @@ function MacroCardItem({
     displayVal = item.target > 0
       ? `${formatNumber(animVal, 0)}/${formatNumber(animTarget, 0)}${item.unit}`
       : `${formatNumber(animVal, 0)}${item.unit}`;
-    subText = "Alınan / Hedef";
+    subText = t("cards.eatenOverTarget");
   } else {
     displayVal = `${formatNumber(animVal, 0)}${item.unit}`;
     subText = item.sublabel;
@@ -102,7 +104,7 @@ function MacroCardItem({
     <div
       onClick={onToggleRatio}
       className={`flex flex-col justify-between rounded-[22px] bg-calCard p-3 sm:p-4 min-h-[125px] shadow-card transition-all duration-200 hover:bg-cal-hover cursor-pointer select-none active:scale-[0.98] glass-card anim-glass-rise spring-press ${delayClass}`}
-      title="Tıklayarak tüm değerleri dönüştür"
+      title={t("cards.toggleAllTitle")}
       {...press.handlers}
       style={press.style}
     >
@@ -149,11 +151,12 @@ interface MacroCardGridProps {
 }
 
 export function MacroCardGrid({ total, goal, showRatio, onToggleRatio }: MacroCardGridProps) {
+  const { t } = useTranslation();
   const mainMacros: MacroItem[] = [
     {
       key: "protein",
       label: "Protein",
-      sublabel: goal.protein > 0 ? "Kalan Protein" : "Protein",
+      sublabel: goal.protein > 0 ? t("cards.remainingProtein") : t("cards.protein"),
       icon: Beef,
       color: "var(--svg-protein)",
       consumed: total.protein,
@@ -163,7 +166,7 @@ export function MacroCardGrid({ total, goal, showRatio, onToggleRatio }: MacroCa
     {
       key: "carbs",
       label: "Karb",
-      sublabel: goal.carbs > 0 ? "Kalan Karb" : "Karbonhidrat",
+      sublabel: goal.carbs > 0 ? t("cards.remainingCarbs") : t("cards.carbs"),
       icon: Wheat,
       color: "var(--svg-carb)",
       consumed: total.carbs,
@@ -173,7 +176,7 @@ export function MacroCardGrid({ total, goal, showRatio, onToggleRatio }: MacroCa
     {
       key: "fat",
       label: "Yağ",
-      sublabel: goal.fat > 0 ? "Kalan Yağ" : "Yağ",
+      sublabel: goal.fat > 0 ? t("cards.remainingFat") : t("cards.fat"),
       icon: Droplet,
       color: "var(--svg-fat)",
       consumed: total.fat,

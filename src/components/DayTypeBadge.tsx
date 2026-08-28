@@ -12,8 +12,10 @@
 import { useState } from "react";
 import { useData } from "../lib/data";
 import { effectiveProfile, hasOverride, nextProfileId, profileIcon, withOverride } from "../lib/goals";
+import { useTranslation } from "react-i18next";
 
 export function DayTypeBadge({ date }: { date: string }) {
+  const { t } = useTranslation();
   const { goals, updateGoals } = useData();
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
@@ -45,7 +47,7 @@ export function DayTypeBadge({ date }: { date: string }) {
         type="button"
         disabled={busy}
         onClick={() => write(nextProfileId(goals, profile.id))}
-        title="Bu günün tipini değiştir"
+        title={t("dayType.changeTitle")}
         className="flex items-center gap-1.5 rounded-pill border border-line bg-white/[0.06] px-3 py-1.5 text-xs font-bold text-ink-primary transition hover:border-memory/40 hover:bg-white/[0.09] disabled:opacity-40"
       >
         <span aria-hidden>{profileIcon(profile.id)}</span>
@@ -59,10 +61,10 @@ export function DayTypeBadge({ date }: { date: string }) {
           onClick={() => write(null)}
           className="rounded-pill px-2 py-1 text-[11px] font-semibold text-ink-tertiary transition hover:text-ink-primary disabled:opacity-40"
         >
-          bu güne özel · şablona dön
+          {t("dayType.backToTemplate")}
         </button>
       ) : (
-        <span className="text-[11px] text-ink-faint">haftalık şablondan</span>
+        <span className="text-[11px] text-ink-faint">{t("dayType.fromTemplate")}</span>
       )}
 
       {err && <span className="text-[11px] text-danger">{err}</span>}
