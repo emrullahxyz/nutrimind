@@ -1,4 +1,6 @@
 import { useRef, useState } from "react";
+import { useData } from "../lib/data";
+import { useTranslation } from "react-i18next";
 import type { AppData } from "../lib/api";
 import {
   downloadFile,
@@ -27,6 +29,8 @@ export function ExportModal({
   onClose: () => void;
   embedded?: boolean;
 }) {
+  const { offline } = useData();
+  const { t } = useTranslation();
   const [tab, setTab] = useState<ActiveTab>("export");
   const [fileError, setFileError] = useState<string | null>(null);
   const [validation, setValidation] = useState<ValidationSuccess | null>(null);
@@ -63,6 +67,10 @@ export function ExportModal({
 
   const handleStartRestore = async () => {
     if (!validation || restoring) return;
+    if (offline) {
+      setFileError(t("offline.writeUnavailable"));
+      return;
+    }
     setRestoring(true);
     setFileError(null);
     try {
@@ -244,7 +252,7 @@ export function ExportModal({
 
                 <button
                   type="button"
-                  disabled={!confirmed || restoring}
+                  disabled={!confirmed || restoring || offline}
                   onClick={handleStartRestore}
                   className="mt-1 rounded-pill bg-danger px-4 py-2 text-xs font-extrabold text-white transition disabled:opacity-40"
                 >
