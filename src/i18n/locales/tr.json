@@ -18,6 +18,7 @@
     "today": "Bugün",
     "yesterday": "Dün",
     "or": "veya",
+    "clear": "Temizle",
     "releaseToRefresh": "Bırak, yenile"
   },
   "toast": {
@@ -659,7 +660,12 @@
     "recipe": "Tarif",
     "newFood": "Yeni Besin",
     "searchPlaceholder": "Besin adı, marka veya ifade ara...",
-    "templates": "Şablonlar"
+    "templates": "Şablonlar",
+    "searchNoResults": "\"{{query}}\" aramasıyla eşleşen besin bulunamadı.",
+    "recipeBadge": "tarif",
+    "templatesSubtitle": "Sık tükettiğin öğünleri tek dokunuşla eklemek için kaydedilmiş şablonlar",
+    "templatesEmpty": "Henüz şablon yok. Bugün sekmesinde bir öğünü 'Şablon yap' diyerek kaydedebilirsin.",
+    "items": "kalem"
   },
   "relative": {
     "today": "bugün",

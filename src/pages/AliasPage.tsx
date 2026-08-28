@@ -130,7 +130,7 @@ export function AliasPage({
               type="button"
               onClick={() => setSearchQuery("")}
               className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-white/40 hover:text-white transition"
-              title="Temizle"
+              title={t("common.clear")}
             >
               <X className="w-4 h-4" />
             </button>
@@ -151,7 +151,7 @@ export function AliasPage({
         </div>
       ) : filteredAliases.length === 0 ? (
         <div className="rounded-[24px] border border-white/10 bg-white/[0.03] p-6 text-center text-sm text-white/50 w-full">
-          "{searchQuery}" aramasıyla eşleşen besin bulunamadı.
+          {t("aliasPage.searchNoResults", { query: searchQuery })}
         </div>
       ) : (
         <div className="grid w-full min-w-0 grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
@@ -178,7 +178,7 @@ export function AliasPage({
                         </h4>
                         {a.recipe && (
                           <span className="shrink-0 px-2 py-0.5 rounded-full bg-memory/20 text-memory border border-memory/30 text-[9px] font-mono font-bold">
-                            tarif
+                            {t("aliasPage.recipeBadge")}
                           </span>
                         )}
                       </div>
@@ -234,13 +234,13 @@ export function AliasPage({
         <div className="min-w-0">
           <h3 className="text-lg font-extrabold text-white tracking-tight truncate">{t("aliasPage.templates")}</h3>
           <p className="text-xs text-white/50 truncate">
-            Sık tükettiğin öğünleri tek dokunuşla eklemek için kaydedilmiş şablonlar
+            {t("aliasPage.templatesSubtitle")}
           </p>
         </div>
 
         {templates.list.length === 0 ? (
           <p className="text-xs text-white/40">
-            Henüz şablon yok. Bugün sekmesinde bir öğünü 'Şablon yap' diyerek kaydedebilirsin.
+            {t("aliasPage.templatesEmpty")}
           </p>
         ) : (
           <div className="grid w-full min-w-0 grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
@@ -255,7 +255,7 @@ export function AliasPage({
                     {t.name}
                   </h4>
                   <span className="shrink-0 font-mono text-xs font-bold text-white/60">
-                    {t.items.length} kalem
+                    {t.items.length} {t("aliasPage.items")}
                   </span>
                 </div>
 

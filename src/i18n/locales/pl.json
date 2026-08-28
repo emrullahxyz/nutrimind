@@ -18,6 +18,7 @@
     "today": "Dziś",
     "yesterday": "Wczoraj",
     "or": "lub",
+    "clear": "Wyczyść",
     "releaseToRefresh": "Puść, aby odświeżyć"
   },
   "toast": {
@@ -659,7 +660,12 @@
     "recipe": "Przepis",
     "newFood": "Nowy produkt",
     "searchPlaceholder": "Szukaj nazwy produktu, marki lub frazy...",
-    "templates": "Szablony"
+    "templates": "Szablony",
+    "searchNoResults": "Brak produktów pasujących do \"{{query}}\".",
+    "recipeBadge": "przepis",
+    "templatesSubtitle": "Zapisane szablony do dodawania częstych posiłków jednym dotknięciem",
+    "templatesEmpty": "Brak szablonów. Na karcie Dziś możesz zapisać posiłek opcją 'Zrób szablon'.",
+    "items": "składników"
   },
   "relative": {
     "today": "dziś",
