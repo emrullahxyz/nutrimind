@@ -40,6 +40,7 @@ function round1(value: number): number {
 import { useBodyScrollLock } from "../hooks/useBodyScrollLock";
 import { useModalHistory } from "../hooks/useModalHistory";
 import { useModalExit } from "../hooks/useModalExit";
+import { useTranslation } from "react-i18next";
 
 /** Tarif oluşturma & düzenleme full-screen modal */
 export function RecipeBuilder({
@@ -49,6 +50,7 @@ export function RecipeBuilder({
   initial: Alias | null;
   onClose: () => void;
 }) {
+  const { t } = useTranslation();
   // Lock background body scroll when modal is open
   useBodyScrollLock(true);
 
@@ -238,13 +240,13 @@ export function RecipeBuilder({
           type="button"
           onClick={beginClose}
           className="w-10 h-10 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white transition active:scale-95"
-          aria-label="Geri"
+          aria-label={t("common.back")}
         >
           <ArrowLeft className="w-5 h-5" />
         </button>
 
         <h2 className="text-lg font-extrabold text-white tracking-wide">
-          {initial ? "Tarifi Düzenle" : "Yeni Tarif Oluştur"}
+          {initial ? t("recipeBuilder.editTitle") : t("recipeBuilder.addTitle")}
         </h2>
 
         <div className="w-10 h-10" />
@@ -256,12 +258,12 @@ export function RecipeBuilder({
         <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-4 text-white space-y-3">
           <div className="flex items-center gap-2">
             <Tag className="w-4 h-4 text-carb" />
-            <span className="text-xs font-bold text-white/90">Tetikleyici İfadeler</span>
+            <span className="text-xs font-bold text-white/90">{t("recipeBuilder.triggersLabel")}</span>
           </div>
           <input
             className="w-full px-3.5 py-2.5 rounded-xl bg-black/40 border border-white/15 text-sm font-semibold text-white focus:border-carb focus:outline-none placeholder:text-white/30"
             value={triggers}
-            placeholder="mercimek çorbası, ev çorbası (virgülle ayır)"
+            placeholder={t("recipeBuilder.triggersPlaceholder")}
             onChange={(e) => setTriggers(e.target.value)}
           />
 
@@ -281,8 +283,8 @@ export function RecipeBuilder({
 
         {/* Basic Info */}
         <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-4 text-white space-y-3">
-          <TextField label="Tarif / Yemek Adı" value={name} onChange={setName} placeholder="örn. Ev Yapımı Mercimek Çorbası" />
-          <TextField label="Marka / Açıklama (opsiyonel)" value={brand} onChange={setBrand} placeholder="örn. Ev yapımı" />
+          <TextField label={t("recipeBuilder.nameLabel")} value={name} onChange={setName} placeholder={t("recipeBuilder.namePlaceholder")} />
+          <TextField label={t("recipeBuilder.brandLabel")} value={brand} onChange={setBrand} placeholder={t("recipeBuilder.brandPlaceholder")} />
         </div>
 
         {/* Ingredients Section Card */}
@@ -290,7 +292,7 @@ export function RecipeBuilder({
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <Utensils className="w-4 h-4 text-memory" />
-              <span className="text-xs font-bold text-white/90">Malzemeler ({parsedIngredients.length})</span>
+              <span className="text-xs font-bold text-white/90">{t("recipeBuilder.ingredientsTitle", { count: parsedIngredients.length })}</span>
             </div>
           </div>
 
@@ -302,7 +304,7 @@ export function RecipeBuilder({
               <div key={ing.id} className="p-3.5 rounded-2xl border border-white/10 bg-black/40 space-y-3">
                 <div className="flex items-center justify-between border-b border-white/10 pb-2">
                   <span className="text-xs font-extrabold text-carb font-mono">
-                    Malzeme #{index + 1}
+                    {t("recipeBuilder.ingredientN", { n: index + 1 })}
                   </span>
                   <div className="flex items-center gap-2">
                     {aliases.length > 0 && (
@@ -319,7 +321,7 @@ export function RecipeBuilder({
                         }
                         className="px-2.5 py-1 rounded-full bg-white/10 hover:bg-white/20 text-[10px] font-bold text-white transition"
                       >
-                        {ing.mode === "alias" ? "Elle gir" : "Hafızadan seç"}
+                        {ing.mode === "alias" ? t("recipeBuilder.manualMode") : t("recipeBuilder.memoryMode")}
                       </button>
                     )}
                     {ingredients.length > 1 && (
@@ -327,7 +329,8 @@ export function RecipeBuilder({
                         type="button"
                         onClick={() => removeRow(ing.id)}
                         className="p-1 rounded-full text-white/40 hover:text-red-400 transition"
-                        title="Malzemeyi sil"
+                        title={t("recipeBuilder.deleteIngredient")}
+                        aria-label={t("recipeBuilder.deleteIngredient")}
                       >
                         <Trash2 className="w-4 h-4" />
                       </button>
@@ -338,7 +341,7 @@ export function RecipeBuilder({
                 {ing.mode === "alias" ? (
                   <div className="space-y-3">
                     <label className="block">
-                      <span className="text-xs font-semibold text-white/70 block mb-1">Hafızadaki Besin</span>
+                      <span className="text-xs font-semibold text-white/70 block mb-1">{t("recipeBuilder.memoryFoodLabel")}</span>
                       <select
                         className="w-full px-3 py-2.5 rounded-xl bg-field border border-white/15 text-xs font-bold text-white focus:outline-none focus:border-carb"
                         value={ing.aliasId}
@@ -363,12 +366,12 @@ export function RecipeBuilder({
 
                     <div className="grid grid-cols-2 gap-2">
                       <NumField
-                        label="Miktar"
+                        label={t("recipeBuilder.amountLabel")}
                         value={ing.qty}
                         onChange={(val) => updateRow(ing.id, (prev) => ({ ...prev, qty: val }))}
                       />
                       <label className="block">
-                        <span className="text-xs font-semibold text-white/70 block mb-1">Birim</span>
+                        <span className="text-xs font-semibold text-white/70 block mb-1">{t("recipeBuilder.unitLabel")}</span>
                         <select
                           className="w-full px-3 py-2.5 rounded-xl bg-field border border-white/15 text-xs font-bold text-white focus:outline-none focus:border-carb"
                           value={ing.unit}
@@ -403,26 +406,26 @@ export function RecipeBuilder({
                 ) : (
                   <div className="space-y-3">
                     <TextField
-                      label="Malzeme Adı"
+                      label={t("recipeBuilder.ingredientNameLabel")}
                       value={ing.name}
                       onChange={(val) => updateRow(ing.id, (prev) => ({ ...prev, name: val }))}
-                      placeholder="örn. Zeytinyağı"
+                      placeholder={t("recipeBuilder.ingredientNamePlaceholder")}
                     />
                     <div className="grid grid-cols-2 gap-2">
                       <NumField
-                        label="Miktar"
+                        label={t("recipeBuilder.amountLabel")}
                         value={ing.qty}
                         onChange={(val) => updateRow(ing.id, (prev) => ({ ...prev, qty: val }))}
                       />
                       <TextField
-                        label="Birim"
+                        label={t("recipeBuilder.unitLabel")}
                         value={ing.unit}
                         onChange={(val) => updateRow(ing.id, (prev) => ({ ...prev, unit: val }))}
                         placeholder="g, ml, adet..."
                       />
                     </div>
                     <div>
-                      <Label>Toplam Besin Değerleri</Label>
+                      <Label>{t("recipeBuilder.totalNutritionLabel")}</Label>
                       <NutritionFields
                         draft={ing.manualNutrition}
                         onChange={(draft) =>
@@ -441,7 +444,7 @@ export function RecipeBuilder({
             onClick={addRow}
             className="w-full py-3 rounded-xl border border-white/15 bg-white/5 hover:bg-white/10 text-xs font-bold text-white transition active:scale-95 flex items-center justify-center gap-1.5"
           >
-            <Plus className="w-3.5 h-3.5 text-memory" /> Malzeme Ekle
+            <Plus className="w-3.5 h-3.5 text-memory" /> {t("recipeBuilder.addIngredient")}
           </button>
         </div>
 
@@ -449,17 +452,17 @@ export function RecipeBuilder({
         <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-4 text-white space-y-4">
           <div className="flex items-center gap-2">
             <Scale className="w-4 h-4 text-sky-400" />
-            <span className="text-xs font-bold text-white/90">Pişmiş Toplam Ağırlık & Porsiyon</span>
+            <span className="text-xs font-bold text-white/90">{t("recipeBuilder.weightSectionTitle")}</span>
           </div>
 
           <NumField
-            label="Pişmiş Toplam Ağırlık"
+            label={t("recipeBuilder.cookedWeightLabel")}
             suffix="g"
             value={totalG}
             onChange={setTotalG}
           />
           <NumField
-            label="Porsiyon Sayısı (opsiyonel)"
+            label={t("recipeBuilder.portionCountLabel")}
             value={portionCount}
             onChange={setPortionCount}
           />
@@ -469,7 +472,7 @@ export function RecipeBuilder({
         {totalGNum > 0 && parsedIngredients.length > 0 && (
           <div className="rounded-2xl border border-carb/20 bg-carb/5 p-4 text-white space-y-2">
             <div className="flex items-center gap-1.5 text-carb font-extrabold text-xs">
-              <Sparkles className="w-4 h-4 text-carb" /> Canlı Tarif Önizleme
+              <Sparkles className="w-4 h-4 text-carb" /> {t("recipeBuilder.livePreview")}
             </div>
             <div className="flex flex-col gap-1 text-xs font-mono">
               <NutrientSummaryLine nutrition={totalNutrition} kcal="total" className="text-white font-bold" />
@@ -489,7 +492,7 @@ export function RecipeBuilder({
           disabled={!canSave || saving}
           className="w-full py-4 rounded-full bg-white text-black font-extrabold text-base hover:bg-white/90 transition shadow-xl active:scale-[0.98] disabled:opacity-40 flex items-center justify-center gap-2"
         >
-          <Check className="w-5 h-5" /> {saving ? "Kaydediliyor..." : "Besin Olarak Kaydet"}
+          <Check className="w-5 h-5" /> {saving ? t("recipeBuilder.saving") : t("recipeBuilder.saveAsFood")}
         </button>
       </div>
     </div>
