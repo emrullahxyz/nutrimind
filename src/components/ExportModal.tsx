@@ -58,10 +58,10 @@ export function ExportModal({
           setValidation(res);
         }
       } catch {
-        setFileError("Dosya geçerli bir JSON belgesi değil.");
+        setFileError(t("export.invalidJson"));
       }
     };
-    reader.onerror = () => setFileError("Dosya okunamadı.");
+    reader.onerror = () => setFileError(t("export.fileReadError"));
     reader.readAsText(file);
   };
 
@@ -79,7 +79,7 @@ export function ExportModal({
       });
       onClose();
     } catch (e) {
-      setFileError(`Geri yükleme hatası: ${String((e as Error)?.message ?? e)}`);
+      setFileError(`${t("export.restoreError")}: ${String((e as Error)?.message ?? e)}`);
       setRestoring(false);
     }
   };
@@ -97,7 +97,7 @@ export function ExportModal({
                 : "border border-line bg-white/[0.06] text-ink-secondary hover:text-ink-primary"
             }`}
           >
-            Dışa Aktar
+            {t("export.tabExport")}
           </button>
           <button
             type="button"
@@ -108,7 +108,7 @@ export function ExportModal({
                 : "border border-line bg-white/[0.06] text-ink-secondary hover:text-ink-primary"
             }`}
           >
-            Geri Yükle
+            {t("export.tabImport")}
           </button>
         </div>
 
@@ -116,15 +116,15 @@ export function ExportModal({
         {tab === "export" && (
           <div className="flex flex-col gap-3">
             <p className="text-xs text-ink-secondary">
-              Verilerinizi Excel'e uygun CSV dosyaları veya tam veriyi içeren JSON yedeği olarak bilgisayarınıza indirebilirsiniz.
+              {t("export.exportIntro")}
             </p>
 
             <div className="mt-2 flex flex-col gap-2.5">
               <div className="rounded-card border border-line bg-white/[0.02] p-3">
                 <div className="flex items-center justify-between">
                   <div>
-                    <h4 className="text-xs font-bold text-ink-primary">Öğünler & Günlük Veriler (CSV)</h4>
-                    <p className="text-[11px] text-ink-tertiary">Tüm kayıtlı günlük öğünler ve besin değerleri</p>
+                    <h4 className="text-xs font-bold text-ink-primary">{t("export.mealsCsvTitle")}</h4>
+                    <p className="text-[11px] text-ink-tertiary">{t("export.mealsCsvDesc")}</p>
                   </div>
                   <button
                     type="button"
@@ -134,7 +134,7 @@ export function ExportModal({
                     }}
                     className="rounded-pill border border-line bg-white/[0.06] px-3 py-1.5 text-xs font-bold text-ink-primary hover:bg-white/10"
                   >
-                    CSV İndir
+                    {t("export.downloadCsv")}
                   </button>
                 </div>
               </div>
@@ -142,8 +142,8 @@ export function ExportModal({
               <div className="rounded-card border border-line bg-white/[0.02] p-3">
                 <div className="flex items-center justify-between">
                   <div>
-                    <h4 className="text-xs font-bold text-ink-primary">Besin Hafızası / Alias'lar (CSV)</h4>
-                    <p className="text-[11px] text-ink-tertiary">Öğrenilen tüm besinler, markalar ve porsiyonlar</p>
+                    <h4 className="text-xs font-bold text-ink-primary">{t("export.aliasesCsvTitle")}</h4>
+                    <p className="text-[11px] text-ink-tertiary">{t("export.aliasesCsvDesc")}</p>
                   </div>
                   <button
                     type="button"
@@ -153,7 +153,7 @@ export function ExportModal({
                     }}
                     className="rounded-pill border border-line bg-white/[0.06] px-3 py-1.5 text-xs font-bold text-ink-primary hover:bg-white/10"
                   >
-                    CSV İndir
+                    {t("export.downloadCsv")}
                   </button>
                 </div>
               </div>
@@ -161,8 +161,8 @@ export function ExportModal({
               <div className="rounded-card border border-line bg-white/[0.02] p-3">
                 <div className="flex items-center justify-between">
                   <div>
-                    <h4 className="text-xs font-bold text-ink-primary">Tam JSON Yedeği</h4>
-                    <p className="text-[11px] text-ink-tertiary">Hedefler, tarifler, birimler ve barkodlar dahil tüm veri</p>
+                    <h4 className="text-xs font-bold text-ink-primary">{t("export.jsonBackupTitle")}</h4>
+                    <p className="text-[11px] text-ink-tertiary">{t("export.jsonBackupDesc")}</p>
                   </div>
                   <button
                     type="button"
@@ -172,7 +172,7 @@ export function ExportModal({
                     }}
                     className="rounded-pill bg-accent px-3 py-1.5 text-xs font-extrabold text-accent-ink hover:opacity-90"
                   >
-                    JSON İndir
+                    {t("export.downloadJson")}
                   </button>
                 </div>
               </div>
@@ -184,11 +184,11 @@ export function ExportModal({
         {tab === "import" && (
           <div className="flex flex-col gap-3">
             <p className="text-xs text-ink-secondary">
-              Daha önce aldığınız <code className="font-mono text-memory">.json</code> yedek dosyasını seçerek verilerinizi geri yükleyebilirsiniz.
+              {t("export.importIntro")}
             </p>
 
             <div>
-              <Label>Yedek Dosyası (.json)</Label>
+              <Label>{t("export.backupFileLabel")}</Label>
               <input
                 ref={fileInputRef}
                 type="file"
@@ -203,25 +203,25 @@ export function ExportModal({
 
             {validation && (
               <div className="rounded-card border border-line bg-white/[0.02] p-3.5 flex flex-col gap-3">
-                <div className="font-mono text-xs font-bold text-memory">Doğrulama Başarılı</div>
+                <div className="font-mono text-xs font-bold text-memory">{t("export.validationOk")}</div>
 
                 <div className="grid grid-cols-3 gap-2 text-center font-mono text-xs">
                   <div className="rounded-chip bg-white/[0.04] p-2">
-                    <div className="text-ink-tertiary text-[10px]">Gün</div>
+                    <div className="text-ink-tertiary text-[10px]">{t("export.daysLabel")}</div>
                     <div className="font-bold text-ink-primary">{validation.daysCount}</div>
                   </div>
                   <div className="rounded-chip bg-white/[0.04] p-2">
-                    <div className="text-ink-tertiary text-[10px]">Öğün</div>
+                    <div className="text-ink-tertiary text-[10px]">{t("export.mealsLabel")}</div>
                     <div className="font-bold text-ink-primary">{validation.mealsCount}</div>
                   </div>
                   <div className="rounded-chip bg-white/[0.04] p-2">
-                    <div className="text-ink-tertiary text-[10px]">Besin (Alias)</div>
+                    <div className="text-ink-tertiary text-[10px]">{t("export.aliasesLabel")}</div>
                     <div className="font-bold text-ink-primary">{validation.aliasesCount}</div>
                   </div>
                 </div>
 
                 <div className="rounded-chip bg-danger/10 p-2.5 text-xs text-danger font-semibold">
-                  ⚠️ Dikkat: Bu işlem sunucudaki mevcut tüm verilerinizin üzerine yazacaktır.
+                  ⚠️ {t("export.overwriteWarning")}
                 </div>
 
                 <label className="flex items-center gap-2 text-xs text-ink-secondary cursor-pointer select-none">
@@ -232,13 +232,13 @@ export function ExportModal({
                     disabled={restoring}
                     className="accent-accent"
                   />
-                  <span>Mevcut verinin üzerine yazılmasını onaylıyorum.</span>
+                  <span>{t("export.overwriteConfirm")}</span>
                 </label>
 
                 {restoring && progress && (
                   <div className="flex flex-col gap-1">
                     <div className="flex justify-between font-mono text-[10px] text-ink-tertiary">
-                      <span>İşleniyor...</span>
+                      <span>{t("export.processing")}</span>
                       <span>{progress.current} / {progress.total}</span>
                     </div>
                     <div className="h-1.5 w-full overflow-hidden rounded-full bg-white/10">
@@ -256,7 +256,7 @@ export function ExportModal({
                   onClick={handleStartRestore}
                   className="mt-1 rounded-pill bg-danger px-4 py-2 text-xs font-extrabold text-white transition disabled:opacity-40"
                 >
-                  {restoring ? "Geri Yükleniyor..." : "Geri Yüklemeyi Başlat"}
+                  {restoring ? t("export.restoring") : t("export.startRestore")}
                 </button>
               </div>
             )}
@@ -268,7 +268,7 @@ export function ExportModal({
   if (embedded) return content;
 
   return (
-    <Modal title="Veri Yönetimi" onClose={onClose}>
+    <Modal title={t("export.modalTitle")} onClose={onClose}>
       {content}
     </Modal>
   );
