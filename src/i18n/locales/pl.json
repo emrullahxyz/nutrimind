@@ -17,6 +17,7 @@
     "add": "Dodaj",
     "today": "Dziś",
     "yesterday": "Wczoraj",
+    "or": "lub",
     "releaseToRefresh": "Puść, aby odświeżyć"
   },
   "nav": {
@@ -46,7 +47,17 @@
     "errorInvalidCreds": "Nieprawidłowy e-mail lub hasło.",
     "errorEmailExists": "Ten e-mail jest już zarejestrowany.",
     "errorNetwork": "Brak połączenia z serwerem — sprawdź sieć.",
-    "errorAuthClosed": "Logowanie jest wyłączone w tym środowisku."
+    "errorAuthClosed": "Logowanie jest wyłączone w tym środowisku.",
+    "passwordMin": "Co najmniej 6 znaków",
+    "createAccount": "Utwórz konto",
+    "alreadyHaveAccount": "Masz już konto?",
+    "signupClosed": "Rejestracja jest zamknięta w tym środowisku.",
+    "subtitleRegister": "Utwórz konto i zacznij budować swoją pamięć żywieniową.",
+    "subtitleLogin": "Zaloguj się, aby kontynuować.",
+    "nameOptional": " (opcjonalnie)",
+    "showPassword": "Pokaż hasło",
+    "hidePassword": "Ukryj hasło",
+    "passwordRepeat": "Hasło (powtórz)"
   },
   "settings": {
     "title": "Ustawienia",
