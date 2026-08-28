@@ -68,8 +68,9 @@ export function projectOperations(data: AppData, operations: OfflineOperation[])
     .reduce(applyOperation, data);
 }
 
-/** Sıra önemsiz derin eşitlik — meal/alias karşılaştırmalarında anahtar
- *  sırası farkını görmezden gelmek için. */
+/** Derin eşitlik — nesnelerde anahtar SIRASI önemsizdir; dizilerde ise sıra
+ *  ANLAMLI kabul edilir (öğün/alias listeleri sırayla karşılaştırılır: meal
+ *  id'si `date_index` olduğundan sunucu sırayı korur, sıra değişimi farktır). */
 export function deepEqual(a: unknown, b: unknown): boolean {
   if (a === b) return true;
   if (typeof a !== typeof b) return false;
@@ -87,10 +88,6 @@ export function deepEqual(a: unknown, b: unknown): boolean {
     );
   }
   return false;
-}
-
-export function operationId(): string {
-  return `offline-${Date.now()}-${Math.random().toString(36).slice(2)}`;
 }
 
 export function isNetworkError(error: unknown): boolean {

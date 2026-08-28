@@ -246,7 +246,9 @@
     "opDeleteDay": "Gün {{date}} sil",
     "opAlias": "Hafıza: {{name}}",
     "opDeleteAlias": "Hafıza sil: {{name}}",
-    "featureUnavailable": "Bu özellik internet gerektirir. Bağlantı gelince tekrar deneyin."
+    "featureUnavailable": "Bu özellik internet gerektirir. Bağlantı gelince tekrar deneyin.",
+    "refreshFailed": "Kaydedildi, ancak veriler yenilenemedi — sayfayı yenileyin.",
+    "refreshing": "Yenileniyor..."
   },
   "privacy": {
     "tr": "Türkçe",

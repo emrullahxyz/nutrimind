@@ -246,7 +246,9 @@
     "opDeleteDay": "Usuń dzień {{date}}",
     "opAlias": "Pamięć: {{name}}",
     "opDeleteAlias": "Usuń pamięć: {{name}}",
-    "featureUnavailable": "Ta funkcja wymaga połączenia z internetem. Spróbuj ponownie po połączeniu."
+    "featureUnavailable": "Ta funkcja wymaga połączenia z internetem. Spróbuj ponownie po połączeniu.",
+    "refreshFailed": "Zapisano, ale nie udało się odświeżyć danych — odśwież stronę.",
+    "refreshing": "Odświeżanie..."
   },
   "privacy": {
     "tr": "Türkçe",
