@@ -71,7 +71,8 @@ export function parseUnits(raw: unknown): AliasUnit[] | undefined {
   const valid: AliasUnit[] = [];
   for (const u of raw) {
     if (typeof u !== "object" || u === null) continue;
-    const name = typeof (u as { name?: unknown }).name === "string" ? (u as { name: string }).name.trim() : "";
+    const name =
+      typeof (u as { name?: unknown }).name === "string" ? (u as { name: string }).name.trim() : "";
     const gramsRaw = (u as { grams?: unknown }).grams;
     const grams = typeof gramsRaw === "number" ? gramsRaw : parseNum(String(gramsRaw ?? ""));
     if (name.length > 0 && typeof grams === "number" && grams > 0 && Number.isFinite(grams)) {
@@ -88,7 +89,10 @@ export function parseSources(raw: unknown): MealSource[] | undefined {
   const valid: MealSource[] = [];
   for (const s of raw) {
     if (typeof s !== "object" || s === null) continue;
-    const aliasId = typeof (s as { aliasId?: unknown }).aliasId === "string" ? (s as { aliasId: string }).aliasId.trim() : "";
+    const aliasId =
+      typeof (s as { aliasId?: unknown }).aliasId === "string"
+        ? (s as { aliasId: string }).aliasId.trim()
+        : "";
     const qtyRaw = (s as { qty?: unknown }).qty;
     const qty = typeof qtyRaw === "number" ? qtyRaw : parseNum(String(qtyRaw ?? ""));
     const unitRaw = (s as { unit?: unknown }).unit;
@@ -115,7 +119,10 @@ export function parseRecipe(raw: unknown): Recipe | undefined {
   for (const ing of ingredientsRaw) {
     if (typeof ing !== "object" || ing === null) continue;
     const aliasId = optionalText((ing as { aliasId?: unknown }).aliasId);
-    const name = typeof (ing as { name?: unknown }).name === "string" ? (ing as { name: string }).name.trim() : "";
+    const name =
+      typeof (ing as { name?: unknown }).name === "string"
+        ? (ing as { name: string }).name.trim()
+        : "";
     const qtyRaw = (ing as { qty?: unknown }).qty;
     const qty = typeof qtyRaw === "number" ? qtyRaw : parseNum(String(qtyRaw ?? ""));
     const unitRaw = (ing as { unit?: unknown }).unit;
@@ -226,7 +233,9 @@ function parseLoggedAt(raw: unknown): string | undefined {
 }
 
 function parseMealCategory(raw: unknown): MealCategory | undefined {
-  return typeof raw === "string" && VALID_MEAL_CATEGORIES.has(raw) ? (raw as MealCategory) : undefined;
+  return typeof raw === "string" && VALID_MEAL_CATEGORIES.has(raw)
+    ? (raw as MealCategory)
+    : undefined;
 }
 
 interface RawData {
@@ -259,7 +268,9 @@ const SESSION_EXPIRED = "Oturum sona erdi — tekrar giriş yap.";
 
 function signalUnauthorized(): Error {
   if (unauthorizedHandler) unauthorizedHandler();
-  return new Error(SESSION_EXPIRED);
+  const err = new Error(SESSION_EXPIRED) as Error & { status?: number };
+  err.status = 401;
+  return err;
 }
 
 /** `ai.ts` de aynı sinyali kullanabilsin diye (kendi hata sınıfına sarıyor). */
@@ -270,7 +281,10 @@ export function signalUnauthorizedFromApi(): string {
 
 /** Backend'den { goals, days, aliases } çeker; öğünleri MealItem'a dönüştürür. */
 export async function fetchData(): Promise<AppData> {
-  const res = await fetch("/api/data", { headers: { Accept: "application/json" }, credentials: "same-origin" });
+  const res = await fetch("/api/data", {
+    headers: { Accept: "application/json" },
+    credentials: "same-origin",
+  });
   if (res.status === 401) throw signalUnauthorized();
   if (!res.ok) throw new Error(`API ${res.status}`);
   const raw = (await res.json()) as RawData;
@@ -338,7 +352,12 @@ async function mutate<T>(path: string, method: string, body?: unknown): Promise<
   });
   if (res.status === 401) throw signalUnauthorized();
   const json = (await res.json().catch(() => null)) as { error?: string } | null;
-  if (!res.ok) throw new Error(json?.error ?? `API ${res.status}`);
+  if (!res.ok) {
+    // Sync motoru 4xx/5xx ayrımını bu status üzerinden yapıyor (bkz. offlineSync.ts).
+    const err = new Error(json?.error ?? `API ${res.status}`) as Error & { status?: number };
+    err.status = res.status;
+    throw err;
+  }
   return json as T;
 }
 
@@ -382,6 +401,9 @@ function parseConfig(raw: unknown): AppConfig {
 }
 
 /** Genel config anahtarı yazar (Faz 2a). `goals`/`seeded` sunucu tarafında reddedilir. */
-export function saveConfig(key: string, value: Record<string, unknown>): Promise<{ ok: true; key: string }> {
+export function saveConfig(
+  key: string,
+  value: Record<string, unknown>,
+): Promise<{ ok: true; key: string }> {
   return mutate(`/api/config/${encodeURIComponent(key)}`, "PUT", value);
 }
