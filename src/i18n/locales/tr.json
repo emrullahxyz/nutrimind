@@ -418,6 +418,7 @@
     "pl": "Polski"
   },
   "goals": {
+    "title": "Günlük hedefler",
     "profileNameRequired": "Profil adı boş olamaz.",
     "kcalPositive": "Kalori hedefi 0'dan büyük olmalı.",
     "negativeNotAllowed": "{{nutrient}} negatif olamaz.",
@@ -571,6 +572,9 @@
         "desc": "Kas kütlesi kazanımı ve hacimlenmek için 350 kcal fazlalık"
       }
     }
+  },
+  "mealRow": {
+    "saveTemplate": "Şablon yap"
   },
   "meal": {
     "titleAdd": "Öğün Ekle",

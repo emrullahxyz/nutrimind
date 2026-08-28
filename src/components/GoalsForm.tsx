@@ -331,7 +331,7 @@ export function GoalsForm({ onClose, embedded = false }: { onClose: () => void; 
   if (embedded) return content;
 
   return (
-    <Modal title="Günlük hedefler" onClose={requestClose}>
+    <Modal title={t("goals.title")} onClose={requestClose}>
       {content}
     </Modal>
   );
