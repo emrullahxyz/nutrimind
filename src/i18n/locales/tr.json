@@ -212,7 +212,14 @@
     "title": "Kamera / Tara",
     "titleReview": "Onayla ve kaydet",
     "titleFoodLabel": "Etiketi onayla",
-    "titleFoodPhoto": "Yemeği onayla"
+    "titleFoodPhoto": "Yemeği onayla",
+    "saveToDayAndMemory": "Öğüne + hafızaya ekle",
+    "saveToDayOnly": "Sadece öğüne",
+    "inMemory": "Hafızada var",
+    "saveToMemoryOnly": "Sadece hafızaya",
+    "memoryHint": "Kısa bir ifade yazarsan bu ürün {{memory}} kaydedilir ve bir dahakine adıyla yazman yeter. Boş bırakırsan yalnızca bugüne eklenir.",
+    "memoryWord": "hafızana",
+    "understoodContinue": "Anladım, devam et"
   },
   "offline": {
     "banner": "Çevrimdışısınız. Son veri: {{time}}. Değişiklikler kaydedilmez.",

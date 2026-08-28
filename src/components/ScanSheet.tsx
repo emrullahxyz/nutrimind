@@ -491,7 +491,7 @@ export function ScanSheet({
         disabled={!canLogWithMemory || !!saving}
         className="w-full rounded-pill bg-accent px-4 py-2.5 text-sm font-extrabold text-accent-ink transition disabled:opacity-40"
       >
-        {saving === "today" ? "…" : "Öğüne + hafızaya ekle"}
+        {saving === "today" ? "…" : t("scan.saveToDayAndMemory")}
       </button>
       <div className="grid grid-cols-2 gap-2">
         <button
@@ -500,7 +500,7 @@ export function ScanSheet({
           disabled={!canLogOnly || !!saving}
           className="rounded-pill border border-line bg-white/[0.04] px-4 py-2 text-sm font-bold text-ink-primary transition hover:bg-white/[0.08] disabled:opacity-40"
         >
-          {saving === "dayOnly" ? "…" : "Sadece öğüne"}
+          {saving === "dayOnly" ? "…" : t("scan.saveToDayOnly")}
         </button>
         <button
           type="button"
@@ -508,7 +508,7 @@ export function ScanSheet({
           disabled={!canSaveAlias || !!saving || !!knownAlias}
           className="rounded-pill border border-memory bg-memory/10 px-4 py-2 text-sm font-bold text-memory transition hover:bg-memory hover:text-memory-ink disabled:opacity-40"
         >
-          {saving === "memory" ? "…" : knownAlias ? "Hafızada var" : "Sadece hafızaya"}
+          {saving === "memory" ? "…" : knownAlias ? t("scan.inMemory") : t("scan.saveToMemoryOnly")}
         </button>
       </div>
       <button
@@ -817,8 +817,7 @@ export function ScanSheet({
                bunu söylemeli — eskiden "düğmeler bu yüzden kapalı" diyordu ve
                taranan ürünü bugüne eklemenin tek yolu uydurma bir ifade yazmaktı. */
             <p className="text-[11px] text-ink-tertiary">
-              Kısa bir ifade yazarsan bu ürün <span className="font-semibold text-memory">hafızana</span>{" "}
-              kaydedilir ve bir dahakine adıyla yazman yeter. Boş bırakırsan yalnızca bugüne eklenir.
+              {t("scan.memoryHint", { memory: <span className="font-semibold text-memory">{t("scan.memoryWord")}</span> })}
             </p>
           )}
 
@@ -908,7 +907,7 @@ export function ScanSheet({
                 }}
                 className="flex-1 rounded-xl bg-emerald-500/20 py-2.5 text-sm font-semibold text-emerald-300"
               >
-                Anladım, devam et
+                {t("scan.understoodContinue")}
               </button>
             </div>
           </div>
