@@ -106,7 +106,7 @@ export function MacroBar({ def, value, target }: MacroBarProps) {
     return (
       <div>
         <div className="flex items-center justify-between gap-2">
-          <span className={`text-[13px] font-bold ${c.text}`}>{def.label}</span>
+          <span className={`text-[13px] font-bold ${c.text}`}>{t(`nutrient.${def.key}`)}</span>
           <span className="font-mono text-xs text-ink-secondary">
             {formatNumber(animatedValue)}
             {def.unit}
@@ -121,7 +121,7 @@ export function MacroBar({ def, value, target }: MacroBarProps) {
     <div>
       <div className="mb-1.5 flex items-center justify-between">
         <div className="flex items-center gap-1.5">
-          <span className={`text-[13px] font-bold ${c.text}`}>{def.label}</span>
+          <span className={`text-[13px] font-bold ${c.text}`}>{t(`nutrient.${def.key}`)}</span>
           {hasTarget && (
             <span
               className={`text-xs font-mono ${
