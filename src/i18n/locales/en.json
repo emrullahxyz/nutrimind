@@ -348,7 +348,15 @@
     "saveToMemoryOnly": "Only add to memory",
     "memoryHint": "Write a short phrase and this product will be saved to {{memory}} — next time just type its name. Leave blank to only add to today.",
     "memoryWord": "your memory",
-    "understoodContinue": "Got it, continue"
+    "understoodContinue": "Got it, continue",
+    "captureLabel": "Pull the label and read",
+    "captureFood": "Pull the food and identify",
+    "knownAliasNote": "This product is already in your memory — no new record will be created, the existing food will be used.",
+    "gallery": "Gallery",
+    "changeBarcode": "Change barcode",
+    "missingData": "missing data",
+    "autoReading1": "reading",
+    "autoReading2": "automatically"
   },
   "exercise": {
     "title": "Exercise & Activity Log",

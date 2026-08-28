@@ -687,16 +687,20 @@ export function ScanSheet({
               <div className="justify-self-center">
                 {scanMode === "barcode" ? (
                   <span className="flex h-[68px] w-[68px] items-center justify-center rounded-full border-2 border-dashed border-white/40 text-center text-[10px] font-semibold leading-tight text-white/70">
-                    otomatik
+                    {t("scan.autoReading1")}
                     <br />
-                    okunuyor
+                    {t("scan.autoReading2")}
                   </span>
                 ) : (
                   <button
                     type="button"
                     onClick={captureAndAnalyze}
                     disabled={!ready || analyzing || offline}
-                    aria-label={scanMode === "food_label" ? "Etiketi çek ve oku" : "Yemeği çek ve tanı"}
+                    aria-label={
+                      scanMode === "food_label"
+                        ? t("scan.captureLabel")
+                        : t("scan.captureFood")
+                    }
                     className="flex h-[68px] w-[68px] items-center justify-center rounded-full border-4 border-white/90 transition active:scale-95 disabled:opacity-40"
                   >
                     <span className="h-[52px] w-[52px] rounded-full bg-white transition" />
@@ -710,7 +714,7 @@ export function ScanSheet({
                 disabled={offline}
                 className="justify-self-end rounded-pill border border-white/15 bg-black/40 px-3 py-2 text-[11px] font-semibold text-white/80 opacity-100 backdrop-blur-sm transition hover:text-white disabled:opacity-40"
               >
-                🖼️ Galeri
+                🖼️ {t("scan.gallery")}
               </button>
             </div>
 
@@ -775,7 +779,7 @@ export function ScanSheet({
             disabled={!!saving}
             className="self-start text-[11px] font-semibold text-ink-tertiary underline transition hover:text-ink-primary disabled:opacity-40"
           >
-            ‹ Barkodu değiştir
+            ‹ {t("scan.changeBarcode")}
           </button>
 
           {/* --- Ürün özeti: SALT-OKUNUR. Tam düzenleme AliasForm'da. --- */}
@@ -790,13 +794,13 @@ export function ScanSheet({
               className="mt-2 border-t border-line pt-2 font-mono text-[11px] text-ink-secondary"
             />
             {missingLabels(food!).length > 0 && (
-              <p className="mt-1 text-[10px] text-warn">eksik veri: {missingLabels(food!).join(", ")}</p>
+              <p className="mt-1 text-[10px] text-warn">{t("scan.missingData")}: {missingLabels(food!).join(", ")}</p>
             )}
           </div>
 
           {knownAlias && (
             <p className="rounded-chip border border-memory/40 bg-memory/10 p-2.5 text-[11px] text-memory">
-              Bu ürün hafızanda zaten var — yeni bir kayıt oluşturulmayacak, mevcut besin kullanılacak.
+              {t("scan.knownAliasNote")}
             </p>
           )}
 
@@ -877,7 +881,7 @@ export function ScanSheet({
       {/* AI fotoğraf onay modalı — ilk kullanımda bir kez sorulur, onay
           localStorage'a yazılır. Play Store 'Data safety' gereği. */}
       {aiConsentOpen && (
-        <Modal onClose={() => setAiConsentOpen(false)} title="Yapay zeka ile analiz">
+        <Modal onClose={() => setAiConsentOpen(false)} title={t("ai.consentTitle")}>
           <div className="space-y-3">
             <p className="text-sm text-white/80">
               Fotoğrafların ve öğün metnin Google Gemini'ye gönderilir.

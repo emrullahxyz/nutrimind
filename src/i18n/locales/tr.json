@@ -348,7 +348,15 @@
     "saveToMemoryOnly": "Sadece hafızaya",
     "memoryHint": "Kısa bir ifade yazarsan bu ürün {{memory}} kaydedilir ve bir dahakine adıyla yazman yeter. Boş bırakırsan yalnızca bugüne eklenir.",
     "memoryWord": "hafızana",
-    "understoodContinue": "Anladım, devam et"
+    "understoodContinue": "Anladım, devam et",
+    "captureLabel": "Etiketi çek ve oku",
+    "captureFood": "Yemeği çek ve tanı",
+    "knownAliasNote": "Bu ürün hafızanda zaten var — yeni bir kayıt oluşturulmayacak, mevcut besin kullanılacak.",
+    "gallery": "Galeri",
+    "changeBarcode": "Barkodu değiştir",
+    "missingData": "eksik veri",
+    "autoReading1": "otomatik",
+    "autoReading2": "okunuyor"
   },
   "exercise": {
     "title": "Egzersiz & Aktivite Günlüğü",

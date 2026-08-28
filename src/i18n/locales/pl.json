@@ -348,7 +348,15 @@
     "saveToMemoryOnly": "Tylko do pamięci",
     "memoryHint": "Jeśli wpiszesz krótkie hasło, ten produkt zostanie zapisany {{memory}} — następnym razem wystarczy wpisać jego nazwę. Pozostaw puste, aby dodać tylko do dzisiejszego dnia.",
     "memoryWord": "w pamięci",
-    "understoodContinue": "Rozumiem, kontynuuj"
+    "understoodContinue": "Rozumiem, kontynuuj",
+    "captureLabel": "Przyłóż etykietę i odczytaj",
+    "captureFood": "Przyłóż jedzenie i rozpoznaj",
+    "knownAliasNote": "Ten produkt jest już w Twojej pamięci — nowy wpis nie zostanie utworzony, użyty zostanie istniejący produkt.",
+    "gallery": "Galeria",
+    "changeBarcode": "Zmień kod kreskowy",
+    "missingData": "brakujące dane",
+    "autoReading1": "automatycznie",
+    "autoReading2": "odczytywany"
   },
   "exercise": {
     "title": "Dziennik ćwiczeń i aktywności",
