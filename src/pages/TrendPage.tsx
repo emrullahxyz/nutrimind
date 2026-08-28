@@ -23,6 +23,7 @@ import type { NutrientDef, NutrientKey } from "../lib/nutrients";
 import { buildTrend, formatNutrientValue, trendStats } from "../lib/trend";
 import type { TrendRange } from "../lib/trend";
 import { formatTargetHitRate } from "../lib/trendFormat";
+import { useTranslation } from "react-i18next";
 
 /** Seçici çipi — App.tsx'teki TabButton'ın küçük kardeşi (aynı aktif durumu). */
 function Chip({
@@ -69,6 +70,7 @@ function changeTone(
 }
 
 export function TrendPage() {
+  const { t } = useTranslation();
   const { days, goals, config } = useData();
   const weightConfig = parseWeightConfig(config);
   const [key, setKey] = useState<NutrientKey>("kcal");
@@ -102,10 +104,10 @@ export function TrendPage() {
   return (
     <div className="flex flex-col gap-4">
       <div>
-        <h2 className="text-lg font-bold text-ink-primary">Trend</h2>
+        <h2 className="text-lg font-bold text-ink-primary">{t("trend.title")}</h2>
         <p className="text-sm text-ink-tertiary">
-          Kalın çizgi 7 günlük ortalama; asıl yön onda görünür. Kayıt olmayan günler sıfır sayılmaz.
-          {goalVaries && " Hedef çizgisi haftalık ortalamadır — gün tipleri kendi hedefleriyle sayılır."}
+          {t("trend.subtitle")}
+          {goalVaries && ` ${t("trend.goalIsAverage")}`}
         </p>
       </div>
 
@@ -115,7 +117,7 @@ export function TrendPage() {
           <Chip
             key={n.key}
             active={n.key === key}
-            label={n.compactLabel ?? n.label}
+            label={t(`nutrient.${n.key}`)}
             dotClass={n.classes.bg}
             onClick={() => setKey(n.key)}
           />
@@ -128,12 +130,12 @@ export function TrendPage() {
       {/* özet kutuları — trendin asıl bilgi değeri burada */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
         <Stat
-          label="Son 7 kayıtlı gün ort."
+          label={t("trend.recentAvgLabel")}
           value={stats.recentAvg === null ? "—" : formatNutrientValue(def, stats.recentAvg)}
-          hint={stats.recentAvg === null ? "bu aralıkta kayıt yok" : "kayıtlı son 7 gün"}
+          hint={stats.recentAvg === null ? t("trend.noRecordsInRange") : t("trend.recentDaysHint")}
         />
         <Stat
-          label="Önceki 7 kayıtlı güne göre"
+          label={t("trend.changeLabel")}
           value={
             stats.changePct === null
               ? "—"
@@ -144,24 +146,24 @@ export function TrendPage() {
           }
           hint={
             stats.prevAvg === null
-              ? "karşılaştırmak için yeterli geçmiş yok"
-              : `önceki: ${formatNutrientValue(def, stats.prevAvg)}`
+              ? t("trend.notEnoughHistory")
+              : t("trend.prevAvg", { value: formatNutrientValue(def, stats.prevAvg) })
           }
           valueClassName={changeTone(def, series.goal, stats.recentAvg, stats.prevAvg)}
         />
         {/* dar ekranda 2 sütun sığıyor; üçüncü kutu tek başına yarım kalmasın */}
         <div className="col-span-2 sm:col-span-1">
           <Stat
-            label="Hedef tutturma"
+            label={t("trend.hitRateLabel")}
             value={hitRate}
             hint={
               series.goal === null
-                ? `${def.label} hedefi girilmemiş`
+                ? t("trend.noGoal", { nutrient: t(`nutrient.${def.key}`) })
                 : stats.ratedDays === 0
-                  ? "bu aralıkta kayıtlı gün yok"
-                  : `${stats.onTargetDays}/${stats.ratedDays} gün · ${
-                      def.direction === "limit" ? "limit içinde" : `hedefin %90'ı+`
-                    }${goalVaries ? " · her gün kendi hedefine göre" : ""}`
+                  ? t("trend.noRatedDays")
+                  : `${stats.onTargetDays}/${stats.ratedDays} ${t("trend.days")} · ${
+                      def.direction === "limit" ? t("trend.withinLimit") : t("trend.pctOfGoal")
+                    }${goalVaries ? ` · ${t("trend.perOwnGoal")}` : ""}`
             }
           />
         </div>
@@ -173,20 +175,20 @@ export function TrendPage() {
         <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1.5 border-t border-line pt-3 text-[11px] text-ink-tertiary">
           <span className="flex items-center gap-1.5">
             <span className={`h-1.5 w-1.5 rounded-full ${def.classes.bg} opacity-50`} />
-            günlük
+            {t("trend.daily")}
           </span>
           <span className="flex items-center gap-1.5">
-            <span className={`h-[2px] w-4 rounded-full ${def.classes.bg}`} />7 günlük ortalama
+            <span className={`h-[2px] w-4 rounded-full ${def.classes.bg}`} />
+            {t("trend.sevenDayAvg")}
           </span>
           <span className="font-mono">
-            {series.dataCount}/{series.points.length} günde kayıt
+            {t("trend.recordedDays", { count: series.dataCount, total: series.points.length })}
           </span>
         </div>
 
         {gaps > 0 && series.dataCount >= 2 && (
           <p className="mt-1.5 text-[11px] text-ink-faint">
-            Kayıt olmayan {formatNumber(gaps)} günde çizgi bilinçli olarak kopar — boşluğun üstünden
-            çizgi çekmek olmayan bir seyri gerçek gibi gösterirdi.
+            {t("trend.gapNote", { count: formatNumber(gaps) })}
           </p>
         )}
       </Card>

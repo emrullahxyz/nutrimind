@@ -136,22 +136,22 @@ export function HistoryPage({ resetKey = 0 }: { resetKey?: number }) {
     return (
       <div key={week.startDate} className="anim-zoom flex flex-col gap-5">
         <div className="flex items-center justify-between gap-3">
-          <BackButton label="Haftalar" onClick={handleGoBack} />
+          <BackButton label={t("history.weeks")} onClick={handleGoBack} />
           <h2 className="text-lg font-extrabold text-ink-primary">{weekLabel(week)}</h2>
         </div>
 
         <WeekBars week={week} onSelectDay={(d) => handleSelectDay(d)} />
 
         <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-          <Stat label="Haftalık toplam" value={formatKcal(week.total.kcal)} hint={`${week.activeDays} gün`} />
-          <Stat label="Günlük ort." value={formatKcal(week.avgKcal)} />
+          <Stat label={t("history.weekTotal")} value={formatKcal(week.total.kcal)} hint={`${week.activeDays} ${t("history.days")}`} />
+          <Stat label={t("history.dailyAvg")} value={formatKcal(week.avgKcal)} />
           <Stat
-            label="En yoğun"
+            label={t("history.mostActive")}
             value={formatKcal(highest?.total.kcal ?? 0)}
             hint={highest ? formatRelativeDay(highest.date) : "—"}
           />
           <Stat
-            label="En hafif"
+            label={t("history.lightest")}
             value={formatKcal(lowest?.total.kcal ?? 0)}
             hint={lowest ? formatRelativeDay(lowest.date) : "—"}
           />
@@ -164,7 +164,7 @@ export function HistoryPage({ resetKey = 0 }: { resetKey?: number }) {
             <div className="grid grid-cols-2 gap-x-4 gap-y-2 sm:grid-cols-4">
               {MACROS.map((def) => (
                 <div key={def.key} className="flex flex-col items-center text-center">
-                  <span className={`text-xs font-bold ${def.classes.text}`}>{def.label}</span>
+                  <span className={`text-xs font-bold ${def.classes.text}`}>{t(`nutrient.${def.key}`)}</span>
                   <span className="font-mono text-xs font-semibold text-ink-primary">
                     {formatNumber(week.total[def.key] ?? 0)} {def.unit}
                   </span>
@@ -191,7 +191,7 @@ export function HistoryPage({ resetKey = 0 }: { resetKey?: number }) {
         <div className="flex items-center justify-between">
           <SectionLabel>{t("history.weeks")}</SectionLabel>
           <span className="text-xs text-ink-tertiary font-mono">
-            {all.length} haftadan {visibleWeeks.length} tanesi gösteriliyor
+            {t("history.weeksShown", { shown: visibleWeeks.length, total: all.length })}
           </span>
         </div>
         {all.length === 0 ? (
@@ -215,11 +215,11 @@ export function HistoryPage({ resetKey = 0 }: { resetKey?: number }) {
                   <Card className="flex flex-col gap-3 p-4 transition hover:border-memory/40 hover:bg-white/[0.03]">
                     <div className="flex items-baseline justify-between gap-2">
                       <div className="text-sm font-bold text-ink-primary">{weekLabel(w)}</div>
-                      <div className="text-[11px] text-ink-tertiary">{w.activeDays} gün</div>
+                      <div className="text-[11px] text-ink-tertiary">{w.activeDays} {t("history.days")}</div>
                     </div>
                     <div className="flex items-baseline justify-between gap-2">
                       <div className="font-mono text-xl font-extrabold text-ink-primary">{formatKcal(w.total.kcal)}</div>
-                      <div className="font-mono text-[11px] text-ink-tertiary">ort {formatKcal(w.avgKcal)}/gün</div>
+                      <div className="font-mono text-[11px] text-ink-tertiary">{t("history.avgPerDay", { kcal: formatKcal(w.avgKcal) })}</div>
                     </div>
                     <WeekBars week={w} compact />
                   </Card>
@@ -235,7 +235,7 @@ export function HistoryPage({ resetKey = 0 }: { resetKey?: number }) {
                   onClick={() => setVisibleWeeksCount((prev) => prev + 6)}
                   className="inline-flex items-center gap-2 rounded-full border border-line bg-white/5 px-4 py-2 text-xs font-bold text-ink-primary hover:bg-white/10 hover:border-white/20 transition-all active:scale-95"
                 >
-                  <span>Daha Fazla Hafta Göster (+{all.length - visibleWeeksCount})</span>
+                  <span>{t("history.showMoreWeeks", { count: all.length - visibleWeeksCount })}</span>
                 </button>
               </div>
             )}
