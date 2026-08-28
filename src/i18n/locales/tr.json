@@ -273,7 +273,43 @@
     "protein": "Protein",
     "carbs": "Karb",
     "fat": "Yağ",
-    "dailyFiber": "Günlük Lif Hedefi"
+    "dailyFiber": "Günlük Lif Hedefi",
+    "activity": {
+      "sedentary": {
+        "title": "Masa Başı / Hareketsiz",
+        "desc": "Masa başı iş veya okul, az/hiç egzersiz yok"
+      },
+      "light": {
+        "title": "Hafif Aktif",
+        "desc": "Haftada 1-3 gün hafif tempolu egzersiz veya yürüyüş"
+      },
+      "moderate": {
+        "title": "Orta Aktif",
+        "desc": "Haftada 3-5 gün düzenli antrenman veya orta fiziksel aktivite"
+      },
+      "active": {
+        "title": "Çok Aktif",
+        "desc": "Haftada 6-7 gün ağır spor veya yüksek fiziksel tempolu iş"
+      },
+      "extra_active": {
+        "title": "Aşırı Aktif / Atletik",
+        "desc": "Günde 2 kez ağır antrenman veya profesyonel sporcu temposu"
+      }
+    },
+    "goal": {
+      "weight_loss": {
+        "title": "Kilo Ver & Yağ Yak",
+        "desc": "Güvenli ve kalıcı yağ yakımı için 500 kcal kalori açığı"
+      },
+      "maintenance": {
+        "title": "Kilo Koru & Formda Kal",
+        "desc": "Mevcut kilonu korumak ve formunu dengelemek için"
+      },
+      "weight_gain": {
+        "title": "Kilo Al & Kas Yap",
+        "desc": "Kas kütlesi kazanımı ve hacimlenmek için 350 kcal fazlalık"
+      }
+    }
   },
   "meal": {
     "titleAdd": "Öğün Ekle",

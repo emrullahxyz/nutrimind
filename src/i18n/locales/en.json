@@ -273,7 +273,43 @@
     "protein": "Protein",
     "carbs": "Carbs",
     "fat": "Fat",
-    "dailyFiber": "Daily Fiber Goal"
+    "dailyFiber": "Daily Fiber Goal",
+    "activity": {
+      "sedentary": {
+        "title": "Sedentary",
+        "desc": "Desk job or school, little/no exercise"
+      },
+      "light": {
+        "title": "Lightly Active",
+        "desc": "Light exercise or walking 1-3 days/week"
+      },
+      "moderate": {
+        "title": "Moderately Active",
+        "desc": "Regular training or moderate activity 3-5 days/week"
+      },
+      "active": {
+        "title": "Very Active",
+        "desc": "Intense sport or physically demanding job 6-7 days/week"
+      },
+      "extra_active": {
+        "title": "Extra Active / Athletic",
+        "desc": "Twice-daily intense training or professional athlete pace"
+      }
+    },
+    "goal": {
+      "weight_loss": {
+        "title": "Lose Weight & Burn Fat",
+        "desc": "500 kcal deficit for safe, sustainable fat loss"
+      },
+      "maintenance": {
+        "title": "Maintain & Stay Fit",
+        "desc": "Keep your current weight and stay balanced"
+      },
+      "weight_gain": {
+        "title": "Gain Weight & Build Muscle",
+        "desc": "350 kcal surplus for muscle mass and volume"
+      }
+    }
   },
   "meal": {
     "titleAdd": "Add Meal",
