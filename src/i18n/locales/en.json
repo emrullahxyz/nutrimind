@@ -117,7 +117,10 @@
     "alias": "Foods",
     "settings": "Settings",
     "add": "Add",
-    "savedFoods": "Saved Foods"
+    "savedFoods": "Saved Foods",
+    "logExercise": "Log Exercise",
+    "foodSearch": "Food Search",
+    "foodScan": "Food Scan"
   },
   "auth": {
     "login": "Sign in",

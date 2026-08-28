@@ -117,7 +117,10 @@
     "alias": "Produkty",
     "settings": "Ustawienia",
     "add": "Dodaj",
-    "savedFoods": "Zapisane produkty"
+    "savedFoods": "Zapisane produkty",
+    "logExercise": "Zapisz ćwiczenie",
+    "foodSearch": "Szukaj produktów",
+    "foodScan": "Skanuj posiłek"
   },
   "auth": {
     "login": "Zaloguj się",

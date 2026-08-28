@@ -131,7 +131,7 @@ export function BottomNav({
             <div className="anim-zoom fab-menu glass-island absolute bottom-20 right-3 mb-2 grid w-64 grid-cols-2 gap-2.5 rounded-3xl border border-white/15 bg-fab-panel/98 p-3 shadow-float backdrop-blur-2xl z-50">
               <FabMenuItem
                 icon={Footprints}
-                label="Egzersiz Kaydet"
+                label={t("nav.logExercise")}
                 onClick={() => {
                   setOpen(false);
                   afterHistoryBackSettles(() => onOpenExercise?.());
@@ -147,7 +147,7 @@ export function BottomNav({
               />
               <FabMenuItem
                 icon={Search}
-                label="Besin Arama"
+                label={t("nav.foodSearch")}
                 onClick={() => {
                   setOpen(false);
                   afterHistoryBackSettles(() => onAddMeal?.());
@@ -155,7 +155,7 @@ export function BottomNav({
               />
               <FabMenuItem
                 icon={Camera}
-                label="Yemek Taraması"
+                label={t("nav.foodScan")}
                 onClick={() => {
                   setOpen(false);
                   afterHistoryBackSettles(() => onScan?.());
@@ -199,7 +199,7 @@ export function BottomNav({
             type="button"
             onClick={() => setOpen(!open)}
             className="flex h-12 w-12 sm:h-14 sm:w-14 items-center justify-center rounded-full bg-white text-black shadow-card transition-transform duration-200 hover:scale-105 active:scale-95 flex-none z-50 ml-1"
-            aria-label="Ekle"
+            aria-label={t("common.add")}
           >
             <Plus className={`h-6 w-6 sm:h-7 sm:w-7 transition-transform duration-200 ${open ? "rotate-45" : ""}`} />
           </button>
