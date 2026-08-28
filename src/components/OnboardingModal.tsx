@@ -137,6 +137,9 @@ export function OnboardingModal({
   return (
     <div
       data-modal="true"
+      role="dialog"
+      aria-modal="true"
+      aria-label={t("onboarding.title")}
       className={`fixed inset-0 z-[9999] flex flex-col bg-app text-white h-[100dvh] w-full overflow-hidden animate-fadeIn pad-safe glass-screen ${
         closing ? "glass-screen-out" : ""
       }`}
