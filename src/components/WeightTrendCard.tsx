@@ -3,6 +3,7 @@ import { Card } from "./Card";
 import { formatNumber, formatShortDate } from "../lib/format";
 import type { TrendRange } from "../lib/trend";
 import { buildWeightSeries } from "../lib/weight";
+import { useTranslation } from "react-i18next";
 
 const W = 720;
 const H = 200;
@@ -35,6 +36,7 @@ export function WeightTrendCard({
   entries: Record<string, number>;
   range: TrendRange;
 }) {
+  const { t } = useTranslation();
   const points = useMemo(() => buildWeightSeries(entries, range), [entries, range]);
   const validPoints = useMemo(() => points.filter((p): p is { date: string; kg: number } => p.kg !== null), [points]);
 
@@ -89,9 +91,9 @@ export function WeightTrendCard({
     <Card className="p-3 sm:p-4">
       <div className="mb-3 flex items-center justify-between gap-3 border-b border-line pb-2.5">
         <div>
-          <h3 className="text-sm font-bold text-ink-primary">Kilo Trendi</h3>
+          <h3 className="text-sm font-bold text-ink-primary">{t("weight.trendTitle")}</h3>
           <p className="text-xs text-ink-tertiary">
-            Son kayıt: <span className="font-mono font-bold text-ink-primary">{formatNumber(lastEntry.kg, 1)} kg</span>
+            {t("weight.lastEntry")} <span className="font-mono font-bold text-ink-primary">{formatNumber(lastEntry.kg, 1)} kg</span>
           </p>
         </div>
         {validPoints.length >= 2 && (
@@ -99,7 +101,7 @@ export function WeightTrendCard({
             <span className={totalChange > 0 ? "text-warn font-semibold" : totalChange < 0 ? "text-accent font-semibold" : "text-ink-tertiary"}>
               {totalChange > 0 ? `▲${formatNumber(totalChange, 1)}` : totalChange < 0 ? `▼${formatNumber(Math.abs(totalChange), 1)}` : "0,0"} kg
             </span>
-            <p className="text-[10px] text-ink-faint">bu aralıkta</p>
+            <p className="text-[10px] text-ink-faint">{t("weight.inRange")}</p>
           </div>
         )}
       </div>
@@ -196,7 +198,7 @@ export function WeightTrendCard({
       </div>
 
       <div className="mt-2 text-[11px] text-ink-faint">
-        Kayıt olmayan günlerde çizgi kopar — kg takibi girilen günleri gösterir.
+        {t("weight.gapNote")}
       </div>
     </Card>
   );

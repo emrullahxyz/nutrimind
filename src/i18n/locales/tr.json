@@ -20,6 +20,94 @@
     "or": "veya",
     "releaseToRefresh": "Bırak, yenile"
   },
+  "toast": {
+    "region": "Bildirimler"
+  },
+  "error": {
+    "fallbackTitle": "Bir Şeyler Yanlış Gitti",
+    "fallbackBody": "Arayüzde beklenmeyen bir hata oluştu. Lütfen sayfayı yenilemeyi deneyin.",
+    "fallbackReload": "Sayfayı Yenile"
+  },
+  "cards": {
+    "healthScore": "Sağlık skoru",
+    "eatenOverTarget": "Alınan / Hedef",
+    "overKcal": "Aşılan kalori",
+    "targetMet": "Hedef tamamlandı",
+    "remainingKcal": "Kalan kalori",
+    "eatenKcal": "Tüketilen kalori",
+    "showRemaining": "Kalanı göster →",
+    "toggleTitle": "Tıklayarak Tüketilen/Kalan görünümünü değiştir",
+    "toggleAllTitle": "Tıklayarak tüm değerleri dönüştür",
+    "burned": "yakıldı",
+    "addExercise": "Egzersiz Ekle",
+    "limitExceeded": "+{{value}} limit aşıldı!",
+    "atLimit": "limitte",
+    "limitAvailable": "{{value}} kullanılabilir",
+    "targetExceeded": "+{{value}} aşıldı!",
+    "targetMetShort": "✓ Tamamlandı",
+    "targetRemaining": "{{value}} kaldı",
+    "noLimit": "limit girilmemiş",
+    "protein": "Protein",
+    "carbs": "Karb",
+    "fat": "Yağ",
+    "fiber": "Lif",
+    "remainingProtein": "Kalan Protein",
+    "remainingCarbs": "Kalan Karb",
+    "remainingFat": "Kalan Yağ",
+    "remainingFiber": "Kalan Lif",
+    "remainingSugar": "Kalan Şeker",
+    "remainingSodium": "Kalan Sodyum",
+    "eatenSugar": "Tüketilen Şeker",
+    "eatenSodium": "Tüketilen Sodyum"
+  },
+  "day": {
+    "weekdaysShort": ["Pzt", "Sal", "Çar", "Per", "Cum", "Cmt", "Paz"],
+    "streak": "Gün serisi",
+    "mergeDialogTitle": "{{count}} Öğünü Birleştir",
+    "mergeSave": "Birleştir",
+    "mergeNameLabel": "Birleşik öğün adı",
+    "mergeNamePlaceholder": "örn. Kahvaltı",
+    "mergeListHeader": "Birleşecek Öğünler",
+    "emptyLabel": "Bu gün için kayıt yok.",
+    "addMeal": "Öğün ekle"
+  },
+  "weight": {
+    "label": "Kilo",
+    "deltaHint": "(önceki kayda göre)",
+    "trendTitle": "Kilo Trendi",
+    "lastEntry": "Son kayıt:",
+    "inRange": "bu aralıkta",
+    "gapNote": "Kayıt olmayan günlerde çizgi kopar — kg takibi girilen günleri gösterir."
+  },
+  "supplements": {
+    "title": "Takviyeler",
+    "done": "✨ Tamamlandı",
+    "takenCount": "{{taken}}/{{total}} alındı",
+    "subtitle": "Günlük vitamin & gıda takviyeleri",
+    "nameRequired": "Takviye adı zorunludur.",
+    "definedTitle": "Tanımlı Takviyeler ({{count}})",
+    "emptyList": "Henüz tanımlı takviye yok.",
+    "addTitle": "Yeni Takviye Ekle",
+    "nameLabel": "Takviye Adı",
+    "namePlaceholder": "örn. D3-K2 Damla, Omega 3, Magnezyum",
+    "doseLabel": "Doz (opsiyonel)",
+    "dosePlaceholder": "örn. 1000 IU, 500 mg, 1 ölçek"
+  },
+  "offSearch": {
+    "fetch": "Getir",
+    "searching": "Aranıyor…",
+    "cooldown": "Çok hızlı arama yapıldı. Open Food Facts kotası korunuyor — {{seconds}} sn sonra kendiliğinden tekrar denenecek.",
+    "emptyPolish": "Polonya kataloğunda sonuç yok. Ürünü elle girebilir ya da barkodunu deneyebilirsin.",
+    "postFilterNote": "Çok kelimeli aramada Polonya süzgeci sonradan uygulanıyor — liste beklenenden kısa olabilir."
+  },
+  "aliasPicker": {
+    "noResults": "Sonuç bulunamadı"
+  },
+  "dayType": {
+    "changeTitle": "Bu günün tipini değiştir",
+    "backToTemplate": "bu güne özel · şablona dön",
+    "fromTemplate": "haftalık şablondan"
+  },
   "nav": {
     "today": "Bugün",
     "history": "Geçmiş",

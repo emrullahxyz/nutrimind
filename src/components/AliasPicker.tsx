@@ -7,6 +7,7 @@ import { useData } from "../lib/data";
 import { todayISO, weekdayIndex } from "../lib/format";
 import { effectiveProfile } from "../lib/goals";
 import { Label, fieldCls } from "./FormBits";
+import { useTranslation } from "react-i18next";
 
 export interface AliasPickerProps {
   aliases: Alias[];
@@ -23,6 +24,7 @@ export function AliasPicker({
   label = "Hafızadan besin seç",
   mealIndex = 0,
 }: AliasPickerProps) {
+  const { t } = useTranslation();
   const { goals, usageIndex } = useData();
 
   const selectedAlias = aliases.find((a) => a.id === selectedAliasId);
@@ -165,7 +167,7 @@ export function AliasPicker({
           className="absolute z-50 mt-1 max-h-60 w-full overflow-y-auto rounded-chip border border-white/15 bg-popover p-1 shadow-float backdrop-blur-xl"
         >
           {ranked.length === 0 ? (
-            <li className="px-3 py-2 text-xs text-ink-tertiary">Sonuç bulunamadı</li>
+            <li className="px-3 py-2 text-xs text-ink-tertiary">{t("aliasPicker.noResults")}</li>
           ) : (
             ranked.map((alias, idx) => {
               const isSelected = alias.id === selectedAliasId;

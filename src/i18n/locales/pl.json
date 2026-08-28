@@ -20,6 +20,94 @@
     "or": "lub",
     "releaseToRefresh": "Puść, aby odświeżyć"
   },
+  "toast": {
+    "region": "Powiadomienia"
+  },
+  "error": {
+    "fallbackTitle": "Coś poszło nie tak",
+    "fallbackBody": "W interfejsie wystąpił nieoczekiwany błąd. Spróbuj odświeżyć stronę.",
+    "fallbackReload": "Odśwież stronę"
+  },
+  "cards": {
+    "healthScore": "Wynik zdrowia",
+    "eatenOverTarget": "Zjedzone / Cel",
+    "overKcal": "Nadwyżka kalorii",
+    "targetMet": "Cel osiągnięty",
+    "remainingKcal": "Pozostałe kalorie",
+    "eatenKcal": "Zjedzone kalorie",
+    "showRemaining": "Pokaż pozostałe →",
+    "toggleTitle": "Kliknij, aby przełączyć widok zjedzone/pozostałe",
+    "toggleAllTitle": "Kliknij, aby przełączyć wszystkie wartości",
+    "burned": "spalone",
+    "addExercise": "Dodaj ćwiczenie",
+    "limitExceeded": "+{{value}} ponad limit!",
+    "atLimit": "na limicie",
+    "limitAvailable": "dostępne: {{value}}",
+    "targetExceeded": "+{{value}} ponad!",
+    "targetMetShort": "✓ Ukończono",
+    "targetRemaining": "zostało: {{value}}",
+    "noLimit": "brak ustawionego limitu",
+    "protein": "Białko",
+    "carbs": "Węgl.",
+    "fat": "Tłuszcz",
+    "fiber": "Błonnik",
+    "remainingProtein": "Pozostałe białko",
+    "remainingCarbs": "Pozostałe węgl.",
+    "remainingFat": "Pozostały tłuszcz",
+    "remainingFiber": "Pozostały błonnik",
+    "remainingSugar": "Pozostały cukier",
+    "remainingSodium": "Pozostały sód",
+    "eatenSugar": "Zjedzony cukier",
+    "eatenSodium": "Zjedzony sód"
+  },
+  "day": {
+    "weekdaysShort": ["pon", "wt", "śr", "czw", "pt", "sob", "nd"],
+    "streak": "Seria dni",
+    "mergeDialogTitle": "Połącz {{count}} posiłki",
+    "mergeSave": "Połącz",
+    "mergeNameLabel": "Nazwa połączonego posiłku",
+    "mergeNamePlaceholder": "np. Śniadanie",
+    "mergeListHeader": "Posiłki do połączenia",
+    "emptyLabel": "Brak wpisu na ten dzień.",
+    "addMeal": "Dodaj posiłek"
+  },
+  "weight": {
+    "label": "Waga",
+    "deltaHint": "(w porównaniu z poprzednim wpisem)",
+    "trendTitle": "Trend wagi",
+    "lastEntry": "Ostatni wpis:",
+    "inRange": "w tym zakresie",
+    "gapNote": "Linia przerywa się w dni bez wpisu — pokazuje dni, w których śledzono wagę."
+  },
+  "supplements": {
+    "title": "Suplementy",
+    "done": "✨ Ukończono",
+    "takenCount": "przyjęto {{taken}}/{{total}}",
+    "subtitle": "Codzienne witaminy i suplementy diety",
+    "nameRequired": "Nazwa suplementu jest wymagana.",
+    "definedTitle": "Zdefiniowane suplementy ({{count}})",
+    "emptyList": "Nie zdefiniowano jeszcze suplementów.",
+    "addTitle": "Dodaj nowy suplement",
+    "nameLabel": "Nazwa suplementu",
+    "namePlaceholder": "np. krople D3-K2, Omega 3, magnez",
+    "doseLabel": "Dawka (opcjonalnie)",
+    "dosePlaceholder": "np. 1000 IU, 500 mg, 1 miarka"
+  },
+  "offSearch": {
+    "fetch": "Pobierz",
+    "searching": "Szukanie…",
+    "cooldown": "Zbyt wiele żądań. Limit Open Food Facts jest chroniony — automatyczna ponowna próba za {{seconds}}s.",
+    "emptyPolish": "Brak wyników w polskim katalogu. Możesz wprowadzić produkt ręcznie lub spróbować jego kodu kreskowego.",
+    "postFilterNote": "Przy wyszukiwaniu wielowyrazowym filtr polski stosowany jest później — lista może być krótsza niż oczekiwano."
+  },
+  "aliasPicker": {
+    "noResults": "Nie znaleziono wyników"
+  },
+  "dayType": {
+    "changeTitle": "Zmień typ tego dnia",
+    "backToTemplate": "tylko ten dzień · wróć do szablonu",
+    "fromTemplate": "z szablonu tygodniowego"
+  },
   "nav": {
     "today": "Dziś",
     "history": "Historia",

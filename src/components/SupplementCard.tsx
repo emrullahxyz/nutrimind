@@ -5,8 +5,10 @@ import { parseSupplementsConfig } from "../lib/supplements";
 import { PREF } from "../lib/prefs";
 import { usePersistedBool } from "../lib/usePersistedBool";
 import { usePressSpring } from "../hooks/usePressSpring";
+import { useTranslation } from "react-i18next";
 
 export function SupplementCard({ date }: { date: string }) {
+  const { t } = useTranslation();
   const { config, updateConfig } = useData();
   const suppConfig = parseSupplementsConfig(config);
   const [busy, setBusy] = useState(false);
@@ -59,16 +61,16 @@ export function SupplementCard({ date }: { date: string }) {
           </div>
           <div className="min-w-0">
             <div className="flex items-center gap-2 flex-wrap">
-              <h3 className="font-bold text-white text-base">Takviyeler</h3>
+              <h3 className="font-bold text-white text-base">{t("supplements.title")}</h3>
               <span className={`px-2.5 py-0.5 rounded-full text-[11px] font-bold font-mono transition-all ${
                 isAllTaken
                   ? "bg-memory/20 text-memory border border-memory/40"
                   : "bg-white/5 text-ink-secondary"
               }`}>
-                {isAllTaken ? "✨ Tamamlandı" : `${takenCount}/${totalCount} alındı`}
+                {isAllTaken ? t("supplements.done") : t("supplements.takenCount", { taken: takenCount, total: totalCount })}
               </span>
             </div>
-            <p className="text-[11px] text-ink-secondary truncate">Günlük vitamin & gıda takviyeleri</p>
+            <p className="text-[11px] text-ink-secondary truncate">{t("supplements.subtitle")}</p>
           </div>
         </div>
 

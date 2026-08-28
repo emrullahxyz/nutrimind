@@ -200,20 +200,18 @@ export function OffSearch({ onPick }: { onPick: (food: OffFood) => void }) {
           disabled={blocked || offline || barcode.trim() === ""}
           className="flex-none rounded-pill border border-line px-3 py-2 text-sm text-ink-secondary transition hover:text-ink-primary disabled:opacity-40"
         >
-          Getir
+          {t("offSearch.fetch")}
         </button>
       </form>
 
       {/* --- Durum satırı --- */}
-      {status.kind === "loading" && <p className="text-[11px] text-ink-tertiary">Aranıyor…</p>}
+      {status.kind === "loading" && <p className="text-[11px] text-ink-tertiary">{t("offSearch.searching")}</p>}
       {status.kind === "error" && (
         <p className="rounded-chip bg-danger/10 px-3 py-2 text-[11px] text-danger">{status.message}</p>
       )}
       {blocked && (
         <p className="rounded-chip bg-warn/10 px-3 py-2 text-[11px] text-warn">
-          Çok hızlı arama yapıldı. Open Food Facts kotası korunuyor —{" "}
-          <span className="font-mono font-semibold">{cooldownLeft} sn</span> sonra kendiliğinden
-          tekrar denenecek.
+          {t("offSearch.cooldown", { seconds: cooldownLeft })}
         </p>
       )}
       {offline && (
@@ -223,7 +221,7 @@ export function OffSearch({ onPick }: { onPick: (food: OffFood) => void }) {
       )}
       {showEmpty && (
         <p className="text-[11px] text-ink-tertiary">
-          Polonya kataloğunda sonuç yok. Ürünü elle girebilir ya da barkodunu deneyebilirsin.
+          {t("offSearch.emptyPolish")}
         </p>
       )}
 
@@ -232,7 +230,7 @@ export function OffSearch({ onPick }: { onPick: (food: OffFood) => void }) {
         <>
           {scope === "post-filter" && (
             <p className="text-[11px] text-ink-faint">
-              Çok kelimeli aramada Polonya süzgeci sonradan uygulanıyor — liste beklenenden kısa olabilir.
+              {t("offSearch.postFilterNote")}
             </p>
           )}
           <ul className="flex max-h-72 flex-col gap-1.5 overflow-y-auto">

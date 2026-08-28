@@ -1,4 +1,5 @@
 import { Card } from "./Card";
+import { useTranslation } from "react-i18next";
 
 interface SkeletonProps {
   className?: string;
@@ -23,6 +24,7 @@ export function SkeletonCircle({ className = "" }: SkeletonProps) {
  *  KORUNUR, yalnızca içerik satırları sahte (`Skeleton`) — kenarlık/gölge
  *  sıçramasın diye. */
 export function AppSkeleton() {
+  const { t } = useTranslation();
   return (
     <div
       role="status"
@@ -30,7 +32,7 @@ export function AppSkeleton() {
       aria-live="polite"
       className="mx-auto w-full max-w-md px-5 py-6 pad-safe sm:px-6 md:max-w-5xl md:px-10 md:py-10"
     >
-      <span className="sr-only">Yükleniyor…</span>
+      <span className="sr-only">{t("common.loading")}</span>
 
       <div className="mb-5 flex flex-col gap-3 sm:mb-7 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
         <div className="flex items-center justify-between sm:justify-start sm:gap-4">

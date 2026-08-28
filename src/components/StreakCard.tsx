@@ -2,8 +2,7 @@ import { Flame } from "lucide-react";
 import { addDaysISO, todayISO } from "../lib/format";
 import { Card } from "./Card";
 import type { MealItem } from "../types";
-
-const DAY_LETTERS = ["Pzt", "Sal", "Çar", "Per", "Cum", "Cmt", "Paz"];
+import { useTranslation } from "react-i18next";
 
 interface StreakCardProps {
   days: Record<string, MealItem[]>;
@@ -13,6 +12,8 @@ interface StreakCardProps {
 /** Son 7 günün "o gün öğün kaydedildi mi" durumunu gösteren nokta sırası —
  *  CAL AI'nin "day streak" kartındaki hafta şeridiyle aynı ruhta. */
 export function StreakCard({ days, streak }: StreakCardProps) {
+  const { t } = useTranslation();
+  const dayLetters = t("day.weekdaysShort", { returnObjects: true }) as string[];
   const today = todayISO();
   const last7 = Array.from({ length: 7 }, (_, i) => addDaysISO(today, i - 6));
 
@@ -22,7 +23,7 @@ export function StreakCard({ days, streak }: StreakCardProps) {
         <Flame className="h-7 w-7 text-accent" />
         <span className="text-3xl font-extrabold text-white">{streak}</span>
       </div>
-      <span className="text-xs font-semibold uppercase tracking-wider text-ink-secondary">Gün serisi</span>
+      <span className="text-xs font-semibold uppercase tracking-wider text-ink-secondary">{t("day.streak")}</span>
 
       <div className="mt-1 flex gap-2">
         {last7.map((date) => {
@@ -31,7 +32,7 @@ export function StreakCard({ days, streak }: StreakCardProps) {
           return (
             <div key={date} className="flex flex-col items-center gap-1">
               <span className="text-[10px] font-semibold text-ink-tertiary">
-                {DAY_LETTERS[(new Date(date).getUTCDay() + 6) % 7]}
+                {dayLetters[(new Date(date).getUTCDay() + 6) % 7]}
               </span>
               <span
                 className={`flex h-6 w-6 items-center justify-center rounded-full text-xs ${

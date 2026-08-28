@@ -5,6 +5,7 @@ import { nutrientOf } from "../lib/nutrients";
 import type { Nutrition } from "../types";
 import { useAnimatedNumber } from "../hooks/useAnimatedNumber";
 import { DirectionalTextSwap, type SwapMode } from "./DirectionalTextSwap";
+import { useTranslation } from "react-i18next";
 
 function SmallDonut({ pct, color, icon: Icon }: { pct: number; color: string; icon: ComponentType<{ className?: string }> }) {
   const size = 48;
@@ -61,6 +62,7 @@ interface MicroCardGridProps {
 }
 
 function MicroCard({ item, showRatio, onToggleRatio }: { item: MicroItem; showRatio: boolean; onToggleRatio: () => void }) {
+  const { t } = useTranslation();
   const { def, val, goalVal, sublabel, icon, isUndefined } = item;
   const consumed = val ?? 0;
   const target = goalVal;
@@ -89,7 +91,7 @@ function MicroCard({ item, showRatio, onToggleRatio }: { item: MicroItem; showRa
     subText = def.label;
   } else if (showRatio) {
     displayVal = `${formatNumber(animVal, 0)}${def.unit}`;
-    subText = "Alınan / Hedef";
+    subText = t("cards.eatenOverTarget");
   } else {
     displayVal = `${formatNumber(animVal, 0)}${def.unit}`;
     subText = sublabel;
@@ -106,7 +108,7 @@ function MicroCard({ item, showRatio, onToggleRatio }: { item: MicroItem; showRa
     <div
       onClick={onToggleRatio}
       className="flex flex-col justify-between rounded-card border border-calBorder bg-calCard p-2.5 sm:p-4 min-h-[125px] shadow-card backdrop-blur-sm transition-all duration-200 hover:border-white/20 cursor-pointer select-none active:scale-[0.98]"
-      title="Tıklayarak tüm değerleri dönüştür"
+      title={t("cards.toggleAllTitle")}
     >
       <div>
         <DirectionalTextSwap
@@ -150,12 +152,13 @@ function MicroCard({ item, showRatio, onToggleRatio }: { item: MicroItem; showRa
 }
 
 export function MicroCardGrid({ total, goal, showRatio, onToggleRatio }: MicroCardGridProps) {
+  const { t } = useTranslation();
   const items: MicroItem[] = [
     {
       def: nutrientOf("fiber"),
       val: total.fiber,
       goalVal: goal.fiber ?? 0,
-      sublabel: (goal.fiber ?? 0) > 0 ? "Kalan Lif" : "Lif",
+      sublabel: (goal.fiber ?? 0) > 0 ? t("cards.remainingFiber") : t("cards.fiber"),
       icon: Sprout,
       isUndefined: false,
     },
@@ -163,7 +166,7 @@ export function MicroCardGrid({ total, goal, showRatio, onToggleRatio }: MicroCa
       def: nutrientOf("sugar"),
       val: total.sugar,
       goalVal: goal.sugar ?? 0,
-      sublabel: (goal.sugar ?? 0) > 0 ? "Kalan Şeker" : "Tüketilen Şeker",
+      sublabel: (goal.sugar ?? 0) > 0 ? t("cards.remainingSugar") : t("cards.eatenSugar"),
       icon: Candy,
       isUndefined: total.sugar === undefined,
     },
@@ -171,7 +174,7 @@ export function MicroCardGrid({ total, goal, showRatio, onToggleRatio }: MicroCa
       def: nutrientOf("sodium"),
       val: total.sodium,
       goalVal: goal.sodium ?? 0,
-      sublabel: (goal.sodium ?? 0) > 0 ? "Kalan Sodyum" : "Tüketilen Sodyum",
+      sublabel: (goal.sodium ?? 0) > 0 ? t("cards.remainingSodium") : t("cards.eatenSodium"),
       icon: Droplets,
       isUndefined: total.sodium === undefined,
     },
