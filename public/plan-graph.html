@@ -3,211 +3,281 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Nutrimind Play Store Plan İlerlemesi</title>
-    <script src="https://unpkg.com/cytoscape@3.30.2/dist/cytoscape.min.js"></script>
-    <script src="https://unpkg.com/dagre@0.8.5/dist/dagre.min.js"></script>
-    <script src="https://unpkg.com/cytoscape-dagre@2.5.0/cytoscape-dagre.js"></script>
+    <title>Nutrimind — Branch Durumu · feature/play-store-readiness</title>
     <style>
-      :root { color-scheme: dark; }
+      :root {
+        color-scheme: dark;
+        --bg: #08090a;
+        --panel: #14151a;
+        --line: #1c1d22;
+        --ink: #e6e7ea;
+        --ink-dim: #a3a8b0;
+        --ink-tertiary: #6b7280;
+        --green: #22c55e;
+        --amber: #eab308;
+        --red: #ef4444;
+        --sky: #38bdf8;
+        --purple: #a78bfa;
+      }
       * { box-sizing: border-box; }
-      html, body { margin: 0; padding: 0; height: 100%; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; background: #08090a; color: #e6e7ea; }
-      #app { display: grid; grid-template-columns: 240px 1fr 320px; height: 100vh; }
-      @media (max-width: 900px) { #app { grid-template-columns: 1fr; grid-template-rows: auto 1fr auto; } }
-      #left, #right { background: #14151a; border: 1px solid #1c1d22; padding: 16px; overflow-y: auto; }
-      #right { border-left: none; }
-      #left { border-right: none; }
-      h1 { font-size: 18px; margin: 0 0 16px; }
-      h2 { font-size: 13px; text-transform: uppercase; letter-spacing: 0.05em; color: #8a8c93; margin: 16px 0 8px; }
-      .stat { display: flex; justify-content: space-between; padding: 6px 0; font-size: 13px; border-bottom: 1px solid #1c1d22; }
-      .stat:last-child { border-bottom: none; }
-      .dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 8px; vertical-align: middle; }
-      .dot.done { background: #22c55e; }
-      .dot.partial { background: #eab308; }
-      .dot.todo { background: #6b7280; }
-      .dot.blocked { background: #ef4444; }
-      .filter { display: flex; align-items: center; padding: 6px 0; cursor: pointer; user-select: none; }
-      .filter input { margin-right: 8px; }
-      .filter:hover { color: #fff; }
-      .layout-btn { display: block; width: 100%; padding: 8px; margin: 4px 0; background: #1c1d22; color: #e6e7ea; border: 1px solid #2c2d32; border-radius: 6px; cursor: pointer; font-size: 13px; }
-      .layout-btn:hover { background: #2c2d32; }
-      .layout-btn.active { background: #22c55e; color: #08090a; border-color: #22c55e; }
-      #cy { width: 100%; height: 100%; background: #0a0b0f; }
-      .detail { font-size: 14px; }
-      .detail .label { color: #8a8c93; font-size: 12px; text-transform: uppercase; letter-spacing: 0.05em; margin-top: 12px; }
-      .detail .value { margin-top: 4px; }
-      .detail code { background: #1c1d22; padding: 2px 6px; border-radius: 4px; font-size: 12px; color: #facc15; }
-      .detail .files { list-style: none; padding: 0; margin: 4px 0 0; }
-      .detail .files li { font-family: ui-monospace, monospace; font-size: 12px; padding: 2px 0; color: #a3a8b0; }
-      .detail .notes { background: #1c1d22; padding: 8px; border-radius: 6px; margin-top: 4px; font-size: 13px; }
-      .empty { color: #6b7280; font-size: 13px; font-style: italic; }
-      .legend { display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: 12px; font-size: 12px; }
+      html, body {
+        margin: 0; padding: 0;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        background: var(--bg); color: var(--ink);
+        line-height: 1.5;
+      }
+      .wrap { max-width: 960px; margin: 0 auto; padding: 32px 20px 64px; }
+
+      header { margin-bottom: 28px; }
+      header h1 { font-size: 22px; margin: 0 0 6px; }
+      header p { color: var(--ink-dim); margin: 0; font-size: 14px; }
+      .meta { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+      .chip {
+        display: inline-flex; align-items: center; gap: 6px;
+        font-size: 12px; padding: 4px 10px; border-radius: 999px;
+        border: 1px solid var(--line); background: var(--panel); color: var(--ink-dim);
+      }
+      .chip b { color: var(--ink); font-weight: 600; }
+
+      .section { margin-top: 36px; }
+      .section-head { display: flex; align-items: baseline; gap: 12px; margin-bottom: 14px; }
+      .section-head h2 { font-size: 16px; margin: 0; }
+      .section-head .tag {
+        font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em;
+        padding: 3px 8px; border-radius: 6px;
+      }
+      .tag.committed { background: rgba(34,197,94,0.15); color: var(--green); }
+      .tag.wip       { background: rgba(56,189,248,0.15); color: var(--sky); }
+      .tag.you       { background: rgba(234,179,8,0.15); color: var(--amber); }
+      .tag.todo      { background: rgba(107,114,128,0.15); color: var(--ink-dim); }
+
+      .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 12px; }
+
+      .card {
+        background: var(--panel); border: 1px solid var(--line);
+        border-radius: 10px; padding: 14px 16px;
+        display: flex; flex-direction: column; gap: 8px;
+      }
+      .card .top { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }
+      .card h3 { font-size: 14px; margin: 0; font-weight: 600; }
+      .card p { font-size: 12.5px; color: var(--ink-dim); margin: 0; }
+      .card .foot { display: flex; align-items: center; gap: 8px; margin-top: auto; padding-top: 4px; }
+
+      .badge {
+        font-size: 10.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em;
+        padding: 2px 8px; border-radius: 999px; white-space: nowrap;
+      }
+      .badge.done   { background: rgba(34,197,94,0.18); color: var(--green); }
+      .badge.partial{ background: rgba(234,179,8,0.18); color: var(--amber); }
+      .badge.todo   { background: rgba(107,114,128,0.18); color: var(--ink-dim); }
+      .badge.you    { background: rgba(234,179,8,0.18); color: var(--amber); }
+      .badge.wip    { background: rgba(56,189,248,0.18); color: var(--sky); }
+
+      .commit { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 11px; color: var(--ink-tertiary); }
+      .commit b { color: #facc15; font-weight: 600; }
+
+      .callout {
+        border: 1px solid rgba(234,179,8,0.35); background: rgba(234,179,8,0.07);
+        border-radius: 10px; padding: 14px 16px; margin-top: 16px;
+      }
+      .callout h4 { margin: 0 0 8px; font-size: 13px; color: var(--amber); }
+      .callout ol { margin: 0; padding-left: 20px; }
+      .callout li { font-size: 12.5px; color: var(--ink-dim); margin: 4px 0; }
+      .callout code {
+        background: rgba(250,204,21,0.1); color: #facc15;
+        padding: 1px 5px; border-radius: 4px; font-size: 11px;
+      }
     </style>
   </head>
   <body>
-    <div id="app">
-      <aside id="left">
-        <h1>📊 Plan İlerlemesi</h1>
-        <div id="stats"></div>
-        <h2>Filtre (Durum)</h2>
-        <div id="filters"></div>
-        <h2>Layout</h2>
-        <button class="layout-btn active" data-layout="dagre">Dagre (akış)</button>
-        <button class="layout-btn" data-layout="cose">COSE (kuvvet)</button>
-        <button class="layout-btn" data-layout="breadthfirst">Breadth-first</button>
-        <button class="layout-btn" data-layout="concentric">Concentric</button>
-      </aside>
-      <main id="cy"></main>
-      <aside id="right">
-        <h1>📋 Detay</h1>
-        <div id="detail" class="empty">Bir node tıkla.</div>
-      </aside>
+    <div class="wrap">
+      <header>
+        <h1>📊 Nutrimind — Branch Durumu</h1>
+        <p>Bu sayfa, <code>feature/play-store-readiness</code> dalındaki işlerin tek bakışta özetidir: commit'lenmiş olanlar, çalışma ağacında bekleyenler ve kalan yapılacaklar.</p>
+        <div class="meta">
+          <span class="chip">Dal: <b>feature/play-store-readiness</b></span>
+          <span class="chip">Commit'li iş: <b>16</b></span>
+          <span class="chip">Çalışma ağacında: <b>Offline sync (commit'siz)</b></span>
+          <span class="chip">Test: <b>645+ geçiyor · typecheck 0 · build ✓</b></span>
+        </div>
+      </header>
+
+      <!-- ══════════════════ 1) PLAY STORE (commit'li) ══════════════════ -->
+      <section class="section">
+        <div class="section-head">
+          <h2>1 · Play Store Hazırlığı</h2>
+          <span class="tag committed">Commit'li · hepsi done</span>
+        </div>
+        <div class="grid">
+
+          <div class="card">
+            <div class="top"><h3>Privacy policy TR/EN/PL + SEO</h3><span class="badge done">Tamam</span></div>
+            <p>Gizlilik politikası üç dilde · robots.txt, sitemap, CHANGELOG</p>
+            <div class="foot"><span class="commit"><b>3d7db15</b> · <b>1d49979</b></span></div>
+          </div>
+
+          <div class="card">
+            <div class="top"><h3>Hesap silme + veri export API</h3><span class="badge done">Tamam</span></div>
+            <p>Atomik transaction · JSON export · ayarlar ekranından</p>
+            <div class="foot"><span class="commit"><b>9dbc50e</b> · <b>369361b</b></span></div>
+          </div>
+
+          <div class="card">
+            <div class="top"><h3>i18n altyapısı + sayfa çevirileri</h3><span class="badge done">Tamam</span></div>
+            <p>SettingsSheet, MealForm, NutritionSheet, Onboarding, ScanSheet — EN/TR/PL paralel</p>
+            <div class="foot"><span class="commit"><b>3a36fd3</b> → <b>de0f88b</b> · <b>d6b2b5c</b> · <b>d4e7562</b> · <b>c6c3738</b> · <b>becf4f5</b></span></div>
+          </div>
+
+          <div class="card">
+            <div class="top"><h3>A11y iyileştirmeleri</h3><span class="badge done">Tamam</span></div>
+            <p>&lt;360px uyum · modal focus trap · label–id eşleşmesi · role=dialog / aria-modal</p>
+            <div class="foot"><span class="commit"><b>21eac79</b> · <b>816e91b</b> · <b>55f76e3</b></span></div>
+          </div>
+
+          <div class="card">
+            <div class="top"><h3>Sentry crash raporlama</h3><span class="badge done">Tamam</span></div>
+            <p>@sentry/react · ErrorBoundary · VITE_SENTRY_DSN env (boşsa noop)</p>
+            <div class="foot"><span class="commit"><b>fe5c9c8</b></span></div>
+          </div>
+
+          <div class="card">
+            <div class="top"><h3>data.db yedekleme (cron)</h3><span class="badge done">Tamam</span></div>
+            <p>server/backup.sh · sqlite3 .backup atomik snapshot · 30 gün saklama</p>
+            <div class="foot"><span class="commit"><b>f4a7b2a</b></span></div>
+          </div>
+
+          <div class="card">
+            <div class="top"><h3>Capacitor Android wrapper + logo</h3><span class="badge partial">Kısmen</span></div>
+            <p>Wrapper ve logo WebP optimizasyonu tamam (%97 küçülme); imzalı AAB + Play Console kullanıcıda.</p>
+            <div class="foot"><span class="commit"><b>b2ff68a</b> · <b>56f1b8c</b></span></div>
+          </div>
+
+          <div class="card">
+            <div class="top"><h3>AI onay modalı + OFF UA anonim</h3><span class="badge done">Tamam</span></div>
+            <p>Fotoğraf gönderimi öncesi açık rıza · Open Food Facts istek kimliği anonimleştirildi</p>
+            <div class="foot"><span class="commit"><b>2338977</b> · <b>87f35f1</b> · <b>3cd16ac</b></span></div>
+          </div>
+
+          <div class="card">
+            <div class="top"><h3>İlk offline cache (okuma yönlü)</h3><span class="badge done">Tamam</span></div>
+            <p>IndexedDB snapshot cache — çevrimdışında son veriyi gösterir (yazma yok).</p>
+            <div class="foot"><span class="commit"><b>7e38a2a</b></span></div>
+          </div>
+
+        </div>
+
+        <div class="callout">
+          <h4>👤 Senin yapman gereken tek kalan adım — Play Store yayını</h4>
+          <ol>
+            <li><b>Keystore oluştur</b> — <code>keytool -genkey -v -keystore nutrimind-release.jks -keyalg RSA -keysize 2048 -validity 10000 -alias nutrimind</code>. Şifreleri güvenli yerde sakla, dosyayı commitleme.</li>
+            <li><b>SHA-256 fingerprint'ini al</b> — <code>keytool -list -v -keystore nutrimind-release.jks | grep SHA256</code></li>
+            <li><b>assetlinks.json'a gerçek fingerprint'i yaz</b> — <code>public/.well-known/assetlinks.json</code> içindeki yer tutucuyu değiştir.</li>
+            <li><b>İmzalı AAB üret</b> — <code>cd android && ./gradlew bundleRelease</code> → Play Console'a yükle (Internal Testing → Beta → Production).</li>
+            <li><b>Play Console formları</b> — Data safety, IARC içerik derecelendirmesi, gizlilik politikası URL'si (<code>https://nutri.emrullah.xyz/privacy.html</code>).</li>
+          </ol>
+        </div>
+      </section>
+
+      <!-- ══════════════════ 2) OFFLINE SYNC — TAMAMLANAN ══════════════════ -->
+      <section class="section">
+        <div class="section-head">
+          <h2>2 · Offline Senkronizasyon — Yapıldı</h2>
+          <span class="tag wip">Çalışma ağacında · commit'siz</span>
+        </div>
+        <p style="margin-top:-6px; font-size:13px; color:var(--ink-dim);">
+          Kullanıcı onaylı architectural iş. Çevrimdışıyken öğün ve besin-hafıza (alias) değişiklikleri
+          kuyruğa alınır; bağlantı gelince güvenle senkronize edilir. Değişiklikler henüz commit'lenmedi.
+        </p>
+        <div class="grid">
+
+          <div class="card">
+            <div class="top"><h3>IndexedDB şema v2 + operations store</h3><span class="badge done">Tamam</span></div>
+            <p>snapshots + operations · atomik enqueue / list / update / remove · metadata</p>
+            <div class="foot"><span class="commit"><b>offlineCache.ts</b></span></div>
+          </div>
+
+          <div class="card">
+            <div class="top"><h3>Pure projection katmanı</h3><span class="badge done">Tamam</span></div>
+            <p>server snapshot + pending operasyonlar · gün/alias CRUD projection · deepEqual · conflict testleri</p>
+            <div class="foot"><span class="commit"><b>offlineProjection.ts</b></span></div>
+          </div>
+
+          <div class="card">
+            <div class="top"><h3>Conflict korumalı sync motoru</h3><span class="badge done">Tamam</span></div>
+            <p>Taze /api/data çekilir, her operasyon base ile yalnızca İLGİLİ kaynakta karşılaştırılır · fark varsa conflict · tekil lock · asla reject etmez</p>
+            <div class="foot"><span class="commit"><b>offlineSync.ts</b></span></div>
+          </div>
+
+          <div class="card">
+            <div class="top"><h3>Alias local-id eşlemesi</h3><span class="badge done">Tamam</span></div>
+            <p>Yerel <code>local:…</code> alias'lar gerçek sunucu id'sine çevrilir; ikinci düzenleme yeni alias oluşturmaz, gün kayıtlarındaki aliasId gönderim öncesi yeniden yazılır</p>
+            <div class="foot"><span class="commit"><b>offlineSync.ts</b></span></div>
+          </div>
+
+          <div class="card">
+            <div class="top"><h3>Hata sınıflandırma + geri çekilme</h3><span class="badge done">Tamam</span></div>
+            <p>Ağ → kuyrukta kal + 1s→2s→5s→15s→30s→60s üstel geri çekilme · 401 → durur (auth) · 4xx → failed · 5xx → geri dener</p>
+            <div class="foot"><span class="commit"><b>offlineSync.ts</b></span></div>
+          </div>
+
+          <div class="card">
+            <div class="top"><h3>SyncStatus arayüzü</h3><span class="badge done">Tamam</span></div>
+            <p>“Senkronize ediliyor…”, “X değişiklik bekliyor” · detay listesi · failed için Tekrar Dene / İptal · conflict için Cihaz / Sunucu seçimi</p>
+            <div class="foot"><span class="commit"><b>SyncStatus.tsx</b></span></div>
+          </div>
+
+          <div class="card">
+            <div class="top"><h3>DataProvider bağlantısı</h3><span class="badge done">Tamam</span></div>
+            <p>server (doğrulanmış) + ops ayrımı · görünen veri her zaman projeksiyon · offline yazma · açılış/online event/pil tetikleyici · i18n en/tr/pl</p>
+            <div class="foot"><span class="commit"><b>data.tsx</b> · <b>api.ts</b></span></div>
+          </div>
+
+        </div>
+      </section>
+
+      <!-- ══════════════════ 3) OFFLINE SYNC — KALAN ══════════════════ -->
+      <section class="section">
+        <div class="section-head">
+          <h2>3 · Offline Sync — Kalan Yapılacaklar</h2>
+          <span class="tag wip">Kod tamam · smoke kullanıcıda</span>
+        </div>
+        <div class="grid">
+
+          <div class="card">
+            <div class="top"><h3>AI / kamera / OFF offline kilidi</h3><span class="badge done">Tamam</span></div>
+            <p>AI analiz, kamera tabanlı tanıma ve Open Food Facts ağ gerektirir — offline'da butonlar devre dışı bırakılıp açıklayıcı mesaj gösterilmeli. Uygulandı (<code>offline</code> context bayrağı + <code>netStatus</code> savunma guard'ı).</p>
+          </div>
+
+          <div class="card">
+            <div class="top"><h3>Server-side revision + 409</h3><span class="badge todo">Ayrı onay</span></div>
+            <p>Şu an conflict denetimi client'ta. Tam compare-and-swap garantisi için <code>server/index.js</code>'de revision + 409 ister — donmuş dosya, ayrı ve açık backend onayı gerektirir.</p>
+          </div>
+
+          <div class="card">
+            <div class="top"><h3>Hedefler/config kilidinin gözden geçirilmesi</h3><span class="badge done">Tamam</span></div>
+            <p>Hedef ve config yazmaları offline'da kapalı — denetim yapıldı; tek doğrudan kaçış yolu olan yedek geri yükleme (<code>executeRestore</code>) ExportModal'da kilitlendi.</p>
+          </div>
+
+          <div class="card">
+            <div class="top"><h3>Uç senaryo testleri</h3><span class="badge done">Tamam</span></div>
+            <p>Reload'da kuyruk devamlılığı (smoke adım 7) · Web Locks çift sekme · StrictMode çift-sync · işlem ortasında ağ kesilmesi (otomatik test)</p>
+          </div>
+
+          <div class="card">
+            <div class="top"><h3>Gerçek cihaz offline smoke testi</h3><span class="badge partial">Checklist hazır</span></div>
+            <p>Android / PWA üzerinde uçuş modu + öğün/alias girişi + bağlanınca otomatik senkron doğrulaması — takip için <code>docs/operations/offline.md</code></p>
+          </div>
+
+        </div>
+      </section>
+
+      <section class="section" style="margin-top:28px;">
+        <div class="card" style="border-color: rgba(56,189,248,0.25);">
+          <h3 style="font-size:13px;">💡 Önerilen sıra</h3>
+          <p>Offline sync kodu tamamlandı (bölüm 2-3); kalan tek adım bölüm 1'deki senin Play Store adımların ve gerçek cihaz smoke testi (docs/operations/offline.md).</p>
+        </div>
+      </section>
+
     </div>
-    <script>
-      const NODES = [
-        { id: "f0", label: "Faz 0: Tarama + baseline", status: "done", commit: "e479510", files: [".gitignore"], notes: "621/621 test, build OK" },
-        { id: "f1-1", label: "Privacy policy (TR/EN/PL)", status: "done", commit: "3d7db15", files: ["public/privacy.html", "public/policies/en.html", "public/policies/pl.html"] },
-        { id: "f1-3", label: "Hesap silme + export API", status: "done", commit: "9dbc50e", files: ["server/authRoutes.js", "server/authRoutes.test.js"], notes: "7 yeni test" },
-        { id: "f1-5", label: "Settings UI (sil + indir)", status: "done", commit: "369361b", files: ["src/components/SettingsSheet.tsx"] },
-        { id: "f1-7", label: "SEO + CHANGELOG", status: "done", commit: "1d49979", files: ["index.html", "public/robots.txt", "public/sitemap.xml", "CHANGELOG.md"] },
-        { id: "f1-11", label: "AI fotoğraf onay modalı", status: "done", commit: "2338977", files: ["src/components/ScanSheet.tsx"] },
-        { id: "ai-helpers", label: "ai.ts consent helpers", status: "done", commit: "87f35f1", files: ["src/lib/ai.ts"] },
-        { id: "f2", label: "Offline cache (IndexedDB)", status: "done", commit: "7e38a2a", files: ["src/lib/offlineCache.ts", "src/lib/data.tsx"], notes: "IDB overkill, localStorage yeterli olurdu" },
-        { id: "f3-ux", label: "UX (boş state + kamera)", status: "done", commit: "e08af84", files: ["src/pages/{DailyPage,AliasPage,HistoryPage}.tsx", "src/components/ScanSheet.tsx"] },
-        { id: "f3-asset", label: "Logo WebP optimizasyonu", status: "done", commit: "56f1b8c", files: ["public/NutriMind_Logo.webp", "src/App.tsx", "src/components/AuthScreen.tsx"], notes: "1.6M → 37.7K (%97)" },
-        { id: "f4-off", label: "OFF UA anonimleştirme", status: "done", commit: "3cd16ac", files: ["server/offUA.js", "server/index.js"], notes: "Kullanıcı manuel değiştirdi" },
-        { id: "f5-i18n-base", label: "i18n altyapısı + 2 örnek", status: "done", commit: "3a36fd3", files: ["src/i18n/", "src/main.tsx"] },
-        { id: "f5-i18n-pages", label: "i18n 6 sayfa daha", status: "done", commit: "3bb617d", files: ["ScanSheet, AuthScreen, History, Alias, Daily, Onboarding"], notes: "SettingsSheet + MealForm + NutritionSheet kaldı" },
-        { id: "f6", label: "A11y (progressbar + nav)", status: "partial", commit: "1783703", notes: "< 360px layout, focus trap, label-for-id kaldı" },
-        { id: "f7-cap", label: "Capacitor + android", status: "partial", commit: "b2ff68a", notes: "Keystore + signed AAB + Play Console yükleme kullanıcıda" },
-        { id: "f8", label: "AGENTS.md güncelleme", status: "done", commit: "50b876e", files: ["AGENTS.md"] },
-        { id: "t17", label: "SettingsSheet i18n", status: "done", commit: "de0f88b", notes: "100 yeni JSON anahtar, 143 t() çağrı sitesi, 621/621 test" },
-        { id: "t18", label: "MealForm i18n", status: "done", commit: "d6b2b5c", notes: "45 yeni meal.* anahtar, 36 t() çağrı" },
-        { id: "t19", label: "NutritionSheet i18n", status: "done", commit: "d4e7562", notes: "20 nutrition.* + 1 meal. anahtar, ItemEditFields + FormBits de çevrildi" },
-        { id: "t20", label: "a11y kalan (360px, focus trap, label)", status: "done", commit: "21eac79", notes: "OnboardingModal w-20/w-24, Modal Tab trap, FormBits useId label-for-id" },
-        { id: "t21", label: "Capacitor AAB + Play Console", status: "partial", notes: "KULLANICI YAPACAK: keystore + signed AAB + Play Console yükleme. Plan hazır." },
-        { id: "t22", label: "Sentry crash raporlama", status: "done", commit: "fe5c9c8", notes: "@sentry/react@10.71, init + ErrorBoundary, VITE_SENTRY_DSN env" },
-        { id: "t23", label: "data.db yedekleme (cron)", status: "done", commit: "f4a7b2a", notes: "server/backup.sh + docs/operations/backup.md, sqlite3 .backup atomik snapshot" },
-      ];
-      const EDGES = [
-        ["f0","f1-1"], ["f1-1","f1-3"], ["f1-3","f1-5"],
-        ["f0","f1-7"],
-        ["f1-3","ai-helpers"], ["ai-helpers","f1-11"],
-        ["f0","f2"], ["f0","f3-ux"], ["f0","f3-asset"], ["f0","f4-off"],
-        ["f0","f5-i18n-base"], ["f5-i18n-base","f5-i18n-pages"],
-        ["f0","f6"], ["f0","f7-cap"],
-        ["f1-5","f8"], ["f1-11","f8"], ["f2","f8"], ["f5-i18n-base","f8"],
-        ["f5-i18n-pages","t17"], ["t17","t18"], ["t18","t19"],
-        ["f6","t20"],
-        ["f7-cap","t21"],
-        ["f8","t22"], ["f8","t23"],
-      ];
-      const STATUS_COLOR = { done: "#22c55e", partial: "#eab308", todo: "#6b7280", blocked: "#ef4444" };
-      const STATUS_LABEL = { done: "Tamam", partial: "Kısmen", todo: "Yapılmadı", blocked: "Bloklu" };
-
-      // Stats
-      const counts = { done: 0, partial: 0, todo: 0, blocked: 0 };
-      NODES.forEach(n => counts[n.status]++);
-      const statsEl = document.getElementById("stats");
-      statsEl.innerHTML = `<div class="legend">${Object.keys(STATUS_LABEL).map(s => `<span><span class="dot ${s}"></span>${STATUS_LABEL[s]}: ${counts[s]}</span>`).join("")}</div>` +
-        `<div class="stat"><span>Toplam</span><strong>${NODES.length}</strong></div>` +
-        `<div class="stat"><span>İlerleme</span><strong>${Math.round((counts.done + counts.partial * 0.5) / NODES.length * 100)}%</strong></div>`;
-
-      // Filters
-      const filterState = { done: true, partial: true, todo: true, blocked: true };
-      const filtersEl = document.getElementById("filters");
-      filtersEl.innerHTML = Object.keys(STATUS_LABEL).map(s =>
-        `<label class="filter"><input type="checkbox" data-status="${s}" ${filterState[s] ? "checked" : ""}><span class="dot ${s}"></span>${STATUS_LABEL[s]}</label>`
-      ).join("");
-      filtersEl.addEventListener("change", e => {
-        const s = e.target.dataset.status;
-        filterState[s] = e.target.checked;
-        cy.nodes().forEach(n => { n.style("display", filterState[n.data("status")] ? "element" : "none"); });
-      });
-
-      // Cytoscape
-      cytoscape.use(cytoscapeDagre);
-      const cy = cytoscape({
-        container: document.getElementById("cy"),
-        elements: [
-          ...NODES.map(n => ({ data: { id: n.id, label: n.label, status: n.status, commit: n.commit, files: n.files || [], notes: n.notes || "" } })),
-          ...EDGES.map(([s, t]) => ({ data: { id: `${s}-${t}`, source: s, target: t } })),
-        ],
-        style: [
-          { selector: "node", style: {
-            "background-color": "data(status)" ? null : "#6b7280",
-            "background-color": ele => STATUS_COLOR[ele.data("status")] || "#6b7280",
-            "label": "data(label)",
-            "color": "#e6e7ea",
-            "font-size": "11px",
-            "text-valign": "center",
-            "text-halign": "center",
-            "text-wrap": "wrap",
-            "text-max-width": "120px",
-            "width": "140px",
-            "height": "50px",
-            "border-width": 2,
-            "border-color": "#1c1d22",
-            "shape": "round-rectangle",
-          } },
-          { selector: "edge", style: {
-            "curve-style": "bezier",
-            "target-arrow-shape": "triangle",
-            "line-color": "#3c3d42",
-            "target-arrow-color": "#3c3d42",
-            "width": 1.5,
-          } },
-          { selector: "node:selected", style: { "border-color": "#22c55e", "border-width": 4 } },
-          { selector: "node.highlighted", style: { "border-color": "#facc15", "border-width": 3 } },
-          { selector: "node.dimmed", style: { "opacity": 0.25 } },
-          { selector: "edge.highlighted", style: { "line-color": "#facc15", "target-arrow-color": "#facc15", "width": 3 } },
-          { selector: "edge.dimmed", style: { "opacity": 0.15 } },
-        ],
-        layout: { name: "dagre", rankDir: "LR", nodeSep: 30, rankSep: 60, padding: 20 },
-        wheelSensitivity: 0.2,
-      });
-
-      // Layout buttons
-      document.querySelectorAll(".layout-btn").forEach(btn => {
-        btn.addEventListener("click", () => {
-          document.querySelectorAll(".layout-btn").forEach(b => b.classList.remove("active"));
-          btn.classList.add("active");
-          const name = btn.dataset.layout;
-          const opts = { name, padding: 20, animate: true };
-          if (name === "dagre") { opts.rankDir = "LR"; opts.nodeSep = 30; opts.rankSep = 60; }
-          if (name === "concentric") { opts.minNodeSpacing = 40; }
-          cy.layout(opts).run();
-        });
-      });
-
-      // Detail panel
-      const detailEl = document.getElementById("detail");
-      function showDetail(node) {
-        if (!node) { detailEl.className = "empty"; detailEl.textContent = "Bir node tıkla."; return; }
-        const files = (node.data("files") || []).map(f => `<li>${f}</li>`).join("");
-        detailEl.className = "detail";
-        detailEl.innerHTML = `
-          <div class="value"><strong>${node.data("label")}</strong></div>
-          <div class="label">Durum</div>
-          <div class="value"><span class="dot ${node.data("status")}"></span>${STATUS_LABEL[node.data("status")]}</div>
-          <div class="label">Commit</div>
-          <div class="value"><code>${node.data("commit") || "—"}</code></div>
-          ${files ? `<div class="label">Dosyalar</div><ul class="files">${files}</ul>` : ""}
-          ${node.data("notes") ? `<div class="label">Notlar</div><div class="notes">${node.data("notes")}</div>` : ""}
-        `;
-      }
-      cy.on("tap", "node", evt => {
-        cy.elements().removeClass("highlighted dimmed");
-        const n = evt.target;
-        n.closedNeighborhood().addClass("highlighted");
-        cy.elements().not(n.closedNeighborhood()).addClass("dimmed");
-        showDetail(n);
-      });
-      cy.on("tap", evt => {
-        if (evt.target === cy) {
-          cy.elements().removeClass("highlighted dimmed");
-          showDetail(null);
-        }
-      });
-    </script>
   </body>
 </html>
