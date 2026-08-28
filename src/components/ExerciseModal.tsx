@@ -7,6 +7,7 @@ import { useModalHistory } from "../hooks/useModalHistory";
 import { useModalExit } from "../hooks/useModalExit";
 import { haptic } from "../lib/haptics";
 import { useTheme } from "../lib/theme";
+import { useTranslation } from "react-i18next";
 
 import { EXERCISE_CONFIG_KEY, exercisesFor, parseExerciseEntries, withExercises } from "../lib/exercise";
 
@@ -17,24 +18,26 @@ interface Props {
 }
 
 interface Preset {
-  name: string;
+  nameKey: string;
   category: ExerciseCategory;
   durationMinutes: number;
   caloriesBurned: number;
   icon: typeof Dumbbell;
 }
 
+// ponytail: preset adları config'e kaydedilir — dil-bağımlı depolama v1 için kabul.
 const PRESETS: Preset[] = [
-  { name: "Koşu / Jogging", category: "run", durationMinutes: 30, caloriesBurned: 300, icon: Activity },
-  { name: "Ağırlık Antrenmanı", category: "weights", durationMinutes: 45, caloriesBurned: 250, icon: Dumbbell },
-  { name: "Tempolu Yürüyüş", category: "walk", durationMinutes: 30, caloriesBurned: 130, icon: Footprints },
-  { name: "Yüzme", category: "swim", durationMinutes: 30, caloriesBurned: 280, icon: Waves },
-  { name: "Bisiklet Surme", category: "cycle", durationMinutes: 30, caloriesBurned: 220, icon: Bike },
+  { nameKey: "exercise.presetRun", category: "run", durationMinutes: 30, caloriesBurned: 300, icon: Activity },
+  { nameKey: "exercise.presetWeights", category: "weights", durationMinutes: 45, caloriesBurned: 250, icon: Dumbbell },
+  { nameKey: "exercise.presetWalk", category: "walk", durationMinutes: 30, caloriesBurned: 130, icon: Footprints },
+  { nameKey: "exercise.presetSwim", category: "swim", durationMinutes: 30, caloriesBurned: 280, icon: Waves },
+  { nameKey: "exercise.presetCycle", category: "cycle", durationMinutes: 30, caloriesBurned: 220, icon: Bike },
 ];
 
 export function ExerciseModal({ isOpen, onClose, date }: Props) {
   // Lock background body scroll when modal is open
   useBodyScrollLock(isOpen);
+  const { t } = useTranslation();
   const { config, updateConfig } = useData();
 
   // Tek `exercise` anahtarı + gün bazlı entries — bkz. lib/exercise.ts'teki not.
@@ -117,8 +120,8 @@ export function ExerciseModal({ isOpen, onClose, date }: Props) {
               <Flame className="w-5 h-5 animate-pulse" />
             </div>
             <div>
-              <h2 className="text-lg font-bold">Egzersiz & Aktivite Günlüğü</h2>
-              <p className="text-xs text-white/50">{date} • Toplam {totalBurned} kcal yakıldı</p>
+              <h2 className="text-lg font-bold">{t("exercise.title")}</h2>
+              <p className="text-xs text-white/50">{date} • {t("exercise.totalBurned", { kcal: totalBurned })}</p>
             </div>
           </div>
           <button
@@ -137,19 +140,19 @@ export function ExerciseModal({ isOpen, onClose, date }: Props) {
           {/* Quick Presets */}
           <div>
             <span className="text-xs font-semibold uppercase tracking-wider text-white/40 mb-2.5 block">
-              Hızlı Hazır Şablonlar
+              {t("exercise.quickPresets")}
             </span>
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
               {PRESETS.map((p) => {
                 const Icon = p.icon;
                 return (
                   <button
-                    key={p.name}
+                    key={p.nameKey}
                     disabled={busy}
                     onClick={() => {
                       if (theme === "glass") haptic("light");
                       handleSaveExercise({
-                        name: p.name,
+                        name: t(p.nameKey),
                         category: p.category,
                         durationMinutes: p.durationMinutes,
                         caloriesBurned: p.caloriesBurned,
@@ -161,7 +164,7 @@ export function ExerciseModal({ isOpen, onClose, date }: Props) {
                       <Icon className="w-4 h-4" />
                     </div>
                     <div className="min-w-0">
-                      <div className="text-xs font-semibold truncate group-hover:text-orange-300">{p.name}</div>
+                      <div className="text-xs font-semibold truncate group-hover:text-orange-300">{t(p.nameKey)}</div>
                       <div className="text-[10px] text-white/40">{p.durationMinutes}dk • {p.caloriesBurned} kcal</div>
                     </div>
                   </button>
@@ -174,14 +177,14 @@ export function ExerciseModal({ isOpen, onClose, date }: Props) {
           <form onSubmit={handleCustomSubmit} className="p-4 rounded-2xl bg-white/[0.03] border border-white/5 space-y-3">
             <div className="flex items-center justify-between">
               <span className="text-xs font-semibold text-white/80 flex items-center gap-1.5">
-                <Sparkles className="w-3.5 h-3.5 text-accent" /> Özel Egzersiz Ekle
+                <Sparkles className="w-3.5 h-3.5 text-accent" /> {t("exercise.customTitle")}
               </span>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
               <input
                 type="text"
-                placeholder="Egzersiz adı (ör. Futbol Maçı)"
+                placeholder={t("exercise.namePlaceholder")}
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 className="w-full px-3 py-2 rounded-xl bg-black/30 border border-white/10 text-xs text-white placeholder-white/30 focus:outline-none focus:border-accent"
@@ -191,18 +194,26 @@ export function ExerciseModal({ isOpen, onClose, date }: Props) {
                 onChange={(e) => setCategory(e.target.value as ExerciseCategory)}
                 className="w-full px-3 py-2 rounded-xl bg-panel-alt border border-white/10 text-xs text-white focus:outline-none focus:border-accent"
               >
-                <option value="run">Koşu</option>
-                <option value="weights">Ağırlık</option>
-                <option value="walk">Yürüyüş</option>
-                <option value="swim">Yüzme</option>
-                <option value="cycle">Bisiklet</option>
-                <option value="custom">Özel</option>
+                {(
+                  [
+                    ["run", "categoryRun"],
+                    ["weights", "categoryWeights"],
+                    ["walk", "categoryWalk"],
+                    ["swim", "categorySwim"],
+                    ["cycle", "categoryCycle"],
+                    ["custom", "categoryCustom"],
+                  ] as const
+                ).map(([value, key]) => (
+                  <option key={value} value={value}>
+                    {t(`exercise.${key}`)}
+                  </option>
+                ))}
               </select>
             </div>
 
             <div className="grid grid-cols-2 gap-2">
               <div>
-                <label className="text-[10px] text-white/40 mb-1 block">Süre (Dakika)</label>
+                <label className="text-[10px] text-white/40 mb-1 block">{t("exercise.durationLabel")}</label>
                 <input
                   type="number"
                   min="1"
@@ -212,7 +223,7 @@ export function ExerciseModal({ isOpen, onClose, date }: Props) {
                 />
               </div>
               <div>
-                <label className="text-[10px] text-white/40 mb-1 block">Yakılan Kalori (kcal)</label>
+                <label className="text-[10px] text-white/40 mb-1 block">{t("exercise.caloriesLabel")}</label>
                 <input
                   type="number"
                   min="1"
@@ -228,19 +239,19 @@ export function ExerciseModal({ isOpen, onClose, date }: Props) {
               disabled={!name.trim() || calories <= 0 || busy}
               className="w-full py-2.5 rounded-xl bg-orange-500 hover:bg-orange-600 disabled:opacity-50 font-semibold text-xs text-white flex items-center justify-center gap-1.5 transition-all shadow-lg shadow-orange-500/20 active:scale-95"
             >
-              <Plus className="w-4 h-4" /> Egzersizi Kaydet
+              <Plus className="w-4 h-4" /> {t("exercise.saveExercise")}
             </button>
           </form>
 
           {/* Current Logged Exercises List */}
           <div>
             <span className="text-xs font-semibold uppercase tracking-wider text-white/40 mb-2 block">
-              Bugün Eklenen Egzersizler ({currentExercises.length})
+              {t("exercise.todayList", { count: currentExercises.length })}
             </span>
 
             {currentExercises.length === 0 ? (
               <div className="p-4 rounded-2xl border border-dashed border-white/10 text-center text-xs text-white/40">
-                Henüz bugün için bir aktivite eklenmedi.
+                {t("exercise.noActivityYet")}
               </div>
             ) : (
               <div className="space-y-2">
@@ -256,7 +267,7 @@ export function ExerciseModal({ isOpen, onClose, date }: Props) {
                       <div>
                         <div className="text-xs font-semibold text-white">{ex.name}</div>
                         <div className="text-[10px] text-white/40">
-                          {ex.durationMinutes} dakika • {ex.loggedAt || date}
+                          {ex.durationMinutes} {t("exercise.minutes")} • {ex.loggedAt || date}
                         </div>
                       </div>
                     </div>
@@ -265,7 +276,8 @@ export function ExerciseModal({ isOpen, onClose, date }: Props) {
                       <button
                         onClick={() => handleDelete(ex.id)}
                         className="p-1.5 rounded-lg text-white/30 hover:text-red-400 hover:bg-white/5 transition-colors"
-                        title="Sil"
+                        title={t("common.delete")}
+                        aria-label={t("common.delete")}
                       >
                         <Trash2 className="w-3.5 h-3.5" />
                       </button>
