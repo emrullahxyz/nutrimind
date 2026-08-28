@@ -80,9 +80,9 @@ export function AliasPage({
       {/* Header & Actions */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between w-full min-w-0">
         <div className="min-w-0">
-          <h2 className="text-xl font-extrabold text-white tracking-tight truncate">Besin Hafızası</h2>
+          <h2 className="text-xl font-extrabold text-white tracking-tight truncate">{t("aliasPage.title")}</h2>
           <p className="text-xs text-white/50 mt-0.5 truncate">
-            Öğrenilmiş ifadeler → belirli besin & makrolar (örn. "yoğurt", "protein tozu")
+            {t("aliasPage.subtitle")}
           </p>
         </div>
 
@@ -93,7 +93,7 @@ export function AliasPage({
             className="px-2.5 py-2 rounded-full border border-white/15 bg-white/5 hover:bg-white/10 text-[11px] sm:text-xs font-bold text-white transition active:scale-95 flex items-center justify-center gap-1.5 whitespace-nowrap"
           >
             <Camera className="w-3.5 h-3.5 text-sky-400 shrink-0" />
-            <span className="truncate">Barkod</span>
+            <span className="truncate">{t("aliasPage.scanBarcode")}</span>
           </button>
           <button
             type="button"
@@ -101,7 +101,7 @@ export function AliasPage({
             className="px-2.5 py-2 rounded-full border border-memory/40 bg-memory/15 hover:bg-memory/25 text-[11px] sm:text-xs font-bold text-memory transition active:scale-95 flex items-center justify-center gap-1.5 whitespace-nowrap"
           >
             <Utensils className="w-3.5 h-3.5 text-memory shrink-0" />
-            <span className="truncate">Tarif</span>
+            <span className="truncate">{t("aliasPage.recipe")}</span>
           </button>
           <button
             type="button"
@@ -109,7 +109,7 @@ export function AliasPage({
             className="px-2.5 py-2 rounded-full bg-white hover:bg-white/90 text-[11px] sm:text-xs font-extrabold text-black transition active:scale-95 flex items-center justify-center gap-1.5 whitespace-nowrap shadow-md"
           >
             <Plus className="w-3.5 h-3.5 shrink-0" />
-            <span className="truncate">Yeni Besin</span>
+            <span className="truncate">{t("aliasPage.newFood")}</span>
           </button>
         </div>
       </div>
@@ -122,7 +122,7 @@ export function AliasPage({
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Besin adı, marka veya ifade ara..."
+            placeholder={t("aliasPage.searchPlaceholder")}
             className="w-full pl-10 pr-9 py-3 rounded-2xl border border-white/10 bg-white/[0.04] text-xs font-semibold text-white placeholder:text-white/40 focus:border-carb focus:outline-none transition shadow-sm min-w-0"
           />
           {searchQuery && (
@@ -232,7 +232,7 @@ export function AliasPage({
       {/* Templates Section */}
       <div className="space-y-3 border-t border-white/10 pt-6 w-full min-w-0">
         <div className="min-w-0">
-          <h3 className="text-lg font-extrabold text-white tracking-tight truncate">Şablonlar</h3>
+          <h3 className="text-lg font-extrabold text-white tracking-tight truncate">{t("aliasPage.templates")}</h3>
           <p className="text-xs text-white/50 truncate">
             Sık tükettiğin öğünleri tek dokunuşla eklemek için kaydedilmiş şablonlar
           </p>

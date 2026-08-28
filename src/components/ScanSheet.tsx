@@ -70,16 +70,16 @@ import { useBodyScrollLock } from "../hooks/useBodyScrollLock";
  *  düğme "…" göstersin. `dayOnly` = hafızaya HİÇ yazmadan yalnızca bugüne ekle. */
 type Saving = "today" | "memory" | "dayOnly" | null;
 
-const MODES: { mode: ScanMode; icon: string; label: string }[] = [
-  { mode: "scan_food", icon: "🍽️", label: "Yemek" },
-  { mode: "food_label", icon: "🏷️", label: "Etiket" },
-  { mode: "barcode", icon: "📊", label: "Barkod" },
+const MODES: { mode: ScanMode; icon: string; labelKey: string }[] = [
+  { mode: "scan_food", icon: "🍽️", labelKey: "scan.modeFood" },
+  { mode: "food_label", icon: "🏷️", labelKey: "scan.modeLabel" },
+  { mode: "barcode", icon: "📊", labelKey: "scan.modeBarcode" },
 ];
 
-const MODE_HINT: Record<ScanMode, string> = {
-  scan_food: "Yemeği çerçeveye sığdır",
-  food_label: "Besin değerleri tablosunu çerçeveye hizala",
-  barcode: "Barkodu çerçeveye getir — otomatik okunur",
+const MODE_HINT_KEY: Record<ScanMode, string> = {
+  scan_food: "scan.hintFood",
+  food_label: "scan.hintLabel",
+  barcode: "scan.hintBarcode",
 };
 
 /** Etiket okuma ayrıntı ister (küçük punto besin tablosu), yemek fotoğrafı istemez.
@@ -561,8 +561,7 @@ export function ScanSheet({
       </p>
     ) : blocked ? (
       <p className="rounded-chip bg-warn/20 px-3 py-2 text-center text-[11px] text-warn backdrop-blur-sm">
-        Çok hızlı arama yapıldı. Open Food Facts kotası korunuyor —{" "}
-        <span className="font-mono font-semibold">{cooldownLeft} sn</span> sonra tekrar dene.
+        {t("scan.cooldown", { seconds: cooldownLeft })}
       </p>
     ) : null;
 
@@ -607,12 +606,12 @@ export function ScanSheet({
               )}
 
               <p className="pointer-events-none absolute inset-x-0 top-3 mx-auto w-fit max-w-[86%] rounded-pill bg-black/60 px-3 py-1.5 text-center text-[11px] font-semibold text-white/90 backdrop-blur-sm">
-                {MODE_HINT[scanMode]}
+                {t(MODE_HINT_KEY[scanMode])}
               </p>
 
               {!ready && (
                 <p className="pointer-events-none absolute inset-0 flex items-center justify-center text-[11px] text-white/60">
-                  Kamera açılıyor…
+                  {t("scan.cameraStarting")}
                 </p>
               )}
             </>
@@ -622,18 +621,16 @@ export function ScanSheet({
             <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 px-6 text-center">
               <p className="text-[12px] text-ink-secondary">
                 {cameraError && cameraError.toLowerCase().includes("notallowed")
-                  ? "Kamera izni reddedildi."
-                  : (cameraError ?? "Bu tarayıcıda kamera kullanılamıyor.")}
+                  ? t("scan.cameraNotAllowed")
+                  : (cameraError ?? t("scan.cameraUnavailable"))}
               </p>
               {cameraError && cameraError.toLowerCase().includes("notallowed") ? (
                 <p className="text-[11px] text-ink-tertiary max-w-xs">
-                  Telefon ayarlarından{" "}
-                  <span className="font-semibold text-white/80">Uygulamalar → Nutrimind → İzinler → Kamera</span>{" "}
-                  yolunu izleyerek izni açabilirsin.
+                  {t("scan.cameraSettingsHint")}
                 </p>
               ) : (
                 <p className="text-[11px] text-ink-tertiary">
-                  Galeriden fotoğraf seçebilir veya barkodu elle girebilirsin.
+                  {t("scan.cameraFallback")}
                 </p>
               )}
               {canUseCamera && (
@@ -642,7 +639,7 @@ export function ScanSheet({
                   onClick={retryCamera}
                   className="rounded-pill border border-line px-4 py-2 text-sm font-semibold text-ink-secondary transition hover:text-ink-primary"
                 >
-                  Tekrar dene
+                  {t("scan.retry")}
                 </button>
               )}
             </div>
@@ -664,7 +661,7 @@ export function ScanSheet({
                   }`}
                 >
                   <span aria-hidden>{m.icon}</span>
-                  <span>{m.label}</span>
+                  <span>{t(m.labelKey)}</span>
                 </button>
               ))}
             </div>
