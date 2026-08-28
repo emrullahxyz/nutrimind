@@ -83,13 +83,13 @@ export function AuthScreen() {
         </picture>
         <h1 className="text-xl font-extrabold tracking-tight text-ink-primary">Nutrimind</h1>
         <p className="text-center text-[12px] text-ink-tertiary">
-          {kayitMi ? "Hesap oluştur ve beslenme hafızanı kurmaya başla." : "Devam etmek için giriş yap."}
+          {kayitMi ? t("auth.subtitleRegister") : t("auth.subtitleLogin")}
         </p>
       </div>
 
       <form onSubmit={submit} className="flex flex-col gap-3">
         {kayitMi && (
-          <TextField label={t("auth.name") + " (opsiyonel)"} value={name} onChange={setName} placeholder="Emrullah" autoComplete="name" />
+          <TextField label={t("auth.name") + t("auth.nameOptional")} value={name} onChange={setName} placeholder="Emrullah" autoComplete="name" />
         )}
 
         <TextField
@@ -119,7 +119,7 @@ export function AuthScreen() {
             <button
               type="button"
               onClick={() => setGizli((v) => !v)}
-              aria-label={gizli ? "Parolayı göster" : "Parolayı gizle"}
+              aria-label={gizli ? t("auth.showPassword") : t("auth.hidePassword")}
               className="absolute inset-y-0 right-0 flex w-11 items-center justify-center text-ink-tertiary transition hover:text-ink-primary"
             >
               {gizli ? <Eye size={16} /> : <EyeOff size={16} />}
@@ -129,7 +129,7 @@ export function AuthScreen() {
 
         {kayitMi && (
           <TextField
-            label="Parola (tekrar)"
+            label={t("auth.passwordRepeat")}
             value={password2}
             onChange={setPassword2}
             type="password"
@@ -158,7 +158,7 @@ export function AuthScreen() {
         <>
           <div className="my-5 flex items-center gap-3">
             <span className="h-px flex-1 bg-line" />
-            <span className="text-[10px] font-semibold uppercase tracking-widest text-ink-faint">veya</span>
+            <span className="text-[10px] font-semibold uppercase tracking-widest text-ink-faint">{t("common.or")}</span>
             <span className="h-px flex-1 bg-line" />
           </div>
           {/* `fetch` DEĞİL, gerçek bir bağlantı: tarayıcının Google'a gidip

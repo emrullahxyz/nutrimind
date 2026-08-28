@@ -27,6 +27,7 @@
     "build": "tsc && vite build",
     "preview": "vite preview",
     "typecheck": "tsc --noEmit",
+    "check:i18n": "node scripts/check-i18n.mjs",
     "test": "vitest run",
     "format": "prettier --write .",
     "deploy": "bash deploy.sh"

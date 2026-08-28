@@ -17,6 +17,7 @@
     "add": "Add",
     "today": "Today",
     "yesterday": "Yesterday",
+    "or": "or",
     "releaseToRefresh": "Release to refresh"
   },
   "nav": {
@@ -46,7 +47,17 @@
     "errorInvalidCreds": "Invalid email or password.",
     "errorEmailExists": "This email is already registered.",
     "errorNetwork": "Cannot reach server — check your connection.",
-    "errorAuthClosed": "Sign-in is disabled in this environment."
+    "errorAuthClosed": "Sign-in is disabled in this environment.",
+    "passwordMin": "At least 6 characters",
+    "createAccount": "Create Account",
+    "alreadyHaveAccount": "Already have an account?",
+    "signupClosed": "Sign-ups are closed in this environment.",
+    "subtitleRegister": "Create an account and start building your nutrition memory.",
+    "subtitleLogin": "Sign in to continue.",
+    "nameOptional": " (optional)",
+    "showPassword": "Show password",
+    "hidePassword": "Hide password",
+    "passwordRepeat": "Password (repeat)"
   },
   "settings": {
     "title": "Settings",

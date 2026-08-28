@@ -17,6 +17,7 @@
     "add": "Ekle",
     "today": "Bugün",
     "yesterday": "Dün",
+    "or": "veya",
     "releaseToRefresh": "Bırak, yenile"
   },
   "nav": {
@@ -46,7 +47,17 @@
     "errorInvalidCreds": "E-posta veya parola hatalı.",
     "errorEmailExists": "Bu e-posta zaten kayıtlı.",
     "errorNetwork": "Sunucuya ulaşılamadı — bağlantını kontrol et.",
-    "errorAuthClosed": "Giriş özelliği bu ortamda kapalı."
+    "errorAuthClosed": "Giriş özelliği bu ortamda kapalı.",
+    "passwordMin": "En az 6 karakter",
+    "createAccount": "Hesap oluştur",
+    "alreadyHaveAccount": "Hesabın var mı?",
+    "signupClosed": "Kayıtlar bu ortamda kapalı.",
+    "subtitleRegister": "Hesap oluştur ve beslenme hafızanı kurmaya başla.",
+    "subtitleLogin": "Devam etmek için giriş yap.",
+    "nameOptional": " (opsiyonel)",
+    "showPassword": "Parolayı göster",
+    "hidePassword": "Parolayı gizle",
+    "passwordRepeat": "Parola (tekrar)"
   },
   "settings": {
     "title": "Ayarlar",
