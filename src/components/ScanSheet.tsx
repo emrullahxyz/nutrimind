@@ -525,7 +525,7 @@ export function ScanSheet({
         disabled={!!saving}
         className="self-center text-[11px] font-semibold text-ink-tertiary underline transition hover:text-ink-primary disabled:opacity-40"
       >
-        Vazgeç
+        {t("common.cancel")}
       </button>
     </div>
   ) : undefined;
@@ -884,11 +884,10 @@ export function ScanSheet({
         <Modal onClose={() => setAiConsentOpen(false)} title={t("ai.consentTitle")}>
           <div className="space-y-3">
             <p className="text-sm text-white/80">
-              Fotoğrafların ve öğün metnin Google Gemini'ye gönderilir.
-              Verilerin yapay zeka tarafından işlenir, sunucumuzda saklanmaz.
+              {t("ai.consentBody")}
             </p>
             <p className="text-xs text-white/50">
-              Üçüncü taraf gizlilik politikası:{" "}
+              {t("ai.consentPrivacy")}{" "}
               <a
                 href="https://policies.google.com/privacy"
                 target="_blank"
@@ -904,7 +903,7 @@ export function ScanSheet({
                 onClick={() => setAiConsentOpen(false)}
                 className="flex-1 rounded-xl border border-white/10 bg-white/5 py-2.5 text-sm font-semibold text-white/80"
               >
-                Vazgeç
+                {t("common.cancel")}
               </button>
               <button
                 type="button"

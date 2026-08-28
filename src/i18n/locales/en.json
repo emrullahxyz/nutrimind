@@ -418,6 +418,7 @@
     "pl": "Polski"
   },
   "goals": {
+    "title": "Daily Goals",
     "profileNameRequired": "Profile name cannot be empty.",
     "kcalPositive": "Calorie goal must be greater than 0.",
     "negativeNotAllowed": "{{nutrient}} cannot be negative.",
@@ -571,6 +572,9 @@
         "desc": "350 kcal surplus for muscle mass and volume"
       }
     }
+  },
+  "mealRow": {
+    "saveTemplate": "Make template"
   },
   "meal": {
     "titleAdd": "Add Meal",

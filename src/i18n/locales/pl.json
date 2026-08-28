@@ -418,6 +418,7 @@
     "pl": "Polski"
   },
   "goals": {
+    "title": "Dzienne cele",
     "profileNameRequired": "Nazwa profilu nie może być pusta.",
     "kcalPositive": "Cel kaloryczny musi być większy niż 0.",
     "negativeNotAllowed": "{{nutrient}} nie może być ujemne.",
@@ -571,6 +572,9 @@
         "desc": "Nadwyżka 350 kcal dla masy mięśniowej i objętości"
       }
     }
+  },
+  "mealRow": {
+    "saveTemplate": "Zrób szablon"
   },
   "meal": {
     "titleAdd": "Dodaj posiłek",

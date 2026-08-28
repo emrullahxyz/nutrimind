@@ -3,6 +3,7 @@ import { Flame, Beef, Wheat, Droplet, Pencil, BookmarkPlus } from "lucide-react"
 import { formatNumber } from "../lib/format";
 import type { MealItem } from "../types";
 import { usePressSpring } from "../hooks/usePressSpring";
+import { useTranslation } from "react-i18next";
 
 /** tr-TR ondalık biçimli makro sayısı: tamsayı "12", ondalık "12,5" (sonda ",0" yok). */
 const macroNum = (v: number) => formatNumber(v, Number.isInteger(v) ? 0 : 1);
@@ -28,6 +29,7 @@ export function MealRow({
   onSaveTemplate,
   busy,
 }: MealRowProps) {
+  const { t } = useTranslation();
   const delay = Math.min(index, 6) * 60;
   const [nameExpanded, setNameExpanded] = useState(false);
   const liRef = useRef<HTMLLIElement>(null);
@@ -127,8 +129,8 @@ export function MealRow({
                 }}
                 disabled={busy}
                 className="w-8 h-8 rounded-full bg-well hover:bg-well-hover text-ink-secondary hover:text-white flex items-center justify-center transition disabled:opacity-40"
-                title="Şablon yap"
-                aria-label="Şablon yap"
+                title={t("mealRow.saveTemplate")}
+                aria-label={t("mealRow.saveTemplate")}
               >
                 <BookmarkPlus className="w-3.5 h-3.5" />
               </button>
@@ -139,8 +141,8 @@ export function MealRow({
                   onEdit();
                 }}
                 className="w-8 h-8 rounded-full bg-well hover:bg-well-hover text-ink-secondary hover:text-white flex items-center justify-center transition"
-                title="Düzenle"
-                aria-label="Düzenle"
+                title={t("common.edit")}
+                aria-label={t("common.edit")}
               >
                 <Pencil className="w-3.5 h-3.5" />
               </button>

@@ -21,10 +21,11 @@ export function AliasPicker({
   aliases,
   selectedAliasId,
   onSelectAlias,
-  label = "Hafızadan besin seç",
+  label,
   mealIndex = 0,
 }: AliasPickerProps) {
   const { t } = useTranslation();
+  const effectiveLabel = label ?? t("meal.memorySelectLabel");
   const { goals, usageIndex } = useData();
 
   const selectedAlias = aliases.find((a) => a.id === selectedAliasId);
@@ -120,7 +121,7 @@ export function AliasPicker({
 
   return (
     <div ref={containerRef} className="relative block">
-      <Label>{label}</Label>
+      <Label>{effectiveLabel}</Label>
       <div className="relative">
         <input
           ref={inputRef}

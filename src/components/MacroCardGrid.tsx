@@ -9,7 +9,6 @@ import { useTranslation } from "react-i18next";
 
 interface MacroItem {
   key: keyof Nutrition;
-  label: string;
   sublabel: string;
   icon: ComponentType<{ className?: string }>;
   color: string;
@@ -155,7 +154,6 @@ export function MacroCardGrid({ total, goal, showRatio, onToggleRatio }: MacroCa
   const mainMacros: MacroItem[] = [
     {
       key: "protein",
-      label: "Protein",
       sublabel: goal.protein > 0 ? t("cards.remainingProtein") : t("cards.protein"),
       icon: Beef,
       color: "var(--svg-protein)",
@@ -165,7 +163,6 @@ export function MacroCardGrid({ total, goal, showRatio, onToggleRatio }: MacroCa
     },
     {
       key: "carbs",
-      label: "Karb",
       sublabel: goal.carbs > 0 ? t("cards.remainingCarbs") : t("cards.carbs"),
       icon: Wheat,
       color: "var(--svg-carb)",
@@ -175,7 +172,6 @@ export function MacroCardGrid({ total, goal, showRatio, onToggleRatio }: MacroCa
     },
     {
       key: "fat",
-      label: "Yağ",
       sublabel: goal.fat > 0 ? t("cards.remainingFat") : t("cards.fat"),
       icon: Droplet,
       color: "var(--svg-fat)",
