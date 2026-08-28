@@ -9,8 +9,10 @@ import type { TrendGoal, TrendRange } from "../lib/trend";
 import { formatTargetHitRate } from "../lib/trendFormat";
 import { RangePicker } from "./RangePicker";
 import { TrendChart } from "./TrendChart";
+import { useTranslation } from "react-i18next";
 
 export function ReportView({ data }: { data: AppData }) {
+  const { t } = useTranslation();
   const [range, setRange] = useState<TrendRange>(30);
 
   const end = todayISO();
@@ -100,7 +102,7 @@ export function ReportView({ data }: { data: AppData }) {
           onClick={() => window.print()}
           className="rounded-pill bg-accent px-4 py-2 text-xs font-extrabold text-accent-ink transition hover:opacity-90"
         >
-          🖨️ Raporu Yazdır / PDF Kaydet
+          🖨️ {t("report.printCta")}
         </button>
       </div>
 
@@ -109,15 +111,15 @@ export function ReportView({ data }: { data: AppData }) {
         <div className="flex items-center justify-between">
           <div>
             <div className="font-mono text-xs font-bold uppercase tracking-wider text-memory print-text-dark">
-              Nutrimind Beslenme Raporu
+              {t("report.title")}
             </div>
             <h2 className="mt-1 text-xl font-extrabold print-text-dark sm:text-2xl">
-              Özet & Gelişim Analizi
+              {t("report.subtitle")}
             </h2>
           </div>
           <div className="text-right font-mono text-xs text-ink-tertiary print-text-dark">
-            <div>Tarih Aralığı: {formatShortDate(startDate)} – {formatShortDate(end)}</div>
-            <div>Oluşturulma: {formatShortDate(todayISO())}</div>
+            <div>{t("report.dateRange", { start: formatShortDate(startDate), end: formatShortDate(end) })}</div>
+            <div>{t("report.generatedAt", { date: formatShortDate(todayISO()) })}</div>
           </div>
         </div>
       </div>
@@ -126,16 +128,16 @@ export function ReportView({ data }: { data: AppData }) {
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 page-break-avoid">
         <div className="rounded-card border border-line bg-white/[0.02] p-3 print-border-light">
           <span className="font-mono text-[11px] uppercase tracking-mono text-ink-tertiary print-text-dark">
-            Kayıtlı Gün
+            {t("report.recordedDays")}
           </span>
           <div className="mt-1 font-mono text-lg font-extrabold print-text-dark">
-            {recordedDates.length} <span className="text-xs font-normal text-ink-tertiary">/ {calendarDates.length} gün</span>
+            {recordedDates.length} <span className="text-xs font-normal text-ink-tertiary">/ {calendarDates.length} {t("report.days")}</span>
           </div>
         </div>
 
         <div className="rounded-card border border-line bg-white/[0.02] p-3 print-border-light">
           <span className="font-mono text-[11px] uppercase tracking-mono text-ink-tertiary print-text-dark">
-            Günlük Ort. Kalori
+            {t("report.dailyAvgKcal")}
           </span>
           <div className="mt-1 font-mono text-lg font-extrabold text-accent print-text-dark">
             {averages ? formatKcal(averages.kcal) : "—"}
@@ -144,17 +146,17 @@ export function ReportView({ data }: { data: AppData }) {
 
         <div className="rounded-card border border-line bg-white/[0.02] p-3 print-border-light">
           <span className="font-mono text-[11px] uppercase tracking-mono text-ink-tertiary print-text-dark">
-            Hedef Uyum Oranı
+            {t("report.hitRate")}
           </span>
           <div className="mt-1 font-mono text-lg font-extrabold text-protein print-text-dark">
             {formatTargetHitRate(stats)}
-            <span className="ml-1 text-xs font-normal text-ink-tertiary">({stats.onTargetDays}/{stats.ratedDays} gün)</span>
+            <span className="ml-1 text-xs font-normal text-ink-tertiary">({stats.onTargetDays}/{stats.ratedDays} {t("report.days")})</span>
           </div>
         </div>
 
         <div className="rounded-card border border-line bg-white/[0.02] p-3 print-border-light">
           <span className="font-mono text-[11px] uppercase tracking-mono text-ink-tertiary print-text-dark">
-            Makro Dengesi (P / K / Y)
+            {t("report.macroBalance")}
           </span>
           <div className="mt-1 font-mono text-lg font-extrabold print-text-dark">
             %{macroDist.pPct} / %{macroDist.cPct} / %{macroDist.fPct}
@@ -166,36 +168,36 @@ export function ReportView({ data }: { data: AppData }) {
       {averages && (
         <div className="rounded-card border border-line bg-white/[0.02] p-4 print-border-light page-break-avoid">
           <h3 className="mb-3 font-mono text-xs uppercase tracking-mono text-ink-tertiary print-text-dark">
-            Dönem İçi Günlük Makro Ortalamaları
+            {t("report.macroAveragesTitle")}
           </h3>
           <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
             <div>
-              <span className="text-xs text-protein font-bold">Protein</span>
+              <span className="text-xs text-protein font-bold">{t("report.protein")}</span>
               <div className="font-mono text-base font-extrabold print-text-dark">
                 {formatNumber(averages.protein, 1)} g
               </div>
-              <span className="font-mono text-[10px] text-ink-tertiary">%{macroDist.pPct} kalori payı</span>
+              <span className="font-mono text-[10px] text-ink-tertiary">%{macroDist.pPct} {t("report.kcalShare")}</span>
             </div>
             <div>
-              <span className="text-xs text-carb font-bold">Karbonhidrat</span>
+              <span className="text-xs text-carb font-bold">{t("report.carbs")}</span>
               <div className="font-mono text-base font-extrabold print-text-dark">
                 {formatNumber(averages.carbs, 1)} g
               </div>
-              <span className="font-mono text-[10px] text-ink-tertiary">%{macroDist.cPct} kalori payı</span>
+              <span className="font-mono text-[10px] text-ink-tertiary">%{macroDist.cPct} {t("report.kcalShare")}</span>
             </div>
             <div>
-              <span className="text-xs text-fat font-bold">Yağ</span>
+              <span className="text-xs text-fat font-bold">{t("report.fat")}</span>
               <div className="font-mono text-base font-extrabold print-text-dark">
                 {formatNumber(averages.fat, 1)} g
               </div>
-              <span className="font-mono text-[10px] text-ink-tertiary">%{macroDist.fPct} kalori payı</span>
+              <span className="font-mono text-[10px] text-ink-tertiary">%{macroDist.fPct} {t("report.kcalShare")}</span>
             </div>
             <div>
-              <span className="text-xs text-memory font-bold">Lif</span>
+              <span className="text-xs text-memory font-bold">{t("report.fiber")}</span>
               <div className="font-mono text-base font-extrabold print-text-dark">
                 {formatNumber(averages.fiber, 1)} g
               </div>
-              <span className="font-mono text-[10px] text-ink-tertiary">Sindirim & Tokluk</span>
+              <span className="font-mono text-[10px] text-ink-tertiary">{t("report.fiberHint")}</span>
             </div>
           </div>
         </div>
@@ -204,7 +206,7 @@ export function ReportView({ data }: { data: AppData }) {
       {/* Trend Grafiği */}
       <div className="rounded-card border border-line bg-white/[0.02] p-4 print-border-light page-break-avoid">
         <h3 className="mb-3 font-mono text-xs uppercase tracking-mono text-ink-tertiary print-text-dark">
-          Kalori Trendi (7 Günlük Hareketli Ortalama)
+          {t("report.kcalTrendTitle")}
         </h3>
         <TrendChart series={kcalSeries} def={nutrientOf("kcal")} goalIsAverage={true} />
       </div>
@@ -212,19 +214,19 @@ export function ReportView({ data }: { data: AppData }) {
       {/* Günlük Detay Tablosu */}
       <div className="rounded-card border border-line bg-white/[0.02] p-4 print-border-light page-break-avoid">
         <h3 className="mb-3 font-mono text-xs uppercase tracking-mono text-ink-tertiary print-text-dark">
-          Günlük Detay Tablosu ({recordedDates.length} Kayıtlı Gün)
+          {t("report.dailyDetailTitle", { count: recordedDates.length })}
         </h3>
         <div className="overflow-x-auto">
           <table className="w-full text-left font-mono text-xs">
             <thead>
               <tr className="border-b border-line text-ink-tertiary print-border-light print-text-dark">
-                <th className="py-2 pr-2">Tarih</th>
-                <th className="py-2 px-2">Öğün</th>
-                <th className="py-2 px-2">Kalori / Hedef</th>
-                <th className="py-2 px-2">Protein</th>
-                <th className="py-2 px-2">Karb</th>
-                <th className="py-2 px-2">Yağ</th>
-                <th className="py-2 pl-2">Lif</th>
+                <th className="py-2 pr-2">{t("report.date")}</th>
+                <th className="py-2 px-2">{t("report.meals")}</th>
+                <th className="py-2 px-2">{t("report.kcalOverTarget")}</th>
+                <th className="py-2 px-2">{t("report.protein")}</th>
+                <th className="py-2 px-2">{t("report.carbs")}</th>
+                <th className="py-2 px-2">{t("report.fat")}</th>
+                <th className="py-2 pl-2">{t("report.fiber")}</th>
               </tr>
             </thead>
             <tbody>
