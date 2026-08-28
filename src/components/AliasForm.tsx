@@ -22,6 +22,7 @@ import { useBodyScrollLock } from "../hooks/useBodyScrollLock";
 import { useModalHistory } from "../hooks/useModalHistory";
 import { useModalExit } from "../hooks/useModalExit";
 import { haptic } from "../lib/haptics";
+import { useTranslation } from "react-i18next";
 
 interface UnitDraft {
   id: string;
@@ -31,6 +32,7 @@ interface UnitDraft {
 
 /** Alias (besin hafızası) ekleme/düzenleme full-screen modal */
 export function AliasForm({ initial, onClose }: { initial: Alias | null; onClose: () => void }) {
+  const { t } = useTranslation();
   // Lock background body scroll when modal is open
   useBodyScrollLock(true);
 
@@ -149,13 +151,13 @@ export function AliasForm({ initial, onClose }: { initial: Alias | null; onClose
           type="button"
           onClick={beginClose}
           className="w-10 h-10 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white transition active:scale-95"
-          aria-label="Geri"
+          aria-label={t("common.back")}
         >
           <ArrowLeft className="w-5 h-5" />
         </button>
 
         <h2 className="text-lg font-extrabold text-white tracking-wide">
-          {initial ? "Besini Düzenle" : "Yeni Besin Ekle"}
+          {initial ? t("aliasForm.editTitle") : t("aliasForm.addTitle")}
         </h2>
 
         <div className="w-10 h-10" />
@@ -173,7 +175,7 @@ export function AliasForm({ initial, onClose }: { initial: Alias | null; onClose
           >
             <span className="flex items-center gap-2">
               <Sparkles className="w-4 h-4 text-carb" />
-              <span>Open Food Facts'ten besin getir (Arama veya Barkod)</span>
+              <span>{t("aliasForm.offImportTitle")}</span>
             </span>
             <span className="font-mono text-sm">{searchOpen ? "−" : "+"}</span>
           </button>
@@ -188,12 +190,12 @@ export function AliasForm({ initial, onClose }: { initial: Alias | null; onClose
         <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-4 text-white space-y-3">
           <div className="flex items-center gap-2">
             <Tag className="w-4 h-4 text-carb" />
-            <span className="text-xs font-bold text-white/90">Tetikleyici İfadeler</span>
+            <span className="text-xs font-bold text-white/90">{t("aliasForm.triggersLabel")}</span>
           </div>
           <input
             className="w-full px-3.5 py-2.5 rounded-xl bg-black/40 border border-white/15 text-sm font-semibold text-white focus:border-carb focus:outline-none placeholder:text-white/30"
             value={triggers}
-            placeholder="yoğurt, süzme yoğurt, aynı yoğurt (virgülle ayır)"
+            placeholder={t("aliasForm.triggersPlaceholder")}
             onChange={(e) => setTriggers(e.target.value)}
           />
 
@@ -210,7 +212,7 @@ export function AliasForm({ initial, onClose }: { initial: Alias | null; onClose
             </div>
           )}
           <p className="text-[11px] text-white/50">
-            Kullanıcı sohbet veya aramada bu kelimeleri yazdığında bu besin ve makrosu eşleşir.
+            {t("aliasForm.triggersHint")}
           </p>
         </div>
 
@@ -218,17 +220,17 @@ export function AliasForm({ initial, onClose }: { initial: Alias | null; onClose
         <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-4 text-white space-y-4">
           <div className="flex items-center gap-2">
             <Package className="w-4 h-4 text-sky-400" />
-            <span className="text-xs font-bold text-white/90">Temel Bilgiler</span>
+            <span className="text-xs font-bold text-white/90">{t("aliasForm.basicsTitle")}</span>
           </div>
-          <TextField label="Besin Adı" value={name} onChange={setName} placeholder="örn. Süzme Yoğurt %0" />
-          <NumField label="Porsiyon Miktarı" suffix="g" value={servingG} onChange={setServingG} />
+          <TextField label={t("aliasForm.nameLabel")} value={name} onChange={setName} placeholder={t("aliasForm.namePlaceholder")} />
+          <NumField label={t("aliasForm.servingLabel")} suffix="g" value={servingG} onChange={setServingG} />
         </div>
 
         {/* Custom Units Card — always visible, moved out of Details for discoverability */}
         <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-4 text-white space-y-3">
           <div className="flex items-center gap-2">
             <Scale className="w-4 h-4 text-memory" />
-            <span className="text-xs font-bold text-white/90">Özel Birimler (opsiyonel)</span>
+            <span className="text-xs font-bold text-white/90">{t("aliasForm.customUnits")}</span>
           </div>
           {unitDrafts.length > 0 && (
             <div className="space-y-2">
@@ -236,9 +238,9 @@ export function AliasForm({ initial, onClose }: { initial: Alias | null; onClose
                 <div key={u.id} className="flex items-end gap-2 bg-black/40 p-3 rounded-xl border border-white/10">
                   <div className="flex-1">
                     <TextField
-                      label="Birim Adı"
+                      label={t("aliasForm.unitNameLabel")}
                       value={u.name}
-                      placeholder="örn. adet, kase, dilim"
+                      placeholder={t("aliasForm.unitNamePlaceholder")}
                       onChange={(val) =>
                         setUnitDrafts((prev) =>
                           prev.map((x) => (x.id === u.id ? { ...x, name: val } : x))
@@ -248,7 +250,7 @@ export function AliasForm({ initial, onClose }: { initial: Alias | null; onClose
                   </div>
                   <div className="w-28">
                     <NumField
-                      label="Miktar"
+                      label={t("aliasForm.amountLabel")}
                       suffix="g"
                       value={u.grams}
                       onChange={(val) =>
@@ -262,7 +264,8 @@ export function AliasForm({ initial, onClose }: { initial: Alias | null; onClose
                     type="button"
                     onClick={() => setUnitDrafts((prev) => prev.filter((x) => x.id !== u.id))}
                     className="p-2.5 rounded-xl bg-white/10 hover:bg-red-500/20 text-white/50 hover:text-red-400 transition mb-0.5"
-                    title="Birimi sil"
+                    title={t("aliasForm.deleteUnit")}
+                    aria-label={t("aliasForm.deleteUnit")}
                   >
                     <Trash2 className="w-4 h-4" />
                   </button>
@@ -281,7 +284,7 @@ export function AliasForm({ initial, onClose }: { initial: Alias | null; onClose
             }
             className="w-full py-2.5 rounded-xl border border-white/15 bg-white/5 hover:bg-white/10 text-xs font-bold text-white transition active:scale-95 flex items-center justify-center gap-1.5"
           >
-            <Plus className="w-3.5 h-3.5 text-memory" /> Birim Ekle
+            <Plus className="w-3.5 h-3.5 text-memory" /> {t("aliasForm.addUnit")}
           </button>
         </div>
 
@@ -295,10 +298,10 @@ export function AliasForm({ initial, onClose }: { initial: Alias | null; onClose
           >
             <span className="flex items-center gap-2">
               <Scale className="w-4 h-4 text-memory" />
-              <span>Ayrıntılar (Marka & Barkod)</span>
+              <span>{t("aliasForm.details")}</span>
               {hasDetailsData && (
                 <span className="px-2 py-0.5 rounded-full bg-memory/20 text-memory border border-memory/30 text-[10px] font-mono">
-                  Dolu
+                  {t("aliasForm.filled")}
                 </span>
               )}
             </span>
@@ -307,8 +310,8 @@ export function AliasForm({ initial, onClose }: { initial: Alias | null; onClose
 
           {detailsOpen && (
             <div className="space-y-4 pt-3 border-t border-white/10">
-              <TextField label="Marka (opsiyonel)" value={brand} onChange={setBrand} placeholder="örn. Sütaş" />
-              <TextField label="Barkod (opsiyonel)" value={barcode} onChange={setBarcode} placeholder="örn. 8690000000000" />
+              <TextField label={t("aliasForm.brandLabel")} value={brand} onChange={setBrand} placeholder={t("aliasForm.brandPlaceholder")} />
+              <TextField label={t("aliasForm.barcodeLabel")} value={barcode} onChange={setBarcode} placeholder={t("aliasForm.barcodePlaceholder")} />
             </div>
           )}
         </div>
@@ -332,7 +335,7 @@ export function AliasForm({ initial, onClose }: { initial: Alias | null; onClose
           disabled={!canSave || saving}
           className="w-full py-4 rounded-full bg-white text-black font-extrabold text-base hover:bg-white/90 transition shadow-xl active:scale-[0.98] disabled:opacity-40 flex items-center justify-center gap-2"
         >
-          <Check className="w-5 h-5" /> {saving ? "Kaydediliyor..." : "Kaydet"}
+          <Check className="w-5 h-5" /> {saving ? t("aliasForm.saving") : t("aliasForm.save")}
         </button>
       </div>
     </div>
