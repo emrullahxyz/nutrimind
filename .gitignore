@@ -23,6 +23,8 @@ client_secret*.apps.googleusercontent.com.json
 # db data (docker volume is external, but ignore any local dumps)
 *.sql.bak
 db-data/
+# canlı SQLite veritabanı — kullanıcı verisi VCS'ye girmez (bkz. AGENTS.md madde 5)
+server/data.db
 
 # kişisel kullanıcı veri yedekleri (gizlilik — commit'lenmez)
 eski veriler*
@@ -53,10 +55,6 @@ ss_calai_animation/
 
 # Sistem / ajan artıkları (planlama araçlarından gelen dosyalar)
 .freebuff/
-maxKeys)
-normalizeCode(v
-null)
-x
 
 # Capacitor (android kaynak kodu commit'lenir, build artifact'leri + keystore HAYIR)
 android/.gradle/

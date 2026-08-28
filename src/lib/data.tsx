@@ -70,14 +70,6 @@ function Center({ children }: { children: ReactNode }) {
   );
 }
 
-/**
- * Yazma başarılı olduktan SONRA sadece yenileme (refresh) başarısız olursa
- * gösterilecek mesaj. Kayıt aslında sunucuda başarılı olduğu için "kaydetme
- * başarısız" gibi yanlış bir izlenim vermemek adına ayrı bir mesaj kullanılır.
- */
-const REFRESH_AFTER_WRITE_FAILED_MESSAGE =
-  "Kaydedildi, ancak veriler yenilenemedi — sayfayı yenileyin.";
-
 function StaleFallback({
   refresh,
   onResolved,
@@ -85,6 +77,7 @@ function StaleFallback({
   refresh: () => Promise<void>;
   onResolved: () => void;
 }) {
+  const { t } = useTranslation();
   const [retrying, setRetrying] = useState(false);
 
   const handleRetry = async () => {
@@ -103,14 +96,15 @@ function StaleFallback({
   return (
     <Center>
       <div className="flex flex-col items-center gap-3 p-4">
-        <p className="max-w-xs">{REFRESH_AFTER_WRITE_FAILED_MESSAGE}</p>
+        {/* Kayıt başarılı, yalnızca yenileme başarısız — "kaydedilemedi" izlenimi vermemek için ayrı mesaj. */}
+        <p className="max-w-xs">{t("offline.refreshFailed")}</p>
         <button
           type="button"
           disabled={retrying}
           onClick={handleRetry}
           className="rounded-chip border border-line bg-white/[0.08] px-4 py-2 text-xs font-semibold text-ink-primary transition hover:bg-white/[0.12] active:scale-95 disabled:opacity-50 disabled:pointer-events-none"
         >
-          {retrying ? "Yenileniyor..." : "Tekrar dene"}
+          {retrying ? t("offline.refreshing") : t("offline.opRetry")}
         </button>
       </div>
     </Center>
@@ -269,7 +263,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
           await refresh();
         } catch {
           setStale(true);
-          throw new Error(REFRESH_AFTER_WRITE_FAILED_MESSAGE);
+          throw new Error(t("offline.refreshFailed"));
         }
         return result;
       } catch (error) {
@@ -309,7 +303,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
           await refresh();
         } catch {
           setStale(true);
-          throw new Error(REFRESH_AFTER_WRITE_FAILED_MESSAGE);
+          throw new Error(t("offline.refreshFailed"));
         }
       },
       upsertAlias: (alias) => {
@@ -339,7 +333,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
           await refresh();
         } catch {
           setStale(true);
-          throw new Error(REFRESH_AFTER_WRITE_FAILED_MESSAGE);
+          throw new Error(t("offline.refreshFailed"));
         }
       },
     }),

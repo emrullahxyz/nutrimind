@@ -246,7 +246,9 @@
     "opDeleteDay": "Delete day {{date}}",
     "opAlias": "Memory: {{name}}",
     "opDeleteAlias": "Delete memory: {{name}}",
-    "featureUnavailable": "This feature needs an internet connection. Try again once you're back online."
+    "featureUnavailable": "This feature needs an internet connection. Try again once you're back online.",
+    "refreshFailed": "Saved, but the data could not be refreshed — please reload the page.",
+    "refreshing": "Refreshing..."
   },
   "privacy": {
     "tr": "Türkçe",

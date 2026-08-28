@@ -99,27 +99,6 @@ export async function getSnapshot(): Promise<CachedSnapshot | null> {
   }
 }
 
-/** Test / "önbelleği temizle" için. */
-export async function clearSnapshot(): Promise<void> {
-  try {
-    const db = await openDB();
-    await new Promise<void>((resolve, reject) => {
-      const tx = db.transaction(STORE, "readwrite");
-      tx.objectStore(STORE).delete(KEY);
-      tx.oncomplete = () => {
-        db.close();
-        resolve();
-      };
-      tx.onerror = () => {
-        db.close();
-        reject(tx.error);
-      };
-    });
-  } catch {
-    // sessizce yok say
-  }
-}
-
 /** Operasyon durumu:
  *  - pending  : henüz denenmedi / tekrar denenecek
  *  - failed   : sunucu kalıcı hata döndü (4xx) — kullanıcı müdahalesi gerekir

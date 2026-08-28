@@ -505,6 +505,48 @@ describe("syncPending — alias yerel id eşlemesi", () => {
     expect(apiMocks.deleteAlias).toHaveBeenCalledWith("a_real");
     expect(result.synced).toBe(2);
   });
+
+  it("alias+day aynı kuyrukta, day gönderilemeden sync kesilirse day kaydı kuyruğa gerçek id ile yazılır", async () => {
+    // Alias gönderilir (a_real), day kaydı ise AĞ HATASI nedeniyle sync
+    // yarıda kesilmeden önce gönderilemez. persistLocalIdRemap day kaydının
+    // saklanan payload'ını local:a → a_real olarak yeniden yazmış olmalı —
+    // sonraki koşu başıboş local: referansı göndermez.
+    apiMocks.saveAlias.mockResolvedValue({ ok: true, id: "a_real" });
+    apiMocks.saveDay.mockRejectedValue(new TypeError("Failed to fetch"));
+    queue = [
+      op({
+        id: "op1",
+        kind: "save-alias",
+        alias: localAlias,
+        localId: "local:a",
+        base: makeData({}, [{ id: "local:a", triggers: ["x"], name: "X", brand: null, serving_g: 100, nutrition: MEAL }]),
+      }),
+      op({
+        id: "op2",
+        kind: "save-day",
+        date: "2026-08-28",
+        meals: [{ name: "X", nutrition: MEAL, sources: [{ aliasId: "local:a", qty: 1, unit: "adet" }] }],
+        base: makeData({}, [{ id: "local:a", triggers: ["x"], name: "X", brand: null, serving_g: 100, nutrition: MEAL }]),
+      }),
+    ];
+
+    const first = await syncPending();
+    expect(first.interrupted).toBe(true);
+
+    // Kuyruktaki day kaydı artık gerçek id'yi saklıyor olmalı.
+    const stored = queue.find((o) => o.id === "op2");
+    expect(stored && stored.kind === "save-day" ? stored.meals[0].sources?.[0].aliasId : undefined).toBe(
+      "a_real",
+    );
+
+    // Sonraki koşu: yalnızca day kaldı ve gerçek id ile gönderiliyor.
+    apiMocks.saveDay.mockResolvedValue({ ok: true });
+    const second = await syncPending();
+    expect(apiMocks.saveDay).toHaveBeenLastCalledWith("2026-08-28", [
+      { name: "X", nutrition: MEAL, sources: [{ aliasId: "a_real", qty: 1, unit: "adet" }] },
+    ]);
+    expect(second.synced).toBe(1);
+  });
 });
 
 describe("sync durumu yayını", () => {
@@ -626,6 +668,29 @@ describe("kuyruk özeti ve işlem tanımı", () => {
     expect(summarizeOperations(ops)).toEqual({ total: 3, pending: 1, failed: 1, conflicts: 1 });
     expect(operationInfo(ops[0])).toEqual({ kind: "day", date: "2026-08-28" });
     expect(operationInfo(ops[2])).toEqual({ kind: "alias", name: "X" });
+  });
+
+  it("silinen alias işlemi adını gösterir (UUID değil)", () => {
+    const named = op({
+      id: "d1",
+      kind: "delete-alias",
+      aliasId: "real-123",
+      // base, silinen alias'ın adını taşır — operationInfo onu çıkarmalı.
+      base: makeData(
+        {},
+        [
+          {
+            id: "real-123",
+            triggers: ["yoğurt"],
+            name: "Yoğurt",
+            brand: null,
+            serving_g: 100,
+            nutrition: MEAL,
+          },
+        ],
+      ),
+    });
+    expect(operationInfo(named)).toEqual({ kind: "delete-alias", name: "Yoğurt" });
   });
 });
 

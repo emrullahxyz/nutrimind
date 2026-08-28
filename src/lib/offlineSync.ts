@@ -170,6 +170,27 @@ export async function queueDeleteAlias(data: AppData, aliasId: string): Promise<
   return operation;
 }
 
+/** Yerel alias başarıyla sunucuda gerçek id aldıktan sonra, kuyruktaki tüm
+ *  `save-day` işlemlerinin içinde `localId`'ye referans veren `sources[].aliasId`
+ *  değerlerini `realId` ile değiştirir ve kuyruğa kalıcı yazar. Bu, sync'in
+ *  ortası kesintiye uğrasa bile (alias gönderildi, gün kaldı) gün kaydının
+ *  sonraki koşuda başıboş `local:` referansıyla sunucuya gitmemesini garantiler.
+ *  IndexedDB hatası burada kritik değil — bir sonraki sync yine `aliasMap`
+ *  olmadan `local:` id'yi gönderir; daha kötü bir sonuç doğmaz. */
+async function persistLocalIdRemap(localId: string, realId: string): Promise<void> {
+  try {
+    const operations = await listOperations();
+    for (const operation of operations) {
+      if (operation.kind !== "save-day") continue;
+      const remapped = remapMeals(operation.meals, new Map([[localId, realId]]));
+      if (remapped === operation.meals) continue; // eşleşen kaynak yok — yazma yok
+      await updateOperation({ ...operation, meals: remapped });
+    }
+  } catch {
+    // sessizce yok say — en kötü senaryo bir sonraki sync'te yine denenir.
+  }
+}
+
 /** Gönderim öncesi verdict: işlem güvenle gönderilebilir mi, zaten karşılanmış mı,
  *  yoksa sunucu verisi değiştiği için çakışma mı?
  *
@@ -217,8 +238,10 @@ function classifyOperation(
   }
 }
 
-/** Yerel alias id'lerini (`local:...`) gerçek sunucu id'lerine çevirir.
- *  `aliasMap` bu sync çalışması içinde, save-alias başarılı oldukça dolar. */
+/** Öğün dizisindeki `sources[].aliasId` değerlerini `aliasMap` üzerinden gerçek
+ *  id'lere çevirir; eşleşen kaynak YOKSA diziyi AYNEN döndürür (referans
+ *  korunur — gereksiz kuyruk yazımı olmaz). İki kullanım yeri: sync akışında
+ *  biriktirilen `aliasMap` ve kuyruk yeniden yazımında tek girişli map. */
 function remapMeals(meals: MealPayload[], aliasMap: Map<string, string>): MealPayload[] {
   if (!meals.some((m) => m.sources?.some((s) => aliasMap.has(s.aliasId)))) return meals;
   return meals.map((m) => ({
@@ -248,7 +271,15 @@ async function send(operation: OfflineOperation, aliasMap: Map<string, string>):
         ...(mapped ? { id: mapped } : isLocal ? {} : { id: localId ?? operation.alias.id }),
       };
       const result = await saveAlias(payload);
-      if (isLocal && localId && !mapped && result?.id) aliasMap.set(localId, result.id);
+      if (isLocal && localId && !mapped && result?.id) {
+        aliasMap.set(localId, result.id);
+        // Eşlemeyi Kuyruğa kalıcı yaz: bu alias'a referans veren bekleyen
+        // gün kayıtlarının `local:` aliasId'sini gerçek id ile değiştir. Aksi
+        // halde sync kesintiye uğrar ya da uygulama kapanırsa alias işlemi
+        // zaten gönderilmiş olur, gün kaydı ise başıboş `local:` referansıyla
+        // sunucuya giderdi.
+        await persistLocalIdRemap(localId, result.id);
+      }
       return;
     }
     case "delete-alias":
@@ -426,8 +457,13 @@ export function operationInfo(operation: OfflineOperation): OperationInfo {
       return { kind: "delete-day", date: operation.date };
     case "save-alias":
       return { kind: "alias", name: operation.alias.name };
-    case "delete-alias":
-      return { kind: "delete-alias", name: operation.aliasId };
+    case "delete-alias": {
+      // Kuyruktaki delete-alias işlemi yalnızca id taşır; adı kuyruğa alma
+      // anındaki snapshot'tan (base.aliases) çıkarırız — aksi halde SyncStatus
+      // kullanıcıya ham UUID gösterirdi.
+      const baseAlias = operation.base.aliases.find((a) => a.id === operation.aliasId);
+      return { kind: "delete-alias", name: baseAlias?.name ?? operation.aliasId };
+    }
   }
 }
 
