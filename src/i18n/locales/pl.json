@@ -222,10 +222,31 @@
     "understoodContinue": "Rozumiem, kontynuuj"
   },
   "offline": {
-    "banner": "Jesteś offline. Ostatnie dane: {{time}}. Zmiany nie zostaną zapisane.",
+    "banner": "Jesteś offline. Zmiany są zapisywane na tym urządzeniu i zsynchronizują się po powrocie do sieci. Ostatnie dane: {{time}}.",
     "bannerRetry": "Ponów",
     "fetchError": "Nie udało się załadować danych ({{error}}). Czy serwer działa?",
-    "unknownTime": "nieznany"
+    "unknownTime": "nieznany",
+    "writeUnavailable": "Ta funkcja jest niedostępna offline. Spróbuj ponownie, gdy wrócisz do sieci.",
+    "queueFailed": "Nie udało się zapisać zmiany na tym urządzeniu. Sprawdź pamięć.",
+    "syncing": "Synchronizacja…",
+    "pendingCount": "Oczekuje: {{count}} zmian",
+    "failedCount": "Nieudane: {{count}}",
+    "conflictCount": "Konflikty: {{count}}",
+    "retryingSoon": "Automatyczne ponawianie…",
+    "details": "Szczegóły",
+    "hideDetails": "Ukryj",
+    "opRetry": "Ponów",
+    "cancelOp": "Anuluj",
+    "keepDevice": "Użyj wersji urządzenia",
+    "keepServer": "Użyj wersji serwera",
+    "statusPending": "Oczekuje",
+    "statusFailed": "Nieudane",
+    "statusConflict": "Konflikt",
+    "opDay": "Dzień {{date}}",
+    "opDeleteDay": "Usuń dzień {{date}}",
+    "opAlias": "Pamięć: {{name}}",
+    "opDeleteAlias": "Usuń pamięć: {{name}}",
+    "featureUnavailable": "Ta funkcja wymaga połączenia z internetem. Spróbuj ponownie po połączeniu."
   },
   "privacy": {
     "tr": "Türkçe",

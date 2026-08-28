@@ -102,7 +102,7 @@ export function ScanSheet({
 }) {
   useBodyScrollLock(true);
   const { t } = useTranslation();
-  const { aliases, upsertAlias, setDayMeals } = useData();
+  const { aliases, upsertAlias, setDayMeals, offline } = useData();
 
   // --- Tarama adımı ---
   const [food, setFood] = useState<OffFood | null>(null);
@@ -155,7 +155,7 @@ export function ScanSheet({
   const scanning = food === null && visionItems === null;
 
   const { videoRef, ready, error: cameraError, retry: retryCamera } = useCameraStream(
-    scanning && canUseCamera,
+    scanning && canUseCamera && !offline,
   );
 
   // Barkod taraması YALNIZCA barkod modunda ve akış hazırken çalışır. `blocked`
@@ -163,7 +163,7 @@ export function ScanSheet({
   // sönüp yeniden yanmasın).
   useBarcodeDetection({
     videoRef,
-    active: scanning && scanMode === "barcode" && ready && !blocked,
+    active: scanning && scanMode === "barcode" && ready && !blocked && !offline,
     onDetected: (value) => {
       setBarcode(value);
       void lookupBarcode(value);
@@ -200,6 +200,10 @@ export function ScanSheet({
   }
 
   async function lookupBarcode(raw: string) {
+    if (offline) {
+      setStatus({ kind: "error", message: t("offline.featureUnavailable") });
+      return;
+    }
     const code = raw.trim();
     if (!isValidBarcode(code)) {
       setStatus({ kind: "error", message: t("scan.barcodeInvalid") });
@@ -228,6 +232,10 @@ export function ScanSheet({
   // --- Görsel analiz (kamera karesi ve galeri dosyası aynı yolu paylaşır) ---
 
   async function runVision(base64: string, mimeType: string, mode: VisionMode) {
+    if (offline) {
+      setStatus({ kind: "error", message: t("offline.featureUnavailable") });
+      return;
+    }
     const ctrl = new AbortController();
     abortRef.current = ctrl;
     setAnalyzing(true);
@@ -268,7 +276,7 @@ export function ScanSheet({
 
   async function captureAndAnalyze() {
     const video = videoRef.current;
-    if (!video || !ready || analyzing) return;
+    if (!video || !ready || analyzing || offline) return;
     const mode = visionModeFor(scanMode);
     // Çerçeve dekor değil: kare tam olarak buraya kırpılıyor.
     const crop = guide
@@ -687,7 +695,7 @@ export function ScanSheet({
                   <button
                     type="button"
                     onClick={captureAndAnalyze}
-                    disabled={!ready || analyzing}
+                    disabled={!ready || analyzing || offline}
                     aria-label={scanMode === "food_label" ? "Etiketi çek ve oku" : "Yemeği çek ve tanı"}
                     className="flex h-[68px] w-[68px] items-center justify-center rounded-full border-4 border-white/90 transition active:scale-95 disabled:opacity-40"
                   >
@@ -699,7 +707,8 @@ export function ScanSheet({
               <button
                 type="button"
                 onClick={() => fileInputRef.current?.click()}
-                className="justify-self-end rounded-pill border border-white/15 bg-black/40 px-3 py-2 text-[11px] font-semibold text-white/80 backdrop-blur-sm transition hover:text-white"
+                disabled={offline}
+                className="justify-self-end rounded-pill border border-white/15 bg-black/40 px-3 py-2 text-[11px] font-semibold text-white/80 opacity-100 backdrop-blur-sm transition hover:text-white disabled:opacity-40"
               >
                 🖼️ Galeri
               </button>

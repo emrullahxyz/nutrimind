@@ -222,10 +222,31 @@
     "understoodContinue": "Got it, continue"
   },
   "offline": {
-    "banner": "You're offline. Last data: {{time}}. Changes will not be saved.",
+    "banner": "You're offline. Changes are saved on this device and sync when you're back online. Last data: {{time}}.",
     "bannerRetry": "Retry",
     "fetchError": "Could not load data ({{error}}). Is the server running?",
-    "unknownTime": "unknown"
+    "unknownTime": "unknown",
+    "writeUnavailable": "This feature is unavailable while offline. Try again once you're back online.",
+    "queueFailed": "Could not save the change on this device. Check your storage.",
+    "syncing": "Syncing…",
+    "pendingCount": "{{count}} changes pending",
+    "failedCount": "{{count}} failed",
+    "conflictCount": "{{count}} conflicts",
+    "retryingSoon": "Will retry automatically…",
+    "details": "Details",
+    "hideDetails": "Hide",
+    "opRetry": "Retry",
+    "cancelOp": "Cancel",
+    "keepDevice": "Use device version",
+    "keepServer": "Use server version",
+    "statusPending": "Pending",
+    "statusFailed": "Failed",
+    "statusConflict": "Conflict",
+    "opDay": "Day {{date}}",
+    "opDeleteDay": "Delete day {{date}}",
+    "opAlias": "Memory: {{name}}",
+    "opDeleteAlias": "Delete memory: {{name}}",
+    "featureUnavailable": "This feature needs an internet connection. Try again once you're back online."
   },
   "privacy": {
     "tr": "Türkçe",

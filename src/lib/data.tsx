@@ -1,14 +1,39 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import type { ReactNode } from "react";
-import { deleteAlias, deleteDay, fetchData, saveAlias, saveConfig, saveDay, saveGoals } from "./api";
+import {
+  deleteAlias,
+  deleteDay,
+  fetchData,
+  saveAlias,
+  saveConfig,
+  saveDay,
+  saveGoals,
+} from "./api";
 import type { AliasPayload, AppData } from "./api";
 import type { GoalConfig, MealPayload } from "../types";
 import { buildUsageIndex, type UsageIndex } from "./aliasRank";
 import { AppSkeleton } from "../components/Skeleton";
-import { getSnapshot, putSnapshot } from "./offlineCache";
+import { getSnapshot, listOperations, putSnapshot } from "./offlineCache";
+import type { OfflineOperation } from "./offlineCache";
+import { isNetworkError, projectOperations } from "./offlineProjection";
+import {
+  cancelOperation,
+  getSyncState,
+  queueAlias,
+  queueDay,
+  queueDeleteAlias,
+  queueDeleteDay,
+  resolveConflict,
+  retryOperation,
+  subscribeSyncState,
+  syncPending,
+} from "./offlineSync";
+import type { SyncState } from "./offlineSync";
+import { SyncStatus } from "../components/SyncStatus";
 import { useTranslation } from "react-i18next";
 
-/** Yazma aksiyonları — hepsi "API çağır → veriyi yeniden çek" desenini izler. */
+/** Yazma aksiyonları — online'da "API çağır → veriyi yeniden çek", offline'da
+ *  "kuyruğa al → projeksiyonu güncelle" desenini izler. */
 export interface Actions {
   refresh: () => Promise<void>;
   /** Günün tüm öğünlerini değiştirir; dizi boşsa günü siler. */
@@ -18,14 +43,16 @@ export interface Actions {
   updateGoals: (goals: GoalConfig) => Promise<void>;
   /** Yazılan/güncellenen alias'ın id'sini DÖNER (Faz S3: ScanSheet aynı anda
    *  hem alias hem öğün yazdığında `MealSource.aliasId` için gerekli —
-   *  backend id'yi biz istemeden üretiyor, geri dönmezse kaybolur). */
+   *  backend id'yi biz istemeden üretiyor, geri dönmezse kaybolur).
+   *  Offline'da dönen id `local:...` biçimindedir; senkron sırasında gerçek
+   *  sunucu id'sine çevrilir. */
   upsertAlias: (alias: AliasPayload) => Promise<string>;
   removeAlias: (id: string) => Promise<void>;
   /** Genel config anahtarı yazar (Faz 2a) — su/takviye/şablon fazları bunu kullanacak. */
   updateConfig: (key: string, value: Record<string, unknown>) => Promise<void>;
 }
 
-type Ctx = AppData & Actions & { usageIndex: UsageIndex };
+type Ctx = AppData & Actions & { usageIndex: UsageIndex; offline: boolean };
 
 const DataCtx = createContext<Ctx | null>(null);
 
@@ -36,7 +63,11 @@ export function useData(): Ctx {
 }
 
 function Center({ children }: { children: ReactNode }) {
-  return <div className="grid min-h-[45vh] place-items-center text-center text-sm text-ink-tertiary">{children}</div>;
+  return (
+    <div className="grid min-h-[45vh] place-items-center text-center text-sm text-ink-tertiary">
+      {children}
+    </div>
+  );
 }
 
 /**
@@ -44,9 +75,16 @@ function Center({ children }: { children: ReactNode }) {
  * gösterilecek mesaj. Kayıt aslında sunucuda başarılı olduğu için "kaydetme
  * başarısız" gibi yanlış bir izlenim vermemek adına ayrı bir mesaj kullanılır.
  */
-const REFRESH_AFTER_WRITE_FAILED_MESSAGE = "Kaydedildi, ancak veriler yenilenemedi — sayfayı yenileyin.";
+const REFRESH_AFTER_WRITE_FAILED_MESSAGE =
+  "Kaydedildi, ancak veriler yenilenemedi — sayfayı yenileyin.";
 
-function StaleFallback({ refresh, onResolved }: { refresh: () => Promise<void>; onResolved: () => void }) {
+function StaleFallback({
+  refresh,
+  onResolved,
+}: {
+  refresh: () => Promise<void>;
+  onResolved: () => void;
+}) {
   const [retrying, setRetrying] = useState(false);
 
   const handleRetry = async () => {
@@ -80,8 +118,11 @@ function StaleFallback({ refresh, onResolved }: { refresh: () => Promise<void>; 
 }
 
 export function DataProvider({ children }: { children: ReactNode }) {
-  const { t, i18n } = useTranslation();
-  const [data, setData] = useState<AppData | null>(null);
+  const { t } = useTranslation();
+  // Sunucudan son doğrulanmış veri (ya da offline'da son cache snapshot'ı).
+  const [server, setServer] = useState<AppData | null>(null);
+  // Bekleyen offline operasyonlar (IndexedDB'deki kuyruğun aynası).
+  const [ops, setOps] = useState<OfflineOperation[]>([]);
   const [err, setErr] = useState<string | null>(null);
   // Yazma başarılı olduktan sonra yenileme başarısız olduysa true: elimizdeki
   // veri bayat, üstüne yazmak veri kaybettirir.
@@ -89,46 +130,73 @@ export function DataProvider({ children }: { children: ReactNode }) {
   // Çevrimdışı durumda son görülen cache gösteriliyor: banner + retry UI için.
   const [offline, setOffline] = useState(false);
   const [cachedAt, setCachedAt] = useState<string | null>(null);
+  const [syncState, setSyncState] = useState<SyncState>(getSyncState());
 
   const refresh = useCallback(async () => {
     const d = await fetchData();
-    setData(d);
-    // Başarılı fetch → cache'e yaz ve offline bayrağını kaldır.
+    setServer(d);
+    // Başarılı fetch → cache'e SADECE sunucu verisini yaz (projeksiyon değil —
+    // kuyruk ayrı tutulur, karıştırılırsa offline açılışta çifte uygulanır).
     void putSnapshot(d);
     setOffline(false);
   }, []);
 
+  // Online gelince: önce kuyruğu boşalt (sync), sonra veriyi tazele.
+  const syncAndRefresh = useCallback(async () => {
+    try {
+      await syncPending();
+    } finally {
+      try {
+        await refresh();
+      } catch {
+        // Çevrimdışı kalındı — banner retry ile kullanıcı tekrar dener.
+      }
+    }
+  }, [refresh]);
+
   useEffect(() => {
     let alive = true;
-    fetchData()
-      .then((d) => {
+    (async () => {
+      let queued: OfflineOperation[] = [];
+      try {
+        queued = await listOperations();
+      } catch {
+        // IndexedDB yok (private mode vb.) — kuyruk boş sayılır, uygulama eskisi gibi davranır.
+      }
+      if (!alive) return;
+      setOps(queued);
+      try {
+        const d = await fetchData();
         if (!alive) return;
-        setData(d);
+        setServer(d);
         void putSnapshot(d);
-      })
-      .catch(async (e) => {
+        setOffline(false);
+        // Yeniden açılışta kuyrukta iş varsa otomatik senkron.
+        if (queued.length > 0) void syncAndRefresh();
+      } catch (e) {
         if (!alive) return;
         // Offline: son cache'i dene. Bulunamazsa orijinal hata.
         const snap = await getSnapshot();
         if (snap) {
-          setData(snap.data);
+          setServer(snap.data);
           setOffline(true);
           setCachedAt(snap.cachedAt);
         } else {
-          setErr(String(e?.message ?? e));
+          setErr(String((e as Error)?.message ?? e));
         }
-      });
+      }
+    })();
     return () => {
       alive = false;
     };
-  }, []);
+  }, [syncAndRefresh]);
 
-  // navigator.onLine + online/offline event: online olunca otomatik refetch.
+  // navigator.onLine + online/offline event: online olunca sync + otomatik refetch.
   useEffect(() => {
     if (typeof window === "undefined") return;
     const goOnline = () => {
       setOffline(false);
-      void refresh();
+      void syncAndRefresh();
     };
     const goOffline = () => setOffline(true);
     window.addEventListener("online", goOnline);
@@ -137,65 +205,155 @@ export function DataProvider({ children }: { children: ReactNode }) {
       window.removeEventListener("online", goOnline);
       window.removeEventListener("offline", goOffline);
     };
-  }, [refresh]);
+  }, [syncAndRefresh]);
 
-  // Tüm yazma aksiyonlarının izlediği tek ortak yol: önce yazma işlemini
-  // çalıştır (hata varsa olduğu gibi yukarı fırlat), sonra veriyi yenile.
-  // Yalnızca yenileme aşaması başarısız olursa, ayırt edilebilir bir hata
-  // mesajıyla değiştir — yazma hatasının kendi mesajına asla dokunulmaz.
-  // Jenerik <T>: `saveAlias`'ın döndürdüğü {ok, id} gibi bir sonucu da
-  // olduğu gibi yukarı taşıyabilsin diye (Faz S3 — bkz. `upsertAlias`).
-  const runWriteThenRefresh = useCallback(
-    async <T,>(write: () => Promise<T>): Promise<T> => {
-      const result = await write();
+  // Sync durumu (senkronize ediliyor / yeniden deneme zamanı) — SyncStatus dinler.
+  useEffect(() => subscribeSyncState(setSyncState), []);
+
+  // Her sync tamamlandığında kuyruğu yeniden oku: sync operasyonları kuyruktan
+  // düşürürken veya durum değiştirirken bu ayna state taze kalmalı (zamanlayıcı
+  // tetiklemeli arka plan sync'leri dahil).
+  useEffect(() => {
+    if (syncState.syncing) return;
+    let alive = true;
+    listOperations()
+      .then((opsNow) => {
+        if (alive) setOps(opsNow);
+      })
+      .catch(() => {});
+    return () => {
+      alive = false;
+    };
+  }, [syncState.syncing, syncState.lastResult]);
+
+  // Kullanıcının gördüğü veri = sunucu snapshot'ı + bekleyen işlemler.
+  // Bu ayrım kritik: sunucu verisine asla dokunulmaz, projeksiyon her zaman
+  // kuyruktan yeniden türetilir (mutate → refetch deseninin offline karşılığı).
+  const visible = useMemo<AppData | null>(
+    () => (server ? projectOperations(server, ops) : null),
+    [server, ops],
+  );
+
+  const handleRetryOp = useCallback(async (id: string) => {
+    await retryOperation(id);
+    setOps(await listOperations());
+    void syncPending();
+  }, []);
+
+  const handleCancelOp = useCallback(async (id: string) => {
+    await cancelOperation(id);
+    setOps(await listOperations());
+  }, []);
+
+  const handleResolveOp = useCallback(async (id: string, choice: "server" | "device") => {
+    await resolveConflict(id, choice);
+    setOps(await listOperations());
+    if (choice === "device") void syncPending();
+  }, []);
+
+  /**
+   * Ortak yazma yolu (gün + alias): önce online dener. Ağ hatası ise işlemi
+   * kuyruğa alır ve projeksiyonu günceller; diğer hatalar (doğrulama, oturum)
+   * olduğu gibi yukarı fırlar. Online yazma başarılı olup yalnızca yenileme
+   * başarısızsa bayat durumu terminal yapar.
+   */
+  const offlineAware = useCallback(
+    async <T,>(
+      write: () => Promise<T>,
+      enqueue: (base: AppData) => Promise<unknown>,
+      offlineResult?: T,
+    ): Promise<T> => {
       try {
-        await refresh();
-      } catch {
-        // Yazma sunucuya işlendi ama elimizdeki veri artık bayat. Gün yazımı
-        // günün TAMAMINI değiştirdiği için bayat listeyle yapılacak bir sonraki
-        // kayıt/silme, az önce başarılı olan yazmayı sessizce geri alırdı.
-        // Bu yüzden bayat durumu terminal yapıyoruz: yenilenene kadar yazma yok.
-        setStale(true);
-        throw new Error(REFRESH_AFTER_WRITE_FAILED_MESSAGE);
+        const result = await write();
+        try {
+          await refresh();
+        } catch {
+          setStale(true);
+          throw new Error(REFRESH_AFTER_WRITE_FAILED_MESSAGE);
+        }
+        return result;
+      } catch (error) {
+        if (!isNetworkError(error)) throw error;
+        if (!visible) throw error;
+        try {
+          // base = kullanıcının GÖRDÜĞÜ veri (projeksiyon). Aynı kaynağa dokunan
+          // sıralı işlemler birbirini doğru biçimde temel alır.
+          await enqueue(visible);
+          setOps(await listOperations());
+          setOffline(true);
+        } catch {
+          // Kuyruğa alınamadı (IDB yok / quota dolu) — sessizce kaybolmamalı.
+          throw new Error(t("offline.queueFailed"));
+        }
+        return offlineResult as T;
       }
-      return result;
     },
-    [refresh],
+    [refresh, visible, t],
   );
 
   const actions = useMemo<Actions>(
     () => ({
       refresh,
       setDayMeals: (date, meals) =>
-        runWriteThenRefresh(async () => {
-          if (meals.length === 0) await deleteDay(date);
-          else await saveDay(date, meals);
-        }),
-      updateGoals: (goals) =>
-        runWriteThenRefresh(async () => {
-          await saveGoals(goals);
-        }),
-      upsertAlias: (alias) => runWriteThenRefresh(() => saveAlias(alias)).then((r) => r.id),
+        offlineAware(
+          async () => {
+            if (meals.length === 0) await deleteDay(date);
+            else await saveDay(date, meals);
+          },
+          (base) => (meals.length === 0 ? queueDeleteDay(base, date) : queueDay(base, date, meals)),
+        ),
+      updateGoals: async (goals) => {
+        if (offline) throw new Error(t("offline.writeUnavailable"));
+        await saveGoals(goals);
+        try {
+          await refresh();
+        } catch {
+          setStale(true);
+          throw new Error(REFRESH_AFTER_WRITE_FAILED_MESSAGE);
+        }
+      },
+      upsertAlias: (alias) => {
+        // Yerel alias düzenleniyorsa AYNI localId korunur; yeni alias ise üretilir;
+        // gerçek (sunucu) id ile güncelleme ise localId'siz gider.
+        const localId =
+          alias.id && !alias.id.startsWith("local:")
+            ? undefined
+            : (alias.id ?? `local:${crypto.randomUUID()}`);
+        return offlineAware(
+          () => saveAlias(alias).then((r) => r.id),
+          (base) => queueAlias(base, alias, localId),
+          localId as string,
+        );
+      },
       removeAlias: (id) =>
-        runWriteThenRefresh(async () => {
-          await deleteAlias(id);
-        }),
-      updateConfig: (key, value) =>
-        runWriteThenRefresh(async () => {
-          await saveConfig(key, value);
-        }),
+        offlineAware(
+          async () => {
+            await deleteAlias(id);
+          },
+          (base) => queueDeleteAlias(base, id),
+        ),
+      updateConfig: async (key, value) => {
+        if (offline) throw new Error(t("offline.writeUnavailable"));
+        await saveConfig(key, value);
+        try {
+          await refresh();
+        } catch {
+          setStale(true);
+          throw new Error(REFRESH_AFTER_WRITE_FAILED_MESSAGE);
+        }
+      },
     }),
-    [refresh, runWriteThenRefresh],
+    [refresh, offlineAware, offline, t],
   );
 
   const usageIndex = useMemo<UsageIndex>(() => {
-    if (!data) return new Map();
-    return buildUsageIndex(data.days, data.goals);
-  }, [data?.days, data?.goals]);
+    if (!visible) return new Map();
+    return buildUsageIndex(visible.days, visible.goals);
+  }, [visible]);
 
   const value = useMemo<Ctx | null>(
-    () => (data ? { ...data, ...actions, usageIndex } : null),
-    [data, actions, usageIndex],
+    () => (visible ? { ...visible, ...actions, usageIndex, offline } : null),
+    [visible, actions, usageIndex, offline],
   );
 
   if (stale) return <StaleFallback refresh={refresh} onResolved={() => setStale(false)} />;
@@ -220,33 +378,16 @@ export function DataProvider({ children }: { children: ReactNode }) {
   if (!value) return <AppSkeleton />;
   return (
     <>
-      {offline && (
-        <div
-          role="status"
-          aria-live="polite"
-          className="sticky top-0 z-50 flex items-center justify-between gap-3 border-b border-amber-500/30 bg-amber-500/15 px-4 py-2 text-xs text-amber-100"
-        >
-          <span>
-            {t("offline.banner", {
-              time: cachedAt
-                ? new Date(cachedAt).toLocaleString(i18n.resolvedLanguage || i18n.language || "en", {
-                    hour: "2-digit",
-                    minute: "2-digit",
-                    day: "2-digit",
-                    month: "2-digit",
-                  })
-                : t("offline.unknownTime"),
-            })}
-          </span>
-          <button
-            type="button"
-            onClick={() => void refresh()}
-            className="rounded-full border border-amber-500/40 bg-amber-500/20 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide"
-          >
-            {t("offline.bannerRetry")}
-          </button>
-        </div>
-      )}
+      <SyncStatus
+        offline={offline}
+        cachedAt={cachedAt}
+        ops={ops}
+        syncState={syncState}
+        onSyncNow={() => void syncAndRefresh()}
+        onRetryOp={(id) => void handleRetryOp(id)}
+        onCancelOp={(id) => void handleCancelOp(id)}
+        onResolveOp={(id, choice) => void handleResolveOp(id, choice)}
+      />
       <DataCtx.Provider value={value}>{children}</DataCtx.Provider>
     </>
   );
