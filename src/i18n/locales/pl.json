@@ -212,7 +212,14 @@
     "title": "Aparat / Skanuj",
     "titleReview": "Sprawdź i zapisz",
     "titleFoodLabel": "Sprawdź etykietę",
-    "titleFoodPhoto": "Sprawdź posiłek"
+    "titleFoodPhoto": "Sprawdź posiłek",
+    "saveToDayAndMemory": "Dodaj do dnia i pamięci",
+    "saveToDayOnly": "Tylko dodaj do dnia",
+    "inMemory": "W pamięci",
+    "saveToMemoryOnly": "Tylko do pamięci",
+    "memoryHint": "Jeśli wpiszesz krótkie hasło, ten produkt zostanie zapisany {{memory}} — następnym razem wystarczy wpisać jego nazwę. Pozostaw puste, aby dodać tylko do dzisiejszego dnia.",
+    "memoryWord": "w pamięci",
+    "understoodContinue": "Rozumiem, kontynuuj"
   },
   "offline": {
     "banner": "Jesteś offline. Ostatnie dane: {{time}}. Zmiany nie zostaną zapisane.",

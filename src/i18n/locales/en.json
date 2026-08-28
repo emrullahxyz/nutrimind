@@ -212,7 +212,14 @@
     "title": "Camera / Scan",
     "titleReview": "Review and save",
     "titleFoodLabel": "Review label",
-    "titleFoodPhoto": "Review meal"
+    "titleFoodPhoto": "Review meal",
+    "saveToDayAndMemory": "Add to day & memory",
+    "saveToDayOnly": "Only add to day",
+    "inMemory": "In memory",
+    "saveToMemoryOnly": "Only add to memory",
+    "memoryHint": "Write a short phrase and this product will be saved to {{memory}} — next time just type its name. Leave blank to only add to today.",
+    "memoryWord": "your memory",
+    "understoodContinue": "Got it, continue"
   },
   "offline": {
     "banner": "You're offline. Last data: {{time}}. Changes will not be saved.",
