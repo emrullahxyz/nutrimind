@@ -82,4 +82,14 @@ describe("parseWithAI", () => {
     mockFetchOnce(502, { error: "AI servisi hatası" });
     await expect(parseWithAI("x")).rejects.toBeInstanceOf(AiError);
   });
+
+  it("çevrimdışıysa isteği hiç açmaz, AiError(0) fırlatır", async () => {
+    vi.stubGlobal("navigator", { onLine: false });
+    const fetchSpy = vi.fn();
+    vi.stubGlobal("fetch", fetchSpy);
+    const err = await parseWithAI("2 yumurta").catch((e) => e);
+    expect(err).toBeInstanceOf(AiError);
+    expect((err as AiError).status).toBe(0);
+    expect(fetchSpy).not.toHaveBeenCalled();
+  });
 });

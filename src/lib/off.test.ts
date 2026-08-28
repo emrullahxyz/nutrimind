@@ -333,6 +333,16 @@ describe("searchOff — proxy zarfı", () => {
     stubJson(200, { ok: true, found: false, barcode: "1234", product: null });
     expect(await fetchOffProduct("1234")).toBeNull();
   });
+
+  it("searchOff: çevrimdışıysa isteği hiç açmaz, OffError(0) fırlatır", async () => {
+    vi.stubGlobal("navigator", { onLine: false });
+    const fetchSpy = vi.fn();
+    vi.stubGlobal("fetch", fetchSpy);
+    const err = await searchOff("skyr").catch((e) => e);
+    expect(err).toBeInstanceOf(OffError);
+    expect((err as OffError).status).toBe(0);
+    expect(fetchSpy).not.toHaveBeenCalled();
+  });
 });
 
 describe("mesajlar, barkod ve yetenek testi", () => {

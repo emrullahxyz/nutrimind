@@ -23,6 +23,7 @@
 import type { Nutrition } from "../types";
 import { NUTRIENTS, makeNutrition, nutrientOf } from "./nutrients";
 import type { NutrientKey } from "./nutrients";
+import { isBrowserOffline } from "./netStatus";
 
 // --- Sabitler ---------------------------------------------------------------
 
@@ -147,6 +148,7 @@ export interface OffSearchResult {
 }
 
 export async function searchOff(query: string, limit = 20, signal?: AbortSignal): Promise<OffSearchResult> {
+  if (isBrowserOffline()) throw new OffError(0, offErrorMessage(0));
   const url = `/api/off/search?q=${encodeURIComponent(query)}&limit=${limit}`;
   const raw = await offGet<OffSearchResponse>(url, signal);
   const products = Array.isArray(raw?.products) ? raw.products : [];
@@ -162,6 +164,7 @@ export async function searchOff(query: string, limit = 20, signal?: AbortSignal)
 
 /** Barkodla tek ürün. Ürün OFF'ta yoksa `null` döner — bu bir HATA DEĞİL. */
 export async function fetchOffProduct(barcode: string, signal?: AbortSignal): Promise<OffFood | null> {
+  if (isBrowserOffline()) throw new OffError(0, offErrorMessage(0));
   const raw = await offGet<OffProductResponse>(`/api/off/product/${encodeURIComponent(barcode)}`, signal);
   if (!raw?.found || !raw.product) return null;
   return toOffFood(raw.product);

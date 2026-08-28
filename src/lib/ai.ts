@@ -6,6 +6,7 @@
 // ============================================================================
 import type { AIParseItem, AIParseResult, Nutrition, VisionMode } from "../types";
 import { signalUnauthorizedFromApi } from "./api";
+import { isBrowserOffline } from "./netStatus";
 
 /** Proxy'den dönen hata. `status` HTTP kodudur (0 = ağa hiç çıkılamadı),
  *  `retryAfter` yalnızca 429'da doludur (saniye). */
@@ -73,6 +74,9 @@ function parseAIItem(raw: unknown): AIParseItem | null {
 }
 
 async function aiPost<T>(path: string, body: unknown, signal?: AbortSignal): Promise<T> {
+  // Savunma katmanı: UI zaten çevrimdışıda butonları kilitler (bkz. ScanSheet);
+  // yine de doğrudan çağrıda boşuna istek açma — hemen anlaşılır hata ver.
+  if (isBrowserOffline()) throw new AiError(0, aiErrorMessage(0));
   let res: Response;
   try {
     res = await fetch(path, {
