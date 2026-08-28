@@ -675,6 +675,14 @@
     "templatesEmpty": "No templates yet. On the Today tab you can save a meal with 'Make template'.",
     "items": "items"
   },
+  "vision": {
+    "unsureTitle": "AI is not sure about this value",
+    "removeItem": "Remove item",
+    "nameLabel": "Name",
+    "portionLabel": "Serving",
+    "addToMeal": "Add to meal",
+    "triggersPlaceholder": "e.g. oat flakes"
+  },
   "relative": {
     "today": "today",
     "yesterday": "yesterday",

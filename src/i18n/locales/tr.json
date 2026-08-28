@@ -675,6 +675,14 @@
     "templatesEmpty": "Henüz şablon yok. Bugün sekmesinde bir öğünü 'Şablon yap' diyerek kaydedebilirsin.",
     "items": "kalem"
   },
+  "vision": {
+    "unsureTitle": "AI bu değerden emin değil",
+    "removeItem": "Kalemi kaldır",
+    "nameLabel": "Ad",
+    "portionLabel": "Porsiyon",
+    "addToMeal": "Öğüne ekle",
+    "triggersPlaceholder": "örn. yulaf gevreği"
+  },
   "relative": {
     "today": "bugün",
     "yesterday": "dün",
