@@ -230,7 +230,8 @@
     "weight": "Weight",
     "weeks": "Weeks",
     "trend": "Trend",
-    "showLess": "Show less"
+    "showLess": "Show less",
+    "macroBreakdown": "Weekly Macro Breakdown & Totals"
   },
   "onboarding": {
     "saveAndStart": "Save my goals and start",
@@ -336,5 +337,14 @@
     "microNutrients": "Micronutrients",
     "microEmptyNote": "If you leave a micronutrient blank it is counted as \"unknown\" and not saved as 0.",
     "total": "Total:"
+  },
+  "aliasPage": {
+    "title": "Food Memory",
+    "subtitle": "Learned phrases → specific foods & macros (e.g. \"yogurt\", \"protein powder\")",
+    "scanBarcode": "Barcode",
+    "recipe": "Recipe",
+    "newFood": "New Food",
+    "searchPlaceholder": "Search food name, brand or phrase...",
+    "templates": "Templates"
   }
 }

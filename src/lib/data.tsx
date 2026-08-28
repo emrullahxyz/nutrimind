@@ -6,6 +6,7 @@ import type { GoalConfig, MealPayload } from "../types";
 import { buildUsageIndex, type UsageIndex } from "./aliasRank";
 import { AppSkeleton } from "../components/Skeleton";
 import { getSnapshot, putSnapshot } from "./offlineCache";
+import { useTranslation } from "react-i18next";
 
 /** Yazma aksiyonları — hepsi "API çağır → veriyi yeniden çek" desenini izler. */
 export interface Actions {
@@ -79,6 +80,7 @@ function StaleFallback({ refresh, onResolved }: { refresh: () => Promise<void>; 
 }
 
 export function DataProvider({ children }: { children: ReactNode }) {
+  const { t, i18n } = useTranslation();
   const [data, setData] = useState<AppData | null>(null);
   const [err, setErr] = useState<string | null>(null);
   // Yazma başarılı olduktan sonra yenileme başarısız olduysa true: elimizdeki
@@ -201,7 +203,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
     return (
       <Center>
         <div className="flex flex-col items-center gap-3 p-4">
-          <p>Veri alınamadı ({err}). Sunucu çalışıyor mu?</p>
+          <p>{t("offline.fetchError", { error: err })}</p>
           <button
             type="button"
             onClick={() => {
@@ -210,7 +212,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
             }}
             className="rounded-chip border border-line bg-white/[0.08] px-4 py-2 text-xs font-semibold text-ink-primary transition hover:bg-white/[0.12] active:scale-95"
           >
-            Tekrar dene
+            {t("offline.bannerRetry")}
           </button>
         </div>
       </Center>
@@ -225,23 +227,23 @@ export function DataProvider({ children }: { children: ReactNode }) {
           className="sticky top-0 z-50 flex items-center justify-between gap-3 border-b border-amber-500/30 bg-amber-500/15 px-4 py-2 text-xs text-amber-100"
         >
           <span>
-            Çevrimdışısınız. Son veri:{" "}
-            {cachedAt
-              ? new Date(cachedAt).toLocaleString("tr-TR", {
-                  hour: "2-digit",
-                  minute: "2-digit",
-                  day: "2-digit",
-                  month: "2-digit",
-                })
-              : "bilinmiyor"}
-            . Değişiklikler kaydedilmez.
+            {t("offline.banner", {
+              time: cachedAt
+                ? new Date(cachedAt).toLocaleString(i18n.resolvedLanguage || i18n.language || "en", {
+                    hour: "2-digit",
+                    minute: "2-digit",
+                    day: "2-digit",
+                    month: "2-digit",
+                  })
+                : t("offline.unknownTime"),
+            })}
           </span>
           <button
             type="button"
             onClick={() => void refresh()}
             className="rounded-full border border-amber-500/40 bg-amber-500/20 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide"
           >
-            Yeniden Dene
+            {t("offline.bannerRetry")}
           </button>
         </div>
       )}

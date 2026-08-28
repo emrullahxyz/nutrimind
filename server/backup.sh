@@ -1,6 +1,6 @@
 #!/bin/bash
 # Nutrimind data.db haftalık yedek.
-# cron: 0 3 * * 0 /var/www/nutri/server/backup.sh
+# cron: 0 3 * * 0 /home/emrullah/nutri-api/server/backup.sh
 #
 # sqlite3 online backup kullanır (production DB kilitli olsa bile çalışır).
 # .backup komutu atomik snapshot alır; mevcut dosya kilitlenmez.
@@ -8,7 +8,10 @@
 
 set -euo pipefail
 
-DB_PATH="/var/www/nutri/data.db"
+# Production server /home/emrullah/nutri-api/ üzerinde; DB oradaki index.js'in
+# yanında olur (index.js __dirname hesaplar). Frontend dist'i /var/www/nutri'ye
+# basılır ama server orada DEĞİL. NUTRI_DB env ile override edilebiliyor.
+DB_PATH="${NUTRI_DB:-/home/emrullah/nutri-api/data.db}"
 BACKUP_DIR="/var/backups/nutrimind"
 RETENTION_DAYS=30
 TIMESTAMP=$(date +%Y%m%d-%H%M%S)

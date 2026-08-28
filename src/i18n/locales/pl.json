@@ -230,7 +230,8 @@
     "weight": "Waga",
     "weeks": "Tygodnie",
     "trend": "Trend",
-    "showLess": "Pokaż mniej"
+    "showLess": "Pokaż mniej",
+    "macroBreakdown": "Tygodniowy rozkład makro i sumy"
   },
   "onboarding": {
     "saveAndStart": "Zapisz cele i zacznij",
@@ -336,5 +337,14 @@
     "microNutrients": "Mikroskładniki",
     "microEmptyNote": "Pozostawienie pustego mikroskładnika oznacza \"nieznane\" — nie zostanie zapisane jako 0.",
     "total": "Łącznie:"
+  },
+  "aliasPage": {
+    "title": "Pamięć żywieniowa",
+    "subtitle": "Nauczone frazy → konkretne produkty i makro (np. \"jogurt\", \"odżywka białkowa\")",
+    "scanBarcode": "Kod kreskowy",
+    "recipe": "Przepis",
+    "newFood": "Nowy produkt",
+    "searchPlaceholder": "Szukaj nazwy produktu, marki lub frazy...",
+    "templates": "Szablony"
   }
 }

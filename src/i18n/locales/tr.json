@@ -230,7 +230,8 @@
     "weight": "Kilo",
     "weeks": "Haftalar",
     "trend": "Trend",
-    "showLess": "Daha Az Göster"
+    "showLess": "Daha Az Göster",
+    "macroBreakdown": "Haftalık Makro Dağılımı & Toplamları"
   },
   "onboarding": {
     "saveAndStart": "Hedeflerimi Kaydet ve Başla",
@@ -336,5 +337,14 @@
     "microNutrients": "Mikro besinler",
     "microEmptyNote": "Boş bıraktığın mikro besin \"bilinmiyor\" sayılır — 0 olarak kaydedilmez.",
     "total": "Toplam:"
+  },
+  "aliasPage": {
+    "title": "Besin Hafızası",
+    "subtitle": "Öğrenilmiş ifadeler → belirli besin & makrolar (örn. \"yoğurt\", \"protein tozu\")",
+    "scanBarcode": "Barkod",
+    "recipe": "Tarif",
+    "newFood": "Yeni Besin",
+    "searchPlaceholder": "Besin adı, marka veya ifade ara...",
+    "templates": "Şablonlar"
   }
 }

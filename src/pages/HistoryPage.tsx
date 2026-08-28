@@ -158,7 +158,7 @@ export function HistoryPage({ resetKey = 0 }: { resetKey?: number }) {
         </div>
 
         <Card className="flex flex-col items-center justify-center p-6 gap-4">
-          <div className="text-sm font-bold text-ink-secondary">Haftalık Makro Dağılımı & Toplamları</div>
+          <div className="text-sm font-bold text-ink-secondary">{t("history.macroBreakdown")}</div>
           <MacroDonut nutrition={week.total} />
           <div className="w-full border-t border-line-faint pt-3">
             <div className="grid grid-cols-2 gap-x-4 gap-y-2 sm:grid-cols-4">

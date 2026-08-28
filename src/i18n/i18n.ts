@@ -53,6 +53,12 @@ void i18n.use(initReactI18next).init({
   interpolation: { escapeValue: false }, // React zaten kaçış yapıyor
 });
 
+// İlk açılışta <html lang> senkronla — setLang yalnızca kullanıcı değiştirince
+// çağrılıyor; init sonrası da doğru lang görünmeli (SEO / erişilebilirlik).
+if (typeof document !== "undefined") {
+  document.documentElement.lang = initialLang;
+}
+
 /** <html lang> ve localStorage senkron. */
 export function setLang(lang: Lang): void {
   void i18n.changeLanguage(lang);

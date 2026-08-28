@@ -1,11 +1,18 @@
 // ============================================================================
-// Number/date formatting helpers — tr-TR locale, matches hifi mockup style
-// (mono numbers, "%96" confidence, "3g önce" relative dates, etc.)
+// Number/date formatting helpers — locale-aware (i18n.language), matches hifi
+// mockup style (mono numbers, "%96" confidence, "3g önce" relative dates, etc.)
 // ============================================================================
+
+import i18n from "../i18n/i18n";
+
+/** Aktif arayüz dili; i18n yüklenmediyse varsayılan olarak "en" (fallback). */
+function activeLocale(): string {
+  return i18n.resolvedLanguage || i18n.language || "en";
+}
 
 export function formatNumber(value: number, digits = 0): string {
   if (!Number.isFinite(value)) return "0";
-  return new Intl.NumberFormat("tr-TR", {
+  return new Intl.NumberFormat(activeLocale(), {
     minimumFractionDigits: digits,
     maximumFractionDigits: digits,
   }).format(value);
@@ -52,12 +59,12 @@ export function addDaysISO(iso: string, delta: number): string {
 
 export function formatLongDate(iso: string): string {
   const d = new Date(`${iso}T00:00:00`);
-  return d.toLocaleDateString("tr-TR", { weekday: "long", day: "numeric", month: "long" });
+  return d.toLocaleDateString(activeLocale(), { weekday: "long", day: "numeric", month: "long" });
 }
 
 export function formatShortDate(iso: string): string {
   const d = new Date(`${iso}T00:00:00`);
-  return d.toLocaleDateString("tr-TR", { day: "numeric", month: "short" });
+  return d.toLocaleDateString(activeLocale(), { day: "numeric", month: "short" });
 }
 
 export const WEEKDAY_SHORT = ["Paz", "Pzt", "Sal", "Çar", "Per", "Cum", "Cmt"];
