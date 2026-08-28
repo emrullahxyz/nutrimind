@@ -353,5 +353,14 @@
     "newFood": "Yeni Besin",
     "searchPlaceholder": "Besin adı, marka veya ifade ara...",
     "templates": "Şablonlar"
+  },
+  "relative": {
+    "today": "bugün",
+    "yesterday": "dün",
+    "daysAgo": "{{count}}g önce",
+    "goodNight": "İyi geceler",
+    "goodMorning": "Günaydın",
+    "goodDay": "İyi günler",
+    "goodEvening": "İyi akşamlar"
   }
 }
