@@ -98,3 +98,6 @@ tasks/                 # todo.md + lessons.md (aktif iş takibi)
 - Gemini AI entegrasyonu `src/lib/ai.ts` (istemci) → `POST /api/ai/parse` → `server/ai.js` şeklindedir.
   Kill-switch: `.env`'deki `NUTRIMIND_LLM_PROVIDER` değeri `"gemini"` değilse 503 döner.
 - Kamera akışı: `src/lib/camera.ts` (kamera yaşam döngüsü) + `src/lib/scan.ts` (barkod tarama) ayrıdır.
+- Çevrimdışı yazma: `src/lib/offlineCache.ts` (IndexedDB v2 kuyruk) + `offlineProjection.ts`
+  (saf projeksiyon) + `offlineSync.ts` (conflict korumalı sync) + `components/SyncStatus.tsx`;
+  ağ gerektiren özellikler `offline` context bayrağıyla kilitlenir (bkz. docs/operations/offline.md).
