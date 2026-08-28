@@ -117,7 +117,10 @@
     "alias": "Besinler",
     "settings": "Ayarlar",
     "add": "Ekle",
-    "savedFoods": "Kayıtlı Besinler"
+    "savedFoods": "Kayıtlı Besinler",
+    "logExercise": "Egzersiz Kaydet",
+    "foodSearch": "Besin Arama",
+    "foodScan": "Yemek Taraması"
   },
   "auth": {
     "login": "Giriş yap",
