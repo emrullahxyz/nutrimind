@@ -1,3 +1,4 @@
+import type { TFunction } from "i18next";
 import type { Nutrition } from "../types";
 
 export interface HealthScore {
@@ -56,11 +57,11 @@ function capitalize(str: string): string {
   return str.charAt(0).toUpperCase() + str.slice(1);
 }
 
-export function computeHealthScore(total: Nutrition, goal: Nutrition): HealthScore {
+export function computeHealthScore(total: Nutrition, goal: Nutrition, t: TFunction): HealthScore {
   if (total.kcal <= 0) {
     return {
       score: 0,
-      message: "Bugün için henüz kayıt yok. Öğün ekleyince skorun burada görünecek.",
+      message: t("healthScore.noRecords"),
     };
   }
 
@@ -70,7 +71,7 @@ export function computeHealthScore(total: Nutrition, goal: Nutrition): HealthSco
   if (activeKeys.length === 0) {
     return {
       score: 5,
-      message: "Hedef belirlenmemiş.",
+      message: t("healthScore.noGoal"),
     };
   }
 
@@ -117,22 +118,22 @@ export function computeHealthScore(total: Nutrition, goal: Nutrition): HealthSco
   if (goodKeys.length === activeKeys.length) {
     return {
       score,
-      message: "Bugün tüm makrolar hedefinde, harika gidiyor!",
+      message: t("healthScore.perfect"),
     };
   }
 
   const sentences: string[] = [];
 
   if (goodKeys.length > 0) {
-    sentences.push(`${capitalize(formatPlainList(goodKeys))} yolunda.`);
+    sentences.push(`${capitalize(formatPlainList(goodKeys))} ${t("healthScore.onTrack")}`);
   }
 
   if (lowKeys.length > 0 && highKeys.length > 0) {
-    sentences.push(`${capitalize(formatLocativeList(lowKeys))} düşüksün; ${formatLocativeList(highKeys)} yükseksin.`);
+    sentences.push(`${capitalize(formatLocativeList(lowKeys))} ${t("healthScore.under")}; ${formatLocativeList(highKeys)} ${t("healthScore.over")}`);
   } else if (lowKeys.length > 0) {
-    sentences.push(`${capitalize(formatLocativeList(lowKeys))} düşüksün.`);
+    sentences.push(`${capitalize(formatLocativeList(lowKeys))} ${t("healthScore.under")}`);
   } else if (highKeys.length > 0) {
-    sentences.push(`${capitalize(formatLocativeList(highKeys))} yükseksin.`);
+    sentences.push(`${capitalize(formatLocativeList(highKeys))} ${t("healthScore.over")}`);
   }
 
   return {

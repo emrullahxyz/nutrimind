@@ -1,4 +1,5 @@
 import { useRef, useState, type UIEvent } from "react";
+import { useTranslation } from "react-i18next";
 import type { Nutrition } from "../types";
 import { HeroCalorieCard } from "./HeroCalorieCard";
 import { HealthScoreCard } from "./HealthScoreCard";
@@ -22,6 +23,7 @@ export function StatCardCarousel({
   onToggleRatio,
   onOpenExercise,
 }: StatCardCarouselProps) {
+  const { t } = useTranslation();
   const [activePage, setActivePage] = useState<0 | 1>(0);
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -75,7 +77,7 @@ export function StatCardCarousel({
         <button
           type="button"
           onClick={() => scrollToPage(0)}
-          aria-label="Sayfa 1"
+          aria-label={t("common.page", { n: 1 })}
           className={`h-1.5 rounded-full transition-all duration-300 ${
             activePage === 0 ? "w-6 bg-accent" : "w-1.5 bg-white/20 hover:bg-white/40"
           }`}
@@ -83,7 +85,7 @@ export function StatCardCarousel({
         <button
           type="button"
           onClick={() => scrollToPage(1)}
-          aria-label="Sayfa 2"
+          aria-label={t("common.page", { n: 2 })}
           className={`h-1.5 rounded-full transition-all duration-300 ${
             activePage === 1 ? "w-6 bg-accent" : "w-1.5 bg-white/20 hover:bg-white/40"
           }`}

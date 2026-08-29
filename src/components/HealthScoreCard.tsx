@@ -10,7 +10,7 @@ interface HealthScoreCardProps {
 
 export function HealthScoreCard({ total, goal }: HealthScoreCardProps) {
   const { t } = useTranslation();
-  const { score, message } = computeHealthScore(total, goal);
+  const { score, message } = computeHealthScore(total, goal, t);
 
   const barColor = score < 4 ? "bg-danger" : score < 7 ? "bg-warn" : "bg-emerald-500";
 

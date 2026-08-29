@@ -19,7 +19,8 @@
     "yesterday": "Wczoraj",
     "or": "lub",
     "clear": "Wyczyść",
-    "releaseToRefresh": "Puść, aby odświeżyć"
+    "releaseToRefresh": "Puść, aby odświeżyć",
+    "page": "Strona {{n}}"
   },
   "toast": {
     "region": "Powiadomienia"
@@ -52,12 +53,12 @@
     "carbs": "Węgl.",
     "fat": "Tłuszcz",
     "fiber": "Błonnik",
-    "remainingProtein": "białko left",
-    "remainingCarbs": "węgl. left",
-    "remainingFat": "tłuszcz left",
-    "remainingFiber": "błonnik left",
-    "remainingSugar": "cukier left",
-    "remainingSodium": "sód left",
+    "remainingProtein": "pozostałe białko",
+    "remainingCarbs": "pozostałe węgl.",
+    "remainingFat": "pozostały tłuszcz",
+    "remainingFiber": "pozostały błonnik",
+    "remainingSugar": "pozostały cukier",
+    "remainingSodium": "pozostały sód",
     "eatenSugar": "Zjedzony cukier",
     "eatenSodium": "Zjedzony sód"
   },
@@ -535,7 +536,8 @@
     "goal": "cel",
     "emptyState": "Potrzeba co najmniej 2 dni danych do trendu",
     "noRecordsInPeriod": "Brak wpisów w tym okresie",
-    "oneDayOnly": "Tylko 1 dzień zapisany w tym okresie."
+    "oneDayOnly": "Tylko 1 dzień zapisany w tym okresie.",
+    "avg": "śr."
   },
   "nutrient": {
     "kcal": "Kalorie",
@@ -787,5 +789,13 @@
     "last30": "30 dni",
     "last90": "90 dni",
     "all": "Wszystkie"
+  },
+  "healthScore": {
+    "noRecords": "Brak dzisiejszych wpisów. Twój wynik pojawi się tutaj po dodaniu posiłków.",
+    "noGoal": "Nie ustawiono celu.",
+    "perfect": "Wszystkie makroskładniki są na celu, świetnie!",
+    "onTrack": "Jesteś na dobrej drodze.",
+    "under": "Jesteś poniżej.",
+    "over": "Jesteś powyżej."
   }
 }

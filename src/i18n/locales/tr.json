@@ -19,7 +19,8 @@
     "yesterday": "Dün",
     "or": "veya",
     "clear": "Temizle",
-    "releaseToRefresh": "Bırak, yenile"
+    "releaseToRefresh": "Bırak, yenile",
+    "page": "Sayfa {{n}}"
   },
   "toast": {
     "region": "Bildirimler"
@@ -535,7 +536,8 @@
     "goal": "hedef",
     "emptyState": "Trend için en az 2 günlük veri gerekiyor",
     "noRecordsInPeriod": "Bu aralıkta kayıt yok",
-    "oneDayOnly": "Bu aralıkta yalnızca 1 kayıtlı gün var."
+    "oneDayOnly": "Bu aralıkta yalnızca 1 kayıtlı gün var.",
+    "avg": "ort."
   },
   "nutrient": {
     "kcal": "Kalori",
@@ -787,5 +789,13 @@
     "last30": "30 gün",
     "last90": "90 gün",
     "all": "Tümü"
+  },
+  "healthScore": {
+    "noRecords": "Bugün için henüz kayıt yok. Öğün ekleyince skorun burada görünecek.",
+    "noGoal": "Hedef belirlenmemiş.",
+    "perfect": "Bugün tüm makrolar hedefinde, harika gidiyor!",
+    "onTrack": "Yolundasın.",
+    "under": "Düşüksün.",
+    "over": "Yükseksin."
   }
 }

@@ -103,7 +103,7 @@ export function OffSearch({ onPick }: { onPick: (food: OffFood) => void }) {
         if (!food) {
           // "Bulunamadı" bir arıza değil: OFF topluluk veritabanı, ürün henüz
           // eklenmemiş olabilir. Elle giriş yolu hâlâ açık.
-          setStatus({ kind: "error", message: `${code} Open Food Facts'te bulunamadı — elle girebilirsin.` });
+          setStatus({ kind: "error", message: t("offSearch.barcodeNotFoundManual", { code }) });
           setFoods([]);
           return;
         }

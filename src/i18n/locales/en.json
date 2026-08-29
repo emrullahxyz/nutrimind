@@ -19,7 +19,8 @@
     "yesterday": "Yesterday",
     "or": "or",
     "clear": "Clear",
-    "releaseToRefresh": "Release to refresh"
+    "releaseToRefresh": "Release to refresh",
+    "page": "Page {{n}}"
   },
   "toast": {
     "region": "Notifications"
@@ -535,7 +536,8 @@
     "goal": "goal",
     "emptyState": "At least 2 days of data needed for trend",
     "noRecordsInPeriod": "No records in this period",
-    "oneDayOnly": "Only 1 day recorded in this period."
+    "oneDayOnly": "Only 1 day recorded in this period.",
+    "avg": "avg"
   },
   "nutrient": {
     "kcal": "Calories",
@@ -787,5 +789,13 @@
     "last30": "30 days",
     "last90": "90 days",
     "all": "All"
+  },
+  "healthScore": {
+    "noRecords": "No records for today yet. Your score will appear here once you add meals.",
+    "noGoal": "No goal set.",
+    "perfect": "All macros are on target today, great job!",
+    "onTrack": "You're on track.",
+    "under": "You're under.",
+    "over": "You're over."
   }
 }
