@@ -533,7 +533,11 @@ const { user, authDisabled, capabilities, logout } = useAuth();
               </SectionGroup>
             )}
 
-            {/* HESAP SİLME ONAY MODALI — 2 adımlı, geri alınamaz */}
+            {/* HESAP SİLME ONAY MODALI — 2 adımlı, geri alınamaz.
+                Yalnızca akış aktifken mount et: içerik adıma bağlı olduğundan
+                boş kabuk portal'da (body) asılı kalıp tıklanabilir göründüğü
+                için adım 0'da hiç var olmamalı. */}
+            {deleteStep > 0 && (
             <Modal
               onClose={() => {
                 if (!deleteBusy) {
@@ -630,6 +634,7 @@ const { user, authDisabled, capabilities, logout } = useAuth();
                 </div>
               )}
             </Modal>
+            )}
 
             {cacheStatus && (
               <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-3 text-center text-xs font-bold text-emerald-400">
