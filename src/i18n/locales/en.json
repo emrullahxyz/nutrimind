@@ -62,7 +62,15 @@
     "eatenSodium": "Eaten Sodium"
   },
   "day": {
-    "weekdaysShort": ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"],
+    "weekdaysShort": [
+      "Mon",
+      "Tue",
+      "Wed",
+      "Thu",
+      "Fri",
+      "Sat",
+      "Sun"
+    ],
     "streak": "Day streak",
     "mergeDialogTitle": "Merge {{count}} Meals",
     "mergeSave": "Merge",
@@ -616,6 +624,7 @@
     "addAsItem": "Add this food as an item (multi-ingredient)",
     "basketTitle": "Meal items ({{count}})",
     "basketClear": "Clear",
+    "confirmClearBasket": "Clear all items from basket?",
     "basketItemName": "Item Name",
     "basketCancel": "Cancel",
     "basketSave": "OK",

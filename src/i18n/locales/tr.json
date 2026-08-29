@@ -62,7 +62,15 @@
     "eatenSodium": "Tüketilen Sodyum"
   },
   "day": {
-    "weekdaysShort": ["Pzt", "Sal", "Çar", "Per", "Cum", "Cmt", "Paz"],
+    "weekdaysShort": [
+      "Pzt",
+      "Sal",
+      "Çar",
+      "Per",
+      "Cum",
+      "Cmt",
+      "Paz"
+    ],
     "streak": "Gün serisi",
     "mergeDialogTitle": "{{count}} Öğünü Birleştir",
     "mergeSave": "Birleştir",
@@ -616,6 +624,7 @@
     "addAsItem": "Bu Besini Öğüne Kalem Olarak Ekle (Çoklu Malzeme)",
     "basketTitle": "Öğün Kalemleri ({{count}})",
     "basketClear": "Temizle",
+    "confirmClearBasket": "Sepetteki tüm kalemleri sil?",
     "basketItemName": "Kalem Adı",
     "basketCancel": "Vazgeç",
     "basketSave": "Tamam",
