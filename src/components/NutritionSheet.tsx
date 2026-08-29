@@ -94,6 +94,10 @@ export function NutritionSheet({ isOpen, onClose, meal, onSave, onDelete }: Prop
   }
 
   const handleStep = (delta: number) => {
+    // Elle düzenlenen makro değerleri varsa uyar
+    if (basis === "manual") {
+      if (!window.confirm(t("nutrition.manualOverrideWarning"))) return;
+    }
     // Miktar her zaman kazanır: porsiyon çarpanı değiştiğinde önceki elle
     // düzenlenmiş makro değerleri geçersiz kılınır, taslak yeniden ölçeklenmiş
     // değerle kurulur.

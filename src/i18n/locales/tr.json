@@ -692,7 +692,8 @@
     "microNutrients": "Mikro besinler",
     "microEmptyNote": "Boş bıraktığın mikro besin \"bilinmiyor\" sayılır — 0 olarak kaydedilmez.",
     "total": "Toplam:",
-    "confirmDelete": "Bu besin silinsin mi?"
+    "confirmDelete": "Bu besin silinsin mi?",
+    "manualOverrideWarning": "Makro değerlerini elle düzenlediniz. Porsiyon değiştirildiğinde ölçeklenmiş değerlere dönecektir. Devam edilsin mi?"
   },
   "export": {
     "modalTitle": "Veri Yönetimi",

@@ -692,7 +692,8 @@
     "microNutrients": "Mikroskładniki",
     "microEmptyNote": "Pozostawienie pustego mikroskładnika oznacza \"nieznane\" — nie zostanie zapisane jako 0.",
     "total": "Łącznie:",
-    "confirmDelete": "Usunac ten posilek?"
+    "confirmDelete": "Usunac ten posilek?",
+    "manualOverrideWarning": "Ręcznie edytowałeś makro. Zmiana porcji zresetuje je do przeskalowanych wartości. Kontynuować?"
   },
   "export": {
     "modalTitle": "Zarządzanie danymi",
