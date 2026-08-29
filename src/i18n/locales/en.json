@@ -104,7 +104,9 @@
     "offerLabel": "Search on Open Food Facts (Poland)",
     "offerPlaceholder": "e.g. skyr, twaróg, Piątnica",
     "closeCamera": "Close camera",
-    "scanBarcode": "Scan barcode"
+    "scanBarcode": "Scan barcode",
+    "cameraHint": "Bring the barcode into the frame — it searches automatically when read.",
+    "barcodeManual": "Barcode (manual)"
   },
   "aliasPicker": {
     "noResults": "No results found"
@@ -504,7 +506,8 @@
     "daily": "daily",
     "sevenDayAvg": "7-day average",
     "recordedDays": "{{count}}/{{total}} days recorded",
-    "gapNote": "On {{count}} unrecorded days the line intentionally breaks — drawing across a gap would fake a trend that doesn't exist."
+    "gapNote": "On {{count}} unrecorded days the line intentionally breaks — drawing across a gap would fake a trend that doesn't exist.",
+    "chartA11y": "{{nutrient}} trend — {{days}} days, recorded on {{recorded}} days"
   },
   "nutrient": {
     "kcal": "Calories",

@@ -104,7 +104,9 @@
     "offerLabel": "Szukaj w Open Food Facts (Polska)",
     "offerPlaceholder": "np. skyr, twaróg, Piątnica",
     "closeCamera": "Zamknij kamerę",
-    "scanBarcode": "Skanuj kod kreskowy"
+    "scanBarcode": "Skanuj kod kreskowy",
+    "cameraHint": "Umieść kod kreskowy w kadrze — po odczytaniu wyszuka się automatycznie.",
+    "barcodeManual": "Kod kreskowy (ręcznie)"
   },
   "aliasPicker": {
     "noResults": "Nie znaleziono wyników"
@@ -504,7 +506,8 @@
     "daily": "dziennie",
     "sevenDayAvg": "średnia 7-dniowa",
     "recordedDays": "zarejestrowano {{count}}/{{total}} dni",
-    "gapNote": "W {{count}} niezarejestrowanych dniach linia celowo się przerywa — rysowanie przez lukę udawałoby nieistniejący trend."
+    "gapNote": "W {{count}} niezarejestrowanych dniach linia celowo się przerywa — rysowanie przez lukę udawałoby nieistniejący trend.",
+    "chartA11y": "Trend {{nutrient}} — {{days}} dni, zapisano na {{recorded}} dniach"
   },
   "nutrient": {
     "kcal": "Kalorie",

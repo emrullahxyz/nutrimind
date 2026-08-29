@@ -170,7 +170,7 @@ export function OffSearch({ onPick }: { onPick: (food: OffFood) => void }) {
               kendiliğinden oynatmaz. */}
           <video ref={videoRef} muted playsInline className="h-44 w-full object-cover" />
           <p className="px-2 py-1.5 text-[11px] text-ink-tertiary">
-            Barkodu çerçeveye getir — okununca otomatik aranır.
+            {t("offSearch.cameraHint")}
           </p>
         </div>
       )}
@@ -185,7 +185,7 @@ export function OffSearch({ onPick }: { onPick: (food: OffFood) => void }) {
       >
         <label className="block flex-1">
           <span className="mb-1 block font-mono text-[11px] uppercase tracking-mono text-ink-tertiary">
-            Barkod (elle)
+            {t("offSearch.barcodeManual")}
           </span>
           <input
             className={`${fieldCls} font-mono`}
