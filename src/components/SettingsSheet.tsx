@@ -132,10 +132,12 @@ export function SettingsSheet({
   onClose,
   embedded = false,
   resetKey = 0,
+  initialSubView = null,
 }: {
   onClose: () => void;
   embedded?: boolean;
   resetKey?: number;
+  initialSubView?: SubView;
 }) {
   const [subView, setSubView] = useState<SubView>(null);
 
@@ -149,6 +151,14 @@ export function SettingsSheet({
       setSubView(null);
     }
   }, [resetKey]);
+
+  // When opened with a target sub-view, set it and push history for back-button
+  useEffect(() => {
+    if (initialSubView) {
+      window.history.pushState({ tab: "settings", subView: initialSubView }, "");
+      setSubView(initialSubView);
+    }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
   const [cacheStatus, setCacheStatus] = useState<string | null>(null);
   const [deleteStep, setDeleteStep] = useState<0 | 1 | 2>(0);
   const [deletePassword, setDeletePassword] = useState("");

@@ -114,6 +114,7 @@ export function DayView({
   triggerExercise,
   onResetTriggerExercise,
   showWeightCard = true,
+  onOpenSupplementSettings,
   resetKey = 0,
 }: {
   date: string;
@@ -128,6 +129,7 @@ export function DayView({
   onResetTriggerScan?: () => void;
   triggerExercise?: boolean;
   onResetTriggerExercise?: () => void;
+  onOpenSupplementSettings?: () => void;
   showWeightCard?: boolean;
   resetKey?: number;
 }) {
@@ -229,24 +231,6 @@ export function DayView({
     }
   }
 
-  async function saveAsTemplate(meal: MealItem) {
-    if (busy) return;
-    setErr(null);
-    setBusy(true);
-    try {
-      const newTemplate: MealTemplate = {
-        id: newTemplateId(),
-        name: meal.label,
-        items: [{ name: meal.label, nutrition: meal.computed, ...(meal.sources ? { sources: meal.sources } : {}) }],
-      };
-      await updateConfig("templates", { list: [...templates.list, newTemplate] });
-    } catch (e) {
-      setErr(String((e as Error)?.message ?? e));
-    } finally {
-      setBusy(false);
-    }
-  }
-
   async function applyTemplate(t: MealTemplate) {
     if (busy) return;
     setErr(null);
@@ -333,7 +317,7 @@ export function DayView({
         onOpenExercise={() => setShowExerciseModal(true)}
       />
 
-      <SupplementCard date={date} />
+      <SupplementCard date={date} onOpenSettings={onOpenSupplementSettings} />
       {showWeightCard && <WeightCard date={date} />}
 
       <section className="flex flex-col gap-3">
@@ -442,7 +426,6 @@ export function DayView({
                         onToggleSelect={() => toggleSelect(i)}
                         onEdit={() => setSelectedMealForSheet({ meal: m, index: i })}
                         onEditFull={() => setEditIndex(i)}
-                        onSaveTemplate={() => saveAsTemplate(m)}
                         busy={busy}
                       />
                     ))}
@@ -511,13 +494,6 @@ export function DayView({
         onDelete={(id) => {
           if (selectedMealForSheet) {
             removeMeal(selectedMealForSheet.index);
-          }
-        }}
-        onEditMealItems={() => {
-          if (selectedMealForSheet) {
-            const idx = selectedMealForSheet.index;
-            setSelectedMealForSheet(null);
-            setEditIndex(idx);
           }
         }}
       />

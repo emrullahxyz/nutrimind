@@ -111,6 +111,11 @@ export function ScanSheet({
 
   const [scanMode, setScanMode] = useState<ScanMode>("scan_food");
   const [showManual, setShowManual] = useState(false);
+
+  // Auto-show manual form in barcode mode as fallback.
+  useEffect(() => {
+    if (scanMode === "barcode") setShowManual(true);
+  }, [scanMode]);
   const [analyzing, setAnalyzing] = useState(false);
   /** Deklanşörle çekilen kare, AI'a gitmeden ÖNCE burada bekler. Telefon tam
    *  basılırken oynarsa (fiziksel titreşim) kullanıcı bunu AI'ın yanıtını
@@ -686,7 +691,7 @@ export function ScanSheet({
 
               <div className="justify-self-center">
                 {scanMode === "barcode" ? (
-                  <span className="flex h-[68px] w-[68px] items-center justify-center rounded-full border-2 border-dashed border-white/40 text-center text-[10px] font-semibold leading-tight text-white/70">
+                  <span className="flex h-[68px] w-[68px] items-center justify-center rounded-full border-2 border-dashed border-accent/50 text-center text-[10px] font-semibold leading-tight text-white/70 animate-pulse">
                     {t("scan.autoReading1")}
                     <br />
                     {t("scan.autoReading2")}

@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
-import { ArrowLeft, Flame, Beef, Wheat, Droplet, Trash2, Plus } from "lucide-react";
+import { ArrowLeft, Flame, Beef, Wheat, Droplet, Trash2 } from "lucide-react";
 import { ZERO_NUTRITION } from "../types";
 import type { MealCategory, MealItem, Nutrition } from "../types";
 import { useBodyScrollLock } from "../hooks/useBodyScrollLock";
@@ -17,7 +17,6 @@ interface Props {
   meal: MealItem | null;
   onSave?: (updatedMeal: MealItem) => void;
   onDelete?: (mealId: string) => void;
-  onEditMealItems?: () => void;
 }
 
 /** `multiplier`'la ölçeklenmiş besin değeri — hem render'da hem `handleStep`
@@ -40,7 +39,7 @@ export function scaleMealNutrition(computed: Nutrition | undefined, multiplier: 
   };
 }
 
-export function NutritionSheet({ isOpen, onClose, meal, onSave, onDelete, onEditMealItems }: Props) {
+export function NutritionSheet({ isOpen, onClose, meal, onSave, onDelete }: Props) {
   // Lock background body scroll when modal is open
   useBodyScrollLock(isOpen);
   const { t } = useTranslation();
@@ -149,6 +148,7 @@ export function NutritionSheet({ isOpen, onClose, meal, onSave, onDelete, onEdit
           <button
             type="button"
             onClick={() => {
+              if (!window.confirm(t("nutrition.confirmDelete"))) return;
               onDelete(meal.id);
               beginClose();
             }}
@@ -202,20 +202,6 @@ export function NutritionSheet({ isOpen, onClose, meal, onSave, onDelete, onEdit
           </div>
         </div>
 
-        {/* Add Extra Item Button (Bu Öğüne Ekstra Kalem/Besin Ekle) */}
-        {onEditMealItems && (
-          <button
-            type="button"
-            onClick={() => {
-              beginClose();
-              onEditMealItems();
-            }}
-            className="w-full py-3 px-4 rounded-2xl border border-amber-400/30 bg-amber-400/10 hover:bg-amber-400/20 text-amber-300 font-extrabold text-xs transition active:scale-[0.98] flex items-center justify-center gap-2"
-          >
-            <Plus className="w-4 h-4 text-amber-400" />
-            <span>{t("nutrition.addExtraItem")}</span>
-          </button>
-        )}
 
         {/* Serving Amount Stepper (Porsiyon Miktarı) */}
         <div className="flex items-center justify-between gap-4 py-1">

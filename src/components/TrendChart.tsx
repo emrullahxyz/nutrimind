@@ -177,8 +177,8 @@ export function TrendChart({
           </p>
           <p className="mt-1 text-[11px] text-ink-tertiary">
             {series.dataCount === 0
-              ? "{t("trend.noRecordsInPeriod")}"
-              : "{t("trend.oneDayOnly")}"}
+              ? t("trend.noRecordsInPeriod")
+              : t("trend.oneDayOnly")}
           </p>
         </div>
       </div>
@@ -376,7 +376,7 @@ export function TrendChart({
             style={{ right: px(PAD.r), top: py(goalY), transform: "translateY(-118%)" }}
           >
             <span className="whitespace-nowrap rounded-full border border-teal-400/30 bg-app/90 px-2 py-0.5 font-mono text-[9px] font-bold leading-none text-teal-200 backdrop-blur-md">
-              {t("trend.goal")} {goalIsAverage && "{t("trend.avg")}"}
+              {t("trend.goal")} {goalIsAverage && t("trend.avg")}
               {formatNumber(series.goal, tickDecimals)}
             </span>
           </div>

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Pill, Check, ChevronDown, ChevronUp } from "lucide-react";
+import { Pill, Check, ChevronDown, ChevronUp, Settings } from "lucide-react";
 import { useData } from "../lib/data";
 import { parseSupplementsConfig } from "../lib/supplements";
 import { PREF } from "../lib/prefs";
@@ -7,7 +7,7 @@ import { usePersistedBool } from "../lib/usePersistedBool";
 import { usePressSpring } from "../hooks/usePressSpring";
 import { useTranslation } from "react-i18next";
 
-export function SupplementCard({ date }: { date: string }) {
+export function SupplementCard({ date, onOpenSettings }: { date: string; onOpenSettings?: () => void }) {
   const { t } = useTranslation();
   const { config, updateConfig } = useData();
   const suppConfig = parseSupplementsConfig(config);
@@ -66,7 +66,22 @@ export function SupplementCard({ date }: { date: string }) {
             {isAllTaken ? t("supplements.done") : `${takenCount}/${totalCount}`}
           </span>
         </div>
-        {open ? <ChevronUp className="w-4 h-4 text-ink-secondary shrink-0" /> : <ChevronDown className="w-4 h-4 text-ink-secondary shrink-0" />}
+        <div className="flex items-center gap-1 shrink-0">
+          {open ? <ChevronUp className="w-4 h-4 text-ink-secondary" /> : <ChevronDown className="w-4 h-4 text-ink-secondary" />}
+          {onOpenSettings && (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                onOpenSettings();
+              }}
+              className="w-7 h-7 rounded-full bg-white/[0.06] hover:bg-white/[0.12] flex items-center justify-center text-ink-secondary hover:text-white transition"
+              title={t("supplements.manage")}
+            >
+              <Settings className="w-3.5 h-3.5" />
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Collapsed: inline chips */}

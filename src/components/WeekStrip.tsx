@@ -71,7 +71,7 @@ export function WeekStrip({ selectedDate, onSelectDate }: WeekStripProps) {
           return (
             <div
               key={dateIso}
-              className="flex flex-1 min-w-[44px] max-w-[56px] flex-col items-center justify-center rounded-[22px] py-2 px-1 opacity-40 cursor-default select-none"
+              className="flex flex-1 min-w-[44px] max-w-[56px] flex-col items-center justify-center rounded-[22px] py-2 px-1 opacity-40 cursor-default select-none pointer-events-none"
             >
               <span className="text-[10px] font-extrabold uppercase tracking-wider text-ink-secondary">
                 {weekdayShort(dateIso)}

@@ -49,6 +49,7 @@ function MainContent() {
     setGlobalAddMealOpen(true);
   };
   const [globalExerciseOpen, setGlobalExerciseOpen] = useState(false);
+  const [settingsTarget, setSettingsTarget] = useState<string | null>(null);
   const [showExitToast, setShowExitToast] = useState(false);
   const lastBackPressRef = useRef<number>(0);
 
@@ -269,7 +270,7 @@ function MainContent() {
         ) : tab === "aliases" ? (
           <AliasPage resetKey={tabResetKey.aliases} onVisionResult={handleVisionResult} />
         ) : (
-          <SettingsSheet onClose={() => handleTabChange("daily")} embedded resetKey={tabResetKey.settings} />
+          <SettingsSheet onClose={() => { handleTabChange("daily"); setSettingsTarget(null); }} embedded resetKey={tabResetKey.settings} initialSubView={settingsTarget as any} />
         )}
       </main>
 
