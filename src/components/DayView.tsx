@@ -23,7 +23,17 @@ import type { MealTemplate } from "../lib/templates";
 import type { AIParseItem, Exercise, MealItem, MealPayload } from "../types";
 import { PREF } from "../lib/prefs";
 import { usePersistedBool } from "../lib/usePersistedBool";
-import { categoryForLoggedAt, groupMealsByCategory, MEAL_CATEGORY_LABELS } from "../lib/mealCategory";
+import { categoryForLoggedAt, groupMealsByCategory } from "../lib/mealCategory";
+import type { MealCategory } from "../types";
+
+/** Kategori başlığı → i18n anahtarı. `mealCategory.ts` saf lib (useTranslation
+ *  import edilmez), çeviri çağrı yerinde yapılır. */
+const CATEGORY_LABEL_KEY: Record<MealCategory, string> = {
+  breakfast: "meal.categoryBreakfast",
+  lunch: "meal.categoryLunch",
+  dinner: "meal.categoryDinner",
+  snack: "meal.categorySnack",
+};
 import { useTranslation } from "react-i18next";
 
 function MergeModal({
@@ -413,13 +423,13 @@ export function DayView({
               disabled={busy}
               className="self-start rounded-pill bg-accent px-3 py-1.5 text-xs font-extrabold text-accent-ink transition hover:opacity-90 disabled:opacity-40"
             >
-              + Öğün ekle
+              + {t("day.addMeal")}
             </button>
             <div className="flex flex-col gap-4">
               {groupMealsByCategory(meals).map(({ category, items }) => (
                 <div key={category} className="flex flex-col gap-2.5 sm:gap-3">
                   <h4 className="font-mono text-[11px] uppercase tracking-mono text-ink-tertiary">
-                    {category === "other" ? "Diğer" : MEAL_CATEGORY_LABELS[category]}
+                    {category === "other" ? t("day.other") : t(CATEGORY_LABEL_KEY[category])}
                   </h4>
                   <ul className="flex flex-col gap-2.5 sm:gap-3">
                     {items.map(({ meal: m, index: i }) => (

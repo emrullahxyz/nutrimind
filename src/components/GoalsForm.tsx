@@ -167,7 +167,7 @@ export function GoalsForm({ onClose, embedded = false }: { onClose: () => void; 
               }`}
             >
               <span aria-hidden>{profileIcon(p.id)}</span>
-              <span>{p.name.trim() || "adsız"}</span>
+              <span>{p.name.trim() || t("goals.unnamed")}</span>
               {invalid[i] !== null && <span className="text-red-400 font-extrabold">•</span>}
             </button>
           );
@@ -200,13 +200,14 @@ export function GoalsForm({ onClose, embedded = false }: { onClose: () => void; 
                 disabled={defaultId === selected.id}
                 className="px-3 py-2 rounded-xl text-xs font-bold border border-white/15 bg-white/5 text-white/80 hover:bg-white/10 disabled:opacity-40 transition"
               >
-                {defaultId === selected.id ? "⭐ Varsayılan" : "Varsayılan Yap"}
+                {defaultId === selected.id ? t("goals.defaultBadge") : t("goals.makeDefault")}
               </button>
               <button
                 type="button"
                 onClick={removeSelected}
                 className="p-2 rounded-xl border border-red-500/30 bg-red-500/10 text-red-400 hover:bg-red-500/20 transition"
-                title="Profili Sil"
+                title={t("goals.deleteProfile")}
+                aria-label={t("goals.deleteProfile")}
               >
                 <Trash2 className="w-4 h-4" />
               </button>
@@ -309,7 +310,7 @@ export function GoalsForm({ onClose, embedded = false }: { onClose: () => void; 
 
       {firstInvalid !== -1 && (
         <p className="text-xs font-bold text-red-400">
-          {profiles[firstInvalid].name.trim() || "adsız"}: {invalid[firstInvalid]}
+          {profiles[firstInvalid].name.trim() || t("goals.unnamed")}: {invalid[firstInvalid]}
         </p>
       )}
       {err && <ErrorText>{err}</ErrorText>}
@@ -322,7 +323,7 @@ export function GoalsForm({ onClose, embedded = false }: { onClose: () => void; 
           disabled={!canSave || saving}
           className="w-full py-3.5 rounded-full bg-white text-black font-extrabold text-sm hover:bg-white/90 transition shadow-lg active:scale-[0.98] disabled:opacity-40 flex items-center justify-center gap-2"
         >
-          <Check className="w-4 h-4 stroke-[3]" /> {saving ? "Kaydediliyor..." : "Değişiklikleri Kaydet"}
+          <Check className="w-4 h-4 stroke-[3]" /> {saving ? t("meal.saving") : t("meal.save")}
         </button>
       </div>
     </div>

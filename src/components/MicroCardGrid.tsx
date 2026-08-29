@@ -88,7 +88,7 @@ function MicroCard({ item, showRatio, onToggleRatio }: { item: MicroItem; showRa
 
   if (isUndefined) {
     displayVal = "—";
-    subText = def.label;
+    subText = t(`nutrient.${def.key}`);
   } else if (showRatio) {
     displayVal = `${formatNumber(animVal, 0)}${def.unit}`;
     subText = t("cards.eatenOverTarget");

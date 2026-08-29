@@ -70,7 +70,8 @@
     "mergeNamePlaceholder": "örn. Kahvaltı",
     "mergeListHeader": "Birleşecek Öğünler",
     "emptyLabel": "Bu gün için kayıt yok.",
-    "addMeal": "Öğün ekle"
+    "addMeal": "Öğün ekle",
+    "other": "Diğer"
   },
   "weight": {
     "label": "Kilo",
@@ -99,7 +100,11 @@
     "searching": "Aranıyor…",
     "cooldown": "Çok hızlı arama yapıldı. Open Food Facts kotası korunuyor — {{seconds}} sn sonra kendiliğinden tekrar denenecek.",
     "emptyPolish": "Polonya kataloğunda sonuç yok. Ürünü elle girebilir ya da barkodunu deneyebilirsin.",
-    "postFilterNote": "Çok kelimeli aramada Polonya süzgeci sonradan uygulanıyor — liste beklenenden kısa olabilir."
+    "postFilterNote": "Çok kelimeli aramada Polonya süzgeci sonradan uygulanıyor — liste beklenenden kısa olabilir.",
+    "offerLabel": "Open Food Facts'te ara (Polonya)",
+    "offerPlaceholder": "örn. skyr, twaróg, Piątnica",
+    "closeCamera": "Kamerayı kapat",
+    "scanBarcode": "Barkod tara"
   },
   "aliasPicker": {
     "noResults": "Sonuç bulunamadı"
@@ -357,7 +362,12 @@
     "changeBarcode": "Barkodu değiştir",
     "missingData": "eksik veri",
     "autoReading1": "otomatik",
-    "autoReading2": "okunuyor"
+    "autoReading2": "okunuyor",
+    "analyzing": "Analiz ediliyor…",
+    "readingLabel": "Etiket okunuyor",
+    "recognizingFood": "Yemek tanınıyor",
+    "noFoodExtracted": "Görselden bir besin çıkarılamadı. Daha net/yakın bir fotoğraf dene.",
+    "capturedFrameAlt": "Çekilen kare"
   },
   "exercise": {
     "title": "Egzersiz & Aktivite Günlüğü",
@@ -428,7 +438,11 @@
     "trainingSplitTitle": "Antrenman / Dinlenme Ayrımı",
     "trainingDays": "{{count}} gün spora gidiyorsun",
     "trainingSplitDesc": "Haftada kaç gün antrenman yapıyorsun? Otomatik kalori ve makro dağıtımı hesaplanabilir.",
-    "applySuggested": "Önerilen Ayarları Uygula"
+    "applySuggested": "Önerilen Ayarları Uygula",
+    "unnamed": "adsız",
+    "defaultBadge": "⭐ Varsayılan",
+    "makeDefault": "Varsayılan Yap",
+    "deleteProfile": "Profili Sil"
   },
   "report": {
     "title": "Nutrimind Beslenme Raporu",
@@ -505,6 +519,7 @@
   "onboarding": {
     "saveAndStart": "Hedeflerimi Kaydet ve Başla",
     "title": "Profil & TDEE Kurulum Sihirbazı",
+    "defaultUserName": "Kullanıcı",
     "subtitle": "Soft Velvet Dark • Özel Beslenme Planı",
     "stepStatus": "Adım {{step}} / 5",
     "step1Title": "Seni Tanıyalım",
@@ -732,5 +747,11 @@
     "goodMorning": "Günaydın",
     "goodDay": "İyi günler",
     "goodEvening": "İyi akşamlar"
+  },
+  "range": {
+    "last7": "7 gün",
+    "last30": "30 gün",
+    "last90": "90 gün",
+    "all": "Tümü"
   }
 }

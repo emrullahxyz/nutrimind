@@ -248,7 +248,7 @@ export function ScanSheet({
         // edilemedi" gibi) — genel bir hata metninden çok daha yardımcı.
         setStatus({
           kind: "error",
-          message: result.healthNote ?? "Görselden bir besin çıkarılamadı. Daha net/yakın bir fotoğraf dene.",
+          message: result.healthNote ?? t("scan.noFoodExtracted"),
         });
         return;
       }
@@ -553,7 +553,7 @@ export function ScanSheet({
         disabled={blocked || barcode.trim() === ""}
         className="flex-none rounded-pill border border-line px-3 py-2 text-sm text-ink-secondary transition hover:text-ink-primary disabled:opacity-40"
       >
-        Getir
+        {t("offSearch.fetch")}
       </button>
     </form>
   );
@@ -561,7 +561,7 @@ export function ScanSheet({
   const statusBand =
     status.kind === "loading" ? (
       <p className="rounded-chip bg-black/60 px-3 py-2 text-center text-[11px] text-white/80 backdrop-blur-sm">
-        Aranıyor…
+        {t("offSearch.searching")}
       </p>
     ) : status.kind === "error" ? (
       <p className="rounded-chip bg-danger/20 px-3 py-2 text-center text-[11px] text-danger backdrop-blur-sm">
@@ -731,7 +731,7 @@ export function ScanSheet({
             <div className="absolute inset-0 z-20 flex flex-col bg-black">
               <img
                 src={`data:${capturedPreview.mimeType};base64,${capturedPreview.base64}`}
-                alt="Çekilen kare"
+                alt={t("scan.capturedFrameAlt")}
                 className="min-h-0 flex-1 object-contain"
               />
               <div className="flex items-center justify-center gap-3 bg-gradient-to-t from-black via-black/90 to-transparent px-4 pb-[calc(1rem+env(safe-area-inset-bottom,0px))] pt-8">
@@ -757,9 +757,9 @@ export function ScanSheet({
           {analyzing && (
             <div className="absolute inset-0 z-20 flex flex-col items-center justify-center gap-3 bg-black/85 backdrop-blur-sm">
               <span className="h-10 w-10 animate-spin rounded-full border-2 border-white/15 border-t-accent" />
-              <p className="text-sm font-extrabold text-ink-primary">Analiz ediliyor…</p>
+              <p className="text-sm font-extrabold text-ink-primary">{t("scan.analyzing")}</p>
               <p className="text-[11px] text-ink-tertiary">
-                {scanMode === "food_label" ? "Etiket okunuyor" : "Yemek tanınıyor"}
+                {scanMode === "food_label" ? t("scan.readingLabel") : t("scan.recognizingFood")}
               </p>
               <button
                 type="button"

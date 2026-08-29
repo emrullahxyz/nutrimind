@@ -90,7 +90,7 @@ export function OffSearch({ onPick }: { onPick: (food: OffFood) => void }) {
       }
       const code = raw.trim();
       if (!isValidBarcode(code)) {
-        setStatus({ kind: "error", message: "Barkod 4-20 haneli bir sayı olmalı." });
+        setStatus({ kind: "error", message: t("scan.barcodeInvalid") });
         return;
       }
       abortRef.current?.abort();
@@ -138,12 +138,12 @@ export function OffSearch({ onPick }: { onPick: (food: OffFood) => void }) {
       <div className="flex items-end gap-2">
         <label className="block flex-1">
           <span className="mb-1 block font-mono text-[11px] uppercase tracking-mono text-ink-tertiary">
-            Open Food Facts'te ara (Polonya)
+            {t("offSearch.offerLabel")}
           </span>
           <input
             className={fieldCls}
             value={query}
-            placeholder="örn. skyr, twaróg, Piątnica"
+            placeholder={t("offSearch.offerPlaceholder")}
             onChange={(e) => setQuery(e.target.value)}
           />
         </label>
@@ -158,7 +158,7 @@ export function OffSearch({ onPick }: { onPick: (food: OffFood) => void }) {
             aria-pressed={scanning}
             className="flex-none rounded-pill border border-line px-3 py-2 text-sm text-ink-secondary transition hover:text-ink-primary disabled:opacity-40"
           >
-            {scanning ? "Kamerayı kapat" : "Barkod tara"}
+            {scanning ? t("offSearch.closeCamera") : t("offSearch.scanBarcode")}
           </button>
         )}
       </div>

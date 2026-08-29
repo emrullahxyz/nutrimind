@@ -199,7 +199,7 @@ export function NutritionFields({
         {FORM_MAIN.map((def) => (
           <NumField
             key={def.key}
-            label={def.label}
+            label={t(`nutrient.${def.key}`)}
             suffix={def.unit}
             value={draft[def.key] ?? ""}
             onChange={set(def.key)}
@@ -230,7 +230,7 @@ export function NutritionFields({
               {MICROS.map((def) => (
                 <NumField
                   key={def.key}
-                  label={def.label}
+                  label={t(`nutrient.${def.key}`)}
                   suffix={def.unit}
                   value={draft[def.key] ?? ""}
                   onChange={set(def.key)}
