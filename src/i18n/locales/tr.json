@@ -79,7 +79,13 @@
     "mergeListHeader": "Birleşecek Öğünler",
     "emptyLabel": "Bu gün için kayıt yok.",
     "addMeal": "Öğün ekle",
-    "other": "Diğer"
+    "other": "Diğer",
+    "recentMeals": "Son eklenen",
+    "clearSelection": "Seçimi temizle",
+    "merge": "Birleştir",
+    "done": "Tamam",
+    "select": "Seç",
+    "scan": "Tara"
   },
   "weight": {
     "label": "Kilo",
@@ -114,7 +120,10 @@
     "closeCamera": "Kamerayı kapat",
     "scanBarcode": "Barkod tara",
     "cameraHint": "Barkodu çerçeveye getir — okununca otomatik aranır.",
-    "barcodeManual": "Barkod (elle)"
+    "barcodeManual": "Barkod (elle)",
+    "barcodeNotFoundManual": "{{code}} Open Food Facts'te bulunamadı — elle girebilirsin.",
+    "missing": "eksik:",
+    "noKcal": "kcal yok"
   },
   "aliasPicker": {
     "noResults": "Sonuç bulunamadı"
@@ -378,7 +387,10 @@
     "readingLabel": "Etiket okunuyor",
     "recognizingFood": "Yemek tanınıyor",
     "noFoodExtracted": "Görselden bir besin çıkarılamadı. Daha net/yakın bir fotoğraf dene.",
-    "capturedFrameAlt": "Çekilen kare"
+    "capturedFrameAlt": "Çekilen kare",
+    "scannedFood": "Taranan besin",
+    "allItemsRemoved": "Tüm kalemler kaldırıldı — eklemek için yeniden çek.",
+    "retake": "Yeniden çek"
   },
   "exercise": {
     "title": "Egzersiz & Aktivite Günlüğü",
@@ -516,7 +528,13 @@
     "sevenDayAvg": "7 günlük ortalama",
     "recordedDays": "{{count}}/{{total}} günde kayıt",
     "gapNote": "Kayıt olmayan {{count}} günde çizgi bilinçli olarak kopar — boşluğun üstünden çizgi çekmek olmayan bir seyri gerçek gibi gösterirdi.",
-    "chartA11y": "{{nutrient}} trendi — {{days}} gün, {{recorded}} günde kayıt var"
+    "chartA11y": "{{nutrient}} trendi — {{days}} gün, {{recorded}} günde kayıt var",
+    "noData": "kayıt yok",
+    "weekAvg": "7g ort",
+    "goal": "hedef",
+    "emptyState": "Trend için en az 2 günlük veri gerekiyor",
+    "noRecordsInPeriod": "Bu aralıkta kayıt yok",
+    "oneDayOnly": "Bu aralıkta yalnızca 1 kayıtlı gün var."
   },
   "nutrient": {
     "kcal": "Kalori",

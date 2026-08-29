@@ -274,7 +274,7 @@ export function VisionReviewScreen({
   // ===== Etiket (tek kalem) — barkod onay ekranıyla birebir aynı 3 aksiyon =====
   const row = rows[0];
   const finalNutrition = row ? fromDraft(row.draft) : null;
-  const finalName = row?.name.trim() || "Taranan besin";
+  const finalName = row?.name.trim() || t("scan.scannedFood");
   const canSaveAlias = triggerList.length > 0;
   const canLogWithMemory = canSaveAlias && finalNutrition !== null;
   const canLogOnly = finalNutrition !== null;
@@ -403,7 +403,7 @@ export function VisionReviewScreen({
           disabled={!!saving}
           className="self-start text-[11px] font-semibold text-ink-tertiary underline transition hover:text-ink-primary disabled:opacity-40"
         >
-          ‹ Yeniden çek
+          {t("scan.retake")}
         </button>
 
         {row && (
@@ -495,12 +495,12 @@ export function VisionReviewScreen({
         disabled={!!saving}
         className="self-start text-[11px] font-semibold text-ink-tertiary underline transition hover:text-ink-primary disabled:opacity-40"
       >
-        ‹ Yeniden çek
+        {t("scan.retake")}
       </button>
 
       {rows.length === 0 ? (
         <p className="rounded-chip border border-line bg-white/[0.03] p-3 text-[11px] text-ink-tertiary">
-          Tüm kalemler kaldırıldı — eklemek için yeniden çek.
+          {t("scan.allItemsRemoved")}
         </p>
       ) : (
         rows.map((r) => (

@@ -389,7 +389,8 @@
     "noFoodExtracted": "Could not extract a food from the image. Try a clearer/closer photo.",
     "capturedFrameAlt": "Captured frame",
     "scannedFood": "Scanned food",
-    "allItemsRemoved": "All items removed — retake to add."
+    "allItemsRemoved": "All items removed — retake to add.",
+    "retake": "Retake"
   },
   "exercise": {
     "title": "Exercise & Activity Log",
@@ -532,7 +533,8 @@
     "weekAvg": "7d avg",
     "goal": "goal",
     "emptyState": "At least 2 days of data needed for trend",
-    "noRecordsInPeriod": "No records in this period"
+    "noRecordsInPeriod": "No records in this period",
+    "oneDayOnly": "Only 1 day recorded in this period."
   },
   "nutrient": {
     "kcal": "Calories",

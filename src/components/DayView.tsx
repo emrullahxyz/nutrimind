@@ -338,7 +338,7 @@ export function DayView({
 
       <section className="flex flex-col gap-3">
         <div className="flex items-center justify-between gap-3">
-          <h3 className="text-sm font-bold text-ink-secondary">Son eklenen</h3>
+          <h3 className="text-sm font-bold text-ink-secondary">{t("day.recentMeals")}</h3>
 
           <div className="flex items-center gap-2">
             {selectMode ? (
@@ -349,7 +349,7 @@ export function DayView({
                     onClick={() => setSelectedIndices([])}
                     className="rounded-pill border border-line bg-white/[0.06] px-2.5 py-1.5 text-xs font-semibold text-ink-tertiary transition hover:text-ink-primary"
                   >
-                    Seçimi temizle
+                    {t("day.clearSelection")}
                   </button>
                 )}
                 {selectedIndices.length >= 2 && (
@@ -359,7 +359,7 @@ export function DayView({
                     disabled={busy}
                     className="rounded-pill bg-memory px-3 py-1.5 text-xs font-bold text-memory-ink transition hover:opacity-90 disabled:opacity-40"
                   >
-                    🔗 Birleştir ({selectedIndices.length})
+                    🔗 {t("day.merge")} ({selectedIndices.length})
                   </button>
                 )}
                 <button
@@ -370,7 +370,7 @@ export function DayView({
                   }}
                   className="rounded-pill border border-memory/40 bg-white/[0.09] px-3 py-1.5 text-xs font-bold text-ink-primary transition hover:bg-white/[0.15]"
                 >
-                  Tamam
+                  {t("day.done")}
                 </button>
               </>
             ) : (
@@ -391,7 +391,7 @@ export function DayView({
                 disabled={busy}
                 className="rounded-pill border border-line bg-white/[0.06] px-3 py-1.5 text-xs font-semibold text-ink-secondary transition hover:border-memory/40 hover:bg-white/[0.09] hover:text-ink-primary disabled:opacity-40"
               >
-                📷 Tara
+                📷 {t("day.scan")}
               </button>
             )}
           </div>

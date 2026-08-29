@@ -14,7 +14,6 @@ import {
   RefreshCw,
   ChevronRight,
   ArrowLeft,
-  Sparkles,
   Check,
   LogOut,
   KeyRound,
@@ -299,28 +298,6 @@ export function SettingsSheet({
               <div className="flex items-center gap-1.5 rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs font-bold text-white/80 transition group-hover:bg-white/10">
                 <span>{t("settings.editProfile")}</span>
                 <ChevronRight className="h-3.5 w-3.5 text-white/40" />
-              </div>
-            </div>
-
-            {/* 2. PROMO / SPOTLIGHT BANNER */}
-            <div className="relative overflow-hidden rounded-2xl border border-accent/30 bg-gradient-to-r from-accent/20 via-purple-500/10 to-transparent p-3.5 shadow-md">
-              <div className="flex items-start gap-3">
-                <div className="flex h-9 w-9 flex-none items-center justify-center rounded-xl bg-accent text-accent-ink shadow-sm">
-                  <Sparkles className="h-5 w-5 text-black" />
-                </div>
-                <div className="flex-1">
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs font-extrabold text-white">
-                      {t("settings.proMemoryTitle")}
-                    </span>
-                    <span className="rounded-full bg-accent/20 px-2 py-0.5 text-[9px] font-black text-accent border border-accent/30">
-                      {t("settings.active")}
-                    </span>
-                  </div>
-                  <p className="mt-0.5 text-[11px] text-white/70">
-                    {t("settings.proMemoryDesc")}
-                  </p>
-                </div>
               </div>
             </div>
 

@@ -173,12 +173,12 @@ export function TrendChart({
       <div className="grid min-h-[160px] place-items-center rounded-2xl border border-dashed border-line bg-app/50 px-6 py-8 text-center">
         <div>
           <p className="text-sm font-bold text-ink-secondary">
-            Trend için en az 2 günlük veri gerekiyor
+            {t("trend.emptyState")}
           </p>
           <p className="mt-1 text-[11px] text-ink-tertiary">
             {series.dataCount === 0
-              ? "Bu aralıkta hiç kayıt yok — daha geniş bir aralık seç."
-              : "Bu aralıkta yalnızca 1 kayıtlı gün var."}
+              ? "{t("trend.noRecordsInPeriod")}"
+              : "{t("trend.oneDayOnly")}"}
           </p>
         </div>
       </div>
@@ -376,7 +376,7 @@ export function TrendChart({
             style={{ right: px(PAD.r), top: py(goalY), transform: "translateY(-118%)" }}
           >
             <span className="whitespace-nowrap rounded-full border border-teal-400/30 bg-app/90 px-2 py-0.5 font-mono text-[9px] font-bold leading-none text-teal-200 backdrop-blur-md">
-              hedef {goalIsAverage && "ort. "}
+              {t("trend.goal")} {goalIsAverage && "{t("trend.avg")}"}
               {formatNumber(series.goal, tickDecimals)}
             </span>
           </div>
@@ -397,16 +397,16 @@ export function TrendChart({
                 {weekdayShort(act.date)} · {formatShortDate(act.date)}
               </div>
               <div className={`mt-0.5 font-mono text-[11px] font-extrabold ${def.classes.text}`}>
-                {act.value === null ? "kayıt yok" : formatNutrientValue(def, act.value)}
+                {act.value === null ? t("trend.noData") : formatNutrientValue(def, act.value)}
               </div>
               <div className="font-mono text-[10px] text-ink-secondary">
-                7g ort · {act.avg === null ? "—" : formatNutrientValue(def, act.avg)}
+                {t("trend.weekAvg")} · {act.avg === null ? "—" : formatNutrientValue(def, act.avg)}
               </div>
               {/* Gün tipli hedeflerde çizgi ortalamayı gösterdiği için O GÜNÜN
                   gerçek hedefi yalnızca burada okunabilir. */}
               {goalIsAverage && act.goal !== null && (
                 <div className="font-mono text-[10px] text-ink-tertiary">
-                  hedef · {formatNutrientValue(def, act.goal)}
+                  {t("trend.goal")} · {formatNutrientValue(def, act.goal)}
                 </div>
               )}
             </div>

@@ -87,7 +87,7 @@ export function MealRow({
             <h4 className="font-bold text-white text-base truncate">{meal.label}</h4>
             <div className="flex items-center gap-1.5 text-xs text-ink-secondary font-semibold mt-1">
               <Flame className="w-3.5 h-3.5 text-carb" />
-              <span>{meal.computed.kcal} kalori</span>
+              <span>{meal.computed.kcal} kcal</span>
             </div>
           </div>
         </div>
@@ -120,7 +120,7 @@ export function MealRow({
           <div className="flex items-center justify-between gap-3">
             <div className="flex items-center gap-1.5 text-xs sm:text-sm font-bold text-white">
               <Flame className="w-4 h-4 text-carb" />
-              <span>{meal.computed.kcal} kalori</span>
+              <span>{meal.computed.kcal} kcal</span>
             </div>
             <div className="flex items-center gap-1.5 shrink-0">
               <button

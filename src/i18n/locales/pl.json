@@ -79,7 +79,13 @@
     "mergeListHeader": "Posiłki do połączenia",
     "emptyLabel": "Brak wpisu na ten dzień.",
     "addMeal": "Dodaj posiłek",
-    "other": "Inne"
+    "other": "Inne",
+    "recentMeals": "Ostatnio dodane",
+    "clearSelection": "Wyczyść zaznaczenie",
+    "merge": "Połącz",
+    "done": "Gotowe",
+    "select": "Wybierz",
+    "scan": "Skanuj"
   },
   "weight": {
     "label": "Waga",
@@ -114,7 +120,10 @@
     "closeCamera": "Zamknij kamerę",
     "scanBarcode": "Skanuj kod kreskowy",
     "cameraHint": "Umieść kod kreskowy w kadrze — po odczytaniu wyszuka się automatycznie.",
-    "barcodeManual": "Kod kreskowy (ręcznie)"
+    "barcodeManual": "Kod kreskowy (ręcznie)",
+    "barcodeNotFoundManual": "{{code}} nie znaleziono w Open Food Facts — możesz wpisać ręcznie.",
+    "missing": "brak:",
+    "noKcal": "brak kcal"
   },
   "aliasPicker": {
     "noResults": "Nie znaleziono wyników"
@@ -378,7 +387,10 @@
     "readingLabel": "Odczyt etykiety",
     "recognizingFood": "Rozpoznawanie jedzenia",
     "noFoodExtracted": "Nie udało się wyodrębnić produktu z obrazu. Spróbuj wyraźniejszego/bliższego zdjęcia.",
-    "capturedFrameAlt": "Przechwycona klatka"
+    "capturedFrameAlt": "Przechwycona klatka",
+    "scannedFood": "Skanowany posiłek",
+    "allItemsRemoved": "Wszystkie pozycje usunięte — zeskanuj ponownie.",
+    "retake": "Ponów"
   },
   "exercise": {
     "title": "Dziennik ćwiczeń i aktywności",
@@ -516,7 +528,13 @@
     "sevenDayAvg": "średnia 7-dniowa",
     "recordedDays": "zarejestrowano {{count}}/{{total}} dni",
     "gapNote": "W {{count}} niezarejestrowanych dniach linia celowo się przerywa — rysowanie przez lukę udawałoby nieistniejący trend.",
-    "chartA11y": "Trend {{nutrient}} — {{days}} dni, zapisano na {{recorded}} dniach"
+    "chartA11y": "Trend {{nutrient}} — {{days}} dni, zapisano na {{recorded}} dniach",
+    "noData": "brak danych",
+    "weekAvg": "śr. 7d",
+    "goal": "cel",
+    "emptyState": "Potrzeba co najmniej 2 dni danych do trendu",
+    "noRecordsInPeriod": "Brak wpisów w tym okresie",
+    "oneDayOnly": "Tylko 1 dzień zapisany w tym okresie."
   },
   "nutrient": {
     "kcal": "Kalorie",

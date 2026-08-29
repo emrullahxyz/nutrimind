@@ -253,6 +253,7 @@ export function OffSearch({ onPick }: { onPick: (food: OffFood) => void }) {
  *  (paketli ürünlerde iyi, ham gıdada zayıf) ve eksik alan forma 0 olarak
  *  düşeceği için kullanıcının bunu görmesi şart. */
 function OffResultRow({ food, onPick }: { food: OffFood; onPick: () => void }) {
+  const { t } = useTranslation();
   const missing = missingLabels(food);
   const hasKcal = food.present.includes("kcal");
 
@@ -282,14 +283,14 @@ function OffResultRow({ food, onPick }: { food: OffFood; onPick: () => void }) {
         </span>
         {missing.length > 0 && (
           <span className="mt-0.5 block truncate text-[10px] text-warn">
-            eksik: {missing.join(", ")}
+            {t("offSearch.missing")} {missing.join(", ")}
           </span>
         )}
       </span>
 
       <span className="flex-none text-right font-mono text-[10px] text-ink-secondary">
         {/* kcal bildirilmemişse "0 kcal" yazmak yalan olur. */}
-        <span className="block">{hasKcal ? formatKcal(food.nutrition.kcal) : "kcal yok"}</span>
+        <span className="block">{hasKcal ? formatKcal(food.nutrition.kcal) : t("offSearch.noKcal")}</span>
         <span className="block text-ink-faint">
           {food.present.includes("protein") ? `P${formatNumber(food.nutrition.protein, 1)}` : "P?"} /100 g
         </span>
