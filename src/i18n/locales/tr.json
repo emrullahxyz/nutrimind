@@ -104,7 +104,9 @@
     "offerLabel": "Open Food Facts'te ara (Polonya)",
     "offerPlaceholder": "örn. skyr, twaróg, Piątnica",
     "closeCamera": "Kamerayı kapat",
-    "scanBarcode": "Barkod tara"
+    "scanBarcode": "Barkod tara",
+    "cameraHint": "Barkodu çerçeveye getir — okununca otomatik aranır.",
+    "barcodeManual": "Barkod (elle)"
   },
   "aliasPicker": {
     "noResults": "Sonuç bulunamadı"
@@ -504,7 +506,8 @@
     "daily": "günlük",
     "sevenDayAvg": "7 günlük ortalama",
     "recordedDays": "{{count}}/{{total}} günde kayıt",
-    "gapNote": "Kayıt olmayan {{count}} günde çizgi bilinçli olarak kopar — boşluğun üstünden çizgi çekmek olmayan bir seyri gerçek gibi gösterirdi."
+    "gapNote": "Kayıt olmayan {{count}} günde çizgi bilinçli olarak kopar — boşluğun üstünden çizgi çekmek olmayan bir seyri gerçek gibi gösterirdi.",
+    "chartA11y": "{{nutrient}} trendi — {{days}} gün, {{recorded}} günde kayıt var"
   },
   "nutrient": {
     "kcal": "Kalori",

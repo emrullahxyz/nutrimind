@@ -231,7 +231,7 @@ export function TrendChart({
         viewBox={`0 0 ${W} ${H}`}
         className="h-auto w-full overflow-visible"
         role="img"
-        aria-label={`${t(`nutrient.${def.key}`)} trendi — ${n} gün, ${series.dataCount} günde kayıt var`}
+        aria-label={t("trend.chartA11y", { nutrient: t(`nutrient.${def.key}`), days: n, recorded: series.dataCount })}
       >
         <defs>
           <linearGradient id={gradId} x1="0" y1="0" x2="0" y2="1">
