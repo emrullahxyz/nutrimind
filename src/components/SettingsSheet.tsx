@@ -20,6 +20,7 @@ import {
   KeyRound,
   ListPlus,
   Trash2,
+  Globe,
 } from "lucide-react";
 import { Modal } from "./Modal";
 import { GoalsForm } from "./GoalsForm";
@@ -53,7 +54,9 @@ type SubView =
   | "feedback"
   | "privacy"
   | "password"
-  | "allowlist";
+  | "allowlist"
+  | "language"
+  | "accountData";
 
 interface MenuItemProps {
   icon: React.ComponentType<{ className?: string }>;
@@ -342,6 +345,24 @@ const { user, authDisabled, capabilities, logout } = useAuth();
                 subtitle={t("settings.preferencesSubtitle")}
                 onClick={() => openSubView("preferences")}
               />
+              <MenuItem
+                icon={Globe}
+                iconBg="bg-cyan-500/15"
+                iconColor="text-cyan-400"
+                title={t("settings.language")}
+                subtitle={currentLang.toUpperCase()}
+                onClick={() => openSubView("language")}
+              />
+              {!authDisabled && user && (
+                <MenuItem
+                  icon={Download}
+                  iconBg="bg-emerald-500/15"
+                  iconColor="text-emerald-400"
+                  title={t("settings.dataTitle")}
+                  subtitle={t("settings.dataSubtitle")}
+                  onClick={() => openSubView("accountData")}
+                />
+              )}
               {!authDisabled && (
                 <MenuItem
                   icon={KeyRound}
@@ -448,28 +469,6 @@ const { user, authDisabled, capabilities, logout } = useAuth();
               />
             </SectionGroup>
 
-            {/* DİL — i18n seçici (Faz 5) */}
-            <SectionGroup title={t("settings.language")}>
-              <div className="flex gap-2 px-1 pb-1" role="group" aria-label={t("settings.language")}>
-                {SUPPORTED_LANGS.map((lng) => (
-                  <button
-                    key={lng}
-                    type="button"
-                    onClick={() => setLang(lng)}
-                    aria-pressed={currentLang === lng}
-                    className={
-                      "flex-1 rounded-pill border px-3 py-2 text-sm font-semibold transition " +
-                      (currentLang === lng
-                        ? "border-emerald-500/50 bg-emerald-500/15 text-emerald-200"
-                        : "border-line bg-white/[0.04] text-ink-secondary hover:text-ink-primary")
-                    }
-                  >
-                    {lng === "tr" ? t("settings.languageTr") : lng === "en" ? t("settings.languageEn") : t("settings.languagePl")}
-                  </button>
-                ))}
-              </div>
-            </SectionGroup>
-
             {/* HESAP İŞLEMLERİ */}
             <SectionGroup title={t("settings.accountActions")}>
               <MenuItem
@@ -492,149 +491,6 @@ const { user, authDisabled, capabilities, logout } = useAuth();
                 />
               )}
             </SectionGroup>
-
-            {/* VERİ & HESAP SİLME — KVKK m.7 / GDPR Art.17, Art.20 */}
-            {!authDisabled && user && (
-              <SectionGroup title={t("settings.dataExport")}>
-                <MenuItem
-                  icon={Download}
-                  iconBg="bg-emerald-500/15"
-                  iconColor="text-emerald-400"
-                  title={exportBusy ? t("settings.exportButtonBusy") : t("settings.exportButton")}
-                  subtitle={t("settings.exportSubtitle")}
-                  onClick={async () => {
-                    if (exportBusy) return;
-                    setExportBusy(true);
-                    haptic("light");
-                    try {
-                      await exportAccount();
-                      showToast(t("settings.exportSuccess"), "success");
-                    } catch (e) {
-                      showToast(t("settings.exportError", { message: (e as Error).message }), "error");
-                    } finally {
-                      setExportBusy(false);
-                    }
-                  }}
-                />
-                <MenuItem
-                  icon={Trash2}
-                  iconBg="bg-rose-500/15"
-                  iconColor="text-rose-400"
-                  title={t("settings.deleteAccount")}
-                  subtitle={t("settings.deleteSubtitle")}
-                  onClick={() => {
-                    haptic("medium");
-                    setDeletePassword("");
-                    setDeleteConfirm("");
-                    setDeleteStep(1);
-                  }}
-                  isDanger
-                />
-              </SectionGroup>
-            )}
-
-            {/* HESAP SİLME ONAY MODALI — 2 adımlı, geri alınamaz.
-                Yalnızca akış aktifken mount et: içerik adıma bağlı olduğundan
-                boş kabuk portal'da (body) asılı kalıp tıklanabilir göründüğü
-                için adım 0'da hiç var olmamalı. */}
-            {deleteStep > 0 && (
-            <Modal
-              onClose={() => {
-                if (!deleteBusy) {
-                  setDeleteStep(0);
-                  setDeletePassword("");
-                  setDeleteConfirm("");
-                }
-              }}
-              title={t("settings.deleteTitle")}
-            >
-              {deleteStep === 1 && (
-                <div className="space-y-3">
-                  <p className="text-sm text-white/80">
-                    {t("settings.deleteStep1")}
-                  </p>
-                  <div className="flex gap-2 pt-2">
-                    <button
-                      type="button"
-                      onClick={() => setDeleteStep(0)}
-                      className="flex-1 rounded-xl border border-white/10 bg-white/5 py-2.5 text-sm font-semibold text-white/80"
-                    >
-                      {t("settings.deleteCancel")}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setDeleteStep(2)}
-                      className="flex-1 rounded-xl bg-rose-500/20 py-2.5 text-sm font-semibold text-rose-300"
-                    >
-                      {t("settings.deleteContinue")}
-                    </button>
-                  </div>
-                </div>
-              )}
-              {deleteStep === 2 && (
-                <div className="space-y-3">
-                  <p className="text-sm text-white/80">
-                    {t("settings.deleteStep2", { confirm: t("settings.deleteConfirmValue") })}
-                  </p>
-                  <TextField
-                    type="password"
-                    label={t("settings.deletePasswordLabel")}
-                    placeholder={t("settings.deletePasswordPlaceholder")}
-                    value={deletePassword}
-                    onChange={setDeletePassword}
-                    autoComplete="current-password"
-                  />
-                  <div>
-                    <Label>{t("settings.deleteConfirmLabel")}</Label>
-                    <input
-                      type="text"
-                      value={deleteConfirm}
-                      onChange={(e) => setDeleteConfirm(e.target.value)}
-                      placeholder={t("settings.deleteConfirmPlaceholder", { confirm: t("settings.deleteConfirmValue") })}
-                      className={fieldCls}
-                      autoComplete="off"
-                    />
-                  </div>
-                  <div className="flex gap-2 pt-2">
-                    <button
-                      type="button"
-                      onClick={() => setDeleteStep(1)}
-                      disabled={deleteBusy}
-                      className="flex-1 rounded-xl border border-white/10 bg-white/5 py-2.5 text-sm font-semibold text-white/80 disabled:opacity-50"
-                    >
-                      {t("settings.deleteBack")}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={async () => {
-                        if (deleteConfirm !== t("settings.deleteConfirmValue") || deleteBusy) return;
-                        setDeleteBusy(true);
-                        try {
-                          await deleteAccount({
-                            confirm: t("settings.deleteServerConfirm"),
-                            ...(deletePassword ? { password: deletePassword } : {}),
-                          });
-                          showToast(t("settings.deleteSuccess"), "success");
-                          setDeleteStep(0);
-                          // AuthProvider yeniden fetchMe çağırsın → login ekranı.
-                          await logout();
-                          window.location.reload();
-                        } catch (e) {
-                          showToast(t("settings.deleteError", { message: (e as Error).message }), "error");
-                        } finally {
-                          setDeleteBusy(false);
-                        }
-                      }}
-                      disabled={deleteConfirm !== t("settings.deleteConfirmValue") || deleteBusy}
-                      className="flex-1 rounded-xl bg-rose-500 py-2.5 text-sm font-bold text-white disabled:opacity-40"
-                    >
-                      {deleteBusy ? t("settings.deleteSubmitting") : t("settings.deleteSubmit")}
-                    </button>
-                  </div>
-                </div>
-              )}
-            </Modal>
-            )}
 
             {cacheStatus && (
               <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-3 text-center text-xs font-bold text-emerald-400">
@@ -680,6 +536,8 @@ const { user, authDisabled, capabilities, logout } = useAuth();
                 {subView === "privacy" && t("settings.subviewPrivacy")}
                 {subView === "password" && t("settings.subviewPassword")}
                 {subView === "allowlist" && t("settings.subviewAllowlist")}
+                {subView === "language" && t("settings.language")}
+                {subView === "accountData" && t("settings.dataExport")}
               </h3>
             </div>
 
@@ -889,6 +747,199 @@ const { user, authDisabled, capabilities, logout } = useAuth();
 
         {/* 13. İZİNLİ E-POSTALAR */}
         {subView === "allowlist" && <AllowlistForm />}
+
+        {/* 14. DİL SEÇİMİ */}
+        {subView === "language" && (
+          <div className="flex flex-col gap-3 rounded-2xl border border-white/10 bg-row p-4">
+            <div className="flex gap-2 px-1 pb-1" role="group" aria-label={t("settings.language")}>
+              {SUPPORTED_LANGS.map((lng) => (
+                <button
+                  key={lng}
+                  type="button"
+                  onClick={() => setLang(lng)}
+                  aria-pressed={currentLang === lng}
+                  className={
+                    "flex-1 rounded-pill border px-3 py-2 text-sm font-semibold transition " +
+                    (currentLang === lng
+                      ? "border-emerald-500/50 bg-emerald-500/15 text-emerald-200"
+                      : "border-line bg-white/[0.04] text-ink-secondary hover:text-ink-primary")
+                  }
+                >
+                  {lng === "tr" ? t("settings.languageTr") : lng === "en" ? t("settings.languageEn") : t("settings.languagePl")}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* 15. HESAP & VERİLER (KVKK/GDPR) */}
+        {subView === "accountData" && (
+          <div className="flex flex-col gap-4">
+            {!authDisabled && user && (
+              <>
+                <div className="flex flex-col gap-1.5">
+                  <h4 className="px-1 text-[11px] font-bold tracking-wider text-white/40 uppercase">
+                    {t("settings.dataExport")}
+                  </h4>
+                  <div className="glass-card divide-y divide-white/[0.06] overflow-hidden rounded-2xl border border-white/10 bg-row">
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        if (exportBusy) return;
+                        setExportBusy(true);
+                        haptic("light");
+                        try {
+                          await exportAccount();
+                          showToast(t("settings.exportSuccess"), "success");
+                        } catch (e) {
+                          showToast(t("settings.exportError", { message: (e as Error).message }), "error");
+                        } finally {
+                          setExportBusy(false);
+                        }
+                      }}
+                      className="group flex w-full items-center justify-between gap-3 px-4 py-3 text-left transition hover:bg-white/[0.04] active:bg-white/[0.08]"
+                    >
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div className="flex h-9 w-9 flex-none items-center justify-center rounded-xl bg-emerald-500/15 text-emerald-400 transition-transform group-hover:scale-105">
+                          <Download className="h-4 w-4" />
+                        </div>
+                        <div className="truncate">
+                          <div className="text-xs sm:text-sm font-semibold truncate text-white">
+                            {exportBusy ? t("settings.exportButtonBusy") : t("settings.exportButton")}
+                          </div>
+                          <div className="text-[11px] text-white/50 truncate mt-0.5">{t("settings.exportSubtitle")}</div>
+                        </div>
+                      </div>
+                      <ChevronRight className="h-4 w-4 text-white/30 transition-transform group-hover:translate-x-0.5 group-hover:text-white/60" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        haptic("medium");
+                        setDeletePassword("");
+                        setDeleteConfirm("");
+                        setDeleteStep(1);
+                      }}
+                      className="group flex w-full items-center justify-between gap-3 px-4 py-3 text-left transition hover:bg-white/[0.04] active:bg-white/[0.08]"
+                    >
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div className="flex h-9 w-9 flex-none items-center justify-center rounded-xl bg-rose-500/15 text-rose-400 transition-transform group-hover:scale-105">
+                          <Trash2 className="h-4 w-4" />
+                        </div>
+                        <div className="truncate">
+                          <div className="text-xs sm:text-sm font-semibold truncate text-red-400">
+                            {t("settings.deleteAccount")}
+                          </div>
+                          <div className="text-[11px] text-white/50 truncate mt-0.5">{t("settings.deleteSubtitle")}</div>
+                        </div>
+                      </div>
+                      <ChevronRight className="h-4 w-4 text-white/30 transition-transform group-hover:translate-x-0.5 group-hover:text-white/60" />
+                    </button>
+                  </div>
+                </div>
+
+                {/* HESAP SİLME ONAY MODALI — 2 adımlı */}
+                {deleteStep > 0 && (
+                <Modal
+                  onClose={() => {
+                    if (!deleteBusy) {
+                      setDeleteStep(0);
+                      setDeletePassword("");
+                      setDeleteConfirm("");
+                    }
+                  }}
+                  title={t("settings.deleteTitle")}
+                >
+                  {deleteStep === 1 && (
+                    <div className="space-y-3">
+                      <p className="text-sm text-white/80">
+                        {t("settings.deleteStep1")}
+                      </p>
+                      <div className="flex gap-2 pt-2">
+                        <button
+                          type="button"
+                          onClick={() => setDeleteStep(0)}
+                          className="flex-1 rounded-xl border border-white/10 bg-white/5 py-2.5 text-sm font-semibold text-white/80"
+                        >
+                          {t("settings.deleteCancel")}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setDeleteStep(2)}
+                          className="flex-1 rounded-xl bg-rose-500/20 py-2.5 text-sm font-semibold text-rose-300"
+                        >
+                          {t("settings.deleteContinue")}
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                  {deleteStep === 2 && (
+                    <div className="space-y-3">
+                      <p className="text-sm text-white/80">
+                        {t("settings.deleteStep2", { confirm: t("settings.deleteConfirmValue") })}
+                      </p>
+                      <TextField
+                        type="password"
+                        label={t("settings.deletePasswordLabel")}
+                        placeholder={t("settings.deletePasswordPlaceholder")}
+                        value={deletePassword}
+                        onChange={setDeletePassword}
+                        autoComplete="current-password"
+                      />
+                      <div>
+                        <Label>{t("settings.deleteConfirmLabel")}</Label>
+                        <input
+                          type="text"
+                          value={deleteConfirm}
+                          onChange={(e) => setDeleteConfirm(e.target.value)}
+                          placeholder={t("settings.deleteConfirmPlaceholder", { confirm: t("settings.deleteConfirmValue") })}
+                          className={fieldCls}
+                          autoComplete="off"
+                        />
+                      </div>
+                      <div className="flex gap-2 pt-2">
+                        <button
+                          type="button"
+                          onClick={() => setDeleteStep(1)}
+                          disabled={deleteBusy}
+                          className="flex-1 rounded-xl border border-white/10 bg-white/5 py-2.5 text-sm font-semibold text-white/80 disabled:opacity-50"
+                        >
+                          {t("settings.deleteBack")}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={async () => {
+                            if (deleteConfirm !== t("settings.deleteConfirmValue") || deleteBusy) return;
+                            setDeleteBusy(true);
+                            try {
+                              await deleteAccount({
+                                confirm: t("settings.deleteServerConfirm"),
+                                ...(deletePassword ? { password: deletePassword } : {}),
+                              });
+                              showToast(t("settings.deleteSuccess"), "success");
+                              setDeleteStep(0);
+                              await logout();
+                              window.location.reload();
+                            } catch (e) {
+                              showToast(t("settings.deleteError", { message: (e as Error).message }), "error");
+                            } finally {
+                              setDeleteBusy(false);
+                            }
+                          }}
+                          disabled={deleteConfirm !== t("settings.deleteConfirmValue") || deleteBusy}
+                          className="flex-1 rounded-xl bg-rose-500 py-2.5 text-sm font-bold text-white disabled:opacity-40"
+                        >
+                          {deleteBusy ? t("settings.deleteSubmitting") : t("settings.deleteSubmit")}
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </Modal>
+                )}
+              </>
+            )}
+          </div>
+        )}
           </div>
         )}
       </div>
