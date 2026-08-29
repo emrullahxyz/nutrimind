@@ -90,6 +90,111 @@ const CAPTURE_OPTS: Record<VisionMode, { maxDim: number; quality: number }> = {
   food_photo: { maxDim: 1024, quality: 0.7 },
 };
 
+
+/** AI consent onay ekranı — portalsız, ScanSheet'in kendi Modal DOM'u içinde
+ *  render edilir. Nested <Modal> yerine CSS overlay kullanılarak:
+ *  - Tek portal (dış Modal)
+ *  - Tek history girdisi
+ *  - Geri butonu öngörülebilir */
+function AiConsentOverlay({
+  onClose,
+  onConfirm,
+  title,
+  bodyText,
+  privacyText,
+  confirmText,
+  cancelText,
+}: {
+  onClose: () => void;
+  onConfirm: () => void;
+  title: string;
+  bodyText: string;
+  privacyText: string;
+  confirmText: string;
+  cancelText: string;
+}) {
+  const cardRef = useRef<HTMLDivElement>(null);
+  const mouseDownTargetRef = useRef<EventTarget | null>(null);
+
+  useEffect(() => {
+    const previouslyFocused = document.activeElement as HTMLElement | null;
+    cardRef.current?.focus();
+    const focusable =
+      'button:not([disabled]), [href], input:not([disabled]), [tabindex]:not([tabindex="-1"])'
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") { onClose(); return; }
+      if (e.key !== "Tab") return;
+      const el = cardRef.current;
+      if (!el) return;
+      const items = Array.from(el.querySelectorAll<HTMLElement>(focusable)).filter(
+        (i) => i.offsetParent !== null,
+      );
+      if (items.length === 0) { e.preventDefault(); el.focus(); return; }
+      const first = items[0], last = items[items.length - 1];
+      const active = document.activeElement as HTMLElement | null;
+      if (e.shiftKey && active === first) { e.preventDefault(); last.focus(); }
+      else if (!e.shiftKey && active === last) { e.preventDefault(); first.focus(); }
+    };
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("keydown", onKey);
+      if (previouslyFocused && document.contains(previouslyFocused)) previouslyFocused.focus();
+    };
+  }, [onClose]);
+
+  return (
+    <div
+      className="absolute inset-0 z-30 flex items-center justify-center bg-black/70 backdrop-blur-sm"
+      onMouseDown={(e) => { mouseDownTargetRef.current = e.target; }}
+      onClick={(e) => {
+        if (mouseDownTargetRef.current === e.target && e.target === e.currentTarget) onClose();
+      }}
+    >
+      <div
+        ref={cardRef}
+        role="dialog"
+        aria-modal="true"
+        aria-label={title}
+        tabIndex={-1}
+        onClick={(e) => e.stopPropagation()}
+        className="mx-4 max-w-sm rounded-2xl border border-white/10 bg-elevated-2 p-5 shadow-float"
+      >
+        <h3 className="mb-3 text-base font-extrabold text-ink-primary">{title}</h3>
+        <div className="space-y-3">
+          <p className="text-sm text-ink-secondary">{bodyText}</p>
+          <p className="text-xs text-ink-tertiary">
+            {privacyText}{" "}
+            <a
+              href="https://policies.google.com/privacy"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-emerald-400 underline"
+            >
+              policies.google.com/privacy
+            </a>
+          </p>
+          <div className="flex gap-2 pt-2">
+            <button
+              type="button"
+              onClick={onClose}
+              className="flex-1 rounded-xl border border-white/10 bg-white/5 py-2.5 text-sm font-semibold text-white/80 transition hover:bg-white/10"
+            >
+              {cancelText}
+            </button>
+            <button
+              type="button"
+              onClick={onConfirm}
+              className="flex-1 rounded-xl bg-emerald-500/20 py-2.5 text-sm font-semibold text-emerald-300 transition active:scale-95"
+            >
+              {confirmText}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export function ScanSheet({
   onClose,
   onVisionResult,
@@ -883,52 +988,29 @@ export function ScanSheet({
         />
       ) : null}
 
-      {/* AI fotoğraf onay modalı — ilk kullanımda bir kez sorulur, onay
-          localStorage'a yazılır. Play Store 'Data safety' gereği. */}
+      {/* AI fotoğraf onay ekranı — inline overlay (nested Modal değil).
+          Play Store 'Data safety' gereği, ilk kullanımda bir kez sorulur. */}
       {aiConsentOpen && (
-        <Modal onClose={() => setAiConsentOpen(false)} title={t("ai.consentTitle")}>
-          <div className="space-y-3">
-            <p className="text-sm text-white/80">
-              {t("ai.consentBody")}
-            </p>
-            <p className="text-xs text-white/50">
-              {t("ai.consentPrivacy")}{" "}
-              <a
-                href="https://policies.google.com/privacy"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-emerald-400 underline"
-              >
-                policies.google.com/privacy
-              </a>
-            </p>
-            <div className="flex gap-2 pt-2">
-              <button
-                type="button"
-                onClick={() => setAiConsentOpen(false)}
-                className="flex-1 rounded-xl border border-white/10 bg-white/5 py-2.5 text-sm font-semibold text-white/80"
-              >
-                {t("common.cancel")}
-              </button>
-              <button
-                type="button"
-                onClick={async () => {
-                  grantAiConsent();
-                  setAiConsentOpen(false);
-                  // Onay öncesi askıya alınmış görseli otomatik tekrar gönder.
-                  const pending = pendingVisionRef.current;
-                  if (pending) {
-                    pendingVisionRef.current = null;
-                    await runVision(pending.base64, pending.mimeType, pending.mode);
-                  }
-                }}
-                className="flex-1 rounded-xl bg-emerald-500/20 py-2.5 text-sm font-semibold text-emerald-300"
-              >
-                {t("scan.understoodContinue")}
-              </button>
-            </div>
-          </div>
-        </Modal>
+        <AiConsentOverlay
+          onClose={() => {
+            pendingVisionRef.current = null;
+            setAiConsentOpen(false);
+          }}
+          onConfirm={async () => {
+            grantAiConsent();
+            setAiConsentOpen(false);
+            const pending = pendingVisionRef.current;
+            if (pending) {
+              pendingVisionRef.current = null;
+              await runVision(pending.base64, pending.mimeType, pending.mode);
+            }
+          }}
+          title={t("ai.consentTitle")}
+          bodyText={t("ai.consentBody")}
+          privacyText={t("ai.consentPrivacy")}
+          confirmText={t("scan.understoodContinue")}
+          cancelText={t("common.cancel")}
+        />
       )}
     </Modal>
   );
