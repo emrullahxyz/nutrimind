@@ -87,7 +87,7 @@ function BasketSection({
         </span>
         <button
           type="button"
-          onClick={onClear}
+          onClick={() => { if (window.confirm(t("meal.confirmClearBasket"))) onClear(); }}
           className="text-xs font-semibold text-red-400 hover:underline"
         >
           {t("meal.basketClear")}

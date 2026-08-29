@@ -32,6 +32,7 @@ export function WeekStrip({ selectedDate, onSelectDate }: WeekStripProps) {
       {weekDays.map((dateIso) => {
         const isSelected = dateIso === selectedDate;
         const isToday = dateIso === today;
+        const isFuture = dateIso === tomorrow;
         const dayNumber = dateIso.slice(8);
 
         const dayGoalKcal = effectiveGoal(goals, dateIso).kcal;
@@ -53,7 +54,7 @@ export function WeekStrip({ selectedDate, onSelectDate }: WeekStripProps) {
           circleStyle = "border border-solid border-emerald-500/60 text-emerald-400 bg-emerald-500/10";
         }
 
-        if (isSelected) {
+        if (isSelected && !isFuture) {
           if (isExceeded) {
             circleStyle = "bg-transparent border border-solid border-rose-500 text-rose-400";
           } else if (isUnder) {
@@ -63,6 +64,25 @@ export function WeekStrip({ selectedDate, onSelectDate }: WeekStripProps) {
           } else {
             circleStyle = "bg-transparent border border-dashed border-white/30 text-white";
           }
+        }
+
+        // ponytail: tomorrow non-interactive, extend to configurable max-future-days
+        if (isFuture) {
+          return (
+            <div
+              key={dateIso}
+              className="flex flex-1 min-w-[44px] max-w-[56px] flex-col items-center justify-center rounded-[22px] py-2 px-1 opacity-40 cursor-default select-none"
+            >
+              <span className="text-[10px] font-extrabold uppercase tracking-wider text-ink-secondary">
+                {weekdayShort(dateIso)}
+              </span>
+              <span
+                className={`mt-1.5 flex h-8 w-8 items-center justify-center rounded-full text-xs font-mono font-bold transition-all ${circleStyle}`}
+              >
+                {dayNumber}
+              </span>
+            </div>
+          );
         }
 
         return (

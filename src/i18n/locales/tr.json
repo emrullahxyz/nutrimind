@@ -264,6 +264,7 @@
     "privacySubtitle": "SQLite yerel şifreli saklama",
     "cacheTitle": "Önbelleği & Uygulamayı Yenile",
     "cacheSubtitle": "PWA service worker önbelleğini temizler",
+    "confirmClearCache": "Önbellek temizlensin mi? Sayfa yenilenecek.",
     "cacheCleared": "Önbellek ve Service Worker temizlendi!",
     "cacheError": "Önbellek temizlenirken hata oluştu.",
     "deleteContinue": "Devam Et",

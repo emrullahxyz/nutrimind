@@ -264,6 +264,7 @@
     "privacySubtitle": "Zaszyfrowana lokalna pamięć SQLite",
     "cacheTitle": "Odśwież pamięć podręczną i aplikację",
     "cacheSubtitle": "Czyści pamięć podręczną service worker PWA",
+    "confirmClearCache": "Wyczyścić pamięć podręczną? Strona zostanie przeładowana.",
     "cacheCleared": "Pamięć podręczna i Service Worker wyczyszczone!",
     "cacheError": "Nie udało się wyczyścić pamięci podręcznej.",
     "deleteContinue": "Kontynuuj",

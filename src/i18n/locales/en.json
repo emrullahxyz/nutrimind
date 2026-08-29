@@ -79,7 +79,13 @@
     "mergeListHeader": "Meals to merge",
     "emptyLabel": "No entry for this day.",
     "addMeal": "Add meal",
-    "other": "Other"
+    "other": "Other",
+    "recentMeals": "Recently added",
+    "clearSelection": "Clear selection",
+    "merge": "Merge",
+    "done": "Done",
+    "select": "Select",
+    "scan": "Scan"
   },
   "weight": {
     "label": "Weight",
@@ -114,7 +120,10 @@
     "closeCamera": "Close camera",
     "scanBarcode": "Scan barcode",
     "cameraHint": "Bring the barcode into the frame — it searches automatically when read.",
-    "barcodeManual": "Barcode (manual)"
+    "barcodeManual": "Barcode (manual)",
+    "barcodeNotFoundManual": "{{code}} not found on Open Food Facts — you can enter manually.",
+    "missing": "missing:",
+    "noKcal": "no kcal"
   },
   "aliasPicker": {
     "noResults": "No results found"
@@ -264,6 +273,7 @@
     "privacySubtitle": "Encrypted local SQLite storage",
     "cacheTitle": "Refresh Cache & App",
     "cacheSubtitle": "Clears the PWA service worker cache",
+    "confirmClearCache": "Clear cache? The page will reload.",
     "cacheCleared": "Cache and Service Worker cleared!",
     "cacheError": "Failed to clear cache.",
     "deleteContinue": "Continue",
@@ -377,7 +387,9 @@
     "readingLabel": "Reading label",
     "recognizingFood": "Recognizing food",
     "noFoodExtracted": "Could not extract a food from the image. Try a clearer/closer photo.",
-    "capturedFrameAlt": "Captured frame"
+    "capturedFrameAlt": "Captured frame",
+    "scannedFood": "Scanned food",
+    "allItemsRemoved": "All items removed — retake to add."
   },
   "exercise": {
     "title": "Exercise & Activity Log",
@@ -515,7 +527,12 @@
     "sevenDayAvg": "7-day average",
     "recordedDays": "{{count}}/{{total}} days recorded",
     "gapNote": "On {{count}} unrecorded days the line intentionally breaks — drawing across a gap would fake a trend that doesn't exist.",
-    "chartA11y": "{{nutrient}} trend — {{days}} days, recorded on {{recorded}} days"
+    "chartA11y": "{{nutrient}} trend — {{days}} days, recorded on {{recorded}} days",
+    "noData": "no data",
+    "weekAvg": "7d avg",
+    "goal": "goal",
+    "emptyState": "At least 2 days of data needed for trend",
+    "noRecordsInPeriod": "No records in this period"
   },
   "nutrient": {
     "kcal": "Calories",
