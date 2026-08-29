@@ -15,6 +15,7 @@ interface MealRowProps {
   isSelected: boolean;
   onToggleSelect: () => void;
   onEdit: () => void;
+  onEditFull: () => void;
   onSaveTemplate: () => void;
   busy: boolean;
 }
@@ -26,6 +27,7 @@ export function MealRow({
   isSelected,
   onToggleSelect,
   onEdit,
+  onEditFull,
   onSaveTemplate,
   busy,
 }: MealRowProps) {
@@ -138,7 +140,7 @@ export function MealRow({
                 type="button"
                 onClick={(e) => {
                   e.stopPropagation();
-                  onEdit();
+                  onEditFull();
                 }}
                 className="w-8 h-8 rounded-full bg-well hover:bg-well-hover text-ink-secondary hover:text-white flex items-center justify-center transition"
                 title={t("common.edit")}

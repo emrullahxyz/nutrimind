@@ -91,6 +91,7 @@ export function HistoryPage({ resetKey = 0 }: { resetKey?: number }) {
     window.history.pushState({ tab: "history", week: weekStartStr, day: null }, "");
     setSelectedWeek(weekStartStr);
     setSelectedDay(null);
+    window.scrollTo({ top: 0 });
   };
 
   const handleSelectDay = (dayStr: string) => {

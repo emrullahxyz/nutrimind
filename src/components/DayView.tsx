@@ -441,6 +441,7 @@ export function DayView({
                         isSelected={selectedIndices.includes(i)}
                         onToggleSelect={() => toggleSelect(i)}
                         onEdit={() => setSelectedMealForSheet({ meal: m, index: i })}
+                        onEditFull={() => setEditIndex(i)}
                         onSaveTemplate={() => saveAsTemplate(m)}
                         busy={busy}
                       />

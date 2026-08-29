@@ -47,7 +47,6 @@ export function DailyPage({
       <DayView
         date={selectedDate}
         emptyLabel={t("empty.dayView")}
-        enableScan
         showWeightCard={false}
         triggerAddMeal={triggerAddMeal}
         onResetTriggerAddMeal={onResetTriggerAddMeal}
