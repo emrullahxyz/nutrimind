@@ -17,6 +17,7 @@ import { formatNumber, formatShortDate, weekdayShort } from "../lib/format";
 import { formatNutrientValue } from "../lib/trend";
 import type { TrendSeries } from "../lib/trend";
 import type { NutrientDef } from "../lib/nutrients";
+import { useTranslation } from "react-i18next";
 
 const W = 720;
 const H = 260;
@@ -116,6 +117,7 @@ export function TrendChart({
    *  bunu söyler. Günlük gerçek hedef tooltip'te görünür. */
   goalIsAverage?: boolean;
 }) {
+  const { t } = useTranslation();
   const points = series.points;
   const n = points.length;
   const [active, setActive] = useState<number | null>(null);
@@ -229,7 +231,7 @@ export function TrendChart({
         viewBox={`0 0 ${W} ${H}`}
         className="h-auto w-full overflow-visible"
         role="img"
-        aria-label={`${def.label} trendi — ${n} gün, ${series.dataCount} günde kayıt var`}
+        aria-label={`${t(`nutrient.${def.key}`)} trendi — ${n} gün, ${series.dataCount} günde kayıt var`}
       >
         <defs>
           <linearGradient id={gradId} x1="0" y1="0" x2="0" y2="1">

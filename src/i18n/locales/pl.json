@@ -70,7 +70,8 @@
     "mergeNamePlaceholder": "np. Śniadanie",
     "mergeListHeader": "Posiłki do połączenia",
     "emptyLabel": "Brak wpisu na ten dzień.",
-    "addMeal": "Dodaj posiłek"
+    "addMeal": "Dodaj posiłek",
+    "other": "Inne"
   },
   "weight": {
     "label": "Waga",
@@ -99,7 +100,11 @@
     "searching": "Szukanie…",
     "cooldown": "Zbyt wiele żądań. Limit Open Food Facts jest chroniony — automatyczna ponowna próba za {{seconds}}s.",
     "emptyPolish": "Brak wyników w polskim katalogu. Możesz wprowadzić produkt ręcznie lub spróbować jego kodu kreskowego.",
-    "postFilterNote": "Przy wyszukiwaniu wielowyrazowym filtr polski stosowany jest później — lista może być krótsza niż oczekiwano."
+    "postFilterNote": "Przy wyszukiwaniu wielowyrazowym filtr polski stosowany jest później — lista może być krótsza niż oczekiwano.",
+    "offerLabel": "Szukaj w Open Food Facts (Polska)",
+    "offerPlaceholder": "np. skyr, twaróg, Piątnica",
+    "closeCamera": "Zamknij kamerę",
+    "scanBarcode": "Skanuj kod kreskowy"
   },
   "aliasPicker": {
     "noResults": "Nie znaleziono wyników"
@@ -357,7 +362,12 @@
     "changeBarcode": "Zmień kod kreskowy",
     "missingData": "brakujące dane",
     "autoReading1": "automatycznie",
-    "autoReading2": "odczytywany"
+    "autoReading2": "odczytywany",
+    "analyzing": "Analiza…",
+    "readingLabel": "Odczyt etykiety",
+    "recognizingFood": "Rozpoznawanie jedzenia",
+    "noFoodExtracted": "Nie udało się wyodrębnić produktu z obrazu. Spróbuj wyraźniejszego/bliższego zdjęcia.",
+    "capturedFrameAlt": "Przechwycona klatka"
   },
   "exercise": {
     "title": "Dziennik ćwiczeń i aktywności",
@@ -428,7 +438,11 @@
     "trainingSplitTitle": "Podział trening / dzień odpoczynku",
     "trainingDays": "Trenujesz {{count}} dni w tygodniu",
     "trainingSplitDesc": "Ile dni w tygodniu trenujesz? Można obliczyć automatyczny podział kalorii i makro.",
-    "applySuggested": "Zastosuj sugerowane ustawienia"
+    "applySuggested": "Zastosuj sugerowane ustawienia",
+    "unnamed": "bez nazwy",
+    "defaultBadge": "⭐ Domyślny",
+    "makeDefault": "Ustaw jako domyślny",
+    "deleteProfile": "Usuń profil"
   },
   "report": {
     "title": "Raport żywieniowy Nutrimind",
@@ -505,6 +519,7 @@
   "onboarding": {
     "saveAndStart": "Zapisz cele i zacznij",
     "title": "Kreator Profilu i TDEE",
+    "defaultUserName": "Użytkownik",
     "subtitle": "Soft Velvet Dark • Indywidualny Plan Żywieniowy",
     "stepStatus": "Krok {{step}} / 5",
     "step1Title": "Poznajmy Cię",
@@ -732,5 +747,11 @@
     "goodMorning": "Dzień dobry",
     "goodDay": "Miłego dnia",
     "goodEvening": "Dobry wieczór"
+  },
+  "range": {
+    "last7": "7 dni",
+    "last30": "30 dni",
+    "last90": "90 dni",
+    "all": "Wszystkie"
   }
 }

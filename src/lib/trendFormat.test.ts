@@ -23,14 +23,15 @@ describe("trendFormat & RangePicker helpers", () => {
   describe("formatRangeLabel & RANGE_OPTIONS", () => {
     it("contains expected range options", () => {
       expect(RANGE_OPTIONS).toHaveLength(4);
-      expect(RANGE_OPTIONS.map((r) => r.value)).toEqual([7, 30, 90, "all"]);
+      expect(RANGE_OPTIONS).toEqual([7, 30, 90, "all"]);
     });
 
-    it("formats labels correctly", () => {
-      expect(formatRangeLabel(7)).toBe("7 gün");
-      expect(formatRangeLabel(30)).toBe("30 gün");
-      expect(formatRangeLabel(90)).toBe("90 gün");
-      expect(formatRangeLabel("all")).toBe("Tümü");
+    it("maps each range to its i18n key", () => {
+      const t = (k: string): string => k;
+      expect(formatRangeLabel(7, t)).toBe("range.last7");
+      expect(formatRangeLabel(30, t)).toBe("range.last30");
+      expect(formatRangeLabel(90, t)).toBe("range.last90");
+      expect(formatRangeLabel("all", t)).toBe("range.all");
     });
   });
 });

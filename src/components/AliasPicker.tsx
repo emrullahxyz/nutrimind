@@ -128,7 +128,7 @@ export function AliasPicker({
           type="text"
           className={`${fieldCls} pr-8`}
           value={query}
-          placeholder="Besin ara..."
+          placeholder={t("aliasPage.searchPlaceholder")}
           onFocus={(e) => {
             setIsOpen(true);
             e.target.select();

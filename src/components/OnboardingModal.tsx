@@ -90,7 +90,7 @@ export function OnboardingModal({
 
   // Güvenli TDEE Girdisi (Varsayılan değerlerle hesaplama)
   const currentInput: UserProfileInput = {
-    name: name.trim() || "Kullanıcı",
+    name: name.trim() || t("onboarding.defaultUserName"),
     gender: gender ?? "female",
     age: Number(age) > 0 ? Number(age) : 25,
     weightKg: Number(weightKg) > 0 ? Number(weightKg) : 65,
