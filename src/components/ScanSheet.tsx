@@ -216,13 +216,7 @@ export function ScanSheet({
   const { status, setStatus, cooldownLeft, blocked, applyError } = useOffCooldown();
 
   const [scanMode, setScanMode] = useState<ScanMode>("scan_food");
-  const [showManual, setShowManual] = useState(false);
 
-  // Auto-show manual form in barcode mode as fallback; hide it again when the
-  // user switches to another mode (barkoddan çıkınca panel yapışık kalıyordu).
-  useEffect(() => {
-    setShowManual(scanMode === "barcode");
-  }, [scanMode]);
   const [analyzing, setAnalyzing] = useState(false);
   /** Deklanşörle çekilen kare, AI'a gitmeden ÖNCE burada bekler. Telefon tam
    *  basılırken oynarsa (fiziksel titreşim) kullanıcı bunu AI'ın yanıtını
@@ -803,16 +797,9 @@ export function ScanSheet({
             </div>
 
             <div className="grid grid-cols-3 items-center">
-              <button
-                type="button"
-                onClick={() => setShowManual((v) => !v)}
-                aria-expanded={showManual}
-                className="justify-self-start rounded-pill border border-white/15 bg-black/40 px-3 py-2 text-[11px] font-semibold text-white/80 backdrop-blur-sm transition hover:text-white"
-              >
-                ⌨ Elle
-              </button>
-
-              <div className="justify-self-center">
+              {/* Elle düğmesi kaldırıldı — elle (manuel) barkod girişi barkod moduna
+                  geçince zaten otomatik açılıyor, ayrı bir toggle gerekmiyor. */}
+              <div className="justify-self-center col-start-2">
                 {scanMode === "barcode" ? (
                   <span className="flex h-[68px] w-[68px] items-center justify-center rounded-full border-2 border-dashed border-accent/50 text-center text-[10px] font-semibold leading-tight text-white/70 animate-pulse">
                     {t("scan.autoReading1")}
@@ -846,7 +833,7 @@ export function ScanSheet({
               </button>
             </div>
 
-            {showManual && (
+            {scanMode === "barcode" && (
               <div className="rounded-chip border border-white/10 bg-black/60 p-3 backdrop-blur-md">
                 {manualBarcodeForm}
                 <p className="mt-2 text-[10px] text-ink-faint">{OFF_ATTRIBUTION}</p>
