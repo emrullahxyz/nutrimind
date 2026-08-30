@@ -1,8 +1,12 @@
-import { beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
+  afterHistoryBackSettles,
   classifyPopState,
   consumeProgrammaticBack,
+  isModalEntryOnTop,
+  isPoppedAfterModalPop,
   markProgrammaticBack,
+  MODAL_ENTRY_TOKEN_KEY,
   resetProgrammaticBacks,
   shouldExitOnSecondPress,
 } from "./backStack";
@@ -182,5 +186,148 @@ describe("shouldExitOnSecondPress", () => {
   it("tam 2 saniye ya da sonrasında false döner (yeni bir 'ilk basış' say)", () => {
     expect(shouldExitOnSecondPress(1000, 1000 + 2000)).toBe(false);
     expect(shouldExitOnSecondPress(1000, 1000 + 5000)).toBe(false);
+  });
+});
+
+// ============================================================================
+// Bug: "afterHistoryBackSettles" kör 50ms zaman aşımı — yavaş cihazda popstate
+// 50ms'den SONRA geliyorsa geri çağrı ERKEN çalışıyor, yeni modal pushState
+// yapıyor, aradaki gecikmiş back() de O YENİ girdiyi popluyordu ("zombi modal":
+// React'te açık ama geçmişte girdisi yok — sonraki geri tuşu uygulamadan
+// çıkarıyordu). Geri çağrı artık yalnızca back GERÇEKTEN işlendikten sonra
+// (popstate olayı ya da bekleyen-sayaç sıfırlanması) çalışır.
+// ============================================================================
+describe("afterHistoryBackSettles", () => {
+  let popstateListeners: Array<(e?: unknown) => void>;
+
+  function firePopState() {
+    for (const fn of [...popstateListeners]) fn({ tur: "popstate" });
+  }
+
+  beforeEach(() => {
+    vi.useFakeTimers();
+    resetProgrammaticBacks();
+    popstateListeners = [];
+    // Node ortamında window yok — afterHistoryBackSettles'in kullandığı
+    // dinleyici/zamanlayıcı API'lerini taklit eden minimal bir window kurulur.
+    vi.stubGlobal("window", {
+      addEventListener: (type: string, fn: (e?: unknown) => void) => {
+        if (type === "popstate") popstateListeners.push(fn);
+      },
+      removeEventListener: (type: string, fn: (e?: unknown) => void) => {
+        if (type === "popstate") {
+          popstateListeners = popstateListeners.filter((f) => f !== fn);
+        }
+      },
+      setTimeout: (fn: () => void, ms?: number) => setTimeout(fn, ms),
+      clearTimeout: (id?: unknown) => clearTimeout(id as number),
+      setInterval: (fn: () => void, ms?: number) => setInterval(fn, ms),
+      clearInterval: (id?: unknown) => clearInterval(id as number),
+    } as unknown as Window);
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+    vi.unstubAllGlobals();
+    resetProgrammaticBacks();
+  });
+
+  it("popstate geldiğinde geri çağrı olayla tetiklenir ve bir kez çalışır", () => {
+    const cb = vi.fn();
+    afterHistoryBackSettles(cb);
+    firePopState();
+    expect(cb).toHaveBeenCalledTimes(1);
+    vi.advanceTimersByTime(3000); // üst sınır ikinci kez tetiklemez
+    expect(cb).toHaveBeenCalledTimes(1);
+  });
+
+  it("YAVAŞ CİHAZ (eski 50ms bug'ı): back() hâlâ işlenmemişken geri çağrı 100ms/600ms'de ÇALIŞMAZ — popstate gelince çalışır", () => {
+    const cb = vi.fn();
+    markProgrammaticBack(); // FAB menüsünün temizliği: mark + back() (async)
+    afterHistoryBackSettles(cb);
+    vi.advanceTimersByTime(100);
+    expect(cb).not.toHaveBeenCalled(); // eski kod burada açardı → zombi
+    vi.advanceTimersByTime(500);
+    expect(cb).not.toHaveBeenCalled();
+    // back() nihayet işlendi: popstate düşer, App'in globali sayacı tüketir.
+    const evt = { tur: "popstate" };
+    consumeProgrammaticBack(evt);
+    firePopState();
+    expect(cb).toHaveBeenCalledTimes(1);
+  });
+
+  it("temizlik (mark) geç çalışırsa da bekler — sayaç ilk başta 0 görünse bile erken açılmaz", () => {
+    const cb = vi.fn();
+    afterHistoryBackSettles(cb);
+    vi.advanceTimersByTime(50); // mark henüz yok (React pasif efekt gecikmesi)
+    expect(cb).not.toHaveBeenCalled(); // erken açılmak zombi yaratırdı
+    markProgrammaticBack(); // temizlik çalıştı, back() kuyrukta
+    vi.advanceTimersByTime(40);
+    expect(cb).not.toHaveBeenCalled(); // back hâlâ işlenmedi
+    const evt = { tur: "popstate" };
+    consumeProgrammaticBack(evt);
+    firePopState();
+    expect(cb).toHaveBeenCalledTimes(1);
+  });
+
+  it("popstate hiç gelmezse üst sınır (emniyet ağı) tetiklenir — sonsuza dek beklemez", () => {
+    const cb = vi.fn();
+    afterHistoryBackSettles(cb);
+    vi.advanceTimersByTime(2100);
+    expect(cb).toHaveBeenCalledTimes(1);
+  });
+});
+
+// ============================================================================
+// Bug: önizlemenin (kamera karesi onay ekranının "P" girdisinin) geri/X ile
+// kapatılması modalın KENDİ girdisini (M1) zehirliyordu: P poplanırken
+// isPopped true yapılıyor, sonraki X-kapanışı back()'i atlayınca M1 yığında
+// kalıyordu ("leftover history girdisi" — sonraki geri tuşu beklenmedik çıkış
+// uyarısını tetikliyordu). Token ile "poplanan girdi bizimki mi, çocuk mu"
+// ayrımı yapılıyor; çocuk popu isPopped'u DEĞİŞTİRMİYOR.
+// ============================================================================
+describe("modal girdisi token'ı (leftover düzeltmesi)", () => {
+  it("isModalEntryOnTop: bizim token'ımız üstteyse poplanan girdi bir çocuktu", () => {
+    expect(
+      isModalEntryOnTop({ isModal: true, [MODAL_ENTRY_TOKEN_KEY]: "m-1" }, "m-1"),
+    ).toBe(true);
+  });
+
+  it("isModalEntryOnTop: kök, başka token ya da boş üstteyse bizim girdimiz poplanmıştır", () => {
+    expect(isModalEntryOnTop({ tab: "daily", isRoot: true }, "m-1")).toBe(false);
+    expect(isModalEntryOnTop({ isModal: true, [MODAL_ENTRY_TOKEN_KEY]: "m-2" }, "m-1")).toBe(false);
+    expect(isModalEntryOnTop(null, "m-1")).toBe(false);
+    expect(isModalEntryOnTop(undefined, "m-1")).toBe(false);
+  });
+
+  it("BUG: P poplandığında isPopped DEĞİŞMEZ — sonraki X-kapanışı M1'i hâlâ back() ile söker", () => {
+    const token = "m-1";
+    // P (çocuk girdi) poplandı; üstte hâlâ bizim girdimiz M1 duruyor.
+    const yeniIsPopped = isPoppedAfterModalPop(
+      { isModal: true, [MODAL_ENTRY_TOKEN_KEY]: token },
+      token,
+      false,
+    );
+    expect(yeniIsPopped).toBe(false);
+    // Sonuç: X-kapanışı isPopped=false gördüğü için back() çağırır → M1 yığından
+    // sökülür; artık girdi kalmaz. Eski kod isPopped=true yapıyor, X back()'i
+    // atlıyor ve M1 yığında kalıyordu.
+  });
+
+  it("bizim girdimiz poplandığında isPopped true olur (kapanış sayılır)", () => {
+    expect(isPoppedAfterModalPop({ tab: "daily", isRoot: true }, "m-1", false)).toBe(true);
+    expect(isPoppedAfterModalPop(null, "m-1", false)).toBe(true);
+    // Altımızda başka bir modal girdisi olsa bile (iç içe modal) bizimki
+    // poplanmıştır → kapanış sayılır.
+    expect(
+      isPoppedAfterModalPop({ isModal: true, [MODAL_ENTRY_TOKEN_KEY]: "m-0" }, "m-1", false),
+    ).toBe(true);
+  });
+
+  it("çocuk popu sırasında isPopped zaten true ise true kalır", () => {
+    const token = "m-1";
+    expect(
+      isPoppedAfterModalPop({ isModal: true, [MODAL_ENTRY_TOKEN_KEY]: token }, token, true),
+    ).toBe(true);
   });
 });

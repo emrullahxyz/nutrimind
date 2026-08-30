@@ -1,5 +1,10 @@
 import { useEffect, useRef } from "react";
-import { consumeProgrammaticBack, markProgrammaticBack } from "../lib/backStack";
+import {
+  consumeProgrammaticBack,
+  isPoppedAfterModalPop,
+  markProgrammaticBack,
+  MODAL_ENTRY_TOKEN_KEY,
+} from "../lib/backStack";
 
 // ============================================================================
 // Tam-ekran modal/sheet açıp kapamanın tarayıcı geri tuşu/kaydırmasıyla
@@ -39,6 +44,16 @@ export interface UseModalHistoryResult {
   requestClose: () => void;
 }
 
+// pushState ile itilen HER girdi benzersiz bir token taşır (token
+// yardımcıları backStack.ts'te). Üzerine itilen çocuk girdiler (ör. kamera
+// önizlemesinin P'si) token taşımaz — böylece poplanan girdinin bizimki mi
+// yoksa bir çocuk mu olduğu ayırt edilebilir.
+let nextModalToken = 0;
+function freshModalToken(): string {
+  nextModalToken += 1;
+  return "nutri-modal-" + nextModalToken;
+}
+
 export function useModalHistory({ active, onClose }: UseModalHistoryOptions): UseModalHistoryResult {
   const isPoppedRef = useRef(false);
   const onCloseRef = useRef(onClose);
@@ -49,13 +64,21 @@ export function useModalHistory({ active, onClose }: UseModalHistoryOptions): Us
   useEffect(() => {
     if (!active) return;
     isPoppedRef.current = false;
-    window.history.pushState({ isModal: true }, "");
+    const token = freshModalToken();
+    window.history.pushState({ isModal: true, [MODAL_ENTRY_TOKEN_KEY]: token }, "");
 
     const handlePopState = (e: PopStateEvent) => {
       // Kendi temizliğimizin doğurduğu back() ise (ya da başka bir overlayin
       // temizliğinden gelen bir back() bize hiç ait değilse): yut, kapatma sayma.
       if (consumeProgrammaticBack(e)) return;
-      isPoppedRef.current = true;
+      // Poplanan girdi bizim girdimiz DEĞİLSE (üstümüze itilmiş bir çocuk —
+      // kamera önizlemesinin P'si gibi) isPopped DEĞİŞMEZ: girdimiz hâlâ
+      // üstte, sonraki X-kapanışı onu back() ile sökmeli. Bizim girdimiz
+      // poplandıysa kapanış sayılır. Bu ayrım olmasaydı önizlemeyi geri/X ile
+      // kapatmak isPopped'u zehirliyor ve sonraki X-kapanışı back()'i atlayıp
+      // girdiyi yığında bırakıyordu ("leftover history girdisi" — kamera
+      // akışındaki bug'ın son parçası).
+      isPoppedRef.current = isPoppedAfterModalPop(window.history.state, token, isPoppedRef.current);
       onCloseRef.current();
     };
 

@@ -171,19 +171,79 @@ export function resetProgrammaticBacks(): void {
 // Çözüm: yeni modalı açmadan önce, kapanan overlay'in `back()`'inin
 // GERÇEKTEN ürettiği `popstate`'i bekle — tahmini bir gecikme (`setTimeout`)
 // DEĞİL, olayın kendisi. `back()` hiç popstate üretmezse (ör. zaten kökteyse)
-// takılı kalmamak için kısa bir zaman aşımı güvenlik ağı var.
+// takılı kalmamak için iki kademeli bir emniyet ağı var:
+//   1. Bekleyen programatik back SAYACINI yokla: back işlendiğinde popstate
+//      düşer ve App'in global dinleyicisi sayacı tüketir (0'a düşer). Sayaç
+//      önce >0 GÖRÜLÜP sonra 0'a düşerse back GERÇEKTEN bitmiştir. "Sayaç 0
+//      ama popstate gelmedi" (temizlik henüz yürümedi — React pasif efekti
+//      çağrıdan sonra çalışır) bu sinyalle KARIŞTIRILMAMALI; o yüzden önce
+//      >0 görmeden 0'a düşüşe güvenilmez.
+//   2. Nihai zaman aşımı: sayaç hiç düşmezse (back poplayacak girdi bulamadı,
+//      popstate üretmedi) sonsuza dek beklememek için bir üst sınır.
+//
+// ESKİ haldeki kör 50ms'lik `setTimeout` asıl yarışı kapatıyordu: yavaş
+// cihazda popstate 50ms'den SONRA geliyorsa 50ms'de geri çağrı çalışıp yeni
+// modal `pushState` yapıyor, aradaki gecikmiş `back()` de O YENİ girdiyi
+// popluyordu → "zombi modal" (React'te açık, geçmişte girdisi yok). Artık
+// geri çağrı yalnızca back GERÇEKTEN işlendikten sonra çalışır.
 /** `setOpen(false)` gibi bir overlay-kapatma çağrısından HEMEN sonra, yeni bir
  *  modal açmadan ÖNCE çağır. */
 export function afterHistoryBackSettles(callback: () => void): void {
   let done = false;
+  let sawPendingBack = false;
   const finish = () => {
     if (done) return;
     done = true;
     window.removeEventListener("popstate", onPopState);
+    window.clearInterval(pollId);
     window.clearTimeout(timeoutId);
     callback();
   };
   const onPopState = () => finish();
   window.addEventListener("popstate", onPopState);
-  const timeoutId = window.setTimeout(finish, 50);
+
+  // Temizliğin `markProgrammaticBack()`'i (ve dolayısıyla `back()`) React
+  // pasif efektinde — yani bu çağrıdan SONRA çalışabilir. Sayaç ilk tiklarda
+  // bu yüzden hâlâ 0 olabilir; "0 gördüm, aç" demek zombi yarışını geri
+  // getirirdi. Önce >0 GÖRMEDEN 0'a düşüşe güvenilmez (sawPendingBack).
+  const pollId = window.setInterval(() => {
+    if (pendingProgrammaticBacks > 0) sawPendingBack = true;
+    if (sawPendingBack && pendingProgrammaticBacks === 0) finish();
+  }, 16);
+
+  // Sayaç hiç düşmezse (back poplayacak girdi bulamadı → popstate yok):
+  // `pushState` güvenli çünkü ortada işlenecek bir navigasyon yok. Üst sınır
+  // yalnızca sonsuz beklemeyi önler.
+  const timeoutId = window.setTimeout(finish, 2000);
+}
+
+// ---------------------------------------------------------------------------
+// Modal girdisi kimliği (`useModalHistory` tarafından kullanılır).
+//
+// Modal açılırken `pushState({ isModal: true, __nutriModalToken: <benzersiz> })`
+// yapar. Üzerine itilen çocuk girdiler (ör. kamera önizlemesinin P'si, iç içe
+// modallar) bu token'ı TAŞIMAZ. Bir `popstate` geldiğinde üstte hâlâ bizim
+// token'ımız varsa poplanan girdi bizimki DEĞİLDİR (bir çocuk) — modal kendi
+// girdisini kaybetmedi, kapanış sayılmamalı. Token olmadan bu ayrım yapılamaz:
+// `{isModal:true}` şekli hem bizim girdimizle hem çocuk girdilerle aynıdır.
+// ---------------------------------------------------------------------------
+export const MODAL_ENTRY_TOKEN_KEY = "__nutriModalToken";
+
+/** Poplanan girdiden SONRA yeni durumda bizim modal girdimiz hâlâ üstte mi?
+ *  Evetse poplanan girdi bir çocuktu (ör. kamera önizlemesinin P'si) — bizim
+ *  girdimiz yığında duruyor; bir sonraki kapanış onu `back()` ile sökmeli. */
+export function isModalEntryOnTop(state: unknown, myToken: string): boolean {
+  return (
+    typeof state === "object" &&
+    state !== null &&
+    (state as Record<string, unknown>)[MODAL_ENTRY_TOKEN_KEY] === myToken
+  );
+}
+
+/** `popstate` dinleyicisinde yeni `isPopped` değeri. Poplanan girdi bizim
+ *  girdimiz DEĞİLSE (çocuk girdi) `isPopped` DEĞİŞMEZ — girdimiz hâlâ üstte,
+ *  sonraki X-kapanışı back() ile sökmeli. Bizim girdimiz (ya da altımızdaki
+ *  girdi) poplandıysa kapanış sayılır: `true`. */
+export function isPoppedAfterModalPop(newState: unknown, myToken: string, wasPopped: boolean): boolean {
+  return isModalEntryOnTop(newState, myToken) ? wasPopped : true;
 }
