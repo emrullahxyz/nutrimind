@@ -65,6 +65,7 @@ import { AiError, grantAiConsent, hasAiConsent, parseMealImage } from "../lib/ai
 import { useTranslation } from "react-i18next";
 import { captureVideoFrame, compressImageToBase64 } from "../lib/image";
 import { useBodyScrollLock } from "../hooks/useBodyScrollLock";
+import { markProgrammaticBack } from "../lib/backStack";
 
 /** Üç kayıt yolu var; hangisinin sürdüğünü ayrı ayrı bilmek gerekiyor ki doğru
  *  düğme "…" göstersin. `dayOnly` = hafızaya HİÇ yazmadan yalnızca bugüne ekle. */
@@ -217,9 +218,10 @@ export function ScanSheet({
   const [scanMode, setScanMode] = useState<ScanMode>("scan_food");
   const [showManual, setShowManual] = useState(false);
 
-  // Auto-show manual form in barcode mode as fallback.
+  // Auto-show manual form in barcode mode as fallback; hide it again when the
+  // user switches to another mode (barkoddan çıkınca panel yapışık kalıyordu).
   useEffect(() => {
-    if (scanMode === "barcode") setShowManual(true);
+    setShowManual(scanMode === "barcode");
   }, [scanMode]);
   const [analyzing, setAnalyzing] = useState(false);
   /** Deklanşörle çekilen kare, AI'a gitmeden ÖNCE burada bekler. Telefon tam
@@ -396,6 +398,12 @@ export function ScanSheet({
       const { base64, mimeType } = await captureVideoFrame(video, { ...CAPTURE_OPTS[mode], crop });
       // Doğrudan AI'a gönderme — önce göster, kullanıcı onaylasın/tekrar çeksin.
       setCapturedPreview({ base64, mimeType, mode });
+      // Önizleme kendi history girdisini alır ([M1, P]). Geri tuşu P'yi poplar,
+      // önizleme kapanır, kamera kalır — modalın girdisi M1 bozulmadan durur.
+      // Eskiden popstate İÇİNDE pushState ile yeniden itiliyordu; bu desen bazı
+      // Android WebView/TWA'larda girdiyi yutup "ikinci geri uygulamadan çıkıyor"
+      // bug'ına yol açıyordu (bkz. handleModalClose yorumu).
+      window.history.pushState({ isModal: true, preview: true, title: "Kamera / Tara" }, "");
     } catch (e) {
       setStatus({ kind: "error", message: String((e as Error)?.message ?? e) });
     }
@@ -405,25 +413,35 @@ export function ScanSheet({
     if (!capturedPreview) return;
     const { base64, mimeType, mode } = capturedPreview;
     setCapturedPreview(null);
+    // Önizlemenin history girdisini (P) programatik popla — işaretli popstate
+    // modalın dinleyicisinde yutulur, kullanıcı geri tuşu sanılmaz.
+    markProgrammaticBack();
+    window.history.back();
     void runVision(base64, mimeType, mode);
   }
 
   function retakeCapture() {
     // Video akışı hiç durmadı — önizleme kapanınca canlı kare zaten hazır.
     setCapturedPreview(null);
+    markProgrammaticBack();
+    window.history.back();
   }
 
   /** Modal'a HER ZAMAN aynı, kararlı referans olarak geçiyoruz (bkz. aşağıdaki
-   *  `<Modal onClose=...>`) — geri tuşu/kaydırma/X/Escape'in HEPSİ Modal'ın TEK
-   *  history girdisini `history.back()` ile tüketip bunu çağırıyor. Karar
-   *  `capturedPreviewRef`'ten (senkron) okunuyor, React state'ten DEĞİL —
-   *  neden önemli olduğu yukarıdaki ref yorumunda. Önizlemedeysek o girdi az
-   *  önce gitti ama sheet React'te hâlâ açık: girdiyi geri pushlayıp TEK
-   *  seviye korumayı sürdürüyoruz. Değilsek gerçek kapanış. */
+   *  `<Modal onClose=...>`) — geri tuşu/kaydırma/X/Escape'in HEPSİ Modal'ın
+   *  popstate dinleyicisine düşüp bunu çağırıyor. Karar `capturedPreviewRef`'ten
+   *  (senkron) okunuyor, React state'ten DEĞİL — neden önemli olduğu yukarıdaki
+   *  ref yorumunda. Önizleme açıkken geri tuşu önizlemenin KENDİ girdisini (P)
+   *  popladı: önizlemeyi kapatmak yeter, modal girdisi M1 yığında duruyor.
+   *  Değilsek (kamera görünürken) gerçek kapanış. */
   function handleModalClose() {
+    // Önizleme açıkken geri/X: önizlemeyi kapat, kamerada kal. Modal girdisi
+    // M1 yığında DURUYOR (önizlemeye ait P girdisi poplandı) — yeniden
+    // pushState GEREKMEZ. Eskiden popstate içinde pushState yapılıyordu ve
+    // bazı Android WebView/TWA'larda o girdi yutulunca modal girdisiz kalıp
+    // sonraki geri tuşu doğrudan uygulamadan çıkıyordu.
     if (capturedPreviewRef.current) {
       setCapturedPreview(null);
-      window.history.pushState({ isModal: true, title: "Kamera / Tara" }, "");
     } else {
       requestClose();
     }

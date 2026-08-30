@@ -95,6 +95,48 @@ describe("offline projection", () => {
     expect(projectOperations(base, [operation]).days["2026-08-28"][0].label).toBe("Yogurt");
   });
 
+  it("same-session create-then-delete local alias stays net-zero in projection", () => {
+    // Kullanıcı çevrimdışıyken yerel alias oluşturup aynı oturumda sildi.
+    // Kuyruk sırayla: save-alias (local:a) sonra delete-alias (local:a).
+    // Projeksiyon önce alias'ı ekler, sonra kaldırır → net-sıfır.
+    const alias = { triggers: ["yoğurt"], name: "Yoğurt", brand: null, serving_g: 100, nutrition: { kcal: 100, protein: 5, carbs: 10, fat: 2, fiber: 1 } };
+    const created = applyOperation(base, {
+      id: "1",
+      kind: "save-alias",
+      localId: "local:a",
+      alias,
+      base,
+      createdAt: "2026-08-28T10:00:00Z",
+      retryCount: 0,
+      status: "pending",
+    });
+    expect(created.aliases).toHaveLength(1);
+
+    // delete-op, oluşturma sonrası snapshot'ı temel alır (gerçekçi base).
+    const projected = projectOperations(base, [
+      {
+        id: "1",
+        kind: "save-alias",
+        localId: "local:a",
+        alias,
+        base,
+        createdAt: "2026-08-28T10:00:00Z",
+        retryCount: 0,
+        status: "pending",
+      },
+      {
+        id: "2",
+        kind: "delete-alias",
+        aliasId: "local:a",
+        base: created,
+        createdAt: "2026-08-28T10:05:00Z",
+        retryCount: 0,
+        status: "pending",
+      },
+    ]);
+    expect(projected.aliases).toEqual([]);
+  });
+
   it("deepEqual ignores key order and handles undefined", () => {
     expect(deepEqual({ a: 1, b: { c: [1, 2] } }, { b: { c: [1, 2] }, a: 1 })).toBe(true);
     expect(deepEqual(undefined, undefined)).toBe(true);

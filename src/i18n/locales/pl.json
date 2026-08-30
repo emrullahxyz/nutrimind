@@ -99,7 +99,6 @@
   "supplements": {
     "title": "Suplementy",
     "done": "✨ Ukończono",
-    "takenCount": "przyjęto {{taken}}/{{total}}",
     "subtitle": "Codzienne witaminy i suplementy diety",
     "manage": "Zarządzaj suplementami",
     "nameRequired": "Nazwa suplementu jest wymagana.",

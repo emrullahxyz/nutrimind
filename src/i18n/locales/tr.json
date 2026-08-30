@@ -99,7 +99,6 @@
   "supplements": {
     "title": "Takviyeler",
     "done": "✨ Tamamlandı",
-    "takenCount": "{{taken}}/{{total}} alındı",
     "subtitle": "Günlük vitamin & gıda takviyeleri",
     "manage": "Takviyeleri yönet",
     "nameRequired": "Takviye adı zorunludur.",

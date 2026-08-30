@@ -99,7 +99,6 @@
   "supplements": {
     "title": "Supplements",
     "done": "✨ Completed",
-    "takenCount": "{{taken}}/{{total}} taken",
     "subtitle": "Daily vitamins & food supplements",
     "manage": "Manage supplements",
     "nameRequired": "Supplement name is required.",
