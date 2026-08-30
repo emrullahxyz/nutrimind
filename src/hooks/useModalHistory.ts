@@ -1,10 +1,5 @@
 import { useEffect, useRef } from "react";
-import {
-  consumeProgrammaticBack,
-  isPoppedAfterModalPop,
-  markProgrammaticBack,
-  MODAL_ENTRY_TOKEN_KEY,
-} from "../lib/backStack";
+import { markProgrammaticBack, ModalHistoryController } from "../lib/backStack";
 
 // ============================================================================
 // Tam-ekran modal/sheet açıp kapamanın tarayıcı geri tuşu/kaydırmasıyla
@@ -44,18 +39,13 @@ export interface UseModalHistoryResult {
   requestClose: () => void;
 }
 
-// pushState ile itilen HER girdi benzersiz bir token taşır (token
-// yardımcıları backStack.ts'te). Üzerine itilen çocuk girdiler (ör. kamera
-// önizlemesinin P'si) token taşımaz — böylece poplanan girdinin bizimki mi
-// yoksa bir çocuk mu olduğu ayırt edilebilir.
-let nextModalToken = 0;
-function freshModalToken(): string {
-  nextModalToken += 1;
-  return "nutri-modal-" + nextModalToken;
-}
-
+// Yaşam döngüsünün TÜM kararları (it, yut, isPopped, geri sök) framework'süz
+// `ModalHistoryController` sınıfındadır (backStack.ts) — bu hook yalnızca
+// ref'ler + window dinleyici kablosu olan ince bir adaptördür. Sınıf böylece
+// her modal açılış yolunun geçmiş bütünlüğü sahte bir history ile GERÇEK kod
+// üzerinden test edilebilir (bkz. backStackLifecycle.test.ts).
 export function useModalHistory({ active, onClose }: UseModalHistoryOptions): UseModalHistoryResult {
-  const isPoppedRef = useRef(false);
+  const ctlRef = useRef<ModalHistoryController | null>(null);
   const onCloseRef = useRef(onClose);
   useEffect(() => {
     onCloseRef.current = onClose;
@@ -63,30 +53,23 @@ export function useModalHistory({ active, onClose }: UseModalHistoryOptions): Us
 
   useEffect(() => {
     if (!active) return;
-    isPoppedRef.current = false;
-    const token = freshModalToken();
-    window.history.pushState({ isModal: true, [MODAL_ENTRY_TOKEN_KEY]: token }, "");
+    const ctl = new ModalHistoryController();
+    ctlRef.current = ctl;
+    ctl.open((state) => window.history.pushState(state, ""));
 
     const handlePopState = (e: PopStateEvent) => {
-      // Kendi temizliğimizin doğurduğu back() ise (ya da başka bir overlayin
-      // temizliğinden gelen bir back() bize hiç ait değilse): yut, kapatma sayma.
-      if (consumeProgrammaticBack(e)) return;
-      // Poplanan girdi bizim girdimiz DEĞİLSE (üstümüze itilmiş bir çocuk —
-      // kamera önizlemesinin P'si gibi) isPopped DEĞİŞMEZ: girdimiz hâlâ
-      // üstte, sonraki X-kapanışı onu back() ile sökmeli. Bizim girdimiz
-      // poplandıysa kapanış sayılır. Bu ayrım olmasaydı önizlemeyi geri/X ile
-      // kapatmak isPopped'u zehirliyor ve sonraki X-kapanışı back()'i atlayıp
-      // girdiyi yığında bırakıyordu ("leftover history girdisi" — kamera
-      // akışındaki bug'ın son parçası).
-      isPoppedRef.current = isPoppedAfterModalPop(window.history.state, token, isPoppedRef.current);
-      onCloseRef.current();
+      // Programatik back yutulur (false); gerçek bir popstate ise onClose
+      // çağrılır (kapatma kararı controller'da: çocuk popu isPopped'u
+      // değiştirmez — bkz. ModalHistoryController.onPopState).
+      if (ctl.onPopState(window.history.state, e)) {
+        onCloseRef.current();
+      }
     };
-
     window.addEventListener("popstate", handlePopState);
 
     return () => {
       window.removeEventListener("popstate", handlePopState);
-      if (!isPoppedRef.current && window.history.state?.isModal) {
+      if (ctl.needsBack(window.history.state)) {
         markProgrammaticBack();
         window.history.back();
       }
@@ -95,7 +78,8 @@ export function useModalHistory({ active, onClose }: UseModalHistoryOptions): Us
   }, [active]);
 
   const requestClose = () => {
-    if (!isPoppedRef.current && window.history.state?.isModal) {
+    const ctl = ctlRef.current;
+    if (ctl && ctl.needsBack(window.history.state)) {
       window.history.back();
     } else {
       onCloseRef.current();

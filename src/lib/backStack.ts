@@ -247,3 +247,62 @@ export function isModalEntryOnTop(state: unknown, myToken: string): boolean {
 export function isPoppedAfterModalPop(newState: unknown, myToken: string, wasPopped: boolean): boolean {
   return isModalEntryOnTop(newState, myToken) ? wasPopped : true;
 }
+
+/** Üstte herhangi bir modal girdisi (bizimki ya da üzerimize itilmiş bir çocuk)
+ *  var mı? `window.history.state?.isModal` ile aynı test — `needsBack`'in
+ *  girdisi. */
+function isModalish(state: unknown): boolean {
+  return (
+    typeof state === "object" &&
+    state !== null &&
+    (state as { isModal?: boolean }).isModal === true
+  );
+}
+
+let nextModalToken = 0;
+function freshModalToken(): string {
+  nextModalToken += 1;
+  return "nutri-modal-" + nextModalToken;
+}
+
+// ---------------------------------------------------------------------------
+// Tam-ekran modalın geçmiş yaşam döngüsü — `useModalHistory`'in framework'süz
+// çekirdeği. Hook yalnızca ref'ler + window dinleyici kablosu olan ince bir
+// adaptördür; TÜM kararlar (it, yut, geri sök) bu sınıftadır. Böylece her
+// modal açılış yolunun geçmiş bütünlüğü (aç → geri/X ile kapat → artık girdi
+// yok) sahte bir history üzerinden GERÇEK kodla test edilebilir.
+// ---------------------------------------------------------------------------
+export class ModalHistoryController {
+  /** Bu örneğin benzersiz girdi kimliği — üzerine itilen çocuk girdiler (ör.
+   *  kamera önizlemesinin P'si) taşımaz. */
+  readonly token: string;
+  /** Kullanıcı BİZİM girdimizi popladı mı? Çocuk popu bunu DEĞİŞTİRMEZ. */
+  isPopped = false;
+
+  constructor() {
+    this.token = freshModalToken();
+  }
+
+  /** Modal açıldı: sayacı sıfırla, girdiyi it. `push` = window.history.pushState. */
+  open(push: (state: Record<string, unknown>) => void): void {
+    this.isPopped = false;
+    push({ isModal: true, [MODAL_ENTRY_TOKEN_KEY]: this.token });
+  }
+
+  /** popstate dinleyicisi gövdesi. Programatik back ise yut: false döner
+   *  (onClose ÇAĞRILMAZ). Değilse isPopped'u güncelle ve true dön: onClose
+   *  çağrılmalı. */
+  onPopState(newState: unknown, event?: unknown): boolean {
+    if (consumeProgrammaticBack(event)) return false;
+    this.isPopped = isPoppedAfterModalPop(newState, this.token, this.isPopped);
+    return true;
+  }
+
+  /** Kapanışta (X/backdrop/Escape ya da unmount temizliği) `history.back()`
+   *  gerekli mi? isPopped değilse ve üstte bir modal girdisi (bizimki ya da
+   *  çocuk — ör. kamera önizlemesinin P'si) varsa evet: back() popstate'i
+   *  tetikleyip onClose'a düşer. Değilse kapatma doğrudan onClose ile. */
+  needsBack(currentState: unknown): boolean {
+    return !this.isPopped && isModalish(currentState);
+  }
+}
