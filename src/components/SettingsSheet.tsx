@@ -224,11 +224,22 @@ export function SettingsSheet({
   // Profil Bilgileri State
   const [userName, setUserName] = useState(() => localStorage.getItem("nutrimind_username") || user?.name || "");
 
+  // Profil verisi HESABA bağlı: hesap değişince eski kullanıcının localStorage
+  // kalıntısı yeni kullanıcıya taşınmasın. İlk açılışta sahip yoksa da sıfırla.
   useEffect(() => {
-    if (user?.name && !localStorage.getItem("nutrimind_username")) {
-      localStorage.setItem("nutrimind_username", user.name);
-    }
-  }, [user?.name]);
+    if (!user) return;
+    const owner = localStorage.getItem("nutrimind_profile_owner");
+    if (owner === user.id) return;
+    ["nutrimind_username", "nutrimind_userage", "nutrimind_userweight", "nutrimind_userheight"].forEach((k) =>
+      localStorage.removeItem(k),
+    );
+    localStorage.setItem("nutrimind_profile_owner", user.id);
+    setUserName(user.name || "");
+    setUserAge("");
+    setUserWeight("");
+    setUserHeight("");
+    if (user.name) localStorage.setItem("nutrimind_username", user.name);
+  }, [user]);
   const [userAge, setUserAge] = useState(() => localStorage.getItem("nutrimind_userage") || "29");
   const [userWeight, setUserWeight] = useState(() => localStorage.getItem("nutrimind_userweight") || "78");
   const [userHeight, setUserHeight] = useState(() => localStorage.getItem("nutrimind_userheight") || "178");
