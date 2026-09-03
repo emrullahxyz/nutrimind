@@ -231,6 +231,7 @@
     "deleteSuccess": "Twoje konto zostało usunięte",
     "deleteError": "Usuwanie nie powiodło się: {{message}}",
     "logout": "Wyloguj się",
+    "logoutConfirm": "Czy na pewno chcesz się wylogować?",
     "language": "Język",
     "languageTr": "Türkçe",
     "languageEn": "English",

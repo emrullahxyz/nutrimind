@@ -231,6 +231,7 @@
     "deleteSuccess": "Hesabın silindi",
     "deleteError": "Silme başarısız: {{message}}",
     "logout": "Çıkış Yap",
+    "logoutConfirm": "Çıkış yapmak istediğine emin misin?",
     "language": "Dil",
     "languageTr": "Türkçe",
     "languageEn": "English",

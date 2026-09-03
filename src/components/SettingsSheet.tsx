@@ -222,7 +222,13 @@ export function SettingsSheet({
   };
 
   // Profil Bilgileri State
-  const [userName, setUserName] = useState(() => localStorage.getItem("nutrimind_username") || "Emrullah Bayram");
+  const [userName, setUserName] = useState(() => localStorage.getItem("nutrimind_username") || user?.name || "");
+
+  useEffect(() => {
+    if (user?.name && !localStorage.getItem("nutrimind_username")) {
+      localStorage.setItem("nutrimind_username", user.name);
+    }
+  }, [user?.name]);
   const [userAge, setUserAge] = useState(() => localStorage.getItem("nutrimind_userage") || "29");
   const [userWeight, setUserWeight] = useState(() => localStorage.getItem("nutrimind_userweight") || "78");
   const [userHeight, setUserHeight] = useState(() => localStorage.getItem("nutrimind_userheight") || "178");
@@ -464,7 +470,9 @@ export function SettingsSheet({
                   iconColor="text-rose-400"
                   title={t("settings.logout")}
                   subtitle={user?.email}
-                  onClick={() => void logout()}
+                  onClick={() => {
+                    if (window.confirm(t("settings.logoutConfirm"))) void logout();
+                  }}
                   isDanger
                 />
               )}

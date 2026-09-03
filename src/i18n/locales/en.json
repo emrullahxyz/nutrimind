@@ -231,6 +231,7 @@
     "deleteSuccess": "Your account has been deleted",
     "deleteError": "Delete failed: {{message}}",
     "logout": "Sign out",
+    "logoutConfirm": "Are you sure you want to sign out?",
     "language": "Language",
     "languageTr": "Türkçe",
     "languageEn": "English",
