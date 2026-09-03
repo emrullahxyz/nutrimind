@@ -221,8 +221,24 @@ export function SettingsSheet({
     window.history.back();
   };
 
-  // Profil Bilgileri State
-  const [userName, setUserName] = useState(() => localStorage.getItem("nutrimind_username") || user?.name || "");
+  // Profil Bilgileri State — kaynak önceliği: localStorage (elle düzenlenen) →
+  // config.profile (sihirbazda girilen) → user.name (kayıttaki ad)
+  const profile = dataCtx.config.profile as
+    | { name?: string; age?: number; weightKg?: number; heightCm?: number }
+    | undefined;
+  const [userName, setUserName] = useState(
+    () => localStorage.getItem("nutrimind_username") || profile?.name || user?.name || "",
+  );
+  const [userAge, setUserAge] = useState(
+    () => localStorage.getItem("nutrimind_userage") || (profile?.age != null ? String(profile.age) : "29"),
+  );
+  const [userWeight, setUserWeight] = useState(
+    () => localStorage.getItem("nutrimind_userweight") || (profile?.weightKg != null ? String(profile.weightKg) : "78"),
+  );
+  const [userHeight, setUserHeight] = useState(
+    () => localStorage.getItem("nutrimind_userheight") || (profile?.heightCm != null ? String(profile.heightCm) : "178"),
+  );
+  const [savedProfileMsg, setSavedProfileMsg] = useState(false);
 
   // Profil verisi HESABA bağlı: hesap değişince eski kullanıcının localStorage
   // kalıntısı yeni kullanıcıya taşınmasın. İlk açılışta sahip yoksa da sıfırla.
@@ -234,16 +250,13 @@ export function SettingsSheet({
       localStorage.removeItem(k),
     );
     localStorage.setItem("nutrimind_profile_owner", user.id);
-    setUserName(user.name || "");
-    setUserAge("");
-    setUserWeight("");
-    setUserHeight("");
-    if (user.name) localStorage.setItem("nutrimind_username", user.name);
+    const name = profile?.name || user?.name || "";
+    setUserName(name);
+    setUserAge(profile?.age != null ? String(profile.age) : "");
+    setUserWeight(profile?.weightKg != null ? String(profile.weightKg) : "");
+    setUserHeight(profile?.heightCm != null ? String(profile.heightCm) : "");
+    if (name) localStorage.setItem("nutrimind_username", name);
   }, [user]);
-  const [userAge, setUserAge] = useState(() => localStorage.getItem("nutrimind_userage") || "29");
-  const [userWeight, setUserWeight] = useState(() => localStorage.getItem("nutrimind_userweight") || "78");
-  const [userHeight, setUserHeight] = useState(() => localStorage.getItem("nutrimind_userheight") || "178");
-  const [savedProfileMsg, setSavedProfileMsg] = useState(false);
 
   const handleSaveProfile = () => {
     localStorage.setItem("nutrimind_username", userName);
