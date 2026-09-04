@@ -269,6 +269,8 @@
     "dataSubtitle": "JSON backup, CSV data export",
     "feedbackTitle": "Request Feature & Feedback",
     "feedbackSubtitle": "Send a request to the developer",
+    "changelogTitle": "What's New?",
+    "changelogSubtitle": "Release notes & changes",
     "supportTitle": "Support & Contact",
     "supportEmail": "support@emrullah.xyz",
     "privacyTitle": "Privacy & Data Security",
@@ -279,7 +281,7 @@
     "cacheCleared": "Cache and Service Worker cleared!",
     "cacheError": "Failed to clear cache.",
     "deleteContinue": "Continue",
-    "footerVersion": "NUTRIMIND VERSION 1.0.0 (PWA)",
+    "footerVersion": "NUTRIMIND VERSION {{version}} (PWA)",
     "footerCredit": "Emrullah Bayram • Oracle Cloud SQLite Backend",
     "subviewGoals": "Nutrition Goals",
     "subviewSupplements": "Supplements",
@@ -290,6 +292,7 @@
     "subviewWeight": "Weight & Body Tracking",
     "subviewWidgets": "Home Screen Widget Guide",
     "subviewFeedback": "Request Feature & Feedback",
+    "subviewChangelog": "Changes",
     "subviewPrivacy": "Privacy & Data Security",
     "subviewPassword": "Change Password",
     "subviewAllowlist": "Allowed Emails",
@@ -330,6 +333,16 @@
     "allowlistAdded": "\"{{email}}\" added to the list. This person can now sign up.",
     "allowlistRemoved": "\"{{email}}\" removed from the list. They can no longer sign up.",
     "allowlistRemove": "Remove {{email}} from the list"
+  },
+  "changelog": {
+    "title": "What's New?",
+    "gotIt": "Got it",
+    "versionLabel": "Version {{version}}",
+    "devTitle": "Developer details",
+    "hintSettings": "For older versions and full details, see Settings > Changes.",
+    "new": "New",
+    "improved": "Improved",
+    "fixed": "Fixed"
   },
   "ai": {
     "consentTitle": "AI analysis",

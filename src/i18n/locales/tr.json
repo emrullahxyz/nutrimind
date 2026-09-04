@@ -269,6 +269,8 @@
     "dataSubtitle": "JSON yedekleme, CSV veri aktarımı",
     "feedbackTitle": "Özellik İste & Geri Bildirim",
     "feedbackSubtitle": "Geliştiriciye talep gönder",
+    "changelogTitle": "Ne Var Yeni?",
+    "changelogSubtitle": "Sürüm notları ve değişiklikler",
     "supportTitle": "Destek & İletişim",
     "supportEmail": "support@emrullah.xyz",
     "privacyTitle": "Gizlilik & Veri Güvenliği",
@@ -279,7 +281,7 @@
     "cacheCleared": "Önbellek ve Service Worker temizlendi!",
     "cacheError": "Önbellek temizlenirken hata oluştu.",
     "deleteContinue": "Devam Et",
-    "footerVersion": "NUTRIMIND VERSION 1.0.0 (PWA)",
+    "footerVersion": "NUTRIMIND VERSION {{version}} (PWA)",
     "footerCredit": "Emrullah Bayram • Oracle Cloud SQLite Backend",
     "subviewGoals": "Beslenme Hedefleri",
     "subviewSupplements": "Takviye & Supplementler",
@@ -290,6 +292,7 @@
     "subviewWeight": "Kilo & Vücut Takibi",
     "subviewWidgets": "Ana Ekran Widget Rehberi",
     "subviewFeedback": "Özellik İste & Geri Bildirim",
+    "subviewChangelog": "Değişiklikler",
     "subviewPrivacy": "Gizlilik & Veri Güvenliği",
     "subviewPassword": "Parola Değiştir",
     "subviewAllowlist": "İzinli E-postalar",
@@ -330,6 +333,16 @@
     "allowlistAdded": "\"{{email}}\" listeye eklendi. Bu kişi artık kayıt olabilir.",
     "allowlistRemoved": "\"{{email}}\" listeden çıkarıldı. Artık kayıt olamaz.",
     "allowlistRemove": "{{email}} listesinden çıkar"
+  },
+  "changelog": {
+    "title": "Ne Var Yeni?",
+    "gotIt": "Anladım",
+    "versionLabel": "Sürüm {{version}}",
+    "devTitle": "Geliştirme ayrıntıları",
+    "hintSettings": "Eski sürümler ve tüm ayrıntılar için Ayarlar > Değişiklikler bölümüne bakabilirsin.",
+    "new": "Yeni",
+    "improved": "İyileştirildi",
+    "fixed": "Düzeltildi"
   },
   "ai": {
     "consentTitle": "Yapay zeka ile analiz",

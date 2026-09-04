@@ -20,8 +20,11 @@ import {
   ListPlus,
   Trash2,
   Globe,
+  History,
 } from "lucide-react";
 import { Modal } from "./Modal";
+import { APP_VERSION } from "../lib/version";
+import { ChangeLogView } from "./ChangeLogView";
 import { GoalsForm } from "./GoalsForm";
 import { ExportModal } from "./ExportModal";
 import { ReportView } from "./ReportView";
@@ -54,7 +57,8 @@ type SubView =
   | "privacy"
   | "password"
   | "allowlist"
-  | "language";
+  | "language"
+  | "changelog";
 
 interface MenuItemProps {
   icon: React.ComponentType<{ className?: string }>;
@@ -460,6 +464,14 @@ export function SettingsSheet({
                 onClick={() => openSubView("feedback")}
               />
               <MenuItem
+                icon={History}
+                iconBg="bg-cyan-500/15"
+                iconColor="text-cyan-400"
+                title={t("settings.changelogTitle")}
+                subtitle={t("settings.changelogSubtitle")}
+                onClick={() => openSubView("changelog")}
+              />
+              <MenuItem
                 icon={Mail}
                 iconBg="bg-pink-500/15"
                 iconColor="text-pink-400"
@@ -511,7 +523,7 @@ export function SettingsSheet({
             {/* FOOTER VERSİYON BİLGİSİ */}
             <div className="mt-2 text-center pb-2">
               <div className="text-[11px] font-bold text-white/30 tracking-widest uppercase">
-                {t("settings.footerVersion")}
+                {t("settings.footerVersion", { version: APP_VERSION })}
               </div>
               <div className="text-[10px] text-white/20 mt-0.5">
                 {t("settings.footerCredit")}
@@ -547,6 +559,7 @@ export function SettingsSheet({
                 {subView === "password" && t("settings.subviewPassword")}
                 {subView === "allowlist" && t("settings.subviewAllowlist")}
                 {subView === "language" && t("settings.language")}
+                {subView === "changelog" && t("settings.subviewChangelog")}
               </h3>
             </div>
 
@@ -809,6 +822,9 @@ export function SettingsSheet({
             </p>
           </div>
         )}
+
+        {/* CHANGELOG */}
+        {subView === "changelog" && <ChangeLogView />}
 
         {/* 9. DESTEK & BİLDİRİM */}
         {subView === "feedback" && (

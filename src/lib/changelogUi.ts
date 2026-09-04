@@ -1,6 +1,8 @@
-// Changelog "görüldü" durumu için saf yardımcılar — DOM/localStorage YOK
-// (test edilebilirlik). Okuma/yazma UI bileşenlerinde readStringPref/
-// writeStringPref ile yapılır; buraya ait iş sadece dönüşüm + karşılaştırma.
+// Changelog "görüldü" durumu yardımcıları — dönüşüm + karşılaştırma + toplu işaretleme.
+// Okuma/yazma prefs.ts readStringPref/writeStringPref ile yapılır (window-guard'lı).
+import { readStringPref, writeStringPref } from "./prefs";
+import { CHANGELOG } from "./changelog";
+
 export const CHANGELOG_SEEN_KEY = "nutrimind.ui.changelogSeen"; // PREF nesnesine eklenmez (bkz. Task 2)
 
 function numPart(s: string): number {
@@ -41,4 +43,13 @@ export function parseSeen(raw: string | null): string[] {
 
 export function serializeSeen(seen: string[]): string {
   return JSON.stringify(seen);
+}
+
+/** localStorage'da TÜM changelog sürümlerinin görüldüğünü işaretler.
+ *  UI tercihi — localStorage yoksa/patlarsa sessizce dön (prefs.ts deseni). */
+export function markAllSeen(): void {
+  const raw = readStringPref(CHANGELOG_SEEN_KEY, "[]");
+  const seen = new Set(parseSeen(raw));
+  for (const v of CHANGELOG) seen.add(v.version);
+  writeStringPref(CHANGELOG_SEEN_KEY, serializeSeen([...seen]));
 }

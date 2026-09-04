@@ -269,6 +269,8 @@
     "dataSubtitle": "Kopia JSON, eksport danych CSV",
     "feedbackTitle": "Zgłoś funkcję i opinię",
     "feedbackSubtitle": "Wyślij prośbę do dewelopera",
+    "changelogTitle": "Co nowego?",
+    "changelogSubtitle": "Notatki wersji i zmiany",
     "supportTitle": "Wsparcie i kontakt",
     "supportEmail": "support@emrullah.xyz",
     "privacyTitle": "Prywatność i bezpieczeństwo danych",
@@ -279,7 +281,7 @@
     "cacheCleared": "Pamięć podręczna i Service Worker wyczyszczone!",
     "cacheError": "Nie udało się wyczyścić pamięci podręcznej.",
     "deleteContinue": "Kontynuuj",
-    "footerVersion": "NUTRIMIND WERSJA 1.0.0 (PWA)",
+    "footerVersion": "NUTRIMIND WERSJA {{version}} (PWA)",
     "footerCredit": "Emrullah Bayram • Backend Oracle Cloud SQLite",
     "subviewGoals": "Cele żywieniowe",
     "subviewSupplements": "Suplementy",
@@ -290,6 +292,7 @@
     "subviewWeight": "Śledzenie wagi i ciała",
     "subviewWidgets": "Przewodnik po widgetach",
     "subviewFeedback": "Zgłoś funkcję i opinię",
+    "subviewChangelog": "Zmiany",
     "subviewPrivacy": "Prywatność i bezpieczeństwo danych",
     "subviewPassword": "Zmień hasło",
     "subviewAllowlist": "Dozwolone e-maile",
@@ -330,6 +333,16 @@
     "allowlistAdded": "\"{{email}}\" dodano do listy. Ta osoba może się teraz zarejestrować.",
     "allowlistRemoved": "\"{{email}}\" usunięto z listy. Ta osoba nie może się już zarejestrować.",
     "allowlistRemove": "Usuń {{email}} z listy"
+  },
+  "changelog": {
+    "title": "Co nowego?",
+    "gotIt": "Rozumiem",
+    "versionLabel": "Wersja {{version}}",
+    "devTitle": "Szczegóły dla programistów",
+    "hintSettings": "Starsze wersje i pełne szczegóły znajdziesz w Ustawienia > Zmiany.",
+    "new": "Nowość",
+    "improved": "Ulepszono",
+    "fixed": "Naprawiono"
   },
   "ai": {
     "consentTitle": "Analiza AI",
