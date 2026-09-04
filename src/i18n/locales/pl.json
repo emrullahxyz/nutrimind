@@ -332,7 +332,10 @@
     "allowlistGoogleNote": "Uwaga: osoby rejestrujące się przez Google muszą być również dodane do listy \"Test users\" w Google Cloud Console — brama Google jest oddzielna. Ta lista wystarczy tylko do rejestracji hasłem.",
     "allowlistAdded": "\"{{email}}\" dodano do listy. Ta osoba może się teraz zarejestrować.",
     "allowlistRemoved": "\"{{email}}\" usunięto z listy. Ta osoba nie może się już zarejestrować.",
-    "allowlistRemove": "Usuń {{email}} z listy"
+    "allowlistRemove": "Usuń {{email}} z listy",
+    "inboxTitle": "Skrzynka opinii",
+    "inboxSubtitle": "Wiadomości i prośby użytkowników",
+    "subviewFeedbackInbox": "Skrzynka opinii"
   },
   "changelog": {
     "title": "Co nowego?",
@@ -359,6 +362,16 @@
     "successBody": "Twoja wiadomość została odebrana. Pomysły i zgłoszenia błędów pomagają kształtować kolejne wersje.",
     "newOne": "Napisz kolejną",
     "errorTitle": "Nie udało się wysłać"
+  },
+  "feedbackInbox": {
+    "loading": "Ładowanie…",
+    "retry": "Spróbuj ponownie",
+    "empty": "Brak opinii.",
+    "anonymous": "Anonimowy",
+    "unreadCount": "{{count}} nieprzeczytanych",
+    "markRead": "Oznacz jako przeczytane",
+    "markUnread": "Oznacz jako nieprzeczytane",
+    "refresh": "Odśwież"
   },
   "ai": {
     "consentTitle": "Analiza AI",

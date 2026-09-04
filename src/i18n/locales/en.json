@@ -332,7 +332,10 @@
     "allowlistGoogleNote": "Note: people signing up with Google must also be added to the \"Test users\" list in Google Cloud Console — Google's own gate is separate. This list is enough for password signups only.",
     "allowlistAdded": "\"{{email}}\" added to the list. This person can now sign up.",
     "allowlistRemoved": "\"{{email}}\" removed from the list. They can no longer sign up.",
-    "allowlistRemove": "Remove {{email}} from the list"
+    "allowlistRemove": "Remove {{email}} from the list",
+    "inboxTitle": "Feedback Inbox",
+    "inboxSubtitle": "User messages & requests",
+    "subviewFeedbackInbox": "Feedback Inbox"
   },
   "changelog": {
     "title": "What's New?",
@@ -359,6 +362,16 @@
     "successBody": "Your message was received. Feature ideas and bug reports help shape upcoming versions.",
     "newOne": "Write another",
     "errorTitle": "Could not send"
+  },
+  "feedbackInbox": {
+    "loading": "Loading…",
+    "retry": "Retry",
+    "empty": "No feedback yet.",
+    "anonymous": "Anonymous",
+    "unreadCount": "{{count}} unread",
+    "markRead": "Mark read",
+    "markUnread": "Mark unread",
+    "refresh": "Refresh"
   },
   "ai": {
     "consentTitle": "AI analysis",

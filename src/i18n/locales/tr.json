@@ -332,7 +332,10 @@
     "allowlistGoogleNote": "Not: Google ile kayıt olacak kişileri ayrıca Google Cloud Console'daki \"Test users\" listesine eklemelisin — Google'ın kendi kapısı ayrıdır. Parola ile kayıt olacaklar için yalnızca bu liste yeterli.",
     "allowlistAdded": "\"{{email}}\" listeye eklendi. Bu kişi artık kayıt olabilir.",
     "allowlistRemoved": "\"{{email}}\" listeden çıkarıldı. Artık kayıt olamaz.",
-    "allowlistRemove": "{{email}} listesinden çıkar"
+    "allowlistRemove": "{{email}} listesinden çıkar",
+    "inboxTitle": "Geri Bildirimler",
+    "inboxSubtitle": "Kullanıcı mesaj ve istekleri",
+    "subviewFeedbackInbox": "Geri Bildirimler"
   },
   "changelog": {
     "title": "Ne Var Yeni?",
@@ -359,6 +362,16 @@
     "successBody": "Mesajın alındı. Özellik önerileri ve hata bildirimleri gelecek sürümlerin şekillenmesine yardımcı olur.",
     "newOne": "Yeni mesaj yaz",
     "errorTitle": "Gönderilemedi"
+  },
+  "feedbackInbox": {
+    "loading": "Yükleniyor…",
+    "retry": "Yeniden dene",
+    "empty": "Henüz geri bildirim yok.",
+    "anonymous": "Anonim",
+    "unreadCount": "{{count}} okunmadı",
+    "markRead": "Okundu işaretle",
+    "markUnread": "Okunmadı yap",
+    "refresh": "Yenile"
   },
   "ai": {
     "consentTitle": "Yapay zeka ile analiz",

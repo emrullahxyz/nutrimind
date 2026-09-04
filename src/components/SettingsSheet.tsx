@@ -18,6 +18,7 @@ import {
   LogOut,
   KeyRound,
   ListPlus,
+  Inbox,
   Trash2,
   Globe,
   History,
@@ -38,6 +39,7 @@ import { addAllowlistEmail, changePassword, deleteAccount, exportAccount, fetchA
 import { emailProblem, passwordProblem } from "../lib/authRules";
 import { ErrorText, FormActions, Label, TextField, fieldCls } from "./FormBits";
 import { FeedbackForm } from "./FeedbackForm";
+import { FeedbackInbox } from "./FeedbackInbox";
 import { useTheme } from "../lib/theme";
 import { useTranslation } from "react-i18next";
 import { setLang, SUPPORTED_LANGS, type Lang } from "../i18n/i18n";
@@ -55,6 +57,7 @@ type SubView =
   | "weight"
   | "widgets"
   | "feedback"
+  | "feedbackInbox"
   | "privacy"
   | "password"
   | "allowlist"
@@ -456,6 +459,16 @@ export function SettingsSheet({
 
             {/* DESTEK & YASAL */}
             <SectionGroup title={t("settings.sectionData")}>
+              {capabilities.isAdmin && (
+                <MenuItem
+                  icon={Inbox}
+                  iconBg="bg-emerald-500/15"
+                  iconColor="text-emerald-400"
+                  title={t("settings.inboxTitle")}
+                  subtitle={t("settings.inboxSubtitle")}
+                  onClick={() => openSubView("feedbackInbox")}
+                />
+              )}
               <MenuItem
                 icon={HelpCircle}
                 iconBg="bg-yellow-500/15"
@@ -556,6 +569,7 @@ export function SettingsSheet({
                 {subView === "weight" && t("settings.subviewWeight")}
                 {subView === "widgets" && t("settings.subviewWidgets")}
                 {subView === "feedback" && t("settings.subviewFeedback")}
+                {subView === "feedbackInbox" && t("settings.subviewFeedbackInbox")}
                 {subView === "privacy" && t("settings.subviewPrivacy")}
                 {subView === "password" && t("settings.subviewPassword")}
                 {subView === "allowlist" && t("settings.subviewAllowlist")}
@@ -829,6 +843,7 @@ export function SettingsSheet({
 
         {/* 9. DESTEK & BİLDİRİM */}
         {subView === "feedback" && <FeedbackForm />}
+        {subView === "feedbackInbox" && <FeedbackInbox />}
 
         {/* 10. GİZLİLİK & GÜVENLİK */}
         {subView === "privacy" && (

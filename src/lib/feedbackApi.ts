@@ -7,8 +7,7 @@
 // sinyali kullanıyor ki oturum düşen kullanıcı giriş ekranına düşsün.
 //
 // İleri kullanım (Task 6 — admin gelen kutusu): `GET /api/feedback` +
-// `PATCH /api/feedback/:id`. O task'ta gelecek; buraya yalnızca `submitFeedback`
-// konur.
+// `PATCH /api/feedback/:id` — `fetchFeedback` + `setFeedbackRead` burada.
 // ============================================================================
 import { signalUnauthorizedFromApi } from "./api";
 import { isBrowserOffline } from "./netStatus";
@@ -90,4 +89,78 @@ export async function submitFeedback(
     );
   }
   return json as { ok: true; id: string };
+}
+
+export interface FeedbackItem {
+  id: string;
+  category: FeedbackCategory;
+  message: string;
+  user_name: string | null;
+  user_email: string | null;
+  app_version: string | null;
+  created_at: string;
+  read: boolean;
+}
+
+/** Sahibe özel: geri bildirim listesi (yeni önce). */
+export async function fetchFeedback(): Promise<FeedbackItem[]> {
+  if (isBrowserOffline()) throw new FeedbackError(0, feedbackErrorMessage(0));
+  let res: Response;
+  try {
+    res = await fetch("/api/feedback", {
+      method: "GET",
+      headers: { Accept: "application/json" },
+      credentials: "same-origin",
+    });
+  } catch {
+    throw new FeedbackError(0, feedbackErrorMessage(0));
+  }
+  if (res.status === 401) throw new FeedbackError(401, signalUnauthorizedFromApi());
+  const json: unknown = await res.json().catch(() => null);
+  if (!res.ok) {
+    const body = (typeof json === "object" && json !== null ? json : {}) as {
+      error?: string;
+      retryAfter?: number;
+    };
+    const serverMessage = typeof body.error === "string" ? body.error : null;
+    const retryAfter = typeof body.retryAfter === "number" ? body.retryAfter : null;
+    throw new FeedbackError(
+      res.status,
+      feedbackErrorMessage(res.status, serverMessage, retryAfter),
+      retryAfter,
+    );
+  }
+  const items = (json as { items?: unknown }).items;
+  return Array.isArray(items) ? (items as FeedbackItem[]) : [];
+}
+
+/** Sahibe özel: okundu durumunu değiştirir. */
+export async function setFeedbackRead(id: string, read: boolean): Promise<void> {
+  if (isBrowserOffline()) throw new FeedbackError(0, feedbackErrorMessage(0));
+  let res: Response;
+  try {
+    res = await fetch(`/api/feedback/${encodeURIComponent(id)}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json", Accept: "application/json" },
+      credentials: "same-origin",
+      body: JSON.stringify({ read }),
+    });
+  } catch {
+    throw new FeedbackError(0, feedbackErrorMessage(0));
+  }
+  if (res.status === 401) throw new FeedbackError(401, signalUnauthorizedFromApi());
+  const json: unknown = await res.json().catch(() => null);
+  if (!res.ok) {
+    const body = (typeof json === "object" && json !== null ? json : {}) as {
+      error?: string;
+      retryAfter?: number;
+    };
+    const serverMessage = typeof body.error === "string" ? body.error : null;
+    const retryAfter = typeof body.retryAfter === "number" ? body.retryAfter : null;
+    throw new FeedbackError(
+      res.status,
+      feedbackErrorMessage(res.status, serverMessage, retryAfter),
+      retryAfter,
+    );
+  }
 }
