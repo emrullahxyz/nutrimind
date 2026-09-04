@@ -344,6 +344,22 @@
     "improved": "Improved",
     "fixed": "Fixed"
   },
+  "feedbackForm": {
+    "title": "Feedback & Feature Request",
+    "categoryLabel": "Category",
+    "catFeature": "Feature request",
+    "catBug": "Report a bug",
+    "catOther": "Other",
+    "messageLabel": "Your message",
+    "messagePlaceholder": "What would you like to see, or what went wrong? Tell us…",
+    "sentAs": "Sent as: {{name}}",
+    "send": "Send",
+    "sending": "Sending…",
+    "successTitle": "Thank you!",
+    "successBody": "Your message was received. Feature ideas and bug reports help shape upcoming versions.",
+    "newOne": "Write another",
+    "errorTitle": "Could not send"
+  },
   "ai": {
     "consentTitle": "AI analysis",
     "consentBody": "Your photos and meal text are sent to Google Gemini. Data is processed by AI and not stored on our servers.",

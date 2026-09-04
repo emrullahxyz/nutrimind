@@ -344,6 +344,22 @@
     "improved": "İyileştirildi",
     "fixed": "Düzeltildi"
   },
+  "feedbackForm": {
+    "title": "Geri Bildirim & Özellik İsteği",
+    "categoryLabel": "Kategori",
+    "catFeature": "Özellik isteği",
+    "catBug": "Bug bildirimi",
+    "catOther": "Diğer",
+    "messageLabel": "Mesajın",
+    "messagePlaceholder": "Ne görmek istersin, hangi sorunu yaşadın? Açıkça anlat…",
+    "sentAs": "Gönderen: {{name}}",
+    "send": "Gönder",
+    "sending": "Gönderiliyor…",
+    "successTitle": "Teşekkürler!",
+    "successBody": "Mesajın alındı. Özellik önerileri ve hata bildirimleri gelecek sürümlerin şekillenmesine yardımcı olur.",
+    "newOne": "Yeni mesaj yaz",
+    "errorTitle": "Gönderilemedi"
+  },
   "ai": {
     "consentTitle": "Yapay zeka ile analiz",
     "consentBody": "Fotoğrafların ve öğün metnin Google Gemini'ye gönderilir. Verilerin yapay zeka tarafından işlenir, sunucumuzda saklanmaz.",

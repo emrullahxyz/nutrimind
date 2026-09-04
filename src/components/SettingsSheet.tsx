@@ -37,6 +37,7 @@ import { useAuth } from "../lib/auth";
 import { addAllowlistEmail, changePassword, deleteAccount, exportAccount, fetchAllowlist, removeAllowlistEmail } from "../lib/authApi";
 import { emailProblem, passwordProblem } from "../lib/authRules";
 import { ErrorText, FormActions, Label, TextField, fieldCls } from "./FormBits";
+import { FeedbackForm } from "./FeedbackForm";
 import { useTheme } from "../lib/theme";
 import { useTranslation } from "react-i18next";
 import { setLang, SUPPORTED_LANGS, type Lang } from "../i18n/i18n";
@@ -827,21 +828,7 @@ export function SettingsSheet({
         {subView === "changelog" && <ChangeLogView />}
 
         {/* 9. DESTEK & BİLDİRİM */}
-        {subView === "feedback" && (
-          <div className="flex flex-col gap-3 rounded-2xl border border-white/10 bg-row p-4">
-            <div className="text-sm font-extrabold text-white">{t("settings.feedbackHeader")}</div>
-            <p className="text-xs text-white/70">
-              {t("settings.feedbackBody")}
-            </p>
-            <a
-              href="mailto:support@emrullah.xyz?subject=Nutrimind%20Onerisi"
-              className="mt-1 flex items-center justify-center gap-2 rounded-xl bg-white/10 py-2.5 text-xs font-bold text-white hover:bg-white/20"
-            >
-              <Mail className="h-4 w-4" />
-              <span>{t("settings.feedbackSendEmail")}</span>
-            </a>
-          </div>
-        )}
+        {subView === "feedback" && <FeedbackForm />}
 
         {/* 10. GİZLİLİK & GÜVENLİK */}
         {subView === "privacy" && (
