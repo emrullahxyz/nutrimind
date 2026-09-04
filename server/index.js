@@ -22,6 +22,7 @@ const { DatabaseSync } = require("node:sqlite");
 const { parseMealText, parseMealImage } = require("./ai.js");
 const { migrate, OWNER_ID } = require("./migrate.js");
 const authRoutes = require("./authRoutes.js");
+const feedbackRoutes = require("./feedbackRoutes.js");
 const { OFF_UA } = require("./offUA.js");
 
 const PORT = Number(process.env.NUTRI_PORT || 8790);
@@ -650,6 +651,13 @@ const server = http.createServer(async (req, res) => {
         },
       });
 
+
+    // Geri bildirim + özellik istekleri (uygulama-içi): POST her oturumlu
+    // kullanıcı, GET/PATCH yalnızca sahip. Oturum kapısı bu bloğun önündedir.
+    if (p.startsWith("/api/feedback")) {
+      const r = await feedbackRoutes.handleFeedback({ db, req, method: req.method, path: p, readBody });
+      return send(res, r.status, r.body, r.headers);
+    }
     if (req.method === "POST" && p === "/api/day") {
       const b = await readBody(req);
       if (!b.date || !Array.isArray(b.meals)) return send(res, 400, { error: "date + meals[] gerekli" });

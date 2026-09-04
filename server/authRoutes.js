@@ -344,6 +344,16 @@ async function handleAuth({ db, req, method, path, readBody, now }) {
       // Tek transaction: ya HEP'si silinir ya HİÇBİRİ. Yarıda kalırsa
       // kullanıcı "silindi" sanıp verisi hâlâ DB'de kalır — sızıntı riski.
       // `node:sqlite`'de `db.transaction` YOK; BEGIN/COMMIT/ROLLBACK manuel.
+
+      // Geri bildirim kayıtları da kullanıcı verisidir (KVKK m.7) ve hesapla
+      // birlikte silinir. Tablo LAZY oluşur (feedbackRoutes şeması); hiç geri
+      // bildirim yazılmamışsa bu CREATE onu transaction İÇİNDE yaratır ki
+      // aşağıdaki DELETE "no such table" ile DÜŞMESİN. Şema tanımı
+      // feedbackRoutes.js'tekiyle BİREBİR aynı tutulmalı (kopya kaçınılmaz).
+      db.exec(
+        "CREATE TABLE IF NOT EXISTS feedback (id TEXT PRIMARY KEY, user_id TEXT NOT NULL, category TEXT NOT NULL, message TEXT NOT NULL, user_name TEXT, app_version TEXT, created_at TEXT NOT NULL, read_at TEXT);",
+      );
+
       const sifir = (sql, ...args) => db.prepare(sql).run(...args).changes;
       let silinen;
       try {
@@ -353,6 +363,8 @@ async function handleAuth({ db, req, method, path, readBody, now }) {
           config: sifir("DELETE FROM config WHERE user_id = ?", s.userId),
           aliases: sifir("DELETE FROM aliases WHERE user_id = ?", s.userId),
           sessions: sifir("DELETE FROM sessions WHERE user_id = ?", s.userId),
+          // Geri bildirim kayıtları kullanıcı verisidir, hesapla birlikte silinir.
+          feedback: sifir("DELETE FROM feedback WHERE user_id = ?", s.userId),
           allowlist: sifir("DELETE FROM signup_allowlist WHERE email = ?", user.email),
           users: sifir("DELETE FROM users WHERE id = ?", s.userId),
         };
