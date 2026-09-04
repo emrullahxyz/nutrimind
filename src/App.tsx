@@ -23,6 +23,10 @@ import type { UserProfileInput } from "./lib/tdee";
 import { hasOpenOverlay } from "./lib/overlayLock";
 import { hasActiveSubView } from "./lib/subViewRegistry";
 import { ThemeProvider, useTheme } from "./lib/theme";
+import { ChangeLogModal } from "./components/ChangeLogModal";
+import { CHANGELOG } from "./lib/changelog";
+import { parseSeen, unseenVersions, CHANGELOG_SEEN_KEY } from "./lib/changelogUi";
+import { readStringPref } from "./lib/prefs";
 
 function MainContent() {
   const [tab, setTab] = useState<TabType>("daily");
@@ -51,6 +55,7 @@ function MainContent() {
   const [globalExerciseOpen, setGlobalExerciseOpen] = useState(false);
   const [settingsTarget, setSettingsTarget] = useState<string | null>(null);
   const [showExitToast, setShowExitToast] = useState(false);
+  const [changelogOpen, setChangelogOpen] = useState(false);
   const lastBackPressRef = useRef<number>(0);
 
   const { days, config, updateGoals, updateConfig } = useData();
@@ -104,6 +109,19 @@ function MainContent() {
     }
   }
   const streak = calculateStreak(days);
+
+  // Sürüm popup'ı: sihirbaz kapalıyken, görülmemiş sürüm varsa oturum başına BİR KEZ göster.
+  // `sihirbazAcik` bağımlılığı: sihirbaz KAPANINCA efekt yeniden değerlendirir → yeni kayıt
+  // onbaording'i bitirip popup'ı görür. İlk render'da sihirbaz açıksa atlanır, aç kapanınca gelir.
+  const changelogShownOnceRef = useRef(false);
+  useEffect(() => {
+    if (changelogShownOnceRef.current || sihirbazAcik) return;
+    const seen = parseSeen(readStringPref(CHANGELOG_SEEN_KEY, "[]"));
+    if (unseenVersions(CHANGELOG.map((v) => v.version), seen).length > 0) {
+      setChangelogOpen(true);
+    }
+    changelogShownOnceRef.current = true;
+  }, [sihirbazAcik]);
 
   // Tab değiştirme sarmalayıcısı (Her sekme ana sekmedir, replaceState ile kök tutulur)
   const handleTabChange = (newTab: TabType) => {
@@ -312,6 +330,15 @@ function MainContent() {
         onClose={sihirbaziAtla}
         onSaveProfileAndGoals={sihirbaziTamamla}
       />
+
+      {/* Yeni sürüm: değişiklik popup'ı (görülmemiş sürümler) */}
+      {changelogOpen && (
+        <ChangeLogModal
+          onDismiss={() => {
+            setChangelogOpen(false);
+          }}
+        />
+      )}
 
       {/* Çift Geri Basma / Çıkış Toast Uyarısı */}
       {showExitToast && (
