@@ -41,6 +41,8 @@ pnpm run deploy # dist/ → canlıya yükler. "run" ŞART, çıplak `pnpm deploy
 
 **Doğrulama kapısı (bitirmeden önce çalıştır):** `pnpm typecheck` (0 hata) + `pnpm test` (tümü geçmeli) + `pnpm build` (✓ built).
 
+**Sürüm (release) kuralı:** Her yeni sürümde `src/lib/version.ts` `APP_VERSION` yükseltilir + `src/lib/changelog.ts` başına giriş eklenir (version, date, summary tr/en, items; `dev` yalnızca gerekiyorsa). Popup, localStorage "seen" bayrağı olmayan sürümleri otomatik gösterir — giriş eklenmezse popup çıkmaz. Kapı: `pnpm test` (changelog.test.ts semver sırası + alan bütünlüğünü zaten doğrular).
+
 ## Mimari
 
 Tek bir Vite + React + TypeScript + Tailwind uygulaması (kök dizin) + `server/` altında sıfır-bağımlılıklı

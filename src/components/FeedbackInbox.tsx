@@ -150,7 +150,7 @@ export function FeedbackInbox() {
                     className={`flex-none rounded-xl px-3 py-1.5 text-[11px] font-bold transition active:scale-[0.98] disabled:opacity-40 ${
                       item.read
                         ? "border border-white/15 bg-white/[0.04] text-white/60 hover:bg-white/10"
-                        : "bg-accent text-black hover:bg-accent/90"
+                        : "bg-accent text-accent-ink hover:bg-accent/90"
                     }`}
                   >
                     {t(item.read ? "feedbackInbox.markUnread" : "feedbackInbox.markRead")}

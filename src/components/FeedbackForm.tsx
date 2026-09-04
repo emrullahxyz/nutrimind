@@ -134,7 +134,7 @@ export function FeedbackForm() {
         type="button"
         onClick={() => void handleSubmit()}
         disabled={!canSend}
-        className="flex items-center justify-center gap-2 rounded-xl bg-accent py-2.5 text-sm font-extrabold text-black transition hover:bg-accent/90 active:scale-[0.98] disabled:opacity-40"
+        className="flex items-center justify-center gap-2 rounded-xl bg-accent py-2.5 text-sm font-extrabold text-accent-ink transition hover:bg-accent/90 active:scale-[0.98] disabled:opacity-40"
       >
         {busy ? t("feedbackForm.sending") : t("feedbackForm.send")}
       </button>
