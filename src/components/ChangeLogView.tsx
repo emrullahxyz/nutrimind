@@ -1,16 +1,14 @@
 import { useEffect } from "react";
 import { useTranslation } from "react-i18next";
-import { CHANGELOG } from "../lib/changelog";
+import { CHANGELOG, type ChangeLogUserType } from "../lib/changelog";
 import { markAllSeen } from "../lib/changelogUi";
 
 /** Çip rengi — türe göre (koyu tema). Yeni → emerald, İyileştirildi → sky, Düzeltildi → amber. */
-const CHIP_STYLE: Record<ChangeLogType, string> = {
+const CHIP_STYLE: Record<ChangeLogUserType, string> = {
   new: "bg-emerald-500/15 text-emerald-400",
   improved: "bg-sky-500/15 text-sky-400",
   fixed: "bg-amber-500/15 text-amber-400",
 };
-
-type ChangeLogType = "new" | "improved" | "fixed";
 
 /** Ayarlar alt-görünümü: TÜM sürüm kayıtlarını listeler (yeni → eski). */
 export function ChangeLogView() {

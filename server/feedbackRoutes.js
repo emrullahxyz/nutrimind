@@ -133,7 +133,14 @@ async function handleFeedback({ db, req, method, path, readBody }) {
     if (method === "PATCH" && path.startsWith("/api/feedback/")) {
       ensureSchema(db);
       if (!isAdminUser(db, uid)) return { status: 403, body: { error: "yetkisiz" } };
-      const id = decodeURIComponent(path.slice("/api/feedback/".length));
+      // Bozuk yüzde-kodlama (örn. "%") URIError fırlatır → 500 değil 400 dönsün.
+      let id;
+      try {
+        id = decodeURIComponent(path.slice("/api/feedback/".length));
+      } catch {
+        return { status: 400, body: { error: "geçersiz kimlik" } };
+      }
+      if (!id) return { status: 404, body: { error: "bulunamadı" } };
       const b = (await readBody(req)) || {};
       const exists = db.prepare("SELECT 1 FROM feedback WHERE id = ?").get(id);
       if (!exists) return { status: 404, body: { error: "bulunamadı" } };

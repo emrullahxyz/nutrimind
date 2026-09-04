@@ -112,7 +112,7 @@ function MainContent() {
 
   // Sürüm popup'ı: sihirbaz kapalıyken, görülmemiş sürüm varsa oturum başına BİR KEZ göster.
   // `sihirbazAcik` bağımlılığı: sihirbaz KAPANINCA efekt yeniden değerlendirir → yeni kayıt
-  // onbaording'i bitirip popup'ı görür. İlk render'da sihirbaz açıksa atlanır, aç kapanınca gelir.
+  // onboarding'i bitirip popup'ı görür. İlk render'da sihirbaz açıksa atlanır, aç kapanınca gelir.
   const changelogShownOnceRef = useRef(false);
   useEffect(() => {
     if (changelogShownOnceRef.current || sihirbazAcik) return;

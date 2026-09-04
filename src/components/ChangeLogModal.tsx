@@ -25,7 +25,7 @@ export function ChangeLogModal({ onDismiss }: { onDismiss: () => void }) {
     <button
       type="button"
       onClick={onDismissAndSeen}
-      className="w-full rounded-xl bg-accent py-3 text-sm font-extrabold text-black transition hover:bg-accent/90 active:scale-[0.98]"
+      className="w-full rounded-xl bg-accent py-3 text-sm font-extrabold text-accent-ink transition hover:bg-accent/90 active:scale-[0.98]"
     >
       {t("changelog.gotIt")}
     </button>
