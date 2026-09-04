@@ -13,7 +13,7 @@ export interface ChangeLogVersion {
 
 export const CHANGELOG: ChangeLogVersion[] = [
   {
-    version: "0.29.0",
+    version: "0.28.8",
     date: "2026-09-04",
     summary: {
       tr: "Artık uygulama içinden doğrudan geri bildirim gönderebilir ve yeni özellik isteyebilirsin. Ayrıca her güncellemeden sonra nelerin değiştiğini bu changelog ekranından görebilirsin.",
