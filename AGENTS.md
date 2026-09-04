@@ -90,6 +90,8 @@ tasks/                 # todo.md + lessons.md (aktif iş takibi)
 7. **Play Store / Capacitor:** TWA için `public/.well-known/assetlinks.json` SHA-256 fingerprint
    ile dolu olmalı (boşsa placeholder). `android/` kaynak kodu commit'lenir; `*.jks`, `*.keystore`,
    `android/app/build/` ASLA commit'lenmez.
+8. **Github commit ve push:** Commit ve push yapılırken `Co-Authored-By: Claude` tarzında herhangi bir 
+   ajanı veya yapay zeka modeli dahil edilmemeli. Sadece uygulamanın sahibi authored olmalı.
 
 ## Mimari Notlar
 
