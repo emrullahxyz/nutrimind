@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "../lib/auth";
-import { submitFeedback, type FeedbackCategory } from "../lib/feedbackApi";
+import { FeedbackError, submitFeedback, type FeedbackCategory } from "../lib/feedbackApi";
 import { APP_VERSION } from "../lib/version";
 import { ErrorText, Label, fieldCls } from "./FormBits";
 
@@ -23,7 +23,7 @@ export function FeedbackForm() {
   const [category, setCategory] = useState<FeedbackCategory>("feature");
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
-  const [err, setErr] = useState<string | null>(null);
+  const [err, setErr] = useState<{ status: number; retryAfter: number | null } | null>(null);
   const [sent, setSent] = useState(false);
 
   const canSend = message.trim().length >= 10 && !busy;
@@ -42,7 +42,7 @@ export function FeedbackForm() {
       });
       setSent(true);
     } catch (e) {
-      setErr(e instanceof Error ? e.message : String(e));
+      setErr(e instanceof FeedbackError ? { status: e.status, retryAfter: e.retryAfter } : { status: 0, retryAfter: null });
     } finally {
       setBusy(false);
     }
@@ -126,7 +126,9 @@ export function FeedbackForm() {
       {err && (
         <ErrorText>
           <span className="font-bold">{t("feedbackForm.errorTitle")}: </span>
-          {err}
+          {err.status === 429 && err.retryAfter != null
+            ? t("feedbackForm.err429", { s: err.retryAfter })
+            : t(`feedbackForm.err${err.status}`)}
         </ErrorText>
       )}
 

@@ -20,7 +20,7 @@ const CATEGORY_CHIP: Record<FeedbackItem["category"], string> = {
 export function FeedbackInbox() {
   const { t, i18n } = useTranslation();
   const [items, setItems] = useState<FeedbackItem[] | null>(null);
-  const [err, setErr] = useState<string | null>(null);
+  const [err, setErr] = useState<number | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
 
   const locale = i18n.resolvedLanguage || i18n.language || "en";
@@ -30,7 +30,7 @@ export function FeedbackInbox() {
       setErr(null);
       setItems(await fetchFeedback());
     } catch (e) {
-      setErr(e instanceof FeedbackError ? e.message : String((e as Error)?.message || e));
+      setErr(e instanceof FeedbackError ? e.status : 0);
     }
   };
 
@@ -47,7 +47,7 @@ export function FeedbackInbox() {
         es ? es.map((it) => (it.id === item.id ? { ...it, read: !item.read } : it)) : es,
       );
     } catch (e) {
-      setErr(e instanceof FeedbackError ? e.message : String((e as Error)?.message || e));
+      setErr(e instanceof FeedbackError ? e.status : 0);
     } finally {
       setBusyId(null);
     }
@@ -64,7 +64,9 @@ export function FeedbackInbox() {
   if (err !== null) {
     return (
       <div className="flex flex-col gap-3 rounded-2xl border border-white/10 bg-row p-4">
-        <ErrorText>{err}</ErrorText>
+        <ErrorText>
+          {t(`feedbackInbox.err${err}`, { defaultValue: t("feedbackInbox.errOther", { s: err }) })}
+        </ErrorText>
         <button
           type="button"
           onClick={() => void yukle()}

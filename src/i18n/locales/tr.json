@@ -361,7 +361,15 @@
     "successTitle": "Teşekkürler!",
     "successBody": "Mesajın alındı. Özellik önerileri ve hata bildirimleri gelecek sürümlerin şekillenmesine yardımcı olur.",
     "newOne": "Yeni mesaj yaz",
-    "errorTitle": "Gönderilemedi"
+    "errorTitle": "Gönderilemedi",
+    "err0": "Sunucuya ulaşılamadı — bağlantını kontrol et.",
+    "err400": "Geçersiz gönderim. Mesajın 10-4000 karakter olmalı.",
+    "err401": "Oturumun sona erdi — tekrar giriş yap.",
+    "err403": "Bunu görüntüleme yetkin yok.",
+    "err404": "Bulunamadı.",
+    "err429": "Çok fazla istek. Biraz sonra tekrar dene.",
+    "err503": "Geri bildirim bu ortamda kapalı.",
+    "errOther": "İstek başarısız (HTTP {{s}})."
   },
   "feedbackInbox": {
     "loading": "Yükleniyor…",
@@ -371,7 +379,15 @@
     "unreadCount": "{{count}} okunmadı",
     "markRead": "Okundu işaretle",
     "markUnread": "Okunmadı yap",
-    "refresh": "Yenile"
+    "refresh": "Yenile",
+    "err0": "Sunucuya ulaşılamadı — bağlantını kontrol et.",
+    "err400": "Geçersiz gönderim. Mesajın 10-4000 karakter olmalı.",
+    "err401": "Oturumun sona erdi — tekrar giriş yap.",
+    "err403": "Bunu görüntüleme yetkin yok.",
+    "err404": "Bulunamadı.",
+    "err429": "Çok fazla istek. Biraz sonra tekrar dene.",
+    "err503": "Geri bildirim bu ortamda kapalı.",
+    "errOther": "İstek başarısız (HTTP {{s}})."
   },
   "ai": {
     "consentTitle": "Yapay zeka ile analiz",

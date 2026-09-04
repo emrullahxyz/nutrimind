@@ -361,7 +361,15 @@
     "successTitle": "Thank you!",
     "successBody": "Your message was received. Feature ideas and bug reports help shape upcoming versions.",
     "newOne": "Write another",
-    "errorTitle": "Could not send"
+    "errorTitle": "Could not send",
+    "err0": "Couldn't reach the server — check your connection.",
+    "err400": "Invalid submission. Your message must be 10–4000 characters.",
+    "err401": "Your session expired — please sign in again.",
+    "err403": "You don't have permission to view this.",
+    "err404": "Not found.",
+    "err429": "Too many requests. Please try again shortly.",
+    "err503": "Feedback is disabled in this environment.",
+    "errOther": "Request failed (HTTP {{s}})."
   },
   "feedbackInbox": {
     "loading": "Loading…",
@@ -371,7 +379,15 @@
     "unreadCount": "{{count}} unread",
     "markRead": "Mark read",
     "markUnread": "Mark unread",
-    "refresh": "Refresh"
+    "refresh": "Refresh",
+    "err0": "Couldn't reach the server — check your connection.",
+    "err400": "Invalid submission. Your message must be 10–4000 characters.",
+    "err401": "Your session expired — please sign in again.",
+    "err403": "You don't have permission to view this.",
+    "err404": "Not found.",
+    "err429": "Too many requests. Please try again shortly.",
+    "err503": "Feedback is disabled in this environment.",
+    "errOther": "Request failed (HTTP {{s}})."
   },
   "ai": {
     "consentTitle": "AI analysis",

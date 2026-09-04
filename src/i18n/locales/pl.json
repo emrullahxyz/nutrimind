@@ -361,7 +361,15 @@
     "successTitle": "Dziękujemy!",
     "successBody": "Twoja wiadomość została odebrana. Pomysły i zgłoszenia błędów pomagają kształtować kolejne wersje.",
     "newOne": "Napisz kolejną",
-    "errorTitle": "Nie udało się wysłać"
+    "errorTitle": "Nie udało się wysłać",
+    "err0": "Nie można połączyć się z serwerem — sprawdź połączenie.",
+    "err400": "Nieprawidłowe zgłoszenie. Wiadomość musi mieć 10–4000 znaków.",
+    "err401": "Sesja wygasła — zaloguj się ponownie.",
+    "err403": "Nie masz uprawnień, aby to zobaczyć.",
+    "err404": "Nie znaleziono.",
+    "err429": "Zbyt wiele żądań. Spróbuj ponownie za chwilę.",
+    "err503": "Opinie są wyłączone w tym środowisku.",
+    "errOther": "Żądanie nie powiodło się (HTTP {{s}})."
   },
   "feedbackInbox": {
     "loading": "Ładowanie…",
@@ -371,7 +379,15 @@
     "unreadCount": "{{count}} nieprzeczytanych",
     "markRead": "Oznacz jako przeczytane",
     "markUnread": "Oznacz jako nieprzeczytane",
-    "refresh": "Odśwież"
+    "refresh": "Odśwież",
+    "err0": "Nie można połączyć się z serwerem — sprawdź połączenie.",
+    "err400": "Nieprawidłowe zgłoszenie. Wiadomość musi mieć 10–4000 znaków.",
+    "err401": "Sesja wygasła — zaloguj się ponownie.",
+    "err403": "Nie masz uprawnień, aby to zobaczyć.",
+    "err404": "Nie znaleziono.",
+    "err429": "Zbyt wiele żądań. Spróbuj ponownie za chwilę.",
+    "err503": "Opinie są wyłączone w tym środowisku.",
+    "errOther": "Żądanie nie powiodło się (HTTP {{s}})."
   },
   "ai": {
     "consentTitle": "Analiza AI",
