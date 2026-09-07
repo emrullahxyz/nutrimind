@@ -20,6 +20,7 @@ const path = require("node:path");
 const { randomBytes } = require("node:crypto");
 const { DatabaseSync } = require("node:sqlite");
 const { parseMealText, parseMealImage } = require("./ai.js");
+const { normalizeMeals } = require("./meals.js");
 const { migrate, OWNER_ID } = require("./migrate.js");
 const authRoutes = require("./authRoutes.js");
 const feedbackRoutes = require("./feedbackRoutes.js");
@@ -269,6 +270,8 @@ function send(res, code, obj, headers) {
 }
 
 const MAX_BODY_BYTES = 1_000_000;
+const MAX_ALIAS_NAME = 100;
+const MAX_ALIAS_BRAND = 100;
 
 function readBody(req) {
   return new Promise((resolve, reject) => {
@@ -668,9 +671,11 @@ const server = http.createServer(async (req, res) => {
     if (req.method === "POST" && p === "/api/day") {
       const b = await readBody(req);
       if (!b.date || !Array.isArray(b.meals)) return send(res, 400, { error: "date + meals[] gerekli" });
+      const m = normalizeMeals(b.meals);
+      if (!m.ok) return send(res, 400, { error: m.error });
       db.prepare(
         "INSERT INTO days(user_id, date, meals) VALUES(?, ?, ?) ON CONFLICT(user_id, date) DO UPDATE SET meals = excluded.meals",
-      ).run(uid, b.date, JSON.stringify(b.meals));
+      ).run(uid, b.date, JSON.stringify(m.meals));
       return send(res, 200, { ok: true, date: b.date });
     }
     if (req.method === "DELETE" && p.startsWith("/api/day/")) {
@@ -750,8 +755,8 @@ const server = http.createServer(async (req, res) => {
       // anahtarlar (körlemesine `...b` yayılımı YOK) düşürülüyor.
       const data = {
         triggers: b.triggers,
-        name: b.name,
-        brand: b.brand ?? null,
+        name: typeof b.name === "string" ? b.name.slice(0, MAX_ALIAS_NAME) : b.name,
+        brand: typeof b.brand === "string" ? b.brand.slice(0, MAX_ALIAS_BRAND) : (b.brand ?? null),
         serving_g: b.serving_g ?? 100,
         nutrition: b.nutrition,
       };
