@@ -822,4 +822,10 @@ const server = http.createServer(async (req, res) => {
   }
 });
 
-server.listen(PORT, "127.0.0.1", () => console.log(`nutri-api dinliyor :${PORT}  db=${DB_PATH}`));
+// Doğrudan `node server/index.js` ile çalıştırılınca dinle; testler dosyayı
+// içe alıp kendi portunda dinleyebilsin diye require edilince bekle.
+if (require.main === module) {
+  server.listen(PORT, "127.0.0.1", () => console.log(`nutri-api dinliyor :${PORT}  db=${DB_PATH}`));
+}
+
+module.exports = { server };
