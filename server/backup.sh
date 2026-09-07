@@ -1,6 +1,6 @@
 #!/bin/bash
-# Nutrimind data.db haftalık yedek.
-# cron: 0 3 * * 0 /home/emrullah/nutri-api/server/backup.sh
+# Nutrimind data.db günlük yedek.
+# timer: /etc/systemd/system/nutrimind-backup.{service,timer} (OnCalendar=daily)
 #
 # sqlite3 online backup kullanır (production DB kilitli olsa bile çalışır).
 # .backup komutu atomik snapshot alır; mevcut dosya kilitlenmez.

@@ -1,23 +1,42 @@
-# data.db Yedekleme (haftalık cron)
+# data.db Yedekleme (günlük — systemd timer)
 
-`server/backup.sh` her Pazar 03:00'te çalışır; `/var/backups/nutrimind/` altında
-tarih damgalı snapshot bırakır, 30 günden eskileri siler.
+`server/backup.sh` her gece çalışır; `/var/backups/nutrimind/` altında tarih damgalı
+snapshot bırakır, 30 günden eskileri siler.
 
-## Kurulum
+## Canlı kurulum (domdom)
 
-1. Sunucuda sqlite3 yüklü mü kontrol et: `which sqlite3`
-2. Backup dizinini oluştur: `sudo mkdir -p /var/backups/nutrimind && sudo chown $USER /var/backups/nutrimind`
-3. Script'i executable yap: `chmod +x /var/www/nutri/server/backup.sh`
-4. İlk yedek (manuel test): `bash /var/www/nutri/server/backup.sh`
-5. Cron ekle: `crontab -e`, son satıra:
-   ```
-   0 3 * * 0 /var/www/nutri/server/backup.sh >> /var/log/nutrimind-backup.log 2>&1
-   ```
+Backup script `/home/emrullah/nutri-api/backup.sh` konumunda; `nutrimind-backup.timer`
+ve `.service` unit'leri `/etc/systemd/system/` altında. Timer `OnCalendar=daily` +
+`Persistent=true` (kaçırılanları yakalar).
+
+```bash
+# Kontrol
+systemctl list-timers | grep nutri
+ls -la /var/backups/nutrimind/
+
+# Elle yedek
+bash /home/emrullah/nutri-api/backup.sh
+```
+
+## Geri yükleme
+
+```bash
+# Servisi durdur (yazma kilidi) — servis adı nutri-api
+sudo systemctl stop nutri-api
+
+# Yedekten geri yükle (canlı DB: /home/emrullah/nutri-api/data.db)
+cp /var/backups/nutrimind/data-YYYYMMDD-HHMMSS.db /home/emrullah/nutri-api/data.db
+sudo chown emrullah:emrullah /home/emrullah/nutri-api/data.db
+
+# Servisi başlat
+sudo systemctl start nutri-api
+```
 
 ## Doğrulama
 
-- `ls -la /var/backups/nutrimind/` → `data-YYYYMMDD-HHMMSS.db` dosyaları görünmeli
-- `sqlite3 data-*.db ".schema"` → schema görünmeli (bozuk değil)
+- `ls -la /var/backups/nutrimind/` → `data-YYYYMMDD-HHMMSS.db` görünmeli
+- Bir yedeği aç ve schema'yı kontrol et: `sqlite3 data-*.db ".schema"` → görünmeli (bozuk değil)
+- Yedek `.backup` komutuyla atomik snapshot alır; üretim DB'si kilitliyken de çalışır.
 
 ## Opsiyonel: Uzak kopyalama
 
@@ -25,24 +44,10 @@ tarih damgalı snapshot bırakır, 30 günden eskileri siler.
 - Backblaze B2: `b2 upload-file ...`
 - rsync başka sunucuya: `rsync -avz /var/backups/nutrimind/ backup@other:/backups/`
 
-## Geri yükleme
-
-```bash
-# Sunucuyu durdur (yazma kilidi)
-sudo systemctl stop nutrimind
-
-# Yedekten geri yükle
-cp /var/backups/nutrimind/data-20260826-030000.db /var/www/nutri/data.db
-chown $USER /var/www/nutri/data.db
-
-# Sunucuyu başlat
-sudo systemctl start nutrimind
-```
-
 ## Üretimde ilk çalıştırma
 
-Bu script sadece üretim Oracle VPS'te anlamlı; yerel repo'da veya Windows
-geliştirme makinesinde çalıştırma. Linux'a özgü yollar (`/var/www/nutri/data.db`,
+Bu script sadece üretim VPS'te anlamlı; yerel repo'da veya Windows geliştirme
+makinesinde çalıştırma. Linux'a özgü yollar (`/home/emrullah/nutri-api/data.db`,
 `/var/backups/nutrimind`) ve `sqlite3` CLI varsayımı yapıyor. Kurulum adımları
 deploy runbook'unun parçası olarak sunucuda uygulanır; bu dosya referans
 niteliğindedir.
