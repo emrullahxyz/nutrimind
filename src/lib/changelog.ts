@@ -13,6 +13,27 @@ export interface ChangeLogVersion {
 
 export const CHANGELOG: ChangeLogVersion[] = [
   {
+    version: "0.28.9",
+    date: "2026-09-07",
+    summary: {
+      tr: "Güvenlik iyileştirmeleri yapıldı: beklenmedik hatalar artık detay sızdırmıyor, öğün ve besin kayıtlarında giriş doğrulaması güçlendirildi.",
+      en: "Security improvements: unexpected errors no longer leak details, and stricter input validation was added for meal and food entries.",
+    },
+    items: [
+      {
+        type: "fixed",
+        tr: "Beklenmedik hatalarda teknik detayların (iç klasör yolları vb.) ekrana düşmesi engellendi.",
+        en: "Unexpected errors no longer expose technical details (such as internal file paths) on screen.",
+      },
+      {
+        type: "fixed",
+        tr: "Öğün ve besin kayıtlarında giriş doğrulaması güçlendirildi: geçersiz kayıtlar sunucuda reddediliyor.",
+        en: "Input validation strengthened for meal and food entries: invalid records are now rejected on the server.",
+      },
+    ],
+    dev: ["Beklenmedik 500'ler client'a genel mesaj döner (madde 13).", "server/meals.js izole modülü ile /api/day öğe doğrulaması (madde 6,25)."],
+  },
+  {
     version: "0.28.8",
     date: "2026-09-04",
     summary: {
