@@ -630,8 +630,9 @@ async function handleAuth({ db, req, method, path, readBody, now }) {
     const { sessionId } = createSession(db, row.id, req, t);
     return { status: 200, body: { ok: true, user: publicUser(row) }, headers: setCookieHeader(sessionId) };
   } catch (e) {
-    // İzole modül sözleşmesi: throw ETME, karar dön.
-    return { status: 500, body: { error: `kimlik doğrulama hatası: ${String((e && e.message) || e)}` } };
+    // İzole modül sözleşmesi: throw ETME, karar dön. İç hata mesajı istemciye
+    // sızdırılmaz — yalnızca genel ibare döner (detay zaten loglanmaz).
+    return { status: 500, body: { error: "kimlik doğrulama hatası: beklenmeyen durum" } };
   }
 }
 

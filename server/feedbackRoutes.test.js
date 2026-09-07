@@ -321,3 +321,20 @@ describe("hesap silme geri bildirim kayıtlarını da temizler (KVKK)", () => {
     db.close();
   });
 });
+
+describe("beklenmedik iç hatalar iç detay sızdırmaz", () => {
+  it("readBody patlarsa 500 + genel mesaj, iç detay yok", async () => {
+    const { F, A, db } = await ortam();
+    const cerez = await kayitVeCerez(A, db, "sicak@x.co");
+    const fakeReadBody = async () => {
+      throw new Error("BOOM /secret/path");
+    };
+    const r = await F.handleFeedback({
+      db, req: istek(cerez), method: "POST", path: "/api/feedback", readBody: fakeReadBody,
+    });
+    expect(r.status).toBe(500);
+    expect(r.body.error).toMatch(/beklenmeyen durum/);
+    expect(r.body.error).not.toMatch(/BOOM|secret/);
+    db.close();
+  });
+});

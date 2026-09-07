@@ -256,6 +256,13 @@ class HttpError extends Error {
   }
 }
 
+/** Client'a gidecek hata mesajı. HttpError bilinçli kullanıcı mesajı taşır;
+ *  diğer hatalar iç detay olabilir (dosya yolu, sqlite hata metni) — sızdırma. */
+function clientErrorString(e) {
+  if (e instanceof HttpError) return e.message;
+  return "beklenmeyen hata";
+}
+
 function send(res, code, obj, headers) {
   res.writeHead(code, { "Content-Type": "application/json; charset=utf-8", ...headers });
   res.end(JSON.stringify(obj));
@@ -806,7 +813,7 @@ const server = http.createServer(async (req, res) => {
     // 413'te bağlantı kapatılır: istemci kalan gövdeyi yüklemeye devam etmesin.
     if (code === 413) headers.Connection = "close";
     if (code === 429 && e.extra && e.extra.retryAfter) headers["Retry-After"] = String(e.extra.retryAfter);
-    return send(res, code, { error: String((e && e.message) || e), ...(e && e.extra) }, headers);
+    return send(res, code, { error: clientErrorString(e), ...(e && e.extra) }, headers);
   }
 });
 

@@ -156,7 +156,7 @@ async function handleFeedback({ db, req, method, path, readBody }) {
 
     return { status: 404, body: { error: "bulunamadı" } };
   } catch (e) {
-    return { status: 500, body: { error: `geri bildirim hatası: ${String((e && e.message) || e)}` } };
+    return { status: 500, body: { error: "geri bildirim hatası: beklenmeyen durum" } };
   }
 }
 
