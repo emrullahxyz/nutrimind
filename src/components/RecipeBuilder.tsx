@@ -16,6 +16,7 @@ import { useData } from "../lib/data";
 import { formatNumber } from "../lib/format";
 import {
   calculateRecipeTotals,
+  defaultUnitForAlias,
   parseNum,
   scaleNutrition,
   toGrams,
@@ -108,7 +109,7 @@ export function RecipeBuilder({
         aliasId: aliases[0]?.id ?? "",
         name: aliases[0]?.name ?? "",
         qty: "",
-        unit: "g",
+        unit: aliases[0] ? defaultUnitForAlias(aliases[0]).name : "g",
         manualNutrition: EMPTY_DRAFT,
       },
     ];
@@ -183,7 +184,7 @@ export function RecipeBuilder({
         aliasId: aliases[0]?.id ?? "",
         name: aliases[0]?.name ?? "",
         qty: "",
-        unit: "g",
+        unit: aliases[0] ? defaultUnitForAlias(aliases[0]).name : "g",
         manualNutrition: EMPTY_DRAFT,
       },
     ]);
@@ -215,6 +216,7 @@ export function RecipeBuilder({
         serving_g: 100,
         nutrition: per100g,
         units: validUnits,
+        defaultUnit: validUnits.length > 0 ? "porsiyon" : "g",
         recipe: {
           ingredients: parsedIngredients,
           totalG: totalGNum,
@@ -352,7 +354,7 @@ export function RecipeBuilder({
                             ...prev,
                             aliasId: newAliasId,
                             name: selected?.name ?? prev.name,
-                            unit: "g",
+                            unit: selected ? defaultUnitForAlias(selected).name : "g",
                           }));
                         }}
                       >

@@ -288,6 +288,7 @@ export function VisionReviewScreen({
       serving_g: 100,
       nutrition: visionAliasUnitNutrition(finalNutrition, row.multiplier),
       units: [{ name: "porsiyon", grams: 100 }],
+      defaultUnit: "porsiyon",
     };
   }
 

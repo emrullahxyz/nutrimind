@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { parseSources } from "./api";
+import { defaultUnitForAlias } from "./nutrition";
 
 describe("parseSources", () => {
   it("geçerli sources verisini ayrıştırmalı", () => {
@@ -27,5 +28,9 @@ describe("parseSources", () => {
   it("varsayılan birim 'g' atanmalı", () => {
     const raw = [{ aliasId: "yogurt", qty: 150 }];
     expect(parseSources(raw)).toEqual([{ aliasId: "yogurt", qty: 150, unit: "g" }]);
+  });
+
+  it("alias defaultUnit değeri mevcut modelde güvenle kullanılabilir", () => {
+    expect(defaultUnitForAlias({ defaultUnit: "adet", units: [{ name: "adet", grams: 50 }] }).name).toBe("adet");
   });
 });

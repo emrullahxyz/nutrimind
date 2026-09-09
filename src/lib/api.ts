@@ -52,6 +52,7 @@ interface RawAlias {
   serving_g?: number;
   nutrition: RawNutrition;
   units?: unknown;
+  defaultUnit?: unknown;
   barcode?: string | null;
   off_id?: string | null;
   recipe?: unknown;
@@ -314,6 +315,7 @@ export async function fetchData(): Promise<AppData> {
     serving_g: a.serving_g ?? 100,
     nutrition: fill(a.nutrition),
     ...withOptional("units", parseUnits(a.units)),
+    ...withOptional("defaultUnit", optionalText(a.defaultUnit)),
     ...withOptional("barcode", optionalText(a.barcode)),
     ...withOptional("off_id", optionalText(a.off_id)),
     ...withOptional("recipe", parseRecipe(a.recipe)),
@@ -332,6 +334,8 @@ export interface AliasPayload {
   serving_g: number;
   nutrition: Nutrition;
   units?: AliasUnit[];
+  /** Yeni öğün girişinde önceden seçilecek birim; geçersizse istemci g tarafına düşer. */
+  defaultUnit?: string;
   /** Faz 4 alanları. GÖNDERİLMEZSE backend öncekini KORUR (`server/index.js`
    *  içindeki `carry()`), yani elle düzenlenen bir besinin barkodu silinmez.
    *  `JSON.stringify` `undefined` alanları düşürdüğü için "alanı yazma" ile

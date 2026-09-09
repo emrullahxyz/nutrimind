@@ -24,7 +24,16 @@ import { AiError, aiErrorMessage, parseWithAI } from "../lib/ai";
 import { useData } from "../lib/data";
 import { fetchData } from "../lib/api";
 import { mealsOf, toPayload } from "../lib/days";
-import { GRAM_UNIT, clampMinGrams, parseNum, scaleNutrition, toGrams, unitOptions } from "../lib/nutrition";
+import {
+  GRAM_UNIT,
+  clampMinGrams,
+  defaultQuantityForAlias,
+  defaultUnitForAlias,
+  parseNum,
+  scaleNutrition,
+  toGrams,
+  unitOptions,
+} from "../lib/nutrition";
 import { formatKcal, todayISO, weekdayIndex } from "../lib/format";
 import { effectiveProfile } from "../lib/goals";
 import { rankAliases } from "../lib/aliasRank";
@@ -242,13 +251,17 @@ export function MealForm({
   const [draft, setDraft] = useState<NutritionDraft>(existing ? toDraft(existing.computed) : EMPTY_DRAFT);
   const [aliasId, setAliasId] = useState(() => initialRankedAliases[0]?.id ?? aliases[0]?.id ?? "");
 
+  const [unitName, setUnitName] = useState(() => {
+    const first = initialRankedAliases[0] ?? aliases[0];
+    return first ? defaultUnitForAlias(first).name : GRAM_UNIT.name;
+  });
   const [grams, setGrams] = useState(() => {
     const first = initialRankedAliases[0] ?? aliases[0];
     if (!first) return "100";
-    const est = usualQuantity(days, first.id, GRAM_UNIT.name, aliases);
-    return String(est !== null ? est.value : first.serving_g);
+    const defaultUnit = defaultUnitForAlias(first);
+    const est = usualQuantity(days, first.id, defaultUnit.name, aliases);
+    return String(est !== null ? est.value : defaultQuantityForAlias(first).value);
   });
-  const [unitName, setUnitName] = useState(GRAM_UNIT.name);
 
   const [manualItemName, setManualItemName] = useState("");
 
@@ -343,18 +356,23 @@ export function MealForm({
     [days, aliasId, unitName, aliases]
   );
   const availableUnits = useMemo(() => unitOptions(alias?.units), [alias]);
+  const selectedUnit = availableUnits.find((u) => u.name === unitName) ?? GRAM_UNIT;
   const isDifferentFromEstimate =
     estimate !== null && parseNum(grams) > 0 && Math.abs(parseNum(grams) - estimate.value) > 0.01;
-  const showServingReset = alias !== undefined && parseNum(grams) !== alias.serving_g;
+  const showServingReset =
+    alias !== undefined &&
+    parseNum(grams) > 0 &&
+    Math.abs(toGrams(parseNum(grams), selectedUnit) - alias.serving_g) > 0.01;
 
   function pickAlias(id: string) {
     setAliasPendingAdd(true);
     setAliasId(id);
     const picked = aliases.find((a) => a.id === id);
     if (picked) {
-      setUnitName(GRAM_UNIT.name);
-      const est = usualQuantity(days, id, GRAM_UNIT.name, aliases);
-      setGrams(String(est !== null ? est.value : picked.serving_g));
+      const nextUnit = defaultUnitForAlias(picked);
+      setUnitName(nextUnit.name);
+      const est = usualQuantity(days, id, nextUnit.name, aliases);
+      setGrams(String(est !== null ? est.value : defaultQuantityForAlias(picked).value));
     }
   }
 
@@ -772,8 +790,9 @@ export function MealForm({
                         type="button"
                         onClick={() => {
                           setAliasPendingAdd(true);
-                          setUnitName(GRAM_UNIT.name);
-                          setGrams(String(alias.serving_g));
+                          const serving = defaultQuantityForAlias(alias);
+                          setUnitName(serving.unit.name);
+                          setGrams(String(serving.value));
                         }}
                         className="text-[11px] text-white/40 hover:text-white font-mono"
                       >

@@ -7,7 +7,7 @@
 // GET    /api/config/:key           -> { ok, key, value } (yoksa value:null)
 // PUT    /api/config/:key           -> { ok, key }  (gövde düz nesne olmalı; ayrılmış anahtar: goals, seeded)
 // POST   /api/alias                 -> { id?, triggers[], name, brand?, serving_g?, nutrition,
-//                                        units?, barcode?, off_id?, recipe? }   (upsert)
+//                                        units?, defaultUnit?, barcode?, off_id?, recipe? }   (upsert)
 // DELETE /api/alias/:id              -> alias sil
 // GET    /api/off/product/:barcode   -> Open Food Facts ürün proxy'si (önbellekli)
 // GET    /api/off/search?q=&limit=   -> OFF ürün arama, Polonya kataloğu (önbellekli)
@@ -771,6 +771,10 @@ const server = http.createServer(async (req, res) => {
         data[key] = normalize(b[key]);
       };
       carry("units", normalizeUnits); // Faz 5
+      carry("defaultUnit", (v) => {
+        if (typeof v !== "string" || !v.trim()) throw new HttpError(400, "defaultUnit geçersiz");
+        return v.trim().slice(0, 64);
+      });
       carry("barcode", (v) => normalizeCode(v, "barcode")); // Faz 4
       carry("off_id", (v) => normalizeCode(v, "off_id")); // Faz 4
       carry("recipe", normalizeRecipe); // Faz 7

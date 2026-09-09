@@ -74,6 +74,7 @@ export function exportAliasesToCsv(aliases: Alias[]): string {
     "Porsiyon (g)",
     "Tetikleyiciler",
     "Birimler",
+    "Varsayılan Birim",
     "Barkod",
     "OFF ID",
     ...NUTRIENTS.map((def) => `${def.label} (${def.unit})`),
@@ -91,6 +92,7 @@ export function exportAliasesToCsv(aliases: Alias[]): string {
       formatCsvNumber(alias.serving_g ?? 100, 1),
       escapeCsvCell(triggersStr),
       escapeCsvCell(unitsStr),
+      escapeCsvCell(alias.defaultUnit ?? "g"),
       escapeCsvCell(alias.barcode ?? ""),
       escapeCsvCell(alias.off_id ?? ""),
     ];
@@ -288,6 +290,7 @@ export function validateBackup(raw: unknown): ValidationResult {
       serving_g: typeof rec.serving_g === "number" && rec.serving_g > 0 ? rec.serving_g : 100,
       nutrition,
       ...(rec.units ? { units: rec.units as Alias["units"] } : {}),
+      ...(typeof rec.defaultUnit === "string" && rec.defaultUnit.trim() ? { defaultUnit: rec.defaultUnit.trim() } : {}),
       ...(rec.barcode ? { barcode: String(rec.barcode) } : {}),
       ...(rec.off_id ? { off_id: String(rec.off_id) } : {}),
       ...(rec.recipe ? { recipe: rec.recipe as Alias["recipe"] } : {}),

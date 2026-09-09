@@ -13,7 +13,7 @@ import {
 import type { NutritionDraft } from "./FormBits";
 import { OffSearch } from "./OffSearch";
 import { useData } from "../lib/data";
-import { parseNum } from "../lib/nutrition";
+import { defaultUnitForAlias, parseNum, unitOptions } from "../lib/nutrition";
 import { OFF_SERVING_G } from "../lib/off";
 import type { OffFood } from "../lib/off";
 import type { Alias, AliasUnit, Nutrition } from "../types";
@@ -50,6 +50,7 @@ export function AliasForm({ initial, onClose }: { initial: Alias | null; onClose
   const [brand, setBrand] = useState(initial?.brand ?? "");
   const [servingG, setServingG] = useState(String(initial?.serving_g ?? 100));
   const [draft, setDraft] = useState<NutritionDraft>(initial ? toDraft(initial.nutrition) : EMPTY_DRAFT);
+  const [defaultUnit, setDefaultUnit] = useState(() => (initial ? defaultUnitForAlias(initial).name : "g"));
   const [unitDrafts, setUnitDrafts] = useState<UnitDraft[]>(() =>
     (initial?.units ?? []).map((u, i) => ({
       id: `unit-${i}-${Date.now()}`,
@@ -118,6 +119,11 @@ export function AliasForm({ initial, onClose }: { initial: Alias | null; onClose
       }
     }
 
+    const availableUnitNames = new Set(unitOptions(validUnits).map((u) => u.name.toLocaleLowerCase("tr")));
+    const cleanDefaultUnit = availableUnitNames.has(defaultUnit.trim().toLocaleLowerCase("tr"))
+      ? unitOptions(validUnits).find((u) => u.name.toLocaleLowerCase("tr") === defaultUnit.trim().toLocaleLowerCase("tr"))?.name
+      : "g";
+
     try {
       await upsertAlias({
         ...(initial ? { id: initial.id } : {}),
@@ -127,6 +133,7 @@ export function AliasForm({ initial, onClose }: { initial: Alias | null; onClose
         serving_g: Math.max(1, parseNum(servingG)),
         nutrition: cleanNutrition,
         units: validUnits,
+        defaultUnit: cleanDefaultUnit ?? "g",
         ...(barcode.trim() ? { barcode: barcode.trim() } : {}),
         ...(offId.trim() ? { off_id: offId.trim() } : {}),
       });
@@ -232,6 +239,21 @@ export function AliasForm({ initial, onClose }: { initial: Alias | null; onClose
             <Scale className="w-4 h-4 text-memory" />
             <span className="text-xs font-bold text-white/90">{t("aliasForm.customUnits")}</span>
           </div>
+          <div className="space-y-1.5">
+            <label className="block text-xs font-semibold text-white/70">{t("aliasForm.defaultUnitLabel")}</label>
+            <select
+              className="w-full rounded-xl border border-white/15 bg-black/40 px-3.5 py-2.5 text-sm font-semibold text-white focus:border-memory focus:outline-none"
+              value={defaultUnit}
+              onChange={(e) => setDefaultUnit(e.target.value)}
+            >
+              {unitOptions(unitDrafts.map((u) => ({ name: u.name, grams: parseNum(u.grams) }))).map((u) => (
+                <option key={u.name} value={u.name} className="bg-field text-white">
+                  {u.name}{u.name !== "g" ? ` (${u.grams}g)` : ""}
+                </option>
+              ))}
+            </select>
+            <p className="text-[11px] text-white/50">{t("aliasForm.defaultUnitHint")}</p>
+          </div>
           {unitDrafts.length > 0 && (
             <div className="space-y-2">
               {unitDrafts.map((u) => (
@@ -241,11 +263,14 @@ export function AliasForm({ initial, onClose }: { initial: Alias | null; onClose
                       label={t("aliasForm.unitNameLabel")}
                       value={u.name}
                       placeholder={t("aliasForm.unitNamePlaceholder")}
-                      onChange={(val) =>
+                      onChange={(val) => {
+                        if (defaultUnit.trim().toLocaleLowerCase("tr") === u.name.trim().toLocaleLowerCase("tr")) {
+                          setDefaultUnit(val);
+                        }
                         setUnitDrafts((prev) =>
                           prev.map((x) => (x.id === u.id ? { ...x, name: val } : x))
-                        )
-                      }
+                        );
+                      }}
                     />
                   </div>
                   <div className="w-28">
@@ -262,7 +287,12 @@ export function AliasForm({ initial, onClose }: { initial: Alias | null; onClose
                   </div>
                   <button
                     type="button"
-                    onClick={() => setUnitDrafts((prev) => prev.filter((x) => x.id !== u.id))}
+                    onClick={() => {
+                      if (defaultUnit.trim().toLocaleLowerCase("tr") === u.name.trim().toLocaleLowerCase("tr")) {
+                        setDefaultUnit("g");
+                      }
+                      setUnitDrafts((prev) => prev.filter((x) => x.id !== u.id));
+                    }}
                     className="p-2.5 rounded-xl bg-white/10 hover:bg-red-500/20 text-white/50 hover:text-red-400 transition mb-0.5"
                     title={t("aliasForm.deleteUnit")}
                     aria-label={t("aliasForm.deleteUnit")}

@@ -13,6 +13,27 @@ export interface ChangeLogVersion {
 
 export const CHANGELOG: ChangeLogVersion[] = [
   {
+    version: "0.29.0",
+    date: "2026-09-08",
+    summary: {
+      tr: "Kayıtlı besinler için varsayılan birim seçebilirsin. Yeni öğünlerde yumurtayı adet, protein tozunu ölçek gibi kendi alışkanlığına uygun şekilde kullanmak artık daha hızlı.",
+      en: "You can now choose a default unit for saved foods. New meals can start with the unit you actually use, such as pieces for eggs or scoops for protein powder.",
+    },
+    items: [
+      {
+        type: "new",
+        tr: "Her kayıtlı besin için varsayılan birim belirleme desteği eklendi.",
+        en: "Added support for choosing a default unit for each saved food.",
+      },
+      {
+        type: "improved",
+        tr: "Yeni öğünlerde varsayılan birimin porsiyon miktarı otomatik olarak doğru dönüştürülüyor.",
+        en: "Default meal quantities are now automatically converted to the selected unit.",
+      },
+    ],
+    dev: ["Alias defaultUnit alanı; g fallback'i ve özel birim serving dönüşümü."],
+  },
+  {
     version: "0.28.9",
     date: "2026-09-07",
     summary: {

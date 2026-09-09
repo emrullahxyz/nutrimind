@@ -38,7 +38,15 @@ import { VisionReviewScreen } from "./VisionReview";
 import { useData } from "../lib/data";
 import { fetchData } from "../lib/api";
 import { mealsOf, toPayload } from "../lib/days";
-import { GRAM_UNIT, parseNum, scaleNutrition, toGrams, unitOptions } from "../lib/nutrition";
+import {
+  GRAM_UNIT,
+  defaultQuantityForAlias,
+  defaultUnitForAlias,
+  parseNum,
+  scaleNutrition,
+  toGrams,
+  unitOptions,
+} from "../lib/nutrition";
 import { MACROS } from "../lib/nutrients";
 import { defaultScanGrams, seedTrigger } from "../lib/scan";
 import {
@@ -300,8 +308,14 @@ export function ScanSheet({
     const known = aliases.find((a) => a.barcode === f.code) ?? null;
     setFood(f);
     setTriggers(known ? known.triggers.join(", ") : seedTrigger(f.name));
-    setGrams(String(known ? known.serving_g : defaultScanGrams(f)));
-    setUnitName(GRAM_UNIT.name);
+    if (known) {
+      const defaultUnit = defaultUnitForAlias(known);
+      setUnitName(defaultUnit.name);
+      setGrams(String(defaultQuantityForAlias(known).value));
+    } else {
+      setGrams(String(defaultScanGrams(f)));
+      setUnitName(GRAM_UNIT.name);
+    }
     setErr(null);
   }
 

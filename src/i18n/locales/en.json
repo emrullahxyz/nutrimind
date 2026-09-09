@@ -146,6 +146,8 @@
     "namePlaceholder": "e.g. Strained Yogurt 0%",
     "servingLabel": "Serving Amount",
     "customUnits": "Custom Units (optional)",
+    "defaultUnitLabel": "Default Unit",
+    "defaultUnitHint": "This unit is selected first for this food when adding a meal. If it is removed, grams are used.",
     "unitNameLabel": "Unit Name",
     "unitNamePlaceholder": "e.g. piece, bowl, slice",
     "amountLabel": "Amount",

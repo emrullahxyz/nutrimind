@@ -11,6 +11,7 @@ function aliasFromPayload(id: string, alias: AliasPayload): AppData["aliases"][n
     serving_g: alias.serving_g,
     nutrition: alias.nutrition,
     ...(alias.units ? { units: alias.units } : {}),
+    ...(alias.defaultUnit ? { defaultUnit: alias.defaultUnit } : {}),
     ...(alias.barcode ? { barcode: alias.barcode } : {}),
     ...(alias.off_id ? { off_id: alias.off_id } : {}),
     ...(alias.recipe ? { recipe: alias.recipe } : {}),

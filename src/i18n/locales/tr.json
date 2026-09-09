@@ -146,6 +146,8 @@
     "namePlaceholder": "örn. Süzme Yoğurt %0",
     "servingLabel": "Porsiyon Miktarı",
     "customUnits": "Özel Birimler (opsiyonel)",
+    "defaultUnitLabel": "Varsayılan Birim",
+    "defaultUnitHint": "Yeni öğün eklerken bu besin için önce bu birim seçilir. Özel birim silinirse gram kullanılır.",
     "unitNameLabel": "Birim Adı",
     "unitNamePlaceholder": "örn. adet, kase, dilim",
     "amountLabel": "Miktar",

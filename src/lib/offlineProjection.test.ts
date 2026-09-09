@@ -38,6 +38,8 @@ describe("offline projection", () => {
         brand: null,
         serving_g: 100,
         nutrition: { kcal: 100, protein: 5, carbs: 10, fat: 2, fiber: 1 },
+        units: [{ name: "adet", grams: 50 }],
+        defaultUnit: "adet",
       },
       base,
       createdAt: "2026-08-28T10:00:00Z",
@@ -47,6 +49,7 @@ describe("offline projection", () => {
     const projected = applyOperation(base, operation);
     expect(projected.aliases).toHaveLength(1);
     expect(projected.aliases[0].id).toBe("local:a");
+    expect(projected.aliases[0].defaultUnit).toBe("adet");
   });
 
   it("projects pending operations in creation order", () => {

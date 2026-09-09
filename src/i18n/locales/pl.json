@@ -146,6 +146,8 @@
     "namePlaceholder": "np. Jogurt grecki 0%",
     "servingLabel": "Wielkość porcji",
     "customUnits": "Własne jednostki (opcjonalnie)",
+    "defaultUnitLabel": "Domyślna jednostka",
+    "defaultUnitHint": "Podczas dodawania posiłku ta jednostka jest wybierana najpierw dla tego produktu. Po jej usunięciu używane są gramy.",
     "unitNameLabel": "Nazwa jednostki",
     "unitNamePlaceholder": "np. sztuka, miska, plaster",
     "amountLabel": "Ilość",

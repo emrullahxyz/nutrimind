@@ -2,7 +2,7 @@
 // Nutrimind — saf besin hesapları (alias ölçekleme + tr-TR sayı ayrıştırma).
 // ============================================================================
 import { ZERO_NUTRITION } from "../types";
-import type { AliasUnit, MealSource, Nutrition } from "../types";
+import type { Alias, AliasUnit, MealSource, Nutrition } from "../types";
 import { NUTRIENT_KEYS, makeNutrition } from "./nutrients";
 import type { NutrientKey } from "./nutrients";
 
@@ -15,12 +15,37 @@ export const GRAM_UNIT: AliasUnit = { name: "g", grams: 1 };
  *  adda iki seçenek olur (yinelenen React key) ve seçim yerleşik gramı bulacağı
  *  için kullanıcının tanımı zaten hiçbir zaman uygulanmazdı. */
 export function unitOptions(units: AliasUnit[] | undefined): AliasUnit[] {
-  return [GRAM_UNIT, ...(units ?? []).filter((u) => u.name.trim().toLowerCase() !== GRAM_UNIT.name)];
+  const seen = new Set<string>([GRAM_UNIT.name]);
+  const custom = (units ?? []).filter((u) => {
+    const key = u.name.trim().toLocaleLowerCase("tr");
+    if (!key || key === GRAM_UNIT.name || seen.has(key) || !(u.grams > 0) || !Number.isFinite(u.grams)) return false;
+    seen.add(key);
+    return true;
+  });
+  return [GRAM_UNIT, ...custom];
 }
 
 /** Seçili birimdeki miktarı grama çevirir ("2 adet" × 50 = 100 g). */
 export function toGrams(amount: number, unit: AliasUnit): number {
   return amount * unit.grams;
+}
+
+/** Alias için kayıtlı varsayılan birimi çözer. Eski/bozuk kayıtlar gramı kullanır. */
+export function defaultUnitForAlias(alias: Pick<Alias, "units" | "defaultUnit">): AliasUnit {
+  const options = unitOptions(alias.units);
+  const requested = alias.defaultUnit?.trim().toLocaleLowerCase("tr");
+  return options.find((unit) => unit.name.trim().toLocaleLowerCase("tr") === requested) ?? GRAM_UNIT;
+}
+
+/** Alias'ın serving_g tabanını varsayılan birimde gösterilecek miktara çevirir. */
+export function defaultQuantityForAlias(alias: Pick<Alias, "serving_g" | "units" | "defaultUnit">): {
+  unit: AliasUnit;
+  value: number;
+} {
+  const unit = defaultUnitForAlias(alias);
+  const raw = alias.serving_g / unit.grams;
+  const value = raw >= 10 ? Math.round(raw) : Number(raw.toFixed(1));
+  return { unit, value };
 }
 
 /** tr-TR sayı metnini sayıya çevirir. Geçersiz/boş girdide 0.

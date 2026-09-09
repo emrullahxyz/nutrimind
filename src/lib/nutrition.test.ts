@@ -3,6 +3,8 @@ import {
   GRAM_UNIT,
   addNutrition,
   clampMinGrams,
+  defaultQuantityForAlias,
+  defaultUnitForAlias,
   parseNum,
   scaleMealSources,
   scaleNutrition,
@@ -419,6 +421,22 @@ describe("parseUnits (Faz 5)", () => {
     expect(totalGrams).toBe(100);
     expect(scaled.kcal).toBe(155);
     expect(scaled.protein).toBe(13);
+  });
+});
+
+describe("defaultUnitForAlias / defaultQuantityForAlias", () => {
+  it("varsayılan birim yoksa gramı seçer", () => {
+    expect(defaultUnitForAlias({ units: [{ name: "adet", grams: 50 }] })).toEqual(GRAM_UNIT);
+  });
+
+  it("geçersiz veya silinmiş varsayılan birimde gramı seçer", () => {
+    expect(defaultUnitForAlias({ defaultUnit: "kase", units: [{ name: "adet", grams: 50 }] })).toEqual(GRAM_UNIT);
+  });
+
+  it("özel varsayılan birimi ve serving karşılığını hesaplar", () => {
+    const alias = { serving_g: 100, units: [{ name: "adet", grams: 50 }], defaultUnit: "adet" };
+    expect(defaultUnitForAlias(alias)).toEqual({ name: "adet", grams: 50 });
+    expect(defaultQuantityForAlias(alias)).toEqual({ unit: { name: "adet", grams: 50 }, value: 2 });
   });
 });
 

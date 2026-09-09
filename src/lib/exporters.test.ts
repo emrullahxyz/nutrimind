@@ -63,6 +63,7 @@ const mockAliases: Alias[] = [
     name: "Süzme Yoğurt",
     brand: "Sütaş",
     serving_g: 100,
+    defaultUnit: "g",
     nutrition: {
       kcal: 60,
       protein: 10,
@@ -103,6 +104,7 @@ describe("exporters — CSV & JSON", () => {
 
     expect(mealsCsv.startsWith("\uFEFF")).toBe(true);
     expect(aliasCsv.startsWith("\uFEFF")).toBe(true);
+    expect(aliasCsv.split("\r\n")[0]).toContain("Varsayılan Birim");
   });
 
   it("CSV sütun başlıkları besin kaydından (NUTRIENTS) dinamik türetilir", () => {
@@ -144,7 +146,8 @@ describe("exporters — CSV & JSON", () => {
       expect(validation.mealsCount).toBe(1);
       expect(validation.aliasesCount).toBe(1);
       expect(validation.days["2026-07-31"][0].name).toBe("Köfte ve Salata");
-      expect(validation.aliases[0].id).toBe("yogurt");
+        expect(validation.aliases[0].id).toBe("yogurt");
+      expect(validation.aliases[0].defaultUnit).toBe("g");
     }
   });
 

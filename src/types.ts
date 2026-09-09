@@ -137,6 +137,8 @@ export interface Alias {
   nutrition: Nutrition;
   /** Özel birimler — Faz 5. Opsiyonel. */
   units?: AliasUnit[];
+  /** Yeni öğün girişinde önceden seçilecek birimin adı. Yoksa yerleşik gram birimi kullanılır. */
+  defaultUnit?: string;
   /** Ambalaj barkodu — Faz 4. Yalnızca Open Food Facts'ten gelen besinlerde
    *  dolu; elle girilen besinlerde YOK (boş metin değil, alan hiç olmaz). */
   barcode?: string;
