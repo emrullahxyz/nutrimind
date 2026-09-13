@@ -10,6 +10,30 @@
 
 **Spec:** `.claude/plans/uygulamam-z-n-play-store-da-yay-nlanmas-golden-lerdorf.md` (orijinal plan, 14 task tanımı + checklist)
 
+---
+
+## Durum (2026-09-13 arşiv taraması)
+
+Task 17-23 adımları dosya bazında doğrulandı: **17, 18, 19, 20, 22, 23 tamamlandı**;
+**Task 21 (Capacitor keystore / AAB / Play Console) hâlâ açık**. Aşağıdaki "Kalan TODO (3 task)"
+başlığı planın kendi listesiyle (7 task) tutarsızdı, düzeltildi.
+
+| Task | Durum | Kanıt |
+|---|---|---|
+| 17 — SettingsSheet i18n | ✅ | Hardcode TR taraması: **0** bulgu |
+| 18 — MealForm i18n | ✅ | Hardcode TR taraması: **0** bulgu |
+| 19 — NutritionSheet i18n | ✅ | Hardcode TR taraması: **0** bulgu |
+| 20 — a11y | ✅ | `OnboardingModal.tsx:448` `w-20 sm:w-24` · odak tuzağı artık `useDialogFocus` (v0.30.0) · `FormBits.tsx:17,51,88` `useId`+`htmlFor` |
+| 21 — Keystore + AAB + Console | ❌ AÇIK | `public/.well-known/assetlinks.json` → `REPLACE_WITH_SHA256_FINGERPRINT_AFTER_KEYSTORE_CREATION`; keystore repoda yok ( olmamalı da) |
+| 22 — Sentry | ✅ | `src/lib/sentry.ts` + `src/main.tsx` importu + `ErrorBoundary.tsx:29` `captureException`; `.env.example` `VITE_SENTRY_DSN` (boşsa noop) |
+| 23 — data.db yedekleme | ✅ | `server/backup.sh` + `docs/operations/backup.md`; canlıda cron değil **systemd timer** (`nutrimind-backup.timer`) — plandan daha iyi |
+
+**Bir sapma kaydı:** Task 20'nin önerdiği "odak tuzağını `Modal.tsx`'e ekle" çözümü yerine tek
+kaynak `hooks/useDialogFocus.ts` + `lib/focusTrap.ts` yazıldı ve **beş** diyalog penceresi buna
+bağlandı (AGENTS.md madde 9). Plan metni tarihsel kayıt olarak olduğu gibi bırakıldı.
+
+---
+
 ## Global Constraints
 
 - **`server/index.js` donmuştur** — yeni backend mantığı izole modüllerde (`server/offUA.js`, `server/authRoutes.js` vb.). Sadece `require + 1 if` bloğu eklenir. Kullanıcıya sorulmadan değiştirilemez.
@@ -49,7 +73,7 @@
 
 ---
 
-## Kalan TODO (3 task)
+## Kalan TODO (Tamamlananlar hariç)
 
 ### Task 17: SettingsSheet i18n kapsamı genişlet
 
@@ -67,38 +91,38 @@
 
 **Adımlar:**
 
-- [ ] **Step 1: SettingsSheet'teki tüm hardcode TR metinleri tara**
+- [x] **Step 1: SettingsSheet'teki tüm hardcode TR metinleri tara**
 
 Run: `grep -nE '>[A-ZÇĞİÖŞÜ][a-zçğıöşüA-ZÇĞİÖŞÜ ,.!?0-9:'\"/()-]{4,80}[\s]*<|title=|placeholder=|label="' src/components/SettingsSheet.tsx | head -50`
 
 Beklenen: ~30-50 hardcode string listesi (bölüm başlıkları, menü item'ları, form label'lar, buton metinleri).
 
-- [ ] **Step 2: JSON dosyalarına yeni anahtarları ekle**
+- [x] **Step 2: JSON dosyalarına yeni anahtarları ekle**
 
 `src/i18n/locales/tr.json` → `settings` bölümüne ~30 yeni anahtar ekle (mevcut `settings.*` zaten 24 anahtar var, toplam ~50 olacak).
 
 Aynısını `en.json` ve `pl.json` için de yap. Doğal Lehçe çevirisi (kullanıcı ana dili İngilizce).
 
-- [ ] **Step 3: SettingsSheet'te hardcode string'leri t() ile değiştir**
+- [x] **Step 3: SettingsSheet'te hardcode string'leri t() ile değiştir**
 
 Her bölüm için (Hesap & Profil, Hedefler & Takip, Raporlar & Widget'lar, Veri & Destek, Dil, Hesap İşlemleri, Verilerim, İzinli E-postalar, vb.) tüm hardcode string'leri t('key') ile değiştir.
 
-- [ ] **Step 4: Tip kontrolü**
+- [x] **Step 4: Tip kontrolü**
 
 Run: `pnpm typecheck`
 Beklenen: 0 hata. (Eğer hata varsa, t() fonksiyonu içinde yanlış anahtar veya hook kural ihlali olabilir.)
 
-- [ ] **Step 5: Test çalıştır**
+- [x] **Step 5: Test çalıştır**
 
 Run: `pnpm test`
 Beklenen: 621/621 pass. (Mevcut testler değişmemeli.)
 
-- [ ] **Step 6: Build doğrula**
+- [x] **Step 6: Build doğrula**
 
 Run: `pnpm build`
 Beklenen: ✓ built, dist/ içinde güncellenmiş bundle.
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git add src/components/SettingsSheet.tsx src/i18n/locales/{en,tr,pl}.json
@@ -121,19 +145,19 @@ git commit -m "feat(i18n): translate SettingsSheet to EN/TR/PL"
 
 **Adımlar:**
 
-- [ ] **Step 1: Hardcode string'leri tara**
+- [x] **Step 1: Hardcode string'leri tara**
 
 Run: `grep -nE '"[A-ZÇĞİÖŞÜ][a-zçğıöşüA-ZÇĞİÖŞÜ ]{3,}"|placeholder=|>[\s]*[A-ZÇĞİÖŞÜ][^<]{4,}<|label="' src/components/MealForm.tsx | head -60`
 
-- [ ] **Step 2: JSON'a `meal.*` bölümü ekle**
+- [x] **Step 2: JSON'a `meal.*` bölümü ekle**
 
 tr.json, en.json, pl.json'a `meal: { ... }` bölümü. ~30-40 anahtar.
 
-- [ ] **Step 3: MealForm'da t() ile değiştir**
+- [x] **Step 3: MealForm'da t() ile değiştir**
 
 Form alanları (ad, miktar, saat, kategori), besin detay (kalori, protein, karb, yağ, lif, vitamin, mineral), butonlar (Kaydet, İptal, Sil).
 
-- [ ] **Step 4-7: typecheck, test, build, commit**
+- [x] **Step 4-7: typecheck, test, build, commit**
 
 (Tıpkı Task 17 gibi.)
 
@@ -168,19 +192,19 @@ git commit -m "feat(i18n): translate NutritionSheet to EN/TR/PL"
 
 **Adımlar:**
 
-- [ ] **Step 1: < 360px layout düzeltmesi**
+- [x] **Step 1: < 360px layout düzeltmesi**
 
 OnboardingModal.tsx:418-422'de `w-24` input'u `w-20 sm:w-24` yap. 320px ekranda taşmayı önler.
 
-- [ ] **Step 2: Modal focus trap**
+- [x] **Step 2: Modal focus trap**
 
 Modal.tsx açıldığında ilk focusable öğeye focus, Tab tuşu döngüsü, Esc kapatma. Mevcut `useBodyScrollLock` ve `useModalHistory` zaten var, ek olarak focus yönetimi.
 
-- [ ] **Step 3: Form label-for-id eşleşmesi**
+- [x] **Step 3: Form label-for-id eşleşmesi**
 
 FormBits.tsx içindeki `Label` + `TextField` çiftlerinde `htmlFor`/`id` eşleşmesini kontrol et. Tüm formlarda uygula.
 
-- [ ] **Step 4-7: doğrula + commit**
+- [x] **Step 4-7: doğrula + commit**
 
 ```bash
 git add src/components/OnboardingModal.tsx src/components/Modal.tsx src/components/FormBits.tsx
@@ -195,7 +219,7 @@ git commit -m "feat(a11y): < 360px layout, modal focus trap, label-for-id"
 
 **Kullanıcı adımları:**
 
-- [ ] **Step 1: Keystore oluştur**
+- [ ] **Step 1: Keystore oluştur** — AÇIK (kullanıcı tarafı: Android Studio / keytool)
 
 ```bash
 keytool -genkey -v -keystore nutrimind-release.jks -keyalg RSA -keysize 2048 -validity 10000 -alias nutrimind
@@ -203,7 +227,7 @@ keytool -genkey -v -keystore nutrimind-release.jks -keyalg RSA -keysize 2048 -va
 
 Şifreleri güvenli yere kaydet. `nutrimind-release.jks` dosyasını **commit'leme** (gitignore'da).
 
-- [ ] **Step 2: SHA-256 fingerprint al**
+- [ ] **Step 2: SHA-256 fingerprint al** — AÇIK
 
 ```bash
 keytool -list -v -keystore nutrimind-release.jks | grep -E "SHA1|SHA256"
@@ -211,7 +235,7 @@ keytool -list -v -keystore nutrimind-release.jks | grep -E "SHA1|SHA256"
 
 SHA-256 değerini kopyala.
 
-- [ ] **Step 3: `public/.well-known/assetlinks.json` güncelle**
+- [ ] **Step 3: `public/.well-known/assetlinks.json` güncelle** — AÇIK (dosya hâlâ placeholder taşıyor)
 
 ```json
 {
@@ -229,7 +253,7 @@ git add public/.well-known/assetlinks.json
 git commit -m "feat(twa): add real SHA-256 fingerprint to assetlinks.json"
 ```
 
-- [ ] **Step 4: Signed AAB build**
+- [ ] **Step 4: Signed AAB build** — AÇIK
 
 Android Studio → `android/` klasörünü aç → Build → Generate Signed Bundle → APK → release.aab.
 
@@ -240,7 +264,7 @@ cd android
 # → android/app/build/outputs/bundle/release/app-release.aab
 ```
 
-- [ ] **Step 5: Play Console'a yükle**
+- [ ] **Step 5: Play Console'a yükle** — AÇIK
 
 1. https://play.google.com/console aç ($25 hesap)
 2. "Create app" → Nutrimind
@@ -250,7 +274,7 @@ cd android
 6. Privacy policy URL: `https://nutri.emrullah.xyz/privacy.html`
 7. Release → Internal Testing → AAB yükle → Closed Beta → Production
 
-- [ ] **Step 6: Capacitor senkronizasyonu (her native değişiklik sonrası)**
+- [ ] **Step 6: Capacitor senkronizasyonu (her native değişiklik sonrası)** — AÇIK
 
 ```bash
 pnpm exec cap sync android
@@ -268,13 +292,13 @@ pnpm exec cap open android
 
 **Adımlar:**
 
-- [ ] **Step 1: Sentry kur**
+- [x] **Step 1: Sentry kur**
 
 ```bash
 pnpm add @sentry/react
 ```
 
-- [ ] **Step 2: Sentry init**
+- [x] **Step 2: Sentry init**
 
 `src/lib/sentry.ts` (YENİ):
 ```typescript
@@ -288,11 +312,11 @@ Sentry.init({
 
 `src/main.tsx`'e import ekle (en üstte, diğer import'lardan önce).
 
-- [ ] **Step 3: ErrorBoundary'ye Sentry.errorReporting ekle**
+- [x] **Step 3: ErrorBoundary'ye Sentry.errorReporting ekle**
 
 `src/components/ErrorBoundary.tsx` componentDidCatch → Sentry.captureException.
 
-- [ ] **Step 4: .env.example'a VITE_SENTRY_DSN ekle**
+- [x] **Step 4: .env.example'a VITE_SENTRY_DSN ekle**
 
 ```
 # Crash raporlama (Sentry)
@@ -300,7 +324,7 @@ Sentry.init({
 VITE_SENTRY_DSN=
 ```
 
-- [ ] **Step 5-7: doğrula + commit**
+- [x] **Step 5-7: doğrula + commit**
 
 ```bash
 git add package.json pnpm-lock.yaml src/main.tsx src/lib/sentry.ts src/components/ErrorBoundary.tsx .env.example
@@ -316,7 +340,7 @@ git commit -m "feat(ops): add Sentry crash reporting"
 
 **Adımlar:**
 
-- [ ] **Step 1: Yedekleme script'i yaz**
+- [x] **Step 1: Yedekleme script'i yaz**
 
 `server/backup.sh` (YENİ):
 ```bash
@@ -337,21 +361,21 @@ find "$BACKUP_DIR" -name "data-*.db" -mtime +30 -delete
 chmod +x server/backup.sh
 ```
 
-- [ ] **Step 2: cron ekle**
+- [x] **Step 2: cron ekle**
 
 ```bash
 crontab -e
 # 0 3 * * 0 /var/www/nutri/server/backup.sh
 ```
 
-- [ ] **Step 3: İlk yedek al (manuel)**
+- [x] **Step 3: İlk yedek al (manuel)**
 
 ```bash
 sudo ./server/backup.sh
 ls -la /var/backups/nutrimind/
 ```
 
-- [ ] **Step 4: Commit (script + döküman)**
+- [x] **Step 4: Commit (script + döküman)**
 
 ```bash
 git add server/backup.sh
@@ -422,10 +446,6 @@ git commit -m "feat(ops): add weekly data.db backup script"
 
 ## Sonraki adım
 
-Plan complete. **İki yol:**
-
-1. **Inline execution** — bu oturumda Task 17-20'i sırayla yap (her biri için tara → JSON ekle → t() ile değiştir → doğrula → commit). Task 21-23 sonraki oturum.
-
-2. **Subagent-driven** — Sonnet dispatches sorunlu (önceki oturumlarda openrouter/nemotron 410 hatası). Bu oturumda inline tercih edildi.
-
-Hangi yolu istersen?
+Task 17-20, 22, 23 **yürütüldü ve tamamlandı**. Kalan tek iş **Task 21** (keystore → SHA-256 →
+`assetlinks.json` → signed AAB → Play Console) ve kullanıcı tarafında yapılır. Güncel açık iş listesi:
+`tasks/todo.md` → AÇIK İŞLER.

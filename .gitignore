@@ -55,6 +55,8 @@ ss_calai_animation/
 
 # Sistem / ajan artıkları (planlama araçlarından gelen dosyalar)
 .freebuff/
+# SDD oturum artefaktları (diff/inceleme izleri) — kendi .gitignore'ı da var, açıkça yazılı
+.superpowers/
 
 # Capacitor (android kaynak kodu commit'lenir, build artifact'leri + keystore HAYIR)
 android/.gradle/

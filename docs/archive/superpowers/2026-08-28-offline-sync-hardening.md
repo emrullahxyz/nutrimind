@@ -10,6 +10,30 @@
 
 **Spec:** `public/plan-graph.html` bölüm 3 ("Offline Sync — Kalan Yapılacaklar") + onaylı tasarım kararları: çakışma politikası sunucu-sürümü+uyarı, kapsam öğünler+alias'lar, hedefler/config offline yazılamaz, AI/OFF/kamera ağ gerektirir.
 
+---
+
+## Durum: TAMAMLANDI (2026-09-13 arşiv taraması)
+
+Bu planın kod işi **bitti ve master'da**. Aşağıdaki adım kutuları dosya bazında doğrulanarak
+işaretlendi. Tek istisna **Task 7 / Step 2**: `public/plan-graph.html` bu planın "Spec"
+artefaktıydı; prod bundle'dan çıkarılıp `docs/archive/superpowers/plan-graph.html`'e taşındı —
+içeriği güncellenmedi, tarihsel hâliyle korunuyor.
+
+| Task | Durum | Kanıt |
+|---|---|---|
+| 1 — `netStatus` + ai/off guard | ✅ | `src/lib/netStatus.ts` (+`netStatus.test.ts`) · `src/lib/ai.ts:9,79` · `src/lib/off.ts:26,151,167` |
+| 2 — `offline` bayrağı + ScanSheet + i18n | ✅ | `src/lib/data.tsx:55` (`Ctx`) · `src/components/ScanSheet.tsx` · `offline.featureUnavailable` üç dilde |
+| 3 — OffSearch kilidi | ✅ | `src/components/OffSearch.tsx` |
+| 4 — ExportModal + config yazma denetimi | ✅ | `src/components/ExportModal.tsx` |
+| 5 — Çift sekme kilidi (Web Locks) | ✅ | `src/lib/offlineSync.ts:23-29,382` (`withCrossTabLock`, `SYNC_LOCK_NAME`) + `offlineSync.test.ts` |
+| 6 — Uç senaryo testleri | ✅ | `src/lib/offlineSync.test.ts:234,243` (StrictMode/çift çağrı · kuyruk ortasında ağ kesilmesi) |
+| 7 — Smoke checklist + doküman | ⚠️ kısmi | `docs/operations/offline.md` ✅ · AGENTS.md çevrimdışı satırı ✅ · plan-graph güncellemesi ❌ (arşive taşındı) |
+
+**Kalan tek insan işi:** `docs/operations/offline.md` içindeki 10 adımlık manuel smoke testi
+(özellikle Android/Capacitor uçuş modu turu) — gerçek cihazda koşulması gerekiyor.
+
+---
+
 ## Global Constraints
 
 - **`server/index.js` DONMUŞTUR** — bu planda backend'e dokunulmaz. Server-side revision/409 bilinçli olarak kapsam DIŞI (bkz. son bölüm).
@@ -44,7 +68,7 @@ Aşağıdaki commit adımları HER ZAMAN yalnızca o görevin dosyalarını `git
 - Consumes: mevcut `AiError(status, message, retryAfter?)` ve `OffError(status, message, retryAfter?)` sınıfları; `aiErrorMessage(0)` / `offErrorMessage(0)` = "Sunucuya ulaşılamadı — bağlantını kontrol et."
 - Produces: `export function isBrowserOffline(): boolean` — Node'da (navigator.onLine tanımsız) `false`, tarayıcı çevrimdışıysa `true`. Görev 2-4 bileşenleri bunu KULLANMAZ (context'ten `offline` çeker); yalnızca `ai.ts`/`off.ts` savunma katmanı kullanır.
 
-- [ ] **Step 1: netStatus testini yaz (FAIL)**
+- [x] **Step 1: netStatus testini yaz (FAIL)**
 
 `src/lib/netStatus.test.ts` (YENİ):
 
@@ -76,12 +100,12 @@ describe("isBrowserOffline", () => {
 });
 ```
 
-- [ ] **Step 2: Testin FAIL ettiğini doğrula**
+- [x] **Step 2: Testin FAIL ettiğini doğrula**
 
 Run: `pnpm exec vitest run src/lib/netStatus.test.ts`
 Expected: FAIL — "Failed to resolve import ./netStatus" (modül yok).
 
-- [ ] **Step 3: netStatus.ts'i yaz (PASS)**
+- [x] **Step 3: netStatus.ts'i yaz (PASS)**
 
 `src/lib/netStatus.ts` (YENİ):
 
@@ -102,7 +126,7 @@ export function isBrowserOffline(): boolean {
 Run: `pnpm exec vitest run src/lib/netStatus.test.ts`
 Expected: PASS (4 test).
 
-- [ ] **Step 4: ai.test.ts'e çevrimdışı testini ekle (FAIL)**
+- [x] **Step 4: ai.test.ts'e çevrimdışı testini ekle (FAIL)**
 
 `src/lib/ai.test.ts` — `describe("parseWithAI", …)` bloğunun İÇİNE ekle:
 
@@ -123,7 +147,7 @@ it("çevrimdışıysa isteği hiç açmaz, AiError(0) fırlatır", async () => {
 Run: `pnpm exec vitest run src/lib/ai.test.ts`
 Expected: Yeni test FAIL — fetch çağrılıyor/ağ hatası farklı türde (guard henüz yok).
 
-- [ ] **Step 5: ai.ts'e guard'ı ekle**
+- [x] **Step 5: ai.ts'e guard'ı ekle**
 
 `src/lib/ai.ts` — en üste import:
 
@@ -142,7 +166,7 @@ import { isBrowserOffline } from "./netStatus";
 Run: `pnpm exec vitest run src/lib/ai.test.ts`
 Expected: PASS.
 
-- [ ] **Step 6: off.test.ts'e çevrimdışı testini ekle (FAIL)**
+- [x] **Step 6: off.test.ts'e çevrimdışı testini ekle (FAIL)**
 
 `src/lib/off.test.ts` — `OffError`'ı import satırına ekle; dosyanın uygun `describe` bloğuna (proxy zarfı testlerinin yanına) ekle:
 ```ts
@@ -161,7 +185,7 @@ it("searchOff: çevrimdışıysa isteği hiç açmaz, OffError(0) fırlatır", a
 Run: `pnpm exec vitest run src/lib/off.test.ts`
 Expected: Yeni test FAIL.
 
-- [ ] **Step 7: off.ts'e guard'ları ekle**
+- [x] **Step 7: off.ts'e guard'ları ekle**
 
 `src/lib/off.ts` — en üste import: `import { isBrowserOffline } from "./netStatus";`
 
@@ -176,7 +200,7 @@ Expected: Yeni test FAIL.
 Run: `pnpm exec vitest run src/lib/off.test.ts`
 Expected: PASS.
 
-- [ ] **Step 8: Kapı + commit**
+- [x] **Step 8: Kapı + commit**
 
 Run: `pnpm typecheck && pnpm test && pnpm build`
 Expected: 0 hata; tüm testler geçer; ✓ built.
@@ -199,7 +223,7 @@ git commit -m "feat(offline): ai/off istemcilerinde cevrimdisi savunma guardi (n
 - Consumes: Task 1'in `isBrowserOffline()` KULLANILMAZ — bileşenler context'i kullanır.
 - Produces: `useData().offline: boolean` — tüm bileşenler çevrimdışı durumunu buradan okur. i18n anahtarı `offline.featureUnavailable` (Task 3 de kullanır).
 
-- [ ] **Step 1: i18n anahtarını üç dile ekle**
+- [x] **Step 1: i18n anahtarını üç dile ekle**
 
 `src/i18n/locales/tr.json` — `"opDeleteAlias": "Hafıza sil: {{name}}"` satırından sonra (virgül ekleyerek):
 
@@ -219,7 +243,7 @@ git commit -m "feat(offline): ai/off istemcilerinde cevrimdisi savunma guardi (n
     "featureUnavailable": "Ta funkcja wymaga połączenia z internetem. Spróbuj ponownie po połączeniu."
 ```
 
-- [ ] **Step 2: data.tsx — Ctx'e `offline` ekle**
+- [x] **Step 2: data.tsx — Ctx'e `offline` ekle**
 
 `type Ctx = AppData & Actions & { usageIndex: UsageIndex };` satırını değiştir:
 
@@ -236,7 +260,7 @@ type Ctx = AppData & Actions & { usageIndex: UsageIndex; offline: boolean };
   );
 ```
 
-- [ ] **Step 3: ScanSheet — offline'ı al, kamera akışını ve barkod algılamayı durdur**
+- [x] **Step 3: ScanSheet — offline'ı al, kamera akışını ve barkod algılamayı durdur**
 
 `src/components/ScanSheet.tsx:105`:
 
@@ -258,7 +282,7 @@ type Ctx = AppData & Actions & { usageIndex: UsageIndex; offline: boolean };
     active: scanning && scanMode === "barcode" && ready && !blocked && !offline,
 ```
 
-- [ ] **Step 4: ScanSheet — runVision / captureAndAnalyze / lookupBarcode guard'ları**
+- [x] **Step 4: ScanSheet — runVision / captureAndAnalyze / lookupBarcode guard'ları**
 
 `runVision` gövdesinin en başına:
 
@@ -284,7 +308,7 @@ type Ctx = AppData & Actions & { usageIndex: UsageIndex; offline: boolean };
     }
 ```
 
-- [ ] **Step 5: ScanSheet — deklanşör ve galeri butonlarını kilitle**
+- [x] **Step 5: ScanSheet — deklanşör ve galeri butonlarını kilitle**
 
 Deklanşör butonu (satır ~689) `disabled` koşulunu değiştir:
 
@@ -303,7 +327,7 @@ Galeri butonuna (satır ~701) `disabled` ve sınıf ekle:
               >
 ```
 
-- [ ] **Step 6: Kapı + commit**
+- [x] **Step 6: Kapı + commit**
 
 Run: `pnpm typecheck && pnpm test && pnpm build`
 Expected: 0 hata; tüm testler geçer; ✓ built. (Context değişikliği mevcut testleri bozmaz — bileşen testi yok.)
@@ -323,7 +347,7 @@ git commit -m "feat(offline): ScanSheet ag ozellikleri cevrimdisida kilitli (AI/
 **Interfaces:**
 - Consumes: `useData().offline` (Task 2), `t("offline.featureUnavailable")` (Task 2 i18n), mevcut `useOffCooldown`/`useOffScanner`.
 
-- [ ] **Step 1: Importlar**
+- [x] **Step 1: Importlar**
 
 `src/components/OffSearch.tsx` — import bölümüne ekle (mevcut react importundan sonra):
 
@@ -332,7 +356,7 @@ import { useTranslation } from "react-i18next";
 import { useData } from "../lib/data";
 ```
 
-- [ ] **Step 2: offline + t'yi bileşene al**
+- [x] **Step 2: offline + t'yi bileşene al**
 
 `export function OffSearch({ onPick }: { onPick: (food: OffFood) => void }) {` gövdesinin en başına:
 
@@ -341,7 +365,7 @@ import { useData } from "../lib/data";
   const { offline } = useData();
 ```
 
-- [ ] **Step 3: Arama efekti ve lookupBarcode guard'ları**
+- [x] **Step 3: Arama efekti ve lookupBarcode guard'ları**
 
 Arama efektindeki `if (blocked) return; // kota korumasında yeni istek yok` satırını değiştir:
 
@@ -360,7 +384,7 @@ Aynı efektin dependency dizisine `offline` ekle: `[query, blocked, offline, app
       }
 ```
 
-- [ ] **Step 4: Kamera ve form butonlarını kilitle**
+- [x] **Step 4: Kamera ve form butonlarını kilitle**
 
 `useOffScanner` çağrısını değiştir (kamera yaşam döngüsü `blocked` ile durur):
 
@@ -385,7 +409,7 @@ Elle barkod formunun `onSubmit` satırını ve buton `disabled` koşulunu deği�
           disabled={blocked || offline || barcode.trim() === ""}
 ```
 
-- [ ] **Step 5: Çevrimdışı bildirim çipi**
+- [x] **Step 5: Çevrimdışı bildirim çipi**
 
 Kota çipinin (`{blocked && (…)}` bloğu, ~satır 205) ARKASINA ekle:
 
@@ -397,7 +421,7 @@ Kota çipinin (`{blocked && (…)}` bloğu, ~satır 205) ARKASINA ekle:
       )}
 ```
 
-- [ ] **Step 6: Kapı + commit**
+- [x] **Step 6: Kapı + commit**
 
 Run: `pnpm typecheck && pnpm test && pnpm build`
 Expected: 0 hata; tüm testler geçer; ✓ built.
@@ -417,13 +441,13 @@ git commit -m "feat(offline): OffSearch arama/barkod/kamera cevrimdisida kilitli
 **Interfaces:**
 - Consumes: `useData().offline` (Task 2), mevcut i18n anahtarı `offline.writeUnavailable` (yENİ anahtar GEREKMEZ).
 
-- [ ] **Step 1: Config yazma yolları denetimi (kodsuz doğrulama adımı)**
+- [x] **Step 1: Config yazma yolları denetimi (kodsuz doğrulama adımı)**
 
 Run: `grep -rn "saveGoals\|saveConfig" src --include="*.ts" --include="*.tsx" | grep -v "lib/api.ts\|lib/data.tsx\|lib/exporters"`
 
 Beklenen: TÜM bulgular `updateGoals`/`updateConfig` üzerinden giden bileşenlerdir (App.tsx onboarding, GoalsForm, DayTypeBadge, ExerciseModal, DayView, SettingsSheet, SupplementCard/Settings, WeightCard, AliasPage) — bunlar `data.tsx`'teki `if (offline) throw …writeUnavailable` korumasından geçer. TEK doğrudan yol `lib/exporters.ts:executeRestore` → bu görev onu kilitler. Bu grep çıktısında BEKLENMEDİK bir doğrudan `saveGoals`/`saveConfig` çağrısı görürsen, onu da aynı guard ile kapat (raporla).
 
-- [ ] **Step 2: ExportModal importları ve offline**
+- [x] **Step 2: ExportModal importları ve offline**
 
 `src/components/ExportModal.tsx` — import bölümüne ekle:
 
@@ -439,7 +463,7 @@ Bileşen gövdesinin en başına (state'lerden önce):
   const { t } = useTranslation();
 ```
 
-- [ ] **Step 3: handleStartRestore guard'ı**
+- [x] **Step 3: handleStartRestore guard'ı**
 
 `handleStartRestore` gövdesinin en başındaki `if (!validation || restoring) return;` satırını değiştir:
 
@@ -451,7 +475,7 @@ Bileşen gövdesinin en başına (state'lerden önce):
     }
 ```
 
-- [ ] **Step 4: Onay butonunu kilitle**
+- [x] **Step 4: Onay butonunu kilitle**
 
 Geri yükleme sekmesindeki onay butonunu bul: `onClick={handleStartRestore}` geçen `<button>`. `disabled` koşuluna `offline` ekle ve sınıfa `disabled:opacity-40` ekle. Örnek (mevcut koşul ne ise sonuna `|| offline` eklenir):
 
@@ -459,7 +483,7 @@ Geri yükleme sekmesindeki onay butonunu bul: `onClick={handleStartRestore}` ge�
                 disabled={restoring || !confirmed || offline}
 ```
 
-- [ ] **Step 5: Kapı + commit**
+- [x] **Step 5: Kapı + commit**
 
 Run: `pnpm typecheck && pnpm test && pnpm build`
 Expected: 0 hata; tüm testler geçer; ✓ built. (exporters.test.ts'deki `executeRestore` testleri mock'lu ağ kullanır, etkilenmez.)
@@ -481,7 +505,7 @@ git commit -m "feat(offline): yedek geri yukleme cevrimdisida engellenir + confi
 - Consumes: mevcut modül-içi `activeSync` promise kilidi (aynı sekmede paralel koşu zaten imkânsız).
 - Produces: iç yardımcı `withCrossTabLock<T>(fn: () => Promise<T>): Promise<T>` — export EDİLMEZ. `SyncResult`/`SyncState` API değişmez.
 
-- [ ] **Step 1: Testleri yaz (FAIL)**
+- [x] **Step 1: Testleri yaz (FAIL)**
 
 `src/lib/offlineSync.test.ts` — `describe("syncPending — conflict koruması", …)` bloğundan SONRA yeni blok:
 
@@ -531,7 +555,7 @@ describe("syncPending — çift sekme kilidi", () => {
 Run: `pnpm exec vitest run src/lib/offlineSync.test.ts`
 Expected: İlk test FAIL (kilit yardımcısı yok; `acquisitions` 0 kalır), ikinci PASS.
 
-- [ ] **Step 2: withCrossTabLock yardımcısını ekle**
+- [x] **Step 2: withCrossTabLock yardımcısını ekle**
 
 `src/lib/offlineSync.ts` — `const activeSync …` satırının üstüne:
 
@@ -556,7 +580,7 @@ async function withCrossTabLock<T>(fn: () => Promise<T>): Promise<T> {
 }
 ```
 
-- [ ] **Step 3: syncPending'i kilit içine al**
+- [x] **Step 3: syncPending'i kilit içine al**
 
 `syncPending` içindeki `result = await runSync();` satırını değiştir:
 
@@ -567,7 +591,7 @@ async function withCrossTabLock<T>(fn: () => Promise<T>): Promise<T> {
 Run: `pnpm exec vitest run src/lib/offlineSync.test.ts`
 Expected: PASS (tümü — mevcut testler `locks`'suz Node'da koştuğu için doğrudan yolu kullanır).
 
-- [ ] **Step 4: Kapı + commit**
+- [x] **Step 4: Kapı + commit**
 
 Run: `pnpm typecheck && pnpm test && pnpm build`
 Expected: 0 hata; tüm testler geçer; ✓ built.
@@ -587,7 +611,7 @@ git commit -m "feat(offline): sync cift sekme korumasi (Web Locks, guvenli dusus
 **Interfaces:**
 - Consumes: Task 1-5 sonrası `syncPending`. Yeni export ÜRETİLMEZ — davranış güvenceye alınır.
 
-- [ ] **Step 1: Testleri yaz (FAIL BEKLENTİSİ YOK — davranış zaten doğru, regresyon güvenliği)**
+- [x] **Step 1: Testleri yaz (FAIL BEKLENTİSİ YOK — davranış zaten doğru, regresyon güvenliği)**
 
 Not: Bu testler mevcut davranışı SABİTLER. İlk yazımda da geçmeli; geçmezse gerçek bir hata buldun — düzeltme önceliği bu görevin kendisidir.
 
@@ -634,7 +658,7 @@ describe("syncPending — uç senaryolar", () => {
 Run: `pnpm exec vitest run src/lib/offlineSync.test.ts`
 Expected: PASS (ikisi de). FAIL ederse: 401 testindeki gibi sync'in erken dönüş yollarını kontrol et — `removeOperation` çağrı sırası veya `interrupted` bayrağı bozulmuş demektir; `runSync`'teki `break`/`return` akışını düzelt.
 
-- [ ] **Step 2: Kapı + commit**
+- [x] **Step 2: Kapı + commit**
 
 Run: `pnpm typecheck && pnpm test && pnpm build`
 Expected: 0 hata; tüm testler geçer; ✓ built.
@@ -656,7 +680,7 @@ git commit -m "test(offline): cift cagri tek calistirma + kuyruk ortasi ag kesin
 **Interfaces:**
 - Consumes: Task 1-6 tamamlanmış kod. Otomatik test ÜRETİLMEZ (manuel doğrulama + dokümantasyon görevi).
 
-- [ ] **Step 1: docs/operations/offline.md'i yaz**
+- [x] **Step 1: docs/operations/offline.md'i yaz**
 
 ```markdown
 # Çevrimdışı mod — operasyon dokümanı
@@ -690,7 +714,8 @@ git commit -m "test(offline): cift cagri tek calistirma + kuyruk ortasi ag kesin
 - Çift sekme koruması Web Locks destekli tarayıcılarda tam; eski tarayıcıda modül-içi lock.
 ```
 
-- [ ] **Step 2: plan-graph.html bölüm 3 durumlarını güncelle**
+- [ ] **Step 2: plan-graph.html bölüm 3 durumlarını güncelle** — YAPILMADI: spec artefaktı
+      güncellenmek yerine `docs/archive/superpowers/plan-graph.html`'e taşındı (prod bundle'dan çıktı)
 
 `public/plan-graph.html` — bölüm 3 kartlarında: "AI / kamera / OFF offline kilidi" ve "Hedefler/config kilidinin gözden geçirilmesi" ve "Uç senaryo testleri" kartlarının `<span class="badge todo">Bekliyor</span>` / `<span class="badge todo">Ayrı onay</span>` etiketlerini sırasıyla `<span class="badge done">Tamam</span>` yap; "Server-side revision + 409" kartı `<span class="badge todo">Ayrı onay</span>` olarak KALIR; "Gerçek cihaz offline smoke testi" kartı `<span class="badge partial">Checklist hazır</span>` olur. Bölüm başlığındaki `<span class="tag todo">Sırada</span>` etiketi `<span class="tag wip">Kod tamam · smoke kullanıcıda</span>` olur. "💡 Önerilen sıra" kartındaki metni şununla değiştir:
 
@@ -698,7 +723,7 @@ git commit -m "test(offline): cift cagri tek calistirma + kuyruk ortasi ag kesin
           <p>Offline sync kodu tamamlandı (bölüm 2-3); kalan tek adım bölüm 1'deki senin Play Store adımların ve gerçek cihaz smoke testi (docs/operations/offline.md).</p>
 ```
 
-- [ ] **Step 3: AGENTS.md mimari notuna tek satır**
+- [x] **Step 3: AGENTS.md mimari notuna tek satır**
 
 `AGENTS.md` — "Mimari Notlar" bölümüne ekle:
 
@@ -708,7 +733,7 @@ git commit -m "test(offline): cift cagri tek calistirma + kuyruk ortasi ag kesin
   ağ gerektiren özellikler `offline` context bayrağıyla kilitlenir (bkz. docs/operations/offline.md).
 ```
 
-- [ ] **Step 4: Kapı + commit**
+- [x] **Step 4: Kapı + commit**
 
 Run: `pnpm typecheck && pnpm test && pnpm build`
 Expected: 0 hata; tüm testler geçer; ✓ built.
@@ -748,9 +773,5 @@ git commit -m "docs(offline): manuel smoke checklist + plan-graph durum guncelle
 
 ## Sonraki adım
 
-Plan complete. **İki yol:**
-
-1. **Subagent-Driven (recommended)** — her görev için fresh subagent + görev arası review.
-2. **Inline Execution** — bu oturumda executing-plans ile checkpoint'li toplu yürütme.
-
-Hangisi?
+**Plan yürütüldü ve tamamlandı** (2026-09-13'te dosya bazında doğrulandı). Yeni iş için
+`tasks/todo.md` → AÇIK İŞLER.
