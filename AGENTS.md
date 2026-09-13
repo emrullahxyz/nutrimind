@@ -34,14 +34,16 @@ pnpm install    # bağımlılıkları kur
 pnpm dev        # geliştirme sunucusu (5173) — backend ayrı çalışmalı
 pnpm build      # tsc && vite build
 pnpm typecheck  # tsc --noEmit
-pnpm test       # vitest run (2000+ test)
+pnpm test       # vitest run (804 test — v0.30.0 itibarıyla)
+pnpm preview    # üretim derlemesini 4173'te sunar (/api vekilli) — uçtan uca test
+pnpm check:i18n # 3 dil anahtar parity kontrolü (scripts/check-i18n.mjs)
 pnpm format     # prettier --write .
 pnpm run deploy # dist/ → canlıya yükler. "run" ŞART, çıplak `pnpm deploy` pnpm'in kendi komutuna gider.
 ```
 
-**Doğrulama kapısı (bitirmeden önce çalıştır):** `pnpm typecheck` (0 hata) + `pnpm test` (tümü geçmeli) + `pnpm build` (✓ built).
+**Doğrulama kapısı (bitirmeden önce çalıştır):** `pnpm typecheck` (0 hata) + `pnpm test` (tümü geçmeli) + `pnpm check:i18n` (PARITY OK, 3 dil) + `pnpm build` (✓ built).
 
-**Sürüm (release) kuralı:** Her yeni sürümde `src/lib/version.ts` `APP_VERSION` yükseltilir + `src/lib/changelog.ts` başına giriş eklenir (version, date, summary tr/en, items; `dev` yalnızca gerekiyorsa). Popup, localStorage "seen" bayrağı olmayan sürümleri otomatik gösterir — giriş eklenmezse popup çıkmaz. Kapı: `pnpm test` (changelog.test.ts semver sırası + alan bütünlüğünü zaten doğrular).
+**Sürüm (release) kuralı:** Her yeni sürümde `src/lib/version.ts` `APP_VERSION` yükseltilir + `src/lib/changelog.ts` başına giriş eklenir (version, date, summary tr/en, items; `dev` yalnızca gerekiyorsa). Popup, localStorage "seen" bayrağı olmayan sürümleri otomatik gösterir — giriş eklenmezse popup çıkmaz. Kapı: `pnpm test` (changelog.test.ts semver sırası + alan bütünlüğünü zaten doğrular). Kullanıcıya görünen sürüm geçmişinin **tek kaynağı** `src/lib/changelog.ts`'tir; kökteki `CHANGELOG.md` yalnızca köprüdür.
 
 ## Mimari
 
@@ -54,19 +56,29 @@ src/
   types.ts             # domain tipleri (tek doğruluk kaynağı)
   components/          # UI bileşenleri (görünüme göre alt klasörleme YOK, düz)
   pages/               # DailyPage, HistoryPage, AliasPage, ...
-  hooks/               # useModalHistory, useModalExit, useBodyScrollLock, ...
-  lib/                 # yardımcılar: data.tsx (context), api.ts, ai.ts, nutrition.ts, ...
+  hooks/               # useModalHistory, useModalExit, useDialogFocus, useBodyScrollLock,
+                       # useLongPress, usePressGate, useSpring, ...
+  lib/                 # yardımcılar: data.tsx (context), api.ts, ai.ts, nutrition.ts,
+                       # focusTrap.ts, anchor.ts, offline*.ts, ...
   i18n/                # react-i18next: i18n.ts, locales/{en,tr,pl}.json
 server/
   index.js             # giriş noktası, node:http + node:sqlite (DONMUŞ, aşağıya bak)
   ai.js                # Gemini proxy — İZole modül
-  auth.js, googleAuth.js, authRoutes.js, migrate.js, setpassword.js
+  auth.js, googleAuth.js, authRoutes.js, feedbackRoutes.js, migrate.js, meals.js, setpassword.js
+  backup.sh            # data.db günlük yedeği (systemd timer) → docs/operations/backup.md
+  *.test.js            # sunucu tarafı testleri (vitest süitine dahil)
   data.db              # SQLite veritabanı (çalışma anında oluşur, repo'da YOK)
-public/                # statik dosyalar, service worker, manifest.webmanifest, privacy.html
+scripts/
+  check-i18n.mjs       # pnpm check:i18n — 3 dil anahtar parity kontrolü
+public/                # statik dosyalar, service worker, manifest.webmanifest, privacy.html,
+                       # policies/{en,pl}.html, .well-known/assetlinks.json
 android/               # Capacitor Android wrapper (kaynak kodu, build artifact'leri .gitignore'da)
 capacitor.config.ts    # appId: com.emrullah.nutrimind, webDir: dist
-docs/archive/          # arşivlenmiş eski dokümanlar (salt-okunur, silme)
-tasks/                 # todo.md + lessons.md (aktif iş takibi)
+docs/operations/       # operasyon runbook'ları: backup.md · offline.md · security.md
+docs/superpowers/plans/# yeni uygulama planlarının yazıldığı yer (bkz. oradaki README.md)
+docs/archive/superpowers/ # tamamlanmış, kanıtla işaretlenmiş planlar + plan-graph.html
+docs/archive/          # arşivlenmiş eski dokümanlar (salt-okunur; mevcut içerik silinmez/düzenlenmez)
+tasks/                 # todo.md (açık işler + tarihçe) · lessons.md (L1…L20)
 ```
 
 ## Kritik Kurallar
@@ -88,10 +100,18 @@ tasks/                 # todo.md + lessons.md (aktif iş takibi)
    kullan. Anahtarlar `src/i18n/locales/{en,tr,pl}.json` içinde. Yeni metin eklerken
    3 dile de ekle. navigator.language otomatik algılama (EN default). localStorage override.
 7. **Play Store / Capacitor:** TWA için `public/.well-known/assetlinks.json` SHA-256 fingerprint
-   ile dolu olmalı (boşsa placeholder). `android/` kaynak kodu commit'lenir; `*.jks`, `*.keystore`,
-   `android/app/build/` ASLA commit'lenmez.
+   ile dolu olmalı. **Bugün hâlâ placeholder** (`REPLACE_WITH_SHA256_FINGERPRINT_AFTER_KEYSTORE_CREATION`)
+   → keystore üretilmeden yayın mümkün değil (bkz. `docs/archive/superpowers/2026-08-26-play-store-readiness.md`
+   Task 21). `android/` kaynak kodu commit'lenir; `*.jks`, `*.keystore`, `android/app/build/`
+   ASLA commit'lenmez.
 8. **Github commit ve push:** Commit ve push yapılırken `Co-Authored-By: Claude` tarzında herhangi bir 
    ajanı veya yapay zeka modeli dahil edilmemeli. Sadece uygulamanın sahibi authored olmalı.
+9. **Diyalog/overlay tek reçetesi:** Odak yönetimini veya geri-tuşu/geçmiş yönetimini ELLE YAZMA.
+   Her modal/sheet ya `components/Modal.tsx` ya da `useDialogFocus()` (odak tuzağı + Tab döngüsü +
+   kapanışta odak iadesi) + `useModalHistory()` kullanır. `aria-modal="true"` yazmak kendi başına
+   tuzak KURMAZ. Bu sınıf (bkz. `tasks/lessons.md` L9/L18/L19) aynı hatayı üç kez üretti.
+10. **Ders numaraları dışarıdan atıf alır:** `tasks/lessons.md` içindeki mevcut bir `L<n>` numarasını
+   DEĞİŞTİRME — `todo.md` ve kod yorumları ona atıf yapar. Yeni ders daima `en büyük + 1` alır.
 
 ## Mimari Notlar
 
@@ -101,7 +121,9 @@ tasks/                 # todo.md + lessons.md (aktif iş takibi)
 - Yazma uçları hazır: `POST /api/day`, `DELETE /api/day/:date`, `PUT /api/goals`, `POST /api/alias`, `DELETE /api/alias/:id`.
 - Gemini AI entegrasyonu `src/lib/ai.ts` (istemci) → `POST /api/ai/parse` → `server/ai.js` şeklindedir.
   Kill-switch: `.env`'deki `NUTRIMIND_LLM_PROVIDER` değeri `"gemini"` değilse 503 döner.
-- Kamera akışı: `src/lib/camera.ts` (kamera yaşam döngüsü) + `src/lib/scan.ts` (barkod tarama) ayrıdır.
+- Kamera akışı üç ayrı modüldür: `src/lib/camera.ts` (kamera yaşam döngüsü, `useCameraStream`)
+  · `src/lib/offScanner.ts` (barkod tarama, `useOffScanner`) · `src/lib/scan.ts` (tarama → öğün
+  tohumlama: `defaultScanGrams`/`seedTrigger`).
 - Çevrimdışı yazma: `src/lib/offlineCache.ts` (IndexedDB v2 kuyruk) + `offlineProjection.ts`
   (saf projeksiyon) + `offlineSync.ts` (conflict korumalı sync) + `components/SyncStatus.tsx`;
   ağ gerektiren özellikler `offline` context bayrağıyla kilitlenir (bkz. docs/operations/offline.md).

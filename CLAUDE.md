@@ -10,4 +10,11 @@ Lütfen aşağıdaki konular için oraya bak:
 - **Komutlar** — `typecheck`, `test`, `build`, `format`, `deploy`
 - **Mimari** — klasör yapısı, `server/index.js` donmuş kuralı, yazma deseni
 - **Kritik kurallar** — salt-okunur referanslar, veri güvenliği, kodlama dili
-- **Doğrulama kapısı** — iş bitince çalıştırılması gereken komutlar
+- **Doğrulama kapısı** — iş bitince çalıştırılması gereken komutlar (`typecheck` + `test` + `check:i18n` + `build`)
+
+Ayrıca:
+
+- **Açık işler ve tarihçe** — `tasks/todo.md` (başındaki `## AÇIK İŞLER` bloğu güncel olandır)
+- **Dersler (L1…)** — `tasks/lessons.md`; numaralar dışarıdan atıf alır, mevcut numara değiştirilmez
+- **Operasyon runbook'ları** — `docs/operations/` (backup · offline · security)
+- **Sürüm geçmişi** — `src/lib/changelog.ts` (kökteki `CHANGELOG.md` yalnızca köprüdür)

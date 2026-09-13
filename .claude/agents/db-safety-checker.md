@@ -8,8 +8,12 @@ Yeni bir alan `src/types.ts` içindeki `MealItem` veya `MealPayload`'a eklendiğ
 
 Her yeni alan için kontrol et:
 
-1. **Yazma katmanı** — `src/lib/api.ts` içindeki `toPayload()` alanı yazıyor mu? (`MealPayload`'a dönüşümde.)
-2. **Okuma katmanı** — `src/lib/data.tsx` içindeki `fetchData()`'nın `RawMeal` ayrıştırma mantığı alanı geri okumuyor mu? (İsim İngilizce → Türkçe anahtar eşlemeleri varsa dikkat.)
+1. **Yazma katmanı** — `src/lib/days.ts` içindeki `toPayload()` alanı yazıyor mu? (`MealItem` →
+   `MealPayload` dönüşümü; `src/lib/api.ts` içindeki `saveDay` bunu olduğu gibi gönderir.)
+2. **Okuma katmanı** — `src/lib/api.ts` içindeki `fetchData()` alanı geri okuyor mu? Besin değeri
+   `fill()`, kaynaklar `parseSources()`, öğün saati `parseLoggedAt()`, kategori `parseMealCategory()`,
+   alias tarafı `parseUnits()`/`parseRecipe()`/`optionalText()` ile ayrıştırılır. (Eski `RawMeal`
+   ayrıştırması `src/lib/data.tsx`'ten `api.ts`'e taşındı — orada arama yapma.)
 3. **Depolama** — `server/data.db` şeması alanı saklıyor mu? (Salt-okunur; yalnızca `Grep`/`node:sqlite` ile `SELECT` gibi okuma yap, yazma yok.) `server/index.js` **donmuştur** — dokunma, okuma bile gerekmediği sürece açma.
 
 Raporlama biçimi: Her alan için `"field X lost on write"` veya `"field X lost on read"` veya `"field X OK (full round-trip)"`. Tutarsızlık bulursan hangi dosyada/satırda eksik olduğunu belirt.
