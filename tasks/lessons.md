@@ -1,7 +1,11 @@
 # tasks/lessons.md
 
-CLAUDE.md §3 "Kendini Geliştirme Döngüsü" gereği: kullanıcıdan gelen her düzeltmeden sonra kalıp
+AGENTS.md "Kendini Geliştirme Döngüsü" gereği: kullanıcıdan gelen her düzeltmeden sonra kalıp
 buraya yazılır. Amaç aynı hatayı iki kez yapmamak.
+
+**Numaralandırma kuralı (AGENTS.md madde 10):** mevcut bir `L<n>` numarası DEĞİŞTİRİLMEZ —
+`todo.md` ve kod yorumları ona atıf yapar. Yeni ders daima **en büyük + 1** alır. Bölümler artan
+sırada tutulur; sıra karışırsa yalnızca blok taşınır, numara değişmez.
 
 ---
 
@@ -46,6 +50,16 @@ açıkça yasakladı.
 
 **Kural:** `server/index.js`'te bir bug bulsam bile **önce sor**. Yeni backend mantığı gerekiyorsa
 izole modül deseni (`server/ai.js` gibi: asla throw etme, `{status, body}` dön).
+
+## L6 — Kullanıcıya seçenek sunarken premisi doğrula
+
+**Olay:** "Kullanıcı başına ayrı DB" seçeneğini "şema hiç değişmez, göç riski sıfır" diye sundum.
+Tasarım incelemesi bunun kısmen yanlış olduğunu gösterdi: oturumun hangi dosyayı açacağını bilmesi
+için `users`+`sessions` tablosu her hâlükârda gerekiyor, yani ayrı-dosya yolu da şema ekliyor.
+Kullanıcı kararını yanlış premisle vermişti; düzeltilmiş bilgiyle tekrar soruldu.
+
+**Kural:** AskUserQuestion'daki her seçeneğin gerekçesi, sorulmadan önce kodda doğrulanmış olmalı.
+Sonradan yanlış çıkarsa **sessizce devam etme** — düzeltip yeniden sor.
 
 ## L7 — Dev'deki tuhaflık üretimdeki bug demek değildir
 
@@ -132,23 +146,6 @@ Windows/git-bash'te sessizce başarısız olabiliyor; port hâlâ eski PID'deyse
 Bu, L8'in ("gizli panelde DOM ölçümü güvenilmez") sunucu tarafındaki kardeşi: **önce ölçüm
 aracına güven, sonra bulguya.**
 
-## L14 — `transform` içeren animasyonun fill-mode'u `both`/`forwards` ise eleman KALICI containing block olur
-
-**Olay (2026-08-09):** Kullanıcı İlerleme → hafta → gün drilldown'ında bir öğüne tıklayınca
-düzenleme ekranının ekranın en üstünde, görünmezde açıldığını bildirdi; Bugün sekmesinde aynı
-ekran düzgün açılıyordu. Kök neden: drilldown'ı saran `.anim-zoom` (`animation: zoomIn … both`)
-`transform` animasyon ediyor; `fill-mode: both/forwards`, animasyon BİTSE bile tarayıcının o
-elemanı `position: fixed` torunları için **kalıcı containing block** olarak ele almasına yol açıyor
-(CSS Animations spec + WebKit Bug 176858). `NutritionSheet`/`MealForm` portal kullanmıyor
-(`Modal.tsx` kullanıyor, bunlar etmiyor) — `fixed inset-0` viewport yerine sarmalın tepesine
-(sayfa en üstüne, scroll'un üstüne) hizalandı. Bugün sekmesinde transform sarmalı yok → orada doğru.
-
-**Kural:** `position: fixed` torun üreten bir elemanın üstündeki animasyonda `transform` varsa
-fill-mode `backwards` veya `none` olmalı (bitince eleman containing block olmaktan çıkar; son
-kare `transform:none` olduğu için görsel kayıp yok). `forwards`/`both` + `transform` = kalıcı
-containing block. Aynı sarmal altında inline `fixed` modal açılıyorsa (portal yoksa) özellikle
-tehlikeli. Kontrol listesi: "bu modalın atalarında animasyonlu transform var mı?"
-
 ## L13 — `Cache-Control` YOKSA tarayıcı kendi kararını verir
 
 **Olay (Faz I sonrası):** Kullanıcı güncellemeden sonra uygulamayı açtı ve
@@ -169,28 +166,22 @@ Başlık yokluğu "önbellekleme yok" DEĞİLDİR; tarayıcının kendi kararın
 **İkinci ders:** Bir hata mesajının METNİ hangi sürümün çalıştığını söyleyebilir. Mimariyi
 suçlamadan önce "bu cümle hangi koddan geliyor?" diye sor.
 
-## L6 — Kullanıcıya seçenek sunarken premisi doğrula
+## L14 — `transform` içeren animasyonun fill-mode'u `both`/`forwards` ise eleman KALICI containing block olur
 
-**Olay:** "Kullanıcı başına ayrı DB" seçeneğini "şema hiç değişmez, göç riski sıfır" diye sundum.
-Tasarım incelemesi bunun kısmen yanlış olduğunu gösterdi: oturumun hangi dosyayı açacağını bilmesi
-için `users`+`sessions` tablosu her hâlükârda gerekiyor, yani ayrı-dosya yolu da şema ekliyor.
-Kullanıcı kararını yanlış premisle vermişti; düzeltilmiş bilgiyle tekrar soruldu.
+**Olay (2026-08-09):** Kullanıcı İlerleme → hafta → gün drilldown'ında bir öğüne tıklayınca
+düzenleme ekranının ekranın en üstünde, görünmezde açıldığını bildirdi; Bugün sekmesinde aynı
+ekran düzgün açılıyordu. Kök neden: drilldown'ı saran `.anim-zoom` (`animation: zoomIn … both`)
+`transform` animasyon ediyor; `fill-mode: both/forwards`, animasyon BİTSE bile tarayıcının o
+elemanı `position: fixed` torunları için **kalıcı containing block** olarak ele almasına yol açıyor
+(CSS Animations spec + WebKit Bug 176858). `NutritionSheet`/`MealForm` portal kullanmıyor
+(`Modal.tsx` kullanıyor, bunlar etmiyor) — `fixed inset-0` viewport yerine sarmalın tepesine
+(sayfa en üstüne, scroll'un üstüne) hizalandı. Bugün sekmesinde transform sarmalı yok → orada doğru.
 
-**Kural:** AskUserQuestion'daki her seçeneğin gerekçesi, sorulmadan önce kodda doğrulanmış olmalı.
-Sonradan yanlış çıkarsa **sessizce devam etme** — düzeltip yeniden sor.
-
-## L7 — Gösterim dönüşümü veri mutasyonuyla eşittir (aç-kaydet sözleşmesi)
-
-**Olay:** NutritionSheet'in `scaleMealNutrition` fonksiyonu `multiplier===1` olsa bile her alana
-`.toFixed(1)` uyguluyordu. Sheet'i kurarken draft bu tırnaklanmış değerden doğuyordu; kayıt
-`fromDraft` ile **gösterilen değeri** DB'ye geri yazıyordu. Yani kullanıcı elini sürmeden
-`carbs: 8.75 → 8.8` sessizce değişti. SEV3, rapor-only turunda kod okunarak değil gerçek DB
-diff'iyle yakalandı.
-
-**Kural:** Bir input ekranından "Kaydet" bastığında yazılan şey, input'un **gösterdiği değerdir**.
-Dolayısıyla gösterim katmanındaki herhangi bir yuvarlama/biçim dönüşümü kalıcı veri mutasyonu olur.
-Dönüşümü ölçekleme yoluna (m≠1) ayır; temel değer kayıpsız kalmalı. Bir form işlevini değiştirirken
-"gösterilen değer kaydediliyor mu, gösterim veriyi tırnaklıyor mu" diye aç-kaydet testi yaz.
+**Kural:** `position: fixed` torun üreten bir elemanın üstündeki animasyonda `transform` varsa
+fill-mode `backwards` veya `none` olmalı (bitince eleman containing block olmaktan çıkar; son
+kare `transform:none` olduğu için görsel kayıp yok). `forwards`/`both` + `transform` = kalıcı
+containing block. Aynı sarmal altında inline `fixed` modal açılıyorsa (portal yoksa) özellikle
+tehlikeli. Kontrol listesi: "bu modalın atalarında animasyonlu transform var mı?"
 
 ## L15 — `animation` kısayolunun içine `var()` koyma: pending-substitution cascade'i ezer
 
@@ -269,3 +260,16 @@ dolayısıyla odak `<body>`'ye düşüyordu.
 ref'te ve değiştirmeden ÖNCE yapılmalı. Efekt sırası (aynı bileşendeki yazılış sırası) bir
 sözleşmedir; bir ref'i başka bir efektin yan etkisine emanet etme. Tarayıcı ölçümü olmadan bu
 hata görünmez (tipcheck ve birim testleri geçiyordu).
+
+## L20 — Gösterim dönüşümü veri mutasyonuyla eşittir (aç-kaydet sözleşmesi)
+
+**Olay:** NutritionSheet'in `scaleMealNutrition` fonksiyonu `multiplier===1` olsa bile her alana
+`.toFixed(1)` uyguluyordu. Sheet'i kurarken draft bu tırnaklanmış değerden doğuyordu; kayıt
+`fromDraft` ile **gösterilen değeri** DB'ye geri yazıyordu. Yani kullanıcı elini sürmeden
+`carbs: 8.75 → 8.8` sessizce değişti. SEV3, rapor-only turunda kod okunarak değil gerçek DB
+diff'iyle yakalandı.
+
+**Kural:** Bir input ekranından "Kaydet" bastığında yazılan şey, input'un **gösterdiği değerdir**.
+Dolayısıyla gösterim katmanındaki herhangi bir yuvarlama/biçim dönüşümü kalıcı veri mutasyonu olur.
+Dönüşümü ölçekleme yoluna (m≠1) ayır; temel değer kayıpsız kalmalı. Bir form işlevini değiştirirken
+"gösterilen değer kaydediliyor mu, gösterim veriyi tırnaklıyor mu" diye aç-kaydet testi yaz.

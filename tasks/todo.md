@@ -1,7 +1,27 @@
 # tasks/todo.md
 
-Bu dosya CLAUDE.md'nin "Görev Yönetimi" bölümünün istediği çalışan plandır. Onaylı plan
-`~/.claude/plans/` altında; buradaki liste onun yürütme takibidir.
+**Güncel olan tek bölüm aşağıdaki `## AÇIK İŞLER` bloğudur.** Altındaki faz kayıtları tarihçedir
+(silinmez, yalnızca eklenir). Ayrıntılı uygulama planları `docs/superpowers/plans/` altında tutulur
+ve tamamlanınca `docs/archive/superpowers/`'e taşınır. (Eski `~/.claude/plans/` yolu artık
+kullanılmıyor; CLAUDE.md de yalnızca AGENTS.md'ye köprüdür.)
+
+## AÇIK İŞLER
+
+- [ ] **Saide'nin Google girişi** — Google Cloud Console → OAuth consent screen ("Testing") →
+      **Test users** listesine eklenmeli; eklenmezse Google onu reddeder (parolayla giriş çalışır).
+- [ ] **Play Store yayını** — keystore üret → SHA-256 fingerprint →
+      `public/.well-known/assetlinks.json` placeholder'ını doldur → signed AAB → Console yükleme.
+      Adımlar: `docs/archive/superpowers/2026-08-26-play-store-readiness.md` Task 21.
+- [ ] **Uygulamada "çıkış yap" düğmesi yok.**
+- [ ] **Uygulamada parola değiştirme ekranı yok** (şimdilik `server/setpassword.js` ile sunucudan).
+- [ ] **Prod `.env`: `NUTRI_AI_RATE_VISION`** (varsayılan 5/dk, `server/ai.js`) — birkaç denemeden
+      sonra vision rate limit'e takılıyor; kod değişikliği gerekmiyor, tek satır env.
+
+**Bu taramada kapatılanlar (2026-09-13):** a11y kalemlerinin ikisi de doğrulandı ve kapandı —
+`OnboardingModal.tsx:448` `w-20 sm:w-24` (320 px taşması) ve `FormBits.tsx:17,51,88` `useId`+`htmlFor`
+eşleşmesi. Odak tuzağı işi de tamamlandı (`useDialogFocus`, v0.30.0). İki superpowers planı
+(play-store Task 17-20/22/23 · offline Task 1-7) dosya bazında doğrulanıp arşive taşındı:
+`docs/archive/superpowers/`.
 
 ---
 
@@ -73,14 +93,18 @@ Dördü de doğrulandı ve düzeltildi:
 **Kullanıcı doğrulaması (2026-08-06):** ✅ ana kamera açılıyor, odaklama çok iyi çalışıyor.
 Kalan tek şikâyet: birkaç denemeden sonra AI hatası → **rate limit**. `NUTRI_AI_RATE_VISION`
 sunucuda varsayılan **5/dk** (`server/ai.js:77`). Kod değişikliği gerekmiyor, prod `.env`'de
-tek satır. Kullanıcı "sonra çözeriz" dedi — **bekliyor.**
+tek satır. → **AÇIK İŞLER'e taşındı.**
 
-### Kalan borç (ayrı bir iş)
-`MealForm`/`AliasForm`/`NutritionSheet`/`RecipeBuilder` `Modal`'ın geçmiş mantığını
-elle KOPYALIYOR ve temizlikte `history.back()` yerine `replaceState` kullanıyor —
-bu yüzden her form açılışı geçmiş yığınına harcanmış bir girdi bırakıyor. Doğrusu
-tek bir `useModalHistory` hook'una çıkarmak; aynı hata sınıfı (L9) böylece üçüncü
-kez tekrarlanmaz. Kapsam 5 bileşen, ayrıca planlanmalı.
+### ~~Kalan borç (ayrı bir iş)~~ — KAPANDI (2026-09-13)
+`MealForm`/`AliasForm`/`NutritionSheet`/`RecipeBuilder`, `Modal`'ın geçmiş mantığını elle
+kopyalıyordu ve temizlikte `history.back()` yerine `replaceState` kullanıyordu — her form açılışı
+geçmiş yığınına harcanmış bir girdi bırakıyordu. Doğrusu tek bir `useModalHistory` hook'una
+çıkarmaktı.
+
+**Durum (ölçüldü):** dört bileşenin de artık `popstate` dinleyicisi **0**; hepsi `useModalHistory`
+kullanıyor. Aynı turda odak yönetimi de `useDialogFocus` altında tekleşti (2026-09-13 çalışması,
+v0.30.0). Kural olarak yazıldı: AGENTS.md madde 9 — bu hata sınıfı (L9) bir daha elle
+tekrarlanmasın.
 
 ## Sonraki fazlar (onaylı planda ayrıntılı)
 
@@ -103,7 +127,7 @@ kez tekrarlanmaz. Kapsam 5 bileşen, ayrıca planlanmalı.
       anahtarlanmış bir IndexedDB deposu ister — ayrı bir iş.
       Deploy edildi (`7ed7163`): canlı `sw.js` HTTP 200, `nutrimind-v2` + `/api/` filtresi doğrulandı.
 - [x] **D** DB göçü v0 → v2. `server/migrate.js` (+12 test) ve `server/index.js`'te 19 sorgu
-      noktasının kapsamlanması. **Kullanıcı onayı alındı** (CLAUDE.md'nin donmuş dosya kuralı).
+      noktasının kapsamlanması. **Kullanıcı onayı alındı** (AGENTS.md madde 1'in donmuş dosya kuralı).
       Oturum kavramı YOK — `currentUserId()` sabit sahibi döndürüyor, uygulama aynen bugünkü
       gibi çalışıyor. Faz E'de değişecek TEK yer o fonksiyon.
       **Prod yedeği:** `data.db.bak-2026-08-06-1030` (sunucuda + yerel kopya), integrity ok.
@@ -201,10 +225,13 @@ kez tekrarlanmaz. Kapsam 5 bileşen, ayrıca planlanmalı.
 - [ ] **Saide'nin ilk girişi bekliyor.** ⚠️ Google ile girebilmesi için Google Cloud
       Console'da **Test users** listesine eklenmesi gerekiyor (consent screen "Testing"
       modunda). Eklenmezse Google onu reddeder; parolayla giriş her hâlükârda çalışır.
+      → **AÇIK İŞLER'e taşındı.**
 
 ### Kalan küçük işler (kullanıcıya önerildi, henüz onaylanmadı)
 - Uygulamada **çıkış yap** düğmesi yok.
 - Uygulamada **parola değiştirme** ekranı yok (şimdilik `setpassword.js` ile sunucudan).
+
+→ İkisi de **AÇIK İŞLER'e taşındı** (2026-09-13).
 
 ---
 
@@ -249,7 +276,7 @@ sonraki üç denemede 200 döndü. Uygulama bunu doğru karşıladı (tarayıcı
 
 **Kararlar:** rapor-only (kod değişikliği YOK; `server/index.js` donmuş). AI kill-switch davranışı
 test edildi (503 + UI hatası), Gemini anahtarı kullanılmadı. Ortam: `NUTRI_DB=server/data.qa.db`
-scatch DB + `pnpm preview` (4173). Detaylı rapor: `docs/qa/2026-08-09-bulgu-raporu.md`.
+scatch DB + `pnpm preview` (4173). Detaylı rapor: `docs/archive/qa/2026-08-09-bulgu-raporu (yapıldı).md`.
 
 **Sonuç:** 11 fazdan Faz 0-10 tamamlandı; **7 bulgu** (1 SEV3 + 6 SEV4), Faz 8 (back-stack/nav)
 **0 bulgu**. Tarihsel bug'ların tamamı (onboarding 400, bayat-profil ezme, FAB yeniden açılma,
