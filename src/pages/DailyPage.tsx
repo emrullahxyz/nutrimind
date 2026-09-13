@@ -50,6 +50,7 @@ export function DailyPage({
         date={selectedDate}
         emptyLabel={t("empty.dayView")}
         showWeightCard={false}
+        showTemplates
         onOpenSupplementSettings={onOpenSupplementSettings}
         triggerAddMeal={triggerAddMeal}
         onResetTriggerAddMeal={onResetTriggerAddMeal}

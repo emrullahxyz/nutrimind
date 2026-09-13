@@ -682,7 +682,27 @@
     }
   },
   "mealRow": {
-    "saveTemplate": "Şablon yap"
+    "more": "Diğer işlemler"
+  },
+  "mealMenu": {
+    "title": "Öğün İşlemleri",
+    "template": "Şablon olarak kaydet",
+    "templateTitle": "Şablon Adı",
+    "templateHint": "Sık yediğin öğünleri tek dokunuşla eklemek için kaydet.",
+    "templateNameLabel": "Şablon Adı",
+    "templateNamePlaceholder": "örn. Antrenman sonrası",
+    "templateSaved": "Şablon kaydedildi",
+    "duplicateAgain": "Aynısından bir tane daha ekle",
+    "duplicateToday": "Bugüne ekle",
+    "duplicateDone": "Bugüne eklendi",
+    "edit": "Düzenle",
+    "select": "Seç",
+    "recipe": "Tarif olarak kaydet (100 g)",
+    "delete": "Sil",
+    "deleteTitle": "Öğünü Sil",
+    "deleteConfirm": "Bu öğün silinsin mi?",
+    "deleteConfirmYes": "Evet, sil",
+    "offlineTemplate": "Şablon kaydetmek için internet bağlantısı gerekli."
   },
   "meal": {
     "titleAdd": "Öğün Ekle",
@@ -824,7 +844,7 @@
     "searchNoResults": "\"{{query}}\" aramasıyla eşleşen besin bulunamadı.",
     "recipeBadge": "tarif",
     "templatesSubtitle": "Sık tükettiğin öğünleri tek dokunuşla eklemek için kaydedilmiş şablonlar",
-    "templatesEmpty": "Henüz şablon yok. Bugün sekmesinde bir öğünü 'Şablon yap' diyerek kaydedebilirsin.",
+    "templatesEmpty": "Henüz şablon yok. Bugün sekmesinde bir öğüne uzun basıp \"Şablon olarak kaydet\" diyerek kaydedebilirsin.",
     "items": "kalem"
   },
   "vision": {

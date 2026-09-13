@@ -123,7 +123,10 @@ export function HistoryPage({ resetKey = 0 }: { resetKey?: number }) {
             <div className="text-[11px] text-ink-tertiary">{formatLongDate(selectedDay)}</div>
           </div>
         </div>
-        <DayView date={selectedDay} />
+        {/* Şablon çipleri yalnızca Bugün'de: geçmiş bir güne şablon uygulamak
+            (o günün öğün dizisini değiştirmek) kolay yanlış olurdu. Uzun-bas
+            menüsü burada da açık — şablon KAYDETME geçmişten de yapılabilir. */}
+        <DayView date={selectedDay} showTemplates={false} />
       </div>
     );
   }

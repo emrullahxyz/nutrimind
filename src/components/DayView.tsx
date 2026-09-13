@@ -11,15 +11,22 @@ import { ScanSheet } from "./ScanSheet";
 import { SupplementCard } from "./SupplementCard";
 import { WeightCard } from "./WeightCard";
 import { MealRow } from "./MealRow";
+import { MealActionSheet } from "./MealActionSheet";
+import { RecipeBuilder } from "./RecipeBuilder";
 import { ExerciseModal } from "./ExerciseModal";
 import { NutritionSheet } from "./NutritionSheet";
-import { formatKcal } from "../lib/format";
+import { useToast } from "./Toast";
+import { formatKcal, todayISO } from "../lib/format";
 import { useData } from "../lib/data";
+import { afterHistoryBackSettles } from "../lib/backStack";
 import { effectiveGoal } from "../lib/goals";
 import { MACROS, MICROS } from "../lib/nutrients";
 import { coverage, dayTotal, mealsOf, sumMeals, toPayload } from "../lib/days";
-import { newTemplateId, parseTemplatesConfig } from "../lib/templates";
+import { parseTemplatesConfig } from "../lib/templates";
 import type { MealTemplate } from "../lib/templates";
+import { buildRecipePreset, canSaveAsRecipe, duplicatePayload, mealToTemplate } from "../lib/mealActions";
+import type { RecipePreset } from "../lib/mealActions";
+import type { PanelAnchor } from "../lib/anchor";
 import type { AIParseItem, Exercise, MealItem, MealPayload } from "../types";
 import { PREF } from "../lib/prefs";
 import { usePersistedBool } from "../lib/usePersistedBool";
@@ -114,6 +121,7 @@ export function DayView({
   triggerExercise,
   onResetTriggerExercise,
   showWeightCard = true,
+  showTemplates = true,
   onOpenSupplementSettings,
   resetKey = 0,
 }: {
@@ -131,10 +139,15 @@ export function DayView({
   onResetTriggerExercise?: () => void;
   onOpenSupplementSettings?: () => void;
   showWeightCard?: boolean;
+  /** Şablon çipleri: yalnızca Bugün'de gösterilir (Geçmiş gün detayında değil).
+   *  `enableScan`den AYRI — o bayrak tarama giriş noktası içindi ve Bugün'de
+   *  artık hiç geçilmiyor; şablonlar bu yüzden erişilemez kalmıştı. */
+  showTemplates?: boolean;
   resetKey?: number;
 }) {
   const { t } = useTranslation();
-  const { goals, days, setDayMeals, config, updateConfig } = useData();
+  const { goals, days, setDayMeals, config, updateConfig, aliases, offline } = useData();
+  const { showToast } = useToast();
   const goal = effectiveGoal(goals, date);
   const meals = mealsOf(days, date);
   const total = dayTotal(days, date);
@@ -152,6 +165,16 @@ export function DayView({
   const [selectedIndices, setSelectedIndices] = useState<number[]>([]);
   const [selectMode, setSelectMode] = useState(false);
   const [showMergeModal, setShowMergeModal] = useState(false);
+  /** Uzun-bas menüsü hangi öğün için açık (index = o anki gün içi sıra). */
+  // `anchor`: menünün demirleneceği satır + menüyü doğuran basış (çapa noktası
+  // ve basış kapısının işaretçisi — bkz. `lib/pressGate.ts`).
+  const [menuFor, setMenuFor] = useState<{
+    meal: MealItem;
+    index: number;
+    anchor: PanelAnchor;
+  } | null>(null);
+  /** "Hafızaya tarif olarak kaydet" ön dolgusu — `RecipeBuilder` modalını açar. */
+  const [recipePreset, setRecipePreset] = useState<RecipePreset | null>(null);
 
   useEffect(() => {
     if (resetKey > 0) {
@@ -159,6 +182,8 @@ export function DayView({
       setEditIndex(undefined);
       setShowExerciseModal(false);
       setShowMergeModal(false);
+      setMenuFor(null);
+      setRecipePreset(null);
     }
   }, [resetKey]);
   const [showScan, setShowScan] = useState(false);
@@ -247,6 +272,60 @@ export function DayView({
     } finally {
       setBusy(false);
     }
+  }
+
+  /** Şablon kaydetme — v0.26.2'de kaldırılan aksiyonun geri dönüşü; tek fark
+   *  adın artık menüdeki isim diyaloğundan gelmesi. */
+  async function saveAsTemplate(meal: MealItem, name: string) {
+    if (busy) return;
+    setErr(null);
+    setBusy(true);
+    try {
+      await updateConfig("templates", { list: [...templates.list, mealToTemplate(meal, name)] });
+      showToast(t("mealMenu.templateSaved"), "success");
+    } catch (e) {
+      setErr(String((e as Error)?.message ?? e));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  /** "Aynısını bugüne ekle": hangi güne bakılırsa bakılsın BUGÜNE yazar,
+   *  görüntülenen güne dokunmaz (Geçmiş'te dünün öğününe bakarken de doğru). */
+  async function duplicateMeal(meal: MealItem) {
+    if (busy) return;
+    setErr(null);
+    setBusy(true);
+    try {
+      const today = todayISO();
+      await setDayMeals(today, [...toPayload(mealsOf(days, today)), duplicatePayload(meal)]);
+      showToast(t("mealMenu.duplicateDone"), "success");
+    } catch (e) {
+      setErr(String((e as Error)?.message ?? e));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  /** Menüden MODAL açan aksiyonlar: sheet kapanışının `history.back()`'i
+   *  asenkron; yeni modalı hemen açmak geçmişte "zombi" girdi bırakır — bkz.
+   *  `afterHistoryBackSettles` (FAB menüsü → modal geçişiyle aynı desen). */
+  function openMealForm(index: number) {
+    setMenuFor(null);
+    afterHistoryBackSettles(() => setEditIndex(index));
+  }
+
+  function openRecipeFrom(meal: MealItem) {
+    setMenuFor(null);
+    const preset = buildRecipePreset(meal, aliases);
+    afterHistoryBackSettles(() => setRecipePreset(preset));
+  }
+
+  /** Menüden "Seç": mevcut seçim moduna girer, bu öğün işaretli gelir. */
+  function selectMeal(index: number) {
+    setMenuFor(null);
+    setSelectMode(true);
+    setSelectedIndices([index]);
   }
 
   async function handleMergeConfirm(mergedName: string) {
@@ -383,7 +462,7 @@ export function DayView({
 
         {err && <ErrorText>{err}</ErrorText>}
 
-        {enableScan && templates.list.length > 0 && (
+        {showTemplates && templates.list.length > 0 && (
           <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1">
             {templates.list.map((t) => (
               <button
@@ -425,7 +504,7 @@ export function DayView({
                         isSelected={selectedIndices.includes(i)}
                         onToggleSelect={() => toggleSelect(i)}
                         onEdit={() => setSelectedMealForSheet({ meal: m, index: i })}
-                        onEditFull={() => setEditIndex(i)}
+                        onOpenMenu={(anchor) => setMenuFor({ meal: m, index: i, anchor })}
                         busy={busy}
                       />
                     ))}
@@ -462,6 +541,44 @@ export function DayView({
           onConfirm={handleMergeConfirm}
           onClose={requestCloseMerge}
           busy={busy}
+        />
+      )}
+
+      {menuFor && (
+        <MealActionSheet
+          meal={menuFor.meal}
+          anchor={menuFor.anchor}
+          busy={busy}
+          offline={offline}
+          recipeReady={canSaveAsRecipe(menuFor.meal, aliases)}
+          isToday={date === todayISO()}
+          onClose={() => setMenuFor(null)}
+          onSaveTemplate={(name) => {
+            const meal = menuFor.meal;
+            setMenuFor(null);
+            void saveAsTemplate(meal, name);
+          }}
+          onDuplicate={() => {
+            const meal = menuFor.meal;
+            setMenuFor(null);
+            void duplicateMeal(meal);
+          }}
+          onEdit={() => openMealForm(menuFor.index)}
+          onSelect={() => selectMeal(menuFor.index)}
+          onSaveToMemory={() => openRecipeFrom(menuFor.meal)}
+          onDelete={() => {
+            const index = menuFor.index;
+            setMenuFor(null);
+            void removeMeal(index);
+          }}
+        />
+      )}
+
+      {recipePreset && (
+        <RecipeBuilder
+          initial={null}
+          preset={recipePreset}
+          onClose={() => setRecipePreset(null)}
         />
       )}
 

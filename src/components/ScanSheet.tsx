@@ -73,6 +73,7 @@ import { AiError, grantAiConsent, hasAiConsent, parseMealImage } from "../lib/ai
 import { useTranslation } from "react-i18next";
 import { captureVideoFrame, compressImageToBase64 } from "../lib/image";
 import { useBodyScrollLock } from "../hooks/useBodyScrollLock";
+import { useDialogFocus } from "../hooks/useDialogFocus";
 import { markProgrammaticBack } from "../lib/backStack";
 
 /** Üç kayıt yolu var; hangisinin sürdüğünü ayrı ayrı bilmek gerekiyor ki doğru
@@ -125,31 +126,11 @@ function AiConsentOverlay({
   const cardRef = useRef<HTMLDivElement>(null);
   const mouseDownTargetRef = useRef<EventTarget | null>(null);
 
-  useEffect(() => {
-    const previouslyFocused = document.activeElement as HTMLElement | null;
-    cardRef.current?.focus();
-    const focusable =
-      'button:not([disabled]), [href], input:not([disabled]), [tabindex]:not([tabindex="-1"])'
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") { onClose(); return; }
-      if (e.key !== "Tab") return;
-      const el = cardRef.current;
-      if (!el) return;
-      const items = Array.from(el.querySelectorAll<HTMLElement>(focusable)).filter(
-        (i) => i.offsetParent !== null,
-      );
-      if (items.length === 0) { e.preventDefault(); el.focus(); return; }
-      const first = items[0], last = items[items.length - 1];
-      const active = document.activeElement as HTMLElement | null;
-      if (e.shiftKey && active === first) { e.preventDefault(); last.focus(); }
-      else if (!e.shiftKey && active === last) { e.preventDefault(); first.focus(); }
-    };
-    document.addEventListener("keydown", onKey);
-    return () => {
-      document.removeEventListener("keydown", onKey);
-      if (previouslyFocused && document.contains(previouslyFocused)) previouslyFocused.focus();
-    };
-  }, [onClose]);
+  // Odak tuzağı + Escape paylaşılan hook'ta (bkz. `useDialogFocus`). ÖNEMLİ:
+  // bu kart, ScanSheet'in KENDİ `<Modal>`'ı içinde açılıyor; eskiden her ikisi
+  // de `document` düzeyinde Escape dinlediği için tek basışta İKİSİ birden
+  // kapanıyordu. Yığın sayesinde Escape yalnızca en üstteki kartı kapatır.
+  useDialogFocus({ containerRef: cardRef, onEscape: onClose, autoFocus: "container" });
 
   return (
     <div

@@ -1,9 +1,10 @@
-import { useState, useEffect } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { ArrowLeft, Flame, Beef, Wheat, Droplet, Trash2 } from "lucide-react";
 import { ZERO_NUTRITION } from "../types";
 import type { MealCategory, MealItem, Nutrition } from "../types";
 import { useBodyScrollLock } from "../hooks/useBodyScrollLock";
+import { useDialogFocus } from "../hooks/useDialogFocus";
 import { useModalHistory } from "../hooks/useModalHistory";
 import { useModalExit } from "../hooks/useModalExit";
 import { scaleMealSources } from "../lib/nutrition";
@@ -84,6 +85,18 @@ export function NutritionSheet({ isOpen, onClose, meal, onSave, onDelete }: Prop
   });
   const { closing, beginClose } = useModalExit(handleUserClose);
 
+  /** Tam-ekran diyalog: `aria-modal="true"` iddiası artık Tab tuzağı ve
+   *  kapanışta odak iadesiyle karşılanıyor (bkz. `useDialogFocus`). Odak
+   *  kapanışta açan öğeye döner — kapanış anında sheet İÇİNDEKİ alanın blur'u
+   *  (yukarıdaki `onClose`) yine önce çalışır, kes/kopyala balonu asılı kalmaz. */
+  const rootRef = useRef<HTMLDivElement>(null);
+  useDialogFocus({
+    containerRef: rootRef,
+    active: isOpen && !!meal && !closing,
+    onEscape: beginClose,
+    autoFocus: "container",
+  });
+
   if (!isOpen || !meal) return null;
 
   const scaledSources = scaleMealSources(meal.sources, multiplier);
@@ -128,7 +141,12 @@ export function NutritionSheet({ isOpen, onClose, meal, onSave, onDelete }: Prop
 
   return (
     <div
+      ref={rootRef}
       data-modal="true"
+      role="dialog"
+      aria-modal="true"
+      aria-label={t("nutrition.title")}
+      tabIndex={-1}
       className={`fixed inset-0 z-[9999] flex flex-col bg-app text-white h-[100dvh] w-full overflow-hidden animate-fadeIn pad-safe glass-screen ${
         closing ? "glass-screen-out" : ""
       }`}

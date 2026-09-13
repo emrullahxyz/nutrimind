@@ -446,3 +446,60 @@ silindi, `server/data.db` dokunulmadı.
 (md5) → `.env`'e `NUTRIMIND_ALLOW_SIGNUP=1` → `systemctl restart nutri-api` →
 `pnpm run deploy` → telefonla canlı doğrulama. Dikkat: liste boşken kayıt herkese
 açık kalır — deploy sonrası hemen kişi eklenmeli.
+
+---
+
+## Öğün uzun-bas menüsü: yüzen panel + basış kapısı (2026-09-13)
+
+Şablon kaydetme v0.26.2'de kaldırılmıştı; geri getirildi ve yalnızca kaydetme değil, **uygulama**
+yolu da canlandı (şablon çipleri `enableScan`'e bağlıydı ve o bayrak hiçbir yerde `true`
+geçmiyordu). Menü, paylaşılan `Modal`'ın alt-sheet'i olmaktan çıkıp satıra demirlenen yüzen
+yuvarlak bir panele dönüştü.
+
+- [x] `lib/anchor.ts` (saf): `placeAnchoredPanel` — alt/üst seçimi, kenar kısıtları, `transform-origin` basış noktasından
+- [x] `lib/pressGate.ts` (saf) + `hooks/usePressGate.ts`: iki fazlı basış kapısı (basılı: zaman aşımı yok / bırakıldı: 400 ms `click` penceresi), capture aşamasında yutma, `data-gated`
+- [x] `hooks/useLongPress.ts`: `LongPressOrigin` (pointerId + basış noktası) + `holding` dolgu göstergesi
+- [x] `components/MealActionSheet.tsx`: portal + FAB malzeme dili, adım makinesi korunur, simetrik çıkış
+- [x] `components/MealRow.tsx`: satır ref'i → çapa, ⋮ yolu, 500 ms dolgu çubuğu
+- [x] `lib/mealActions.ts`: `canSaveAsRecipe` + `recipeReady` (tarif satırı çözülemeyen öğünde gösterilmez)
+- [x] i18n 3 dil: "Şablon olarak kaydet" / "Tarif olarak kaydet (100 g)"
+- [x] testler: `anchor.test.ts`, `pressGate.test.ts`, `mealActions` (canSaveAsRecipe + liste filtresi)
+- [x] `index.css`: `menu-panel-in/out`, `menu-item-in` (30 ms stagger), `menu-step-in`, `hold-fill` — iki temada da (velvet dahil)
+- [x] changelog 0.30.0 girişi güncellendi (aynı sürüm, henüz yayınlanmadı)
+
+**Ölçüm (üretim derlemesi :4173):** uzun basma 537 ms'de açıldı · `side` yer varsa `below`, yoksa
+`above` (iki geometride doğrulandı) · stagger 0/30/60/90/120 ms · dolgu `holdFill 0.5s` ·
+**parmak kalkışından sonra menü açık kaldı** (kapı tıklamayı yuttu; öncesinde perdeye düşüp
+menüyü kapatıyordu) · arka planda `wheel` `defaultPrevented: true`, panel içinde `false` ·
+geri tuşu menüyü kapattı, zombi girdi yok · çevrimdışıyken yalnızca şablon satırı pasif ·
+şablon kaydet + çoğalt uçtan uca çalıştı · ⋮ yolu kapı kurmadan açıyor.
+
+**Kapı:** typecheck 0 · test 789/789 · check:i18n PARITY OK (777×3) · build ✓
+**Temizlik:** `2026-09-13` fixture günü + geçici şablon silindi → veri orijinal halinde
+(5 gün, `templates {list: []}`, 6 alias). Not: bu değişiklikler commit edilmedi.
+
+### İnceleme sonrası kalan notlar (aynı tur, 2026-09-13)
+
+İncelemede "düzeltilmedi, not düşüldü" denen iki madde kapatıldı:
+
+- [x] **Diyalog odak yönetimi tek kaynakta:** `lib/focusTrap.ts` (saf: `FOCUSABLE_SELECTOR`,
+      `nextTrapIndex`, açık diyalog yığını) + `hooks/useDialogFocus.ts`. `Modal` /
+      `ScanSheet` / `MealActionSheet`'teki üç elle kopya tekleşti; `OnboardingModal`
+      (aria-modal ilan edip hiç tuzak kurmuyordu) ve dört tam-ekran `data-modal` sheet
+      (`MealForm`, `RecipeBuilder`, `AliasForm`, `NutritionSheet`) aynı hook'a bağlandı.
+      İç içe diyaloglarda Escape artık TEK katmanı kapatır (kamera sheet'i içindeki onay
+      kartı + Modal eskiden birlikte kapanıyordu).
+- [x] **Menü çıkış gecikmesi:** `EXIT_MS` 160 → 120 ms (+ `index.css` ile birlikte) —
+      simetri korunurken aksiyonların beklediği süre kısaldı.
+
+**Ölçüm (üretim derlemesi :4173):** menü açılışında odak panelde · Tab son→ilk sarma ve
+ilk→son sarma (`prevented: true`) · odak panel DIŞINA çıktığında geri çekiliyor · Escape
+menüyü kapatıp odağı **⋮ butonuna** geri veriyor · `Düzenle` 166 ms (click→form), MealForm
+odak içeride + 17 odaklanabilir öğe + Tab sarması · MealForm Escape 30 ms, RecipeBuilder 11 ms,
+AliasForm 19 ms — üçünde de odak TETİKLEYİCİYE döndü · `Sil` onay adımı 10 ms, panel 159 ms'de
+gitti, satır 194 ms'de DOM'dan düştü (DB'den de) · konsol 0 hata · veri orijinal hâlinde.
+
+**Ölçümle bulunan iki gerçek hata (düzeltildi):** (1) panel `visibility: hidden` iken
+`focus()` sessizce başarısız oluyordu → hook `ready` bayrağıyla yeniden dener ve başarıyı
+ÖLÇER; (2) odağı taşıyan efekt ayrı bir efekte bölününce `previouslyFocused` panelin kendisi
+oluyordu → odak `<body>`'ye dönüyordu; yakalama ref'e alındı (bkz. `lessons.md` L18/L19).

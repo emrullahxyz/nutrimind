@@ -429,6 +429,88 @@
   to { opacity: 1; transform: none; }
 }
 
+/* ---- Öğün uzun-bas menüsü: satıra demirli yüzen panel ----------------------
+   Paylaşılan `Modal`'ın alt-sheet'i değil; FAB menüsüyle aynı malzeme dili.
+   Dört hareket: (1) giriş basış noktasından büyür (`transform-origin` inline),
+   (2) öğeler 30 ms arayla gelir, (3) 500 ms dolgu göstergesi (`.hold-fill`),
+   (4) çıkış AYNI yoldan geri döner (simetrik süre/eksen).
+   `[data-theme="glass"]` kapsamı bilinçli olarak YOK: panel her iki temada da
+   (varsayılan velvet dahil) canlı olmalı. */
+.menu-panel-in {
+  animation: menuPanelIn 0.28s both;
+  animation-timing-function: var(--ease-glass, cubic-bezier(0.16, 1, 0.3, 1));
+}
+@keyframes menuPanelIn {
+  from { opacity: 0; transform: scale(0.92) translateY(var(--menu-shift, 6px)); }
+  to { opacity: 1; transform: none; }
+}
+.menu-panel-out {
+  animation: menuPanelOut 0.12s both;
+  animation-timing-function: var(--ease-glass-io, cubic-bezier(0.65, 0, 0.35, 1));
+}
+@keyframes menuPanelOut {
+  /* Bitiş değeri girişin BAŞLANGIÇ değeriyle birebir aynı (`scale(0.92)`):
+     panel girdiği yoldan, aynı büyüklükte geri döner (Apple §7 simetri). */
+  to { opacity: 0; transform: scale(0.92) translateY(var(--menu-shift, 6px)); }
+}
+.menu-scrim-in { animation: menuScrimIn 0.2s both; }
+.menu-scrim-out { animation: menuScrimOut 0.12s both; }
+@keyframes menuScrimIn { from { opacity: 0; } }
+@keyframes menuScrimOut { to { opacity: 0; } }
+
+/* Kademeli giriş: `backwards` fill + satır başına inline `animation-delay`. */
+.menu-item-in {
+  animation: menuItemIn 0.24s backwards;
+  animation-timing-function: var(--ease-glass-hover, cubic-bezier(0.22, 1, 0.36, 1));
+}
+@keyframes menuItemIn {
+  from { opacity: 0; transform: translateY(6px) scale(0.98); }
+}
+
+/* Adım değişimi: panel yerinde kalır, yalnız İÇERİK yer değiştirir. */
+.menu-step-in {
+  animation: menuStepIn 0.18s both;
+  animation-timing-function: var(--ease-glass, cubic-bezier(0.16, 1, 0.3, 1));
+}
+@keyframes menuStepIn {
+  from { opacity: 0; transform: translateY(4px); }
+}
+
+/* Satır basıncı. Hover/active burada (Tailwind sınıfı yerine) çünkü basış
+   kapısı açıkken ikisi de SÖNDÜRÜLECEK: menüyü doğuran parmak hâlâ ekranda
+   olduğu sürece altındaki satır "basılı" görünmemeli. */
+.menu-row {
+  transition: background-color 140ms var(--ease-glass, ease-out),
+    transform 120ms var(--ease-glass, ease-out);
+}
+.menu-row:hover { background-color: rgba(255, 255, 255, 0.08); }
+.menu-row:active { transform: scale(0.98); }
+.menu-row:disabled { opacity: 0.4; pointer-events: none; }
+[data-gated="true"] .menu-row:hover,
+[data-gated="true"] .menu-row:active {
+  background-color: transparent;
+  transform: none;
+}
+
+/* Uzun basma dolgusu: satırın alt kenarında soldan büyür. Süresi
+   `LONG_PRESS_MS` (500 ms) ile AYNI — dolgu tamamlandığı an menü açılır, yani
+   gösterge hem geri bildirim hem "ne kadar kaldı" bilgisidir (Apple §8). */
+.hold-fill {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  height: 2px;
+  width: 100%;
+  transform-origin: left center;
+  background: rgb(var(--accent));
+  border-radius: 999px;
+  animation: holdFill 500ms linear both;
+}
+@keyframes holdFill {
+  from { transform: scaleX(0); }
+  to { transform: scaleX(1); }
+}
+
 /* MacroBar: genişliği glass'ta spring yönetir — paylaşılan CSS transition'ı kapat. */
 [data-theme="glass"] .spring-bar {
   transition: none !important;
@@ -799,7 +881,11 @@ body {
   .anim-zoom,
   .glass-sheet-in,
   .glass-push,
-  .glass-screen-out {
+  .glass-screen-out,
+  .menu-panel-in,
+  .menu-panel-out,
+  .menu-item-in,
+  .menu-step-in {
     animation: none !important;
     opacity: 1 !important;
     transform: none !important;
@@ -848,7 +934,12 @@ body {
   .anim-zoom,
   .glass-sheet-in,
   .glass-push,
-  .glass-screen-out {
+  .glass-screen-out,
+  .menu-panel-in,
+  .menu-panel-out,
+  .menu-item-in,
+  .menu-step-in,
+  .hold-fill {
     animation: none !important;
     opacity: 1 !important;
     transform: none !important;

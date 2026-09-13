@@ -682,7 +682,27 @@
     }
   },
   "mealRow": {
-    "saveTemplate": "Make template"
+    "more": "More actions"
+  },
+  "mealMenu": {
+    "title": "Meal Actions",
+    "template": "Save as a template",
+    "templateTitle": "Template Name",
+    "templateHint": "Save meals you eat often so you can add them with one tap.",
+    "templateNameLabel": "Template name",
+    "templateNamePlaceholder": "e.g. Post-workout",
+    "templateSaved": "Template saved",
+    "duplicateAgain": "Add another of the same",
+    "duplicateToday": "Add to today",
+    "duplicateDone": "Added to today",
+    "edit": "Edit",
+    "select": "Select",
+    "recipe": "Save as a recipe (100 g)",
+    "delete": "Delete",
+    "deleteTitle": "Delete Meal",
+    "deleteConfirm": "Delete this meal?",
+    "deleteConfirmYes": "Yes, delete",
+    "offlineTemplate": "An internet connection is required to save a template."
   },
   "meal": {
     "titleAdd": "Add Meal",
@@ -824,7 +844,7 @@
     "searchNoResults": "No foods match your search \"{{query}}\".",
     "recipeBadge": "recipe",
     "templatesSubtitle": "Saved templates for adding your frequent meals with one tap",
-    "templatesEmpty": "No templates yet. On the Today tab you can save a meal with 'Make template'.",
+    "templatesEmpty": "No templates yet. On the Today tab, long-press a meal and pick \"Save as a template\".",
     "items": "items"
   },
   "vision": {

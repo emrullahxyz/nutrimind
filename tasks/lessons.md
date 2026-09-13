@@ -212,3 +212,60 @@ görüldü.)
 (implicit delay 0s, alt özgüllüklü `.rise-d-*`/`:nth-child`/inline `animationDelay` kazanabilir);
 var() longhand'i yalnızca kendi longhand'ini etkiler (rakip bildirim yoksa zararsız). Bunu kısayola
 dokunan her giriş animasyonu kuralında uygula.
+
+## L16 — React `onTouchMove`/`onWheel` içindeki `preventDefault` PASİF dinleyici yüzünden etkisizdir
+
+**Olay (2026-09-13, öğün uzun-bas menüsü):** Menü açıkken arkadaki sayfanın kaymaması istendi.
+Perdeye `onTouchMove={(e) => e.preventDefault()}` yazdım — FAB backdrop'unda da aynısı vardı, yani
+"kanıtlanmış reçete" sanıyordum. Ölçüm: sentetik `touchmove` sonrası `defaultPrevented: false`.
+Sebep: React 17+ `touchstart`/`touchmove`/`wheel` dinleyicilerini **passive** kaydeder; passive
+dinleyicide `preventDefault()` sessizce yok sayılır. FAB menüsünün gerçek kilidi `preventDefault`
+DEĞİL, perdedeki `touch-none` (tarayıcı düzeyinde `touch-action: none`) imiş — dokunma yolunda
+doğru, tekerlek/fare yolunda ise hiç korumuyor.
+
+**Kural:** "Kaydırmayı kilitle" işini CSS `touch-action`/`overscroll-behavior` ile yap; JS ile
+yapman gerekiyorsa **pasif olmayan gerçek** `window.addEventListener('wheel'|'touchmove', h, {passive:false, capture:true})`
+kullan ve panelin kendi kaydırılabilir gövdesini `panelRef.contains(e.target)` ile muaf tut.
+`onTouchMove` içinde `preventDefault` görmek bir güvence DEĞİLDİR: ölç.
+
+## L17 — Zaman aşımı, jest hâlâ SÜRERKEN dolmamalı (iki fazlı basış kapısı)
+
+**Olay (aynı tur):** Uzun basma sonrası parmağın kaldırılmasıyla gelen `click`, yeni açılan menüye
+düşüp aksiyonu kendiliğinden çalıştırıyordu (ölçümde: menü kendini kapatıyor / "Seç" sessizce
+seçim modunu açıyor / "Aynısından bir tane daha ekle" öğün ekliyordu). Kapıyı ilk yazdığımda tek bir
+`deadline` vardı ve zaman aşımı basış sürerken doluyordu; ölçümde menü açıldıktan ~1 saniye sonra
+bırakan kullanıcıda kapı çoktan kapanmış oluyor ve sızıntı geri geliyordu.
+
+**Kural:** Bir jesti bekleyen zaman aşımı, jestin HANGİ FAZINDA olduğuna bağlanmalı. Basılı fazda
+zaman aşımı olmaz (kullanıcı istediği kadar tutabilir); zaman aşımı yalnızca jest BİTTİKTEN sonra
+(gelen olayı beklerken) kurulur. Ayrıca `pointerup`, beklenen `click` ondan SONRA geldiği için
+"bitirici" değil "faz değiştirici" olmalı — kapıyı `pointerup`ta kapatmak sızıntıyı aynen geri getirir.
+
+## L18 — `visibility: hidden` bir öğeye `focus()` SESSİZCE başarısız olur
+
+**Olay (2026-09-13, paylaşılan diyalog odak hook'u):** `MealActionSheet` paneli yerleşimi
+ölçülene kadar `visibility: hidden` duruyor (kullanıcı yerleşmemiş bir panel görmesin diye).
+Ortak `useDialogFocus` hook'una geçtiğimde menü açılıyor ama odak gövdede kalıyordu. Tahmin
+etmek yerine `HTMLElement.prototype.focus` sarmalandı ve ÖLÇÜLDÜ: çağrı YAPILIYOR ama
+`getComputedStyle(el).visibility === "hidden"` olduğu için `document.activeElement` değişmiyor
+(`took: false`). React'in pasif efekti, layout ölçümünün yaptığı yeniden render'ın görünür
+hâlinden ÖNCE çalışabiliyor.
+
+**Kural:** Görünürlüğü sonradan açılan bir kapsayıcıya odaklanacaksan `focus()` çağrısının
+BAŞARISINI ölç (`container.contains(document.activeElement)`); başarısızsa hazır olduğunda
+TEKRAR DENE (`ready` bayrağı). "focus() çağırdım" ≠ "odak oraya gitti". Özellikle
+`Element.prototype.focus`'u sarmalayarak test etme — spec'te `focus` **HTMLElement** üzerinde
+tanımlıdır, `Element.prototype`'a yazdığın sarmalayıcı gölgelenir ve log boş kalır (bu da bir
+kez yanlış "hiç çağrılmıyor" sonucu üretti).
+
+## L19 — Bir efektin ref'ini, odağı TAŞIYAN başka bir efekte bağlama
+
+**Olay (aynı tur):** Odak yönetimini tek efektten iki efekte böldüğümde (önce "odaklan", sonra
+"kayıt + dinleyiciler") kapanışta odak yanlış yere dönüyordu: `previouslyFocused` yakalaması
+ARTIK ikinci efektte yapılıyordu ve o sırada `document.activeElement` zaten panelin kendisiydi,
+dolayısıyla odak `<body>`'ye düşüyordu.
+
+**Kural:** "Önceki durumu sakla → değiştir" ikilisi aynı efekte ait olmalı ya da saklama
+ref'te ve değiştirmeden ÖNCE yapılmalı. Efekt sırası (aynı bileşendeki yazılış sırası) bir
+sözleşmedir; bir ref'i başka bir efektin yan etkisine emanet etme. Tarayıcı ölçümü olmadan bu
+hata görünmez (tipcheck ve birim testleri geçiyordu).

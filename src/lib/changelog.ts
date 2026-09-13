@@ -13,6 +13,90 @@ export interface ChangeLogVersion {
 
 export const CHANGELOG: ChangeLogVersion[] = [
   {
+    version: "0.30.0",
+    date: "2026-09-13",
+    summary: {
+      tr: "Bir öğüne uzun basarak (ya da satırdaki ⋮ düğmesiyle) işlem menüsünü açabilirsin: şablon olarak kaydet, aynısından bir tane daha ekle, düzenle, seç, tarif olarak kaydet (100 g) ve sil. Menü, dokunduğun satırın yanında yüzen yuvarlak bir panel olarak açılır; parmağını kaldırırken aksiyon kendiliğinden çalışmaz ve arkadaki sayfa kaymaz.",
+      en: "Long-press a meal (or use its ⋮ button) to open its actions: save as a template, add another one, edit, select, save as a recipe (100 g) and delete. The menu floats as a rounded panel next to the row you touched; lifting your finger won't trigger an action, and the page behind stays put.",
+    },
+    items: [
+      {
+        type: "new",
+        tr: "Öğüne uzun basınca işlem menüsü açılıyor; öğünü tek dokunuşla şablon olarak kaydedebiliyorsun.",
+        en: "Long-pressing a meal opens an action menu; you can save the meal as a template with one tap.",
+      },
+      {
+        type: "new",
+        tr: "Menü, dokunduğun satıra demirlenen yüzen yuvarlak bir panel: basış noktasından büyüyerek açılır, satırlar 30 ms arayla gelir, kapanırken aynı yoldan geri çekilir.",
+        en: "The menu is a floating rounded panel anchored to the row you touched: it grows from your press point, its rows arrive 30 ms apart, and it retracts the same way when it closes.",
+      },
+      {
+        type: "new",
+        tr: "Uzun basarken satırın altında 500 ms'lik bir dolgu göstergesi ilerliyor: ne kadar tutman gerektiğini ve basışın nereye gittiğini gösterir.",
+        en: "While you hold, a 500 ms fill indicator advances along the bottom of the row, showing how long to hold and where the press is heading.",
+      },
+      {
+        type: "new",
+        tr: "Menüden öğünü bugüne kopyalayabilir, seçim moduna alabilir ve tarif olarak kaydedebilirsin.",
+        en: "From the menu you can copy a meal to today, add it to a selection, or save it as a recipe.",
+      },
+      {
+        type: "fixed",
+        tr: "Uzun basıp parmağını kaldırınca menü kendiliğinden bir aksiyon çalıştırmıyor ya da kapanmıyor (parmağın kalkışı menüye geçmiyor).",
+        en: "Lifting your finger after a long press no longer triggers or dismisses the menu by itself (the release doesn't leak into the menu).",
+      },
+      {
+        type: "fixed",
+        tr: "Menü açıkken arkadaki sayfa hiç kaymıyor; kaydırma denemeleri menü kapanana kadar yutulur.",
+        en: "While the menu is open the page behind cannot scroll; scroll attempts are swallowed until it closes.",
+      },
+      {
+        type: "fixed",
+        tr: "Kaydedilmiş şablonlar Bugün sekmesinde yeniden görünüyor (tek dokunuşla ekleme çipleri).",
+        en: "Saved templates are visible again on the Today tab as one-tap add chips.",
+      },
+      {
+        type: "improved",
+        tr: "\"Şablon olarak kaydet\" ve \"Tarif olarak kaydet (100 g)\" artık ne yaptıklarını söylüyor: şablon öğünü tek dokunuşla geri getirir, tarif hafızada 100 g'ı üzerinden hesaplanan yeni bir besin yaratır.",
+        en: "\"Save as a template\" and \"Save as a recipe (100 g)\" now say what they do: a template brings the meal back with one tap, a recipe creates a new food in memory measured per 100 g.",
+      },
+      {
+        type: "improved",
+        tr: "Menü klavyeyle de tam kullanılabiliyor: Tab panelin içinde kalır, Escape kapatır ve kapanınca odak menüyü açtığın satıra geri döner.",
+        en: "The menu is fully keyboard-usable: Tab stays inside the panel, Escape closes it, and focus returns to the row you opened it from.",
+      },
+      {
+        type: "fixed",
+        tr: "Menüdeki satırlar (sil, düzenle, şablon kaydet) artık çıkış animasyonunu beklemeden kapanmıyor; bekleme süresi kısaltıldı ve hareket her aksiyonda aynı.",
+        en: "Menu rows (delete, edit, save as template) no longer drop the panel without its exit motion; the wait is shorter and every action now moves the same way.",
+      },
+      {
+        type: "fixed",
+        tr: "Tam ekran pencerelerde (öğün ekle/düzenle, besin ekle, tarif, besin detayı, ilk kurulum) klavye kullanırken Tab artık pencerenin dışına kaçmıyor, Escape kapatıyor ve kapanınca odak açtığın yere dönüyor.",
+        en: "In full-screen sheets (add/edit meal, add food, recipe, nutrition detail, onboarding) Tab no longer escapes the window, Escape closes it, and focus returns to where you opened it.",
+      },
+    ],
+    dev: [
+      "lib/mealActions.ts (saf): mealToTemplate, duplicatePayload, buildRecipePreset, canSaveAsRecipe, mealMenuActions, mealSheetReducer.",
+      "Uzun basma: lib/longPress.ts + hooks/useLongPress.ts; usePressSpring handler'lari ile birlestirildi, sentetik click yutulur, `holding` dolgu gostergesini besler.",
+      "Basış kapısı (lib/pressGate.ts + hooks/usePressGate.ts): iki fazlı (basili: zaman asimi yok / birakildi: 400 ms click penceresi); capture asamasinda click yutulur, `data-gated` hover/active'i sondurur. Sizinti uretim derlemesinde olculdu (click perdeye dusuyordu).",
+      "lib/anchor.ts (saf): placeAnchoredPanel — alt/ust secimi, kenar kisitlari, transform-origin basis noktasindan; MealActionSheet artik paylasilan Modal'i degil kendi yuvarlak panelini kullaniyor (portal + FAB malzeme dili).",
+      "Arka plan kilidi: onTouchMove preventDefault React 17+ (passive) yuzunden ETKISIZDI — wheel/touchmove icin pasif olmayan pencere dinleyicisi eklendi; panelin kendi govdesi muaf.",
+      "Animasyon: index.css .menu-panel-in/out, .menu-item-in (30 ms stagger), .menu-step-in, .hold-fill — iki temada da calisir (velvet dahil).",
+      "Sablon cipleri enableScan'den ayrildi (o bayrak artik hic true gecmiyordu — cipsler ölüydü); HistoryPage showTemplates={false}.",
+      "Menu → MealForm/RecipeBuilder gecisi afterHistoryBackSettles ile sarili (zombi gecmis girdisi yok).",
+      "updateConfig cevrimdisi kuyruga girmedigi icin 'Sablona ekle' offline'da pasif; sil/cogalt kuyruga girer.",
+      "Inceleme sertlestirmesi: useLongPress onPointerLeave + pencere seviyesinde pointerup emniyeti (capture kaybolsa da jest sonlanir); clearClickSuppression artik gercekten donuyor (tipcheck kirikti).",
+      "Simetrik cikis TEK yoldan yonetiliyor: MealActionSheet.closeThen(cikis animasyonu → aksiyon) — sil/sablon/cogalt/duzenle/sec/tarif yollarinin HEPSI ayni hareketi izler; unmount'ta cikis zamanlayicisi temizlenir.",
+      "aria-modal iddiasi karsilandi: Tab tuzagi + kapanista odak iadesi (Modal.tsx deseni). menu-panel-out artik girisin baslangic degerine (scale 0.92) doner.",
+      "anchor: kenar bosluklari yalnizca sigdiginda uygulanir (cok dar WebView'da tasma yok); kullanilmayan PANEL_MIN_WIDTH kaldirildi.",
+      "Diyalog odak yonetimi tek kaynakta: lib/focusTrap.ts (saf: FOCUSABLE_SELECTOR, nextTrapIndex, acik diyalog yigini) + hooks/useDialogFocus.ts. Modal/ScanSheet/MealActionSheet'teki uc elle kopya teklesti; OnboardingModal ve dort data-modal tam-ekran sheet (MealForm, RecipeBuilder, AliasForm, NutritionSheet) ayni hook'a baglandi — aria-modal ilan edip tuzak kurmayan iddia kapandi.",
+      "Ic ice diyaloglarda Escape artik tek katmani kapatir (kamera sheet'i icindeki onay karti + Modal ayni olayda ikisi birden kapaniyordu) — yigin tepesini lib/focusTrap.ts belirler.",
+      "Olcumle bulunan iki hata: (1) kapsayici `visibility: hidden` iken focus() SESSIZCE basarisiz oluyordu (yerlesim olculmeden once odak cagriliyordu) — hook artik `ready` ile yeniden deniyor ve basariyi olcuyor; (2) odagi tasiyan efekt ayri bir efekte bolununce previouslyFocused artik panelin kendisi oluyordu ve kapanista odak BODY'ye donuyordu — yakalama ref'e alinip odak denemesinden ONCE yapiliyor.",
+      "Menu cikis animasyonu 160 ms → 120 ms (MealActionSheet EXIT_MS + index.css menu-panel-out/menu-scrim-out birlikte): sil 159 ms, duzenle 166 ms (click→form), Escape 30 ms.",
+    ],
+  },
+  {
     version: "0.29.0",
     date: "2026-09-08",
     summary: {

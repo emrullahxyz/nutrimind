@@ -682,7 +682,27 @@
     }
   },
   "mealRow": {
-    "saveTemplate": "Zrób szablon"
+    "more": "Więcej opcji"
+  },
+  "mealMenu": {
+    "title": "Opcje posiłku",
+    "template": "Zapisz jako szablon",
+    "templateTitle": "Nazwa szablonu",
+    "templateHint": "Zapisz często jedzone posiłki, aby dodawać je jednym dotknięciem.",
+    "templateNameLabel": "Nazwa szablonu",
+    "templateNamePlaceholder": "np. Po treningu",
+    "templateSaved": "Szablon zapisany",
+    "duplicateAgain": "Dodaj jeszcze jedną porcję",
+    "duplicateToday": "Dodaj do dzisiaj",
+    "duplicateDone": "Dodano do dzisiaj",
+    "edit": "Edytuj",
+    "select": "Wybierz",
+    "recipe": "Zapisz jako przepis (100 g)",
+    "delete": "Usuń",
+    "deleteTitle": "Usuń posiłek",
+    "deleteConfirm": "Usunąć ten posiłek?",
+    "deleteConfirmYes": "Tak, usuń",
+    "offlineTemplate": "Aby zapisać szablon, potrzebne jest połączenie z internetem."
   },
   "meal": {
     "titleAdd": "Dodaj posiłek",
@@ -824,7 +844,7 @@
     "searchNoResults": "Brak produktów pasujących do \"{{query}}\".",
     "recipeBadge": "przepis",
     "templatesSubtitle": "Zapisane szablony do dodawania częstych posiłków jednym dotknięciem",
-    "templatesEmpty": "Brak szablonów. Na karcie Dziś możesz zapisać posiłek opcją 'Zrób szablon'.",
+    "templatesEmpty": "Brak szablonów. Na karcie Dziś przytrzymaj posiłek i wybierz \"Zapisz jako szablon\".",
     "items": "składników"
   },
   "vision": {

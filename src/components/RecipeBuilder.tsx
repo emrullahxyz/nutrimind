@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { ArrowLeft, Check, Plus, Trash2, Tag, Utensils, Scale, Sparkles } from "lucide-react";
 import {
   EMPTY_DRAFT,
@@ -23,6 +23,7 @@ import {
   unitOptions,
 } from "../lib/nutrition";
 import type { Alias, AliasUnit, RecipeIngredient } from "../types";
+import type { RecipePreset } from "../lib/mealActions";
 
 interface IngredientDraft {
   id: string;
@@ -38,17 +39,62 @@ function round1(value: number): number {
   return Math.round(value * 10) / 10;
 }
 
+/** Tarif malzemesi → düzenlenebilir satır. Hafızada karşılığı olan malzeme
+ *  "alias" modunda açılır (miktar değişince besin yeniden hesaplanır);
+ *  silinmiş bir kayda bağlıysa "manual"a düşer. */
+function ingredientDraft(ing: RecipeIngredient, index: number, aliases: Alias[]): IngredientDraft {
+  const matchingAlias = ing.aliasId ? aliases.find((a) => a.id === ing.aliasId) : undefined;
+  return {
+    id: `ing-${index}-${Date.now()}`,
+    mode: matchingAlias ? "alias" : "manual",
+    aliasId: matchingAlias ? matchingAlias.id : (ing.aliasId ?? ""),
+    name: ing.name,
+    qty: String(ing.qty),
+    unit: ing.unit,
+    manualNutrition: toDraft(ing.nutrition),
+  };
+}
+
+/** Başlangıç malzemeleri: verilmişse onlar, yoksa boş tek satır. */
+function ingredientDrafts(
+  source: RecipeIngredient[] | undefined,
+  aliases: Alias[],
+): IngredientDraft[] {
+  if (source && source.length > 0) {
+    return source.map((ing, i) => ingredientDraft(ing, i, aliases));
+  }
+  return [
+    {
+      id: `ing-0-${Date.now()}`,
+      mode: aliases.length > 0 ? "alias" : "manual",
+      aliasId: aliases[0]?.id ?? "",
+      name: aliases[0]?.name ?? "",
+      qty: "",
+      unit: aliases[0] ? defaultUnitForAlias(aliases[0]).name : "g",
+      manualNutrition: EMPTY_DRAFT,
+    },
+  ];
+}
+
 import { useBodyScrollLock } from "../hooks/useBodyScrollLock";
+import { useDialogFocus } from "../hooks/useDialogFocus";
 import { useModalHistory } from "../hooks/useModalHistory";
 import { useModalExit } from "../hooks/useModalExit";
 import { useTranslation } from "react-i18next";
 
-/** Tarif oluşturma & düzenleme full-screen modal */
+/** Tarif oluşturma & düzenleme full-screen modal
+ *
+ *  `preset`: YENİ tarif için ön dolgu (bugün→ Bugün sekmesindeki öğünden
+ *  "Hafızaya tarif olarak kaydet"). `initial` ile karışmaması kritik: `initial`
+ *  düzenleme modudur (kayıtta mevcut id gider), `preset` yalnızca başlangıç
+ *  state'ini besler ve kayıt YENİ alias yaratır. */
 export function RecipeBuilder({
   initial,
+  preset,
   onClose,
 }: {
   initial: Alias | null;
+  preset?: RecipePreset;
   onClose: () => void;
 }) {
   const { t } = useTranslation();
@@ -62,12 +108,28 @@ export function RecipeBuilder({
   const { requestClose: handleUserClose } = useModalHistory({ active: true, onClose });
   const { closing, beginClose } = useModalExit(handleUserClose);
 
+  /** Tam-ekran diyalog: `aria-modal="true"` iddiası artık Tab tuzağı ve
+   *  kapanışta odak iadesiyle karşılanıyor (bkz. `useDialogFocus`). */
+  const rootRef = useRef<HTMLDivElement>(null);
+  useDialogFocus({
+    containerRef: rootRef,
+    active: !closing,
+    onEscape: beginClose,
+    autoFocus: "container",
+  });
+
   const { aliases, upsertAlias } = useData();
 
-  const [triggers, setTriggers] = useState(initial ? initial.triggers.join(", ") : "");
-  const [name, setName] = useState(initial?.name ?? "");
+  // Ön dolguda bilinemeyen gram toplamı boş bırakılır ("0" göstermek yanıltıcı
+  // olurdu) — `RecipeBuilder` kaydı zaten `totalG > 0` istiyor.
+  const presetTotalG = preset && preset.totalG > 0 ? String(preset.totalG) : "";
+
+  const [triggers, setTriggers] = useState(
+    initial ? initial.triggers.join(", ") : (preset?.triggers.join(", ") ?? ""),
+  );
+  const [name, setName] = useState(initial?.name ?? preset?.name ?? "");
   const [brand, setBrand] = useState(initial?.brand ?? "");
-  const [totalG, setTotalG] = useState(String(initial?.recipe?.totalG ?? ""));
+  const [totalG, setTotalG] = useState(String(initial?.recipe?.totalG ?? presetTotalG));
 
   const initialPortionUnit = initial?.units?.find((u) => u.name === "porsiyon");
   const initialPortionCount =
@@ -76,44 +138,9 @@ export function RecipeBuilder({
       : "";
   const [portionCount, setPortionCount] = useState(initialPortionCount);
 
-  const [ingredients, setIngredients] = useState<IngredientDraft[]>(() => {
-    if (initial?.recipe?.ingredients && initial.recipe.ingredients.length > 0) {
-      return initial.recipe.ingredients.map((ing, i) => {
-        const matchingAlias = ing.aliasId ? aliases.find((a) => a.id === ing.aliasId) : undefined;
-        if (matchingAlias) {
-          return {
-            id: `ing-${i}-${Date.now()}`,
-            mode: "alias",
-            aliasId: matchingAlias.id,
-            name: ing.name,
-            qty: String(ing.qty),
-            unit: ing.unit,
-            manualNutrition: toDraft(ing.nutrition),
-          };
-        }
-        return {
-          id: `ing-${i}-${Date.now()}`,
-          mode: "manual",
-          aliasId: ing.aliasId ?? "",
-          name: ing.name,
-          qty: String(ing.qty),
-          unit: ing.unit,
-          manualNutrition: toDraft(ing.nutrition),
-        };
-      });
-    }
-    return [
-      {
-        id: `ing-0-${Date.now()}`,
-        mode: aliases.length > 0 ? "alias" : "manual",
-        aliasId: aliases[0]?.id ?? "",
-        name: aliases[0]?.name ?? "",
-        qty: "",
-        unit: aliases[0] ? defaultUnitForAlias(aliases[0]).name : "g",
-        manualNutrition: EMPTY_DRAFT,
-      },
-    ];
-  });
+  const [ingredients, setIngredients] = useState<IngredientDraft[]>(() =>
+    ingredientDrafts(initial?.recipe?.ingredients ?? preset?.ingredients, aliases),
+  );
 
   const [saving, setSaving] = useState(false);
   const [err, setErr] = useState<string | null>(null);
@@ -231,7 +258,12 @@ export function RecipeBuilder({
 
   return (
     <div
+      ref={rootRef}
       data-modal="true"
+      role="dialog"
+      aria-modal="true"
+      aria-label={initial ? t("recipeBuilder.editTitle") : t("recipeBuilder.addTitle")}
+      tabIndex={-1}
       className={`fixed inset-0 z-[9999] flex flex-col bg-app text-white h-[100dvh] w-full overflow-hidden animate-fadeIn pad-safe glass-screen ${
         closing ? "glass-screen-out" : ""
       }`}

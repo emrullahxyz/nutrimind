@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import {
   User,
   Activity,
@@ -24,6 +24,7 @@ import {
   type Gender,
 } from "../lib/tdee";
 import { useBodyScrollLock } from "../hooks/useBodyScrollLock";
+import { useDialogFocus } from "../hooks/useDialogFocus";
 import { useModalExit } from "../hooks/useModalExit";
 import type { GoalConfig } from "../types";
 import { singleProfileConfig } from "../lib/goals";
@@ -47,6 +48,17 @@ export function OnboardingModal({
 }: OnboardingModalProps) {
   useBodyScrollLock(isOpen);
   const { closing, beginClose } = useModalExit(onClose);
+
+  /** Bu tam-ekran sihirbaz `aria-modal="true"` İLAN EDİYORDU ama hiçbir odak
+   *  tuzağı/odak iadesi yoktu: Tab perdenin arkasına kaçabiliyor, kapanışta
+   *  odak gövdeye düşüyordu (iddia karşılıksız). Ortak hook bunu kapatıyor. */
+  const rootRef = useRef<HTMLDivElement>(null);
+  useDialogFocus({
+    containerRef: rootRef,
+    active: isOpen && !closing,
+    onEscape: beginClose,
+    autoFocus: "container",
+  });
 
   const [step, setStep] = useState<1 | 2 | 3 | 4 | 5>(1);
   const [saving, setSaving] = useState(false);
@@ -136,10 +148,12 @@ export function OnboardingModal({
 
   return (
     <div
+      ref={rootRef}
       data-modal="true"
       role="dialog"
       aria-modal="true"
       aria-label={t("onboarding.title")}
+      tabIndex={-1}
       className={`fixed inset-0 z-[9999] flex flex-col bg-app text-white h-[100dvh] w-full overflow-hidden animate-fadeIn pad-safe glass-screen ${
         closing ? "glass-screen-out" : ""
       }`}

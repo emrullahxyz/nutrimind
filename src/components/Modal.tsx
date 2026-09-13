@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { X } from "lucide-react";
 import { useBodyScrollLock } from "../hooks/useBodyScrollLock";
+import { useDialogFocus } from "../hooks/useDialogFocus";
 import { useModalHistory } from "../hooks/useModalHistory";
 import { useTheme } from "../lib/theme";
 import { useTranslation } from "react-i18next";
@@ -73,67 +74,12 @@ export function Modal({
   // yönetir (bkz. dosya başındaki not / `useBodyScrollLock.ts`).
   useBodyScrollLock(true);
 
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") beginClose();
-    };
-    document.addEventListener("keydown", onKey);
-    return () => {
-      document.removeEventListener("keydown", onKey);
-    };
-  }, []);
-
-  // Odak yönetimi: açılışta odağı diyalog içine taşı, kapanışta açılmadan önceki
-  // odaklı elemana geri döndür. Tab/Shift+Tab diyalog içinde hapsedilir
-  // (focus trap) — klavye kullanıcıları diyalogun dışına sızarak arka planı
-  // yanlışlıkla odaklayamaz.
-  useEffect(() => {
-    const previouslyFocused = document.activeElement as HTMLElement | null;
-
-    const focusableSelector = 'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
-    const dialogEl = dialogRef.current;
-    const getFocusable = (): HTMLElement[] =>
-      dialogEl
-        ? Array.from(dialogEl.querySelectorAll<HTMLElement>(focusableSelector)).filter(
-            (el) => el.offsetParent !== null || el === dialogEl
-          )
-        : [];
-
-    const firstFocusable = getFocusable()[0];
-    if (firstFocusable) {
-      firstFocusable.focus();
-    } else {
-      dialogEl?.focus();
-    }
-
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key !== "Tab" || !dialogEl) return;
-      const items = getFocusable();
-      if (items.length === 0) {
-        e.preventDefault();
-        dialogEl.focus();
-        return;
-      }
-      const first = items[0];
-      const last = items[items.length - 1];
-      const active = document.activeElement as HTMLElement | null;
-      if (e.shiftKey && active === first) {
-        e.preventDefault();
-        last.focus();
-      } else if (!e.shiftKey && active === last) {
-        e.preventDefault();
-        first.focus();
-      }
-    };
-    document.addEventListener("keydown", onKey);
-
-    return () => {
-      document.removeEventListener("keydown", onKey);
-      if (previouslyFocused && document.contains(previouslyFocused)) {
-        previouslyFocused.focus();
-      }
-    };
-  }, []);
+  // Odak + Escape artık paylaşılan hook'ta: açılışta odağı diyalog içine taşır,
+  // Tab/Shift+Tab'ı diyalog içinde hapseder (perdenin arkasına sızamaz),
+  // Escape'i YALNIZCA en üstteki diyaloga işler (iç içe iki katman tek basışta
+  // birlikte kapanmaz) ve kapanışta odağı açılıştan önceki elemana geri verir.
+  // Burada elle kopyalanan iki ayrı efekt (Escape + focus trap) tekildir.
+  useDialogFocus({ containerRef: dialogRef, onEscape: beginClose });
 
   const modalEl = (
     <div

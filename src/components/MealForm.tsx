@@ -1,6 +1,7 @@
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { TFunction } from "i18next";
+import { useDialogFocus } from "../hooks/useDialogFocus";
 import { useModalHistory } from "../hooks/useModalHistory";
 import { useModalExit } from "../hooks/useModalExit";
 import { ArrowLeft, Sparkles, Plus, Check } from "lucide-react";
@@ -218,6 +219,18 @@ export function MealForm({
   // yığınında boş bir girdi bırakıyordu — hook `history.back()` kullanıyor).
   const { requestClose: handleUserClose } = useModalHistory({ active: isOpen, onClose });
   const { closing, beginClose } = useModalExit(handleUserClose);
+
+  /** Tam-ekran bir diyalog: `role="dialog"` + `aria-modal="true"` ilan
+   *  ediliyor, dolayısıyla Tab tuzağı/odak iadesi de olmalı (ortak hook).
+   *  Odak artık klavye kullanıcısı için ekranın içinde BAŞLAR ve ekran
+   *  kapanınca açan öğeye geri döner. */
+  const formRef = useRef<HTMLDivElement>(null);
+  useDialogFocus({
+    containerRef: formRef,
+    active: isOpen && !closing,
+    onEscape: beginClose,
+    autoFocus: "container",
+  });
 
   const { showToast } = useToast();
   const { aliases, days, usageIndex, goals, setDayMeals } = useData();
@@ -657,7 +670,12 @@ export function MealForm({
 
   return (
     <div
+      ref={formRef}
       data-modal="true"
+      role="dialog"
+      aria-modal="true"
+      aria-label={editIndex === null ? t("meal.titleAdd") : t("meal.titleEdit")}
+      tabIndex={-1}
       className={`fixed inset-0 z-[9999] flex flex-col bg-app text-white h-[100dvh] w-full overflow-hidden animate-fadeIn pad-safe glass-screen ${
         closing ? "glass-screen-out" : ""
       }`}

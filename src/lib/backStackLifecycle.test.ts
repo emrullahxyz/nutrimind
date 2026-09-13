@@ -3,7 +3,8 @@
 //   - FAB menusu: Egzersiz Kaydet / Besin Arama / Yemek Taramasi / Kayitli
 //     Besinler (hepsi afterHistoryBackSettles ile sarili)
 //   - Ogune ekle / duzenle (DayView): MealForm, NutritionSheet, ExerciseModal,
-//     MergeModal — hepsi ayni useModalHistory sinifi
+//     MergeModal — hepsi ayni useModalHistory sinifi; ayrica ogun uzun-bas
+//     menusu (MealActionSheet) ve ondan acilan MealForm/RecipeBuilder
 //   - Hafiza (AliasPage): ScanSheet "Barkod", AliasForm "Yeni Besin",
 //     RecipeBuilder "Tarif"; kamera onizlemesinin cocuk girdisi (P)
 //   - Ayarlar: alt gorunumler (pushState {tab,subView} + kendi popstate'i),
@@ -597,6 +598,91 @@ describe("Gecmis alt gorunumleri (HistoryPage)", () => {
     hist.unmount();
     expectNoLeftover(history);
     expect(appDecision()).not.toBe("evaluate-exit");
+  });
+});
+
+// ============================================================================
+// 4c) Ogun uzun-bas menusu (MealActionSheet) — menu TEK gecmis girdisidir
+//     (adim adim icerik ayni Modal icinde). Menu kapanisinden SONRA modal acan
+//     aksiyonlar (Duzenle → MealForm, Hafizaya tarif → RecipeBuilder)
+//     afterHistoryBackSettles ile sarili; VERI yazan aksiyonlar (Sil/Cogalt/
+//     Sablona ekle) modal ACMAZ, yalnizca girdisini soker.
+// ============================================================================
+describe("Ogun uzun-bas menusu (MealActionSheet)", () => {
+  it("menu ac → geri → kok; artık girdi yok", () => {
+    const { history, appDecision } = makeApp(DAILY_ROOT);
+    let closed = false;
+    const sheet = mountModal(history, () => {
+      closed = true;
+    });
+    expect(isModalEntryOnTop(history.state, sheet.ctl.token)).toBe(true);
+
+    history.back(); // donanim geri tusu
+    expect(closed).toBe(true);
+    expect(history.state).toEqual(DAILY_ROOT);
+    sheet.unmount();
+    expectNoLeftover(history);
+    expect(appDecision()).not.toBe("evaluate-exit");
+  });
+
+  it.each(["Duzenle (MealForm)", "Hafizaya tarif olarak kaydet (RecipeBuilder)"])(
+    "menu → %s: kapanis back()'i islenmeden yeni modal acilmaz (zombi girdi yok)",
+    () => {
+      const { history, appDecision } = makeApp(DAILY_ROOT);
+      const sheet = mountModal(history, () => undefined);
+
+      // DayView: setMenuFor(null) → settle → yeni modal
+      let newModal: MountedModal | null = null;
+      let newModalClosed = false;
+      afterHistoryBackSettles(() => {
+        newModal = mountModal(history, () => {
+          newModalClosed = true;
+        });
+      });
+      sheet.unmount(); // sheet temizligi: markProgrammaticBack + back()
+
+      expect(newModal).not.toBeNull();
+      // Menunun girdisi poplandi, yeni modal KENDI girdisiyle duruyor.
+      expect(isModalEntryOnTop(history.state, newModal!.ctl.token)).toBe(true);
+
+      history.back(); // kullanici geri: yeni modal kapanir
+      expect(newModalClosed).toBe(true);
+      expect(history.state).toEqual(DAILY_ROOT);
+      newModal!.unmount();
+      expectNoLeftover(history);
+      expect(appDecision()).not.toBe("evaluate-exit");
+    },
+  );
+
+  it("veri yazan aksiyon (Sil / Cogalt / Sablona ekle): menu kapanir, YENI girdi olmaz", () => {
+    const { history, appDecision } = makeApp(DAILY_ROOT);
+    const sheet = mountModal(history, () => undefined);
+
+    // DayView: setMenuFor(null) + setDayMeals/updateConfig — modal ACILMAZ.
+    sheet.unmount();
+    expect(history.state).toEqual(DAILY_ROOT);
+    expectNoLeftover(history);
+    expect(appDecision()).not.toBe("evaluate-exit");
+  });
+
+  it("sil onayi adiminda geri → sheet kapanir; adim degisimi EK girdi itmez", () => {
+    const { history } = makeApp(DAILY_ROOT);
+    let closed = false;
+    const sheet = mountModal(history, () => {
+      closed = true;
+    });
+
+    // "Sil" → confirmDelete adimi: ayni Modal icinde React state, gecmis sabit
+    // (kok + sheet = 2 girdi, sheet girdisi USTTE).
+    expect(history.index).toBe(1);
+    expect(isModalEntryOnTop(history.state, sheet.ctl.token)).toBe(true);
+
+    history.back();
+    expect(closed).toBe(true);
+    expect(history.index).toBe(0);
+    expect(history.state).toEqual(DAILY_ROOT);
+    sheet.unmount();
+    expectNoLeftover(history);
   });
 });
 

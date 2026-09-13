@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { ArrowLeft, Sparkles, Check, Plus, Trash2, Tag, Scale, Package } from "lucide-react";
 import {
   EMPTY_DRAFT,
@@ -19,6 +19,7 @@ import type { OffFood } from "../lib/off";
 import type { Alias, AliasUnit, Nutrition } from "../types";
 
 import { useBodyScrollLock } from "../hooks/useBodyScrollLock";
+import { useDialogFocus } from "../hooks/useDialogFocus";
 import { useModalHistory } from "../hooks/useModalHistory";
 import { useModalExit } from "../hooks/useModalExit";
 import { haptic } from "../lib/haptics";
@@ -42,6 +43,16 @@ export function AliasForm({ initial, onClose }: { initial: Alias | null; onClose
   // yığınında boş bir girdi bırakıyordu — hook `history.back()` kullanıyor).
   const { requestClose: handleUserClose } = useModalHistory({ active: true, onClose });
   const { closing, beginClose } = useModalExit(handleUserClose);
+
+  /** Tam-ekran diyalog: `aria-modal="true"` iddiası artık Tab tuzağı ve
+   *  kapanışta odak iadesiyle karşılanıyor (bkz. `useDialogFocus`). */
+  const rootRef = useRef<HTMLDivElement>(null);
+  useDialogFocus({
+    containerRef: rootRef,
+    active: !closing,
+    onEscape: beginClose,
+    autoFocus: "container",
+  });
 
   const { upsertAlias } = useData();
 
@@ -147,7 +158,12 @@ export function AliasForm({ initial, onClose }: { initial: Alias | null; onClose
 
   return (
     <div
+      ref={rootRef}
       data-modal="true"
+      role="dialog"
+      aria-modal="true"
+      aria-label={initial ? t("aliasForm.editTitle") : t("aliasForm.addTitle")}
+      tabIndex={-1}
       className={`fixed inset-0 z-[9999] flex flex-col bg-app text-white h-[100dvh] w-full overflow-hidden animate-fadeIn pad-safe glass-screen ${
         closing ? "glass-screen-out" : ""
       }`}
