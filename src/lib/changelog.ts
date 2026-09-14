@@ -13,6 +13,79 @@ export interface ChangeLogVersion {
 
 export const CHANGELOG: ChangeLogVersion[] = [
   {
+    version: "0.30.1",
+    date: "2026-09-15",
+    summary: {
+      tr: "Yeni hesaplarda kurulumun hemen ardından altı adımlık kısa bir tur başlıyor: tur uygulamayı baştan gezmez, ekranda duran ilgili bölümü vurgular ve istediğin an atlanabilir. Ayarlar'daki “Kilo & Vücut Geçmişi” ekranı artık gerçekten senin verilerini gösteriyor — son ölçümün, hedef kilon, yolun yüzde kaçını aldığın, kilo grafiği ve tüm ölçümlerinin listesi; önceden herkese aynı sabit değerleri gösteriyordu. Hedef kilonu artık Profil Bilgileri'nden değiştirebilirsin ve Ayarlar daha anlaşılır bir sıraya girdi.",
+      en: "New accounts now get a short six-step tour right after setup: it doesn't march you through the app — each step highlights the part of the screen that's already there, and you can skip it at any time. The “Weight & Body History” screen in Settings now shows your real data — your latest measurement, your target weight, how far along you are, the weight chart and the full list of your measurements; it used to show the same fixed placeholders to everyone. You can now change your target weight in Profile too, and Settings itself is ordered more sensibly.",
+    },
+    items: [
+      {
+        type: "new",
+        tr: 'Yeni hesapta ilk kurulumdan sonra altı adımlık kısa bir rehber açılıyor; her adımda "Sonraki" ile ilerler, "Atla" ile çıkarsın. Rehber her adımda ekrandaki ilgili bölümü vurguluyor (kalori özeti, öğün ekleme, Hafıza, + düğmesi, İlerleme, Ayarlar), yani gerçek arayüzü öğretiyor.',
+        en: 'A short six-step guide now appears after first-time setup; move on with "Next" or leave with "Skip". Each step highlights the relevant part of the screen (calorie summary, adding a meal, Memory, the + button, Progress, Settings) so you learn the real interface.',
+      },
+      {
+        type: "improved",
+        tr: "Rehberi Ayarlar'dan istediğin zaman yeniden başlatabilirsin; gördükten sonra kendiliğinden tekrar çıkmaz ve hesabına bağlıdır (başka bir cihazda da yine çıkmaz).",
+        en: "You can restart the tour from Settings at any time; it won't come back on its own and it's tied to your account (so it stays dismissed on your other devices too).",
+      },
+      {
+        type: "fixed",
+        tr: "“Kilo & Vücut Geçmişi” ekranındaki sahte değerler kaldırıldı: “mevcut kilo” artık en son ölçümün, “hedef kilo” ise gerçekten belirlediğin hedef; ilerleme çubuğu bu iki değere göre hesaplanıyor.",
+        en: "The fake numbers on the “Weight & Body History” screen are gone: “current weight” is your latest measurement, “target weight” is the goal you actually set, and the progress bar is computed from those two.",
+      },
+      {
+        type: "new",
+        tr: "O ekranda artık ölçüm geçmişin listeleniyor (tarih, kilo ve önceki ölçüme göre fark) ve yanlış/eski bir kaydı tek dokunuşla silebiliyorsun.",
+        en: "That screen now lists your measurement history (date, weight and the change since the previous one) and lets you delete a wrong or stale entry with one tap.",
+      },
+      {
+        type: "new",
+        tr: "Hedef kilonu Profil Bilgileri'nde değiştirebilirsin — kurulum sırasında girdiğin bu değer şimdiye kadar hiçbir yerde kullanılmıyordu.",
+        en: "You can change your target weight in Profile — the value you entered during setup was never used anywhere until now.",
+      },
+      {
+        type: "improved",
+        tr: "Kurulumda girdiğin kilo, kilo geçmişinin başlangıç ölçümü olarak kaydediliyor; geçmiş boş kalmıyor ve ilerleme yüzdesi ilk günden anlamlı.",
+        en: "The weight you enter during setup is now saved as the starting measurement of your weight history, so the history isn't empty and the progress percentage is meaningful from day one.",
+      },
+      {
+        type: "improved",
+        tr: "Ayarlar yeniden sıralandı: veri yedekleme/gizlilik/geri bildirim kendi bölümünde, bölüm başlıkları içeriğiyle uyumlu ve “Çıkış Yap” en sonda.",
+        en: "Settings was reordered: data backup, privacy and feedback now sit together, section titles match what's inside them, and “Log out” is last.",
+      },
+      {
+        type: "fixed",
+        tr: "Profil bilgileri (ad, yaş, boy, kilo) artık hesabına kaydediliyor — önceden yalnızca bu cihazda saklanıyordu; profil kartı ve alanlar da boşken uydurma değerler (29 yaş / 78 kg gibi) göstermiyor.",
+        en: "Your profile info (name, age, height, weight) is now saved to your account — it used to live only on this device; the profile card and fields no longer show made-up values (like age 29 / 78 kg) when empty.",
+      },
+      {
+        type: "fixed",
+        tr: "Android geri tuşu, Escape ve ekranın dışına dokunma rehberi temiz biçimde kapatıyor; arka plandaki sayfa kilitli kalıyor ve kapanınca odak açtığın yere dönüyor.",
+        en: "The Android back button, Escape and tapping outside close the tour cleanly; the page behind stays locked and focus returns to where you opened it.",
+      },
+    ],
+    dev: [
+      'Kok neden: SettingsSheet\'teki weight alt-gorunumu gercek veriye baglanmamis bir yer tutucuydu — mevcut kilo localStorage->profile.weightKg->literal "78", hedef kilo i18n `settings.targetWeightValue` (3 dilde sabit "75 kg"), cubuk sabit `w-3/4`.',
+      "Onboarding'in topladigi `profile.targetWeightKg` uygulamada HIC okunmuyordu (grep: yalnizca OnboardingModal + tdee tipi) — hedef kilo artik tek dogruluk kaynagi bu alan.",
+      "lib/weight.ts: sortedEntries/latestEntry/seedEntry/parseBodyStats/profileWeightEntries/weightProgress (saf + testli). weightProgress tek formulle iki yonde calisir ve [0,1] kirpilir; |hedef-baslangic|<0.05 ise pct=null.",
+      "components/WeightSettings.tsx (yeni): ozet + gercek ilerleme + RangePicker/WeightTrendCard + olcum listesi (tek tek silme); yazma yolu WeightCard'in kendisi (tek yazar).",
+      "profileWeightEntries: yalnizca kilo alani BU oturumda duzenlendiyse yazar — sadece adi duzeltmek icin kaydetmek bugunun olcumunu bayat form degeriyle eziyordu.",
+      "handleSaveProfile artik `config.profile`a yaziyor (onceden SADECE localStorage) ve form onceligi config-first'e cevrildi; `hasCompletedOnboarding` spread ile korunuyor.",
+      "Sihirbaz bitisinde `seedEntry` ile bugune baslangic olcumu yazilir (try/catch — kurulumu bloklamaz; o gun kayit varsa dokunmaz).",
+      'Uydurma veri temizligi: avatar fallback literal `"EB"` -> jenerik ikon; form varsayilanlari "29"/"78"/"178" -> bos; profil kartindaki kg yalnizca gercek deger varsa yazilir.',
+      'Ayarlar sirasi: veri satiri Hesap & Profil -> Veri & Destek (ilk satir); kilo satiri hedeflerin altina; Destek blogu veri/gizlilik/geri bildirim/destek/yardim/surum sirasinda; `settings.accountActions` basligi "Hesap Islemleri" -> "Uygulama & Hesap"; olu anahtar `targetWeightValue` 3 dilden silindi (796 -> 814 anahtar).',
+      "Backend DEGISMEDI; `config.weight` sekli (`{entries}`) ayni — migration yok.",
+      "lib/guide.ts (saf): GUIDE_VERSION + parseGuideState/isGuideDone/shouldShowGuide + GUIDE_STEPS; guide.test.ts karar matrisini ve adim tablosunu kilitler.",
+      "Rehber durumu `config.guide` altinda (RESERVED_CONFIG_KEYS'e dokunulmadi; anahtar `^[a-z][a-z0-9_]{0,31}$` desenine uyuyor) — backend DEGISMEDI.",
+      "components/ProductGuide.tsx: tek portal, uc katman (seffaf perde + box-shadow spotlight + kart); yerlesim lib/anchor.placeAnchoredPanel ile, odak/geri-tusu useDialogFocus/useModalHistory/useBodyScrollLock ile (elle focus trap YOK).",
+      "Kapilanma yolu = skipped, son adimda Tamam = completed; niyet ref'te tutulup useModalHistory'nin onClose'unda okunuyor (geri tusu ile X ayni onClose'a dusuyor).",
+      "data-guide-target isaretleri: StatCardCarousel (day-summary), DayView iki ekleme CTA'si (add-meal), BottomNav sekmeleri (${tab.id}-tab) + FAB (fab).",
+      "Hedef bulunamazsa kart ekranin ortasina duser (tur yarida kesilmez); changelog popup'i rehber kapanana kadar erteleniyor.",
+    ],
+  },
+  {
     version: "0.30.0",
     date: "2026-09-13",
     summary: {
@@ -57,8 +130,8 @@ export const CHANGELOG: ChangeLogVersion[] = [
       },
       {
         type: "improved",
-        tr: "\"Şablon olarak kaydet\" ve \"Tarif olarak kaydet (100 g)\" artık ne yaptıklarını söylüyor: şablon öğünü tek dokunuşla geri getirir, tarif hafızada 100 g'ı üzerinden hesaplanan yeni bir besin yaratır.",
-        en: "\"Save as a template\" and \"Save as a recipe (100 g)\" now say what they do: a template brings the meal back with one tap, a recipe creates a new food in memory measured per 100 g.",
+        tr: '"Şablon olarak kaydet" ve "Tarif olarak kaydet (100 g)" artık ne yaptıklarını söylüyor: şablon öğünü tek dokunuşla geri getirir, tarif hafızada 100 g\'ı üzerinden hesaplanan yeni bir besin yaratır.',
+        en: '"Save as a template" and "Save as a recipe (100 g)" now say what they do: a template brings the meal back with one tap, a recipe creates a new food in memory measured per 100 g.',
       },
       {
         type: "improved",
@@ -136,7 +209,10 @@ export const CHANGELOG: ChangeLogVersion[] = [
         en: "Input validation strengthened for meal and food entries: invalid records are now rejected on the server.",
       },
     ],
-    dev: ["Beklenmedik 500'ler client'a genel mesaj döner (madde 13).", "server/meals.js izole modülü ile /api/day öğe doğrulaması (madde 6,25)."],
+    dev: [
+      "Beklenmedik 500'ler client'a genel mesaj döner (madde 13).",
+      "server/meals.js izole modülü ile /api/day öğe doğrulaması (madde 6,25).",
+    ],
   },
   {
     version: "0.28.8",
@@ -148,8 +224,8 @@ export const CHANGELOG: ChangeLogVersion[] = [
     items: [
       {
         type: "new",
-        tr: "Uygulama içinden geri bildirim ve özellik isteği gönderebilirsin (\"Özellik iste ve geri bildirim\" bölümünde).",
-        en: "Send feedback and feature requests from inside the app (in the \"Request a feature & feedback\" section).",
+        tr: 'Uygulama içinden geri bildirim ve özellik isteği gönderebilirsin ("Özellik iste ve geri bildirim" bölümünde).',
+        en: 'Send feedback and feature requests from inside the app (in the "Request a feature & feedback" section).',
       },
       {
         type: "new",

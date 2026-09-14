@@ -7,13 +7,18 @@ kullanılmıyor; CLAUDE.md de yalnızca AGENTS.md'ye köprüdür.)
 
 ## AÇIK İŞLER
 
+- [ ] **Kilo geçmişini toplu temizleme** — v0.30.1'de yanlış/eski ölçümler TEK TEK
+      silinebiliyor (Ayarlar → Kilo & Vücut Geçmişi); "tümünü temizle" ya da "tüm geçmişi
+      tarihle birlikte dışa aktar" istenirse eklenmeli (geri dönüşsüz olduğu için onay diyaloglu).
 - [ ] **Saide'nin Google girişi** — Google Cloud Console → OAuth consent screen ("Testing") →
       **Test users** listesine eklenmeli; eklenmezse Google onu reddeder (parolayla giriş çalışır).
 - [ ] **Play Store yayını** — keystore üret → SHA-256 fingerprint →
       `public/.well-known/assetlinks.json` placeholder'ını doldur → signed AAB → Console yükleme.
       Adımlar: `docs/archive/superpowers/2026-08-26-play-store-readiness.md` Task 21.
-- [ ] **Uygulamada "çıkış yap" düğmesi yok.**
-- [ ] **Uygulamada parola değiştirme ekranı yok** (şimdilik `server/setpassword.js` ile sunucudan).
+- [x] ~~**Uygulamada "çıkış yap" düğmesi yok.**~~ — VAR: Ayarlar → Uygulama & Hesap →
+      Çıkış Yap (onay diyaloglu, kırmızı). Kayıt 2026-09-15'te güncellendi.
+- [x] ~~**Uygulamada parola değiştirme ekranı yok**~~ — VAR: Ayarlar → Hesap & Profil →
+      Parola Değiştir. Kayıt 2026-09-15'te güncellendi.
 - [ ] **Prod `.env`: `NUTRI_AI_RATE_VISION`** (varsayılan 5/dk, `server/ai.js`) — birkaç denemeden
       sonra vision rate limit'e takılıyor; kod değişikliği gerekmiyor, tek satır env.
 
@@ -39,8 +44,8 @@ eşleşmesi. Odak tuzağı işi de tamamlandı (`useDialogFocus`, v0.30.0). İki
 - [x] **A6** "Analiz ediliyor…" örtüsü + iptal; `healthNote`'u hata mesajı olarak kullan
 - [x] **A7** `cameraError` sıfırlanabilsin (`retry()`)
 - [x] **A8** Elle barkod yedeği tam ekranda erişilebilir kalsın
-- [x] **A9** *(tur içinde eklendi)* "Sadece öğüne" — hafızaya yazmadan bugüne ekle
-- [x] **A10** *(tur içinde eklendi)* `client_secret_*.json` `.gitignore`'a alındı
+- [x] **A9** _(tur içinde eklendi)_ "Sadece öğüne" — hafızaya yazmadan bugüne ekle
+- [x] **A10** _(tur içinde eklendi)_ `client_secret_*.json` `.gitignore`'a alındı
 - [x] **Kapı** typecheck 0 · test 407/407 · build ✓
 - [x] **Doğrulama** sahte `MediaStream` ile dev VE üretim derlemesinde
 - [x] **Commit + deploy** — `6f1b3d5`; canlı varlıklar yerel derlemeyle byte-byte aynı
@@ -54,7 +59,7 @@ Dördü de doğrulandı ve düzeltildi:
 
 - [x] **Bulanık görüntü + "etiketi bazen algılamıyor"** — tek kök sebep: `getUserMedia`
       HİÇBİR çözünürlük istemiyordu, tarayıcı düşük varsayılan seçiyordu. `width/height
-      ideal 2560×1440` eklendi. AI'a giden etiket görseli **265×390 → 607×893** (piksel
+  ideal 2560×1440` eklendi. AI'a giden etiket görseli **265×390 → 607×893** (piksel
       sayısı ~5 katı). Etiket JPEG kalitesi 0.85 → 0.92 (ince yazıyı en çok artefakt yiyor).
 - [x] **Yakın çekimde odak** — `track.applyConstraints({advanced:[{focusMode:"continuous"}]})`,
       desteklemeyen cihazda sessizce yutuluyor (catch yolu tarayıcıda doğrulandı).
@@ -96,6 +101,7 @@ sunucuda varsayılan **5/dk** (`server/ai.js:77`). Kod değişikliği gerekmiyor
 tek satır. → **AÇIK İŞLER'e taşındı.**
 
 ### ~~Kalan borç (ayrı bir iş)~~ — KAPANDI (2026-09-13)
+
 `MealForm`/`AliasForm`/`NutritionSheet`/`RecipeBuilder`, `Modal`'ın geçmiş mantığını elle
 kopyalıyordu ve temizlikte `history.back()` yerine `replaceState` kullanıyordu — her form açılışı
 geçmiş yığınına harcanmış bir girdi bırakıyordu. Doğrusu tek bir `useModalHistory` hook'una
@@ -191,28 +197,28 @@ tekrarlanmasın.
       sonra aç). Sıra bozulmadı: yedek → env → dosyalar → göç → doğrula → bayrak → basic-auth.
 
       **Adım 1 (giriş KAPALI):** `data.db.bak-2026-08-07-0620`, `index.js.bak-…`, `.env.bak-…`
-      yedekleri alındı. `.env`'e ayarlar **göçten ÖNCE** yazıldı (`NUTRIMIND_OWNER_EMAIL`
-      yalnızca göç anında okunuyor). 6 sunucu dosyası md5 eşleşmesiyle gitti.
-      Canlı log: `şema göçü: v0 → v2 { days: 18, aliases: 38, config: 5 }` — sahipsiz satır 0,
-      `integrity_check ok`, servis hatasız, `/api/ai/parse` 200. Ön yüz de deploy edildi.
-      ✅ Kullanıcı telefonda doğruladı: giriş yapılıyor, veriler yerinde.
+              yedekleri alındı. `.env`'e ayarlar **göçten ÖNCE** yazıldı (`NUTRIMIND_OWNER_EMAIL`
+              yalnızca göç anında okunuyor). 6 sunucu dosyası md5 eşleşmesiyle gitti.
+              Canlı log: `şema göçü: v0 → v2 { days: 18, aliases: 38, config: 5 }` — sahipsiz satır 0,
+              `integrity_check ok`, servis hatasız, `/api/ai/parse` 200. Ön yüz de deploy edildi.
+              ✅ Kullanıcı telefonda doğruladı: giriş yapılıyor, veriler yerinde.
 
-      **Adım 2 (giriş AÇIK + basic-auth kaldırıldı):**
-      - Sahip parolası kuruldu; Saide'nin hesabı `--create` ile açıldı (kayıt kapalı kaldı).
-      - nginx `app.conf` yedeklendi, `auth_basic` iki bloktan da kaldırıldı, `nginx -t` geçti.
-      - Dışarıdan HTTPS doğrulaması: ana sayfa 200, `/api/data` `/api/auth/me`
-        `/api/ai/vision` **401**, `/api/health` 200. Emrullah girişi → 18 gün/38 besin;
-        Saide girişi → **0 gün/0 besin, sızıntı yok**. Çerez `__Host-nm_session`.
+              **Adım 2 (giriş AÇIK + basic-auth kaldırıldı):**
+              - Sahip parolası kuruldu; Saide'nin hesabı `--create` ile açıldı (kayıt kapalı kaldı).
+              - nginx `app.conf` yedeklendi, `auth_basic` iki bloktan da kaldırıldı, `nginx -t` geçti.
+              - Dışarıdan HTTPS doğrulaması: ana sayfa 200, `/api/data` `/api/auth/me`
+                `/api/ai/vision` **401**, `/api/health` 200. Emrullah girişi → 18 gün/38 besin;
+                Saide girişi → **0 gün/0 besin, sızıntı yok**. Çerez `__Host-nm_session`.
 
-      **Bu adımda yakalanan iki güvenlik açığı (planda yoktu):**
-      1. `setpassword.js` e-posta bulunamazsa **sahip hesabını devralıyordu** — Saide'nin
-         adresiyle çalıştırmak Emrullah'ın hesabının e-postasını değiştirip üzerine yazardı.
-         Artık sahip yalnızca HÂLÂ SAHİPSİZKEN (yer tutucu e-posta + parola yok)
-         devralınabiliyor; yeni hesap için açık `--create` gerekiyor.
-      2. nginx `X-Forwarded-For` göndermiyordu → IP başına hız sınırı herkesi tek kovaya
-         (127.0.0.1) düşürüyordu, yani bir saldırgan tüm kullanıcıları kilitleyebilirdi.
-         Başlık eklendi VE kod `X-Real-IP`'ye de düşecek şekilde sağlamlaştırıldı (YunoHost
-         vhost'u yeniden üretirse elle eklenen satır kaybolabilir).
+              **Bu adımda yakalanan iki güvenlik açığı (planda yoktu):**
+              1. `setpassword.js` e-posta bulunamazsa **sahip hesabını devralıyordu** — Saide'nin
+                 adresiyle çalıştırmak Emrullah'ın hesabının e-postasını değiştirip üzerine yazardı.
+                 Artık sahip yalnızca HÂLÂ SAHİPSİZKEN (yer tutucu e-posta + parola yok)
+                 devralınabiliyor; yeni hesap için açık `--create` gerekiyor.
+              2. nginx `X-Forwarded-For` göndermiyordu → IP başına hız sınırı herkesi tek kovaya
+                 (127.0.0.1) düşürüyordu, yani bir saldırgan tüm kullanıcıları kilitleyebilirdi.
+                 Başlık eklendi VE kod `X-Real-IP`'ye de düşecek şekilde sağlamlaştırıldı (YunoHost
+                 vhost'u yeniden üretirse elle eklenen satır kaybolabilir).
 
 - [x] **Kullanıcı doğrulaması:** ✅ Google ile giriş sorunsuz çalıştı.
       ⚠️ Ama ilk açılışta "Veri alınamadı (API 401)" ölü ekranı görüldü, yenileyince düzeldi.
@@ -228,6 +234,7 @@ tekrarlanmasın.
       → **AÇIK İŞLER'e taşındı.**
 
 ### Kalan küçük işler (kullanıcıya önerildi, henüz onaylanmadı)
+
 - Uygulamada **çıkış yap** düğmesi yok.
 - Uygulamada **parola değiştirme** ekranı yok (şimdilik `setpassword.js` ile sunucudan).
 
@@ -252,15 +259,15 @@ kendi piksellerine çeviriyor ve kare tam oraya kırpılıyor.
 **Tarayıcıda ölçülen kanıtlar** (gerçek kamera yok; `getUserMedia` canvas tabanlı gerçek bir
 `MediaStream` ile sarmalandı):
 
-| Ne | Sonuç |
-|---|---|
-| Kamera tam ekran açılıyor ve **açık kalıyor** | ✅ 375×753 video, `object-cover` |
-| "Etiket"e basınca galeri açılıyor mu | ✅ **hayır** (dosya seçici casusu 0 kayıt) |
-| Mod değişimi kamerayı yeniden başlatıyor mu | ✅ hayır (tek `getUserMedia`) |
-| Deklanşör → kırpma | ✅ 265×390 gönderildi; kenar gürültüsü **%0** |
-| Gemini kırpılmış etiketi okudu | ✅ 250 kcal / 12 P / 30 K / 8 Y / 3 L — birebir |
-| Geri tuşu (üretim derlemesi) | ✅ modal kapanıyor **ve** kamera duruyor (`track.stop`) |
-| "Sadece öğüne", ifade boşken | ✅ aktif; öğün +1, hafıza değişmedi, `sources` yok |
+| Ne                                            | Sonuç                                                   |
+| --------------------------------------------- | ------------------------------------------------------- |
+| Kamera tam ekran açılıyor ve **açık kalıyor** | ✅ 375×753 video, `object-cover`                        |
+| "Etiket"e basınca galeri açılıyor mu          | ✅ **hayır** (dosya seçici casusu 0 kayıt)              |
+| Mod değişimi kamerayı yeniden başlatıyor mu   | ✅ hayır (tek `getUserMedia`)                           |
+| Deklanşör → kırpma                            | ✅ 265×390 gönderildi; kenar gürültüsü **%0**           |
+| Gemini kırpılmış etiketi okudu                | ✅ 250 kcal / 12 P / 30 K / 8 Y / 3 L — birebir         |
+| Geri tuşu (üretim derlemesi)                  | ✅ modal kapanıyor **ve** kamera duruyor (`track.stop`) |
+| "Sadece öğüne", ifade boşken                  | ✅ aktif; öğün +1, hafıza değişmedi, `sources` yok      |
 
 **İki yanlış ölçüm, düzeltildi.** (a) Panel gizliyken `getBoundingClientRect` donuk değer veriyor —
 çerçeve üç modda da aynı sanılmıştı; inline stiller doğruydu. (b) Dev'de geri tuşu çalışmıyor
@@ -282,15 +289,15 @@ scatch DB + `pnpm preview` (4173). Detaylı rapor: `docs/archive/qa/2026-08-09-b
 **0 bulgu**. Tarihsel bug'ların tamamı (onboarding 400, bayat-profil ezme, FAB yeniden açılma,
 sahte çıkış toast'ı, ilk-yükleme ölü ekranı) **FIXED ve doğrulandı**.
 
-| Sev | Alan | Kısa açıklama | File:line |
-|---|---|---|---|
+| Sev  | Alan        | Kısa açıklama                                                       | File:line                  |
+| ---- | ----------- | ------------------------------------------------------------------- | -------------------------- |
 | SEV3 | Öğün girişi | NutritionSheet aç-kaydet 2 ondalığı sessizce 1 ondalığa tırnaklıyor | `NutritionSheet.tsx:22-33` |
-| SEV4 | Ana ekran | Öğün satırı seçim modunda çift birim "800 kcal kalori" | `MealRow.tsx:58` |
-| SEV4 | Öğün girişi | Negatif makro kabul edilip kayıtta sessizce 0'a clamp'leniyor | `MealForm.tsx:576-585` |
-| SEV4 | Öğün girişi | Miktar 1g minimumsuz — "0.5" → 0 kcal öğün | `MealForm.tsx:234-239` |
-| SEV4 | Ana ekran | Öğün satırı makroları tr-TR virgülü atlıyor ("12.5g P") | `MealRow.tsx:87-95` |
-| SEV4 | Trend | "Son 7 gün ort." aslında son 7 KAYITLI gün — etiket belirsiz | `trend.ts:213` |
-| SEV4 | Ana ekran | Girilmemiş çekirdek makro "0g", mikro "—" — ilke tutarsız | `MacroCardGrid.tsx` |
+| SEV4 | Ana ekran   | Öğün satırı seçim modunda çift birim "800 kcal kalori"              | `MealRow.tsx:58`           |
+| SEV4 | Öğün girişi | Negatif makro kabul edilip kayıtta sessizce 0'a clamp'leniyor       | `MealForm.tsx:576-585`     |
+| SEV4 | Öğün girişi | Miktar 1g minimumsuz — "0.5" → 0 kcal öğün                          | `MealForm.tsx:234-239`     |
+| SEV4 | Ana ekran   | Öğün satırı makroları tr-TR virgülü atlıyor ("12.5g P")             | `MealRow.tsx:87-95`        |
+| SEV4 | Trend       | "Son 7 gün ort." aslında son 7 KAYITLI gün — etiket belirsiz        | `trend.ts:213`             |
+| SEV4 | Ana ekran   | Girilmemiş çekirdek makro "0g", mikro "—" — ilke tutarsız           | `MacroCardGrid.tsx`        |
 
 **Doğrulanan kritik akışlar (bulgu değil):** AI kill-switch 503 + zarif hata; kamera yoksa galeri/elle
 barkod canlı; onboarding tamamla+atla (hedef 3015 v2, profil korunuyor); çift-geri çıkış toast'ı;
@@ -301,6 +308,7 @@ FAB→modal yığınlama; gün silme + History drilldown; alias öğretme 3 yol 
 Bulgu değil.
 
 **Önerilen kuyruk (rapor-only olduğu için HİÇBİRİ yapılmadı):**
+
 1. (SEV3) `NutritionSheet` aç-kaydet dönüşümü: `fromDraft` gösterilen değeri yazıyor; çözüm çarpan
    mantığını gösterimden ayırmak.
 2. (SEV4) `MealRow` seçim modu `formatKcal` ile normal mod çıplak `{kcal}` — biri tutarlılaştırılmalı.
@@ -318,14 +326,14 @@ Kullanıcı onayıyla bulgular **çözüldü** (plan: `imdi-senden-derinlemesine
 yok** — "çekirdek her-zaman-sayı" sözleşmesi korunuyor, rapor nota olarak kalır. `server/index.js`
 dokunulmadı.
 
-| Bulgu | Dosya | Çözüm |
-|---|---|---|
-| SEV3 aç-kaydet tırnaklama | `NutritionSheet.tsx` | `scaleMealNutrition` export + m=1'de lossless erken-dönüş (stepper m≠1 yuvarlaması korunuyor) |
-| SEV4 çift birim | `MealRow.tsx` | seçim modu `formatKcal`→çıplak `{kcal}`, normal modla birebir |
-| SEV4 negatif makro | `FormBits.tsx` | `acceptsNumericEntry` + `NumField`/`EditableStat` onChange guard'ı (uygulama geneli: MealForm, AliasForm, RecipeBuilder, ScanSheet, WeightCard, NutritionSheet) |
-| SEV4 1g minimum | `nutrition.ts` + `MealForm.tsx` | `clampMinGrams` saf fonksiyon; `handleGramsChange` gram biriminde uygular (gram dışı 0.5 meşru) |
-| SEV4 tr-TR makro | `MealRow.tsx` | `macroNum` = `formatNumber(v, tamsayı?0:1)` → "12,5g P" |
-| SEV4 trend etiketi | `TrendPage.tsx` | "Son 7 kayıtlı gün ort." + "Önceki 7 kayıtlı güne göre" |
+| Bulgu                     | Dosya                           | Çözüm                                                                                                                                                           |
+| ------------------------- | ------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| SEV3 aç-kaydet tırnaklama | `NutritionSheet.tsx`            | `scaleMealNutrition` export + m=1'de lossless erken-dönüş (stepper m≠1 yuvarlaması korunuyor)                                                                   |
+| SEV4 çift birim           | `MealRow.tsx`                   | seçim modu `formatKcal`→çıplak `{kcal}`, normal modla birebir                                                                                                   |
+| SEV4 negatif makro        | `FormBits.tsx`                  | `acceptsNumericEntry` + `NumField`/`EditableStat` onChange guard'ı (uygulama geneli: MealForm, AliasForm, RecipeBuilder, ScanSheet, WeightCard, NutritionSheet) |
+| SEV4 1g minimum           | `nutrition.ts` + `MealForm.tsx` | `clampMinGrams` saf fonksiyon; `handleGramsChange` gram biriminde uygular (gram dışı 0.5 meşru)                                                                 |
+| SEV4 tr-TR makro          | `MealRow.tsx`                   | `macroNum` = `formatNumber(v, tamsayı?0:1)` → "12,5g P"                                                                                                         |
+| SEV4 trend etiketi        | `TrendPage.tsx`                 | "Son 7 kayıtlı gün ort." + "Önceki 7 kayıtlı güne göre"                                                                                                         |
 
 **Testler:** 589/589 (`+15`: `NutritionSheet.test.ts` yeni 7, `acceptsNumericEntry` 4,
 `clampMinGrams` 4). `pnpm typecheck` 0 hata. `pnpm build` ✓.
@@ -340,10 +348,10 @@ kabul; #4 Miktar `0.5`→`1`, `0` korundu, `200` geçti; #5 satır "12,5g P"; #6
 QA turu deploy'undan sonra kullanıcı iki yeni sorun bildirdi; ikisi de saf frontend,
 `server/index.js` dokunulmadı (donmuş kural).
 
-| Sorun | Dosya | Çözüm |
-|---|---|---|
-| **Bug** İlerleme drilldown'ında düzenleme ekranı ekranın en üstünde açılıyor | `src/index.css` | `.anim-zoom` `fill-mode: both` → `backwards`. `both`/`forwards` + `transform` animasyonu, animasyon bitse bile sarmalı `position:fixed` torunlar için KALICI containing block yapıyor (WebKit Bug 176858). Portal olmayan `NutritionSheet`/`MealForm` `fixed inset-0` ile viewport yerine sarmalın tepesine hizalanıyordu. Görsel kayıp yok: `zoomIn` son karesi `transform:none` |
-| **UX** Uzun öğün ismi tek satırda `...` ile kesiliyor, okunmuyor | `src/components/MealRow.tsx` | `<h4 truncate>` → `ExpandableMealName` (mevcut desen, `FormBits.tsx:394`): varsayılan 2 satır, isme dokununca `line-clamp-none` (tam açılır), `stopPropagation` sayesinde kartın geri kalanına tıklamak hâlâ düzenlemeye girer. Seçim modu `truncate` kalır (kasıtlı) |
+| Sorun                                                                        | Dosya                        | Çözüm                                                                                                                                                                                                                                                                                                                                                                             |
+| ---------------------------------------------------------------------------- | ---------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Bug** İlerleme drilldown'ında düzenleme ekranı ekranın en üstünde açılıyor | `src/index.css`              | `.anim-zoom` `fill-mode: both` → `backwards`. `both`/`forwards` + `transform` animasyonu, animasyon bitse bile sarmalı `position:fixed` torunlar için KALICI containing block yapıyor (WebKit Bug 176858). Portal olmayan `NutritionSheet`/`MealForm` `fixed inset-0` ile viewport yerine sarmalın tepesine hizalanıyordu. Görsel kayıp yok: `zoomIn` son karesi `transform:none` |
+| **UX** Uzun öğün ismi tek satırda `...` ile kesiliyor, okunmuyor             | `src/components/MealRow.tsx` | `<h4 truncate>` → `ExpandableMealName` (mevcut desen, `FormBits.tsx:394`): varsayılan 2 satır, isme dokununca `line-clamp-none` (tam açılır), `stopPropagation` sayesinde kartın geri kalanına tıklamak hâlâ düzenlemeye girer. Seçim modu `truncate` kalır (kasıtlı)                                                                                                             |
 
 **Kök neden (bug):** drilldown'ı saran `.anim-zoom` (`animation: zoomIn … both`) `transform`
 animasyon ediyor; `fill-mode: both/forwards`, animasyon BİTSE bile tarayıcının o elemanı
@@ -351,6 +359,7 @@ animasyon ediyor; `fill-mode: both/forwards`, animasyon BİTSE bile tarayıcın�
 sekmesinde transform sarmalı yok → orada doğruydu. Ders: `tasks/lessons.md` → **L14**.
 
 **Testler:** 589/589 (değişmez), `pnpm typecheck` 0 hata, `pnpm build` ✓. Unit test eklenmedi:
+
 1. düzeltme saf CSS, 2. mevcut bileşeni yeniden kullanıyor — ikisi de tarayıcıda doğrulandı.
 
 **Tarayıcı doğrulaması (preview, scratch DB):** Bug 1 — drilldown'da öğüne tıkla → `NutritionSheet`
@@ -426,20 +435,20 @@ hepsi uygulanıyor. Dört giriş kuralı da aynı desene taşındı (`.anim-glas
 
 ### Doğrulama kapısı (hepsi geçti)
 
-| Ne | Sonuç |
-|---|---|
-| `pnpm typecheck` | 0 hata |
-| `pnpm test` | 593/593 |
-| `pnpm build` | ✓ (3.01s) |
-| Built CSS denetimi | kısayol temiz + timing longhand'i, 20 glass kuralı, `active:scale-[0.98]` typo düzeltmesi mevcut |
-| FAB stagger | 0/30/60/90ms (reduced-motion kaldırılınca) |
-| rise-d / fadeup stagger | 80/140/190/240ms / inline 120ms |
-| Reduced-motion | FAB delay 0s, fadeup `animation:none`+opacity 1, rise 0s — a11y doğru |
-| Modal perdesi (scrim) | `.anim-scrim` mevcut, `scrimFade` uygulanıyor, bg `rgba(0,0,0,0.85)`, panel `.anim-fadeup` (ScanSheet Modal'ı üzerinden ölçüldü) |
-| Grafik spring | WeekBars çubuk yükseklikleri 450ms arayla iki örnek birebir → spring hedefe oturmuş, sürüklenme yok |
-| Blanket basınç | CSSOM'da `[data-theme="glass"] button:not(:disabled):active { scale(0.97); transform 120ms var(--ease-glass) }` |
-| Reduced-transparency | token'lar azaltma bloğu değerlerinde: cal-card-a 0.90, elevated-2-a 0.92, row-a 0.80, bar-a 0.85, well-a 0.85 |
-| Velvet byte-identity | `data-theme` yok, body `rgb(23,22,34)` (birebir), FAB transition'ı Tailwind default — glass kuralı devre dışı |
+| Ne                      | Sonuç                                                                                                                            |
+| ----------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
+| `pnpm typecheck`        | 0 hata                                                                                                                           |
+| `pnpm test`             | 593/593                                                                                                                          |
+| `pnpm build`            | ✓ (3.01s)                                                                                                                        |
+| Built CSS denetimi      | kısayol temiz + timing longhand'i, 20 glass kuralı, `active:scale-[0.98]` typo düzeltmesi mevcut                                 |
+| FAB stagger             | 0/30/60/90ms (reduced-motion kaldırılınca)                                                                                       |
+| rise-d / fadeup stagger | 80/140/190/240ms / inline 120ms                                                                                                  |
+| Reduced-motion          | FAB delay 0s, fadeup `animation:none`+opacity 1, rise 0s — a11y doğru                                                            |
+| Modal perdesi (scrim)   | `.anim-scrim` mevcut, `scrimFade` uygulanıyor, bg `rgba(0,0,0,0.85)`, panel `.anim-fadeup` (ScanSheet Modal'ı üzerinden ölçüldü) |
+| Grafik spring           | WeekBars çubuk yükseklikleri 450ms arayla iki örnek birebir → spring hedefe oturmuş, sürüklenme yok                              |
+| Blanket basınç          | CSSOM'da `[data-theme="glass"] button:not(:disabled):active { scale(0.97); transform 120ms var(--ease-glass) }`                  |
+| Reduced-transparency    | token'lar azaltma bloğu değerlerinde: cal-card-a 0.90, elevated-2-a 0.92, row-a 0.80, bar-a 0.85, well-a 0.85                    |
+| Velvet byte-identity    | `data-theme` yok, body `rgb(23,22,34)` (birebir), FAB transition'ı Tailwind default — glass kuralı devre dışı                    |
 
 **Not:** basınç spring'i (usePressSpring) compaction'dan önce doğrulanmıştı ve CSS değişikliklerinden
 etkilenmedi. `spring-press` + giriş animasyonu kombinasyonunda `animation-fill-mode: backwards`
@@ -530,3 +539,73 @@ gitti, satır 194 ms'de DOM'dan düştü (DB'den de) · konsol 0 hata · veri or
 `focus()` sessizce başarısız oluyordu → hook `ready` bayrağıyla yeniden dener ve başarıyı
 ÖLÇER; (2) odağı taşıyan efekt ayrı bir efekte bölününce `previouslyFocused` panelin kendisi
 oluyordu → odak `<body>`'ye dönüyordu; yakalama ref'e alındı (bkz. `lessons.md` L18/L19).
+
+---
+
+## Ayarlar düzeni + Kilo & Vücut Geçmişi (v0.30.1, 2026-09-15)
+
+Kullanıcı bildirimi: _"Ayarlar bölümü biraz karışık geliyo… mantıklı bi sıralama olmalı"_ +
+_"Hedefler&Takip bölümünde kilo&vücut geçmişinde bug var, çok önceden girilen bilgiler mevcut ya
+da saçma sapan veriler var."_ → superpowers:systematic-debugging (kök neden önce) + brainstorming
+(bounded: sıra/tasarım onayı).
+
+### Kök neden (ölçüldü)
+
+`SettingsSheet.tsx` içindeki `subView === "weight"` bloğu gerçek veriye bağlanmamış bir yer
+tutucuydu; üç değerin üçü de uydurmaydı:
+
+| Ekranda görünen | Gerçek kaynağı                                                            |
+| --------------- | ------------------------------------------------------------------------- |
+| "Mevcut Kilo"   | `localStorage.nutrimind_userweight` → `profile.weightKg` → literal `"78"` |
+| "Hedef Kilo"    | `settings.targetWeightValue` i18n metni — 3 dilde de düz `"75 kg"`        |
+| İlerleme çubuğu | sabit `w-3/4` (%75)                                                       |
+
+`config.weight.entries` bu ekranda HİÇ okunmuyordu (bu yüzden "çok önceden girilen bilgi"), ve
+sihirbazın 2. adımında zorunlu sorulan `profile.targetWeightKg` uygulamada hiçbir yerde
+okunmuyordu (grep: yalnızca `OnboardingModal` + `tdee` tipi). Üretim derlemesinde (:4173, gerçek
+8790 backend) hiç profili/kilosu olmayan hesapla ekran "78 kg / 75 kg" ve %75 çubuk gösteriyordu;
+profil kartı da aynı hesap için "29 yaşında • 78 kg" ve `"EB"` avatar yazıyordu (sabit varsayılanlar).
+
+### Düzeltme
+
+- [x] `lib/weight.ts` (saf + testli): `sortedEntries`, `latestEntry`, `seedEntry`, `parseBodyStats`,
+      `profileWeightEntries`, `weightProgress`.
+- [x] `components/WeightSettings.tsx` (yeni): özet (son ölçüm + gerçek hedef + hesaplanan ilerleme),
+      bugünkü kilo (WeightCard yeniden kullanılır — tek yazar), `RangePicker` +
+      `WeightTrendCard` grafiği, ölçüm listesi (tarih/kilo/fark + tek tek silme) ve dürüst boş durum.
+- [x] Hedef kilo tek kaynak: `profile.targetWeightKg`, Profil Bilgileri'nde düzenlenebilir
+      (mevcut ve atıl `targetWeightLabel/Placeholder` anahtarları settings'e eklendi).
+- [x] `handleSaveProfile` artık `config.profile`a yazıyor (önceden SADECE localStorage — ad/yaş/
+      boy/kilo cihaza bağlıydı) ve form önceliği config-first'e çevrildi.
+- [x] Kilo, geçmişe yalnızca alan o oturumda düzenlendiyse yazılır (`profileWeightEntries`).
+- [x] Sihirbaz kilosu, `seedEntry` ile bugünün başlangıç ölçümü olur (try/catch — kurulumu bloklamaz).
+- [x] Uydurma veri temizliği: avatar `"EB"` → jenerik ikon; form varsayılanları `29/78/178` → boş;
+      profil kartındaki kg yalnızca gerçek değer varsa yazılır.
+- [x] Ayarlar sırası: veri satırı Hesap & Profil → Veri & Destek (ilk satır); kilo satırı hedeflerin
+      altında; Destek blogu (gizlilik → geri bildirim → [gelen kutusu] → destek → rehber → sürüm
+      notları); `settings.accountActions` başlığı → "Uygulama & Hesap"; ölü `targetWeightValue`
+      anahtarı 3 dilden silindi.
+
+### Ölçüm (üretim derlemesi :4173 + gerçek backend)
+
+- Boş hesap: "Mevcut Kilo —", "Henüz ölçüm yok", "Hedef Kilo —" + "Profil Bilgileri'nden belirle",
+  geçmiş (0) — uydurma sayı yok. Profil kartı artık "29 yaşında • 78 kg" / "EB" göstermiyor.
+- 82,4 kg girildi → özet/liste/grafik anında güncellendi; `config.weight` sunucuya yazıldı.
+- Hedef 75 kg (Profilden) → **elle hesap doğrulandı**: 3 ölçümle (90 → 86 → 82,4) "Yolun %51'i",
+  progressbar value=51, "Hedefe 7,4 kg kaldı", "Başlangıç: 20 Ağu · 90,0 kg"; liste yeni→eski
+  ▼3,6 / ▼4,0 / —.
+- Silme: 1 Eyl kaydı silindi → toast "Ölçüm silindi.", liste (2), farklar yeniden hesaplandı
+  (15 Eyl ▼7,6), sunucuda da girdi gitti.
+- Guard iki yönlü doğrulandı: yalnızca ad+hedef kaydedildiğinde bugünün 82,4 ölçümü KORUNDU;
+  kilo alanı düzenlenip kaydedildiğinde bugünün kaydı 80'e güncellendi ve `profile.weightKg`
+  hesaba yazıldı (2026-08-20 girdisine dokunulmadı).
+- Geri tuşu/Geri düğmesi ayarlar listesine döndü, URL kökte kaldı; rehber turu 1→6 sorunsuz
+  (Ayarlar adımı sekme vurgusuyla); konsol 0 hata.
+- **Temizlik:** geçici test verisi yerel dev hesabından geri alındı — `weight {entries:{}}` ve
+  `profile {}` (ikisi de başlangıçta yoktu; okuma tarafında ikisi de "boş" ile aynı), localStorage
+  test anahtarları silindi, 5 günlük veri ve `templates` hiç dokunulmadı.
+
+**Kapı:** typecheck 0 · test 850/850 (+21 yeni) · check:i18n PARITY OK (816×3) · build ✓
+**Not:** backend DEĞİŞMEDİ, `config.weight` şekli aynı — migration yok. Auth kapalı yerel ortamda
+`user` null olduğu için veri/parola/çıkış satırları render edilemedi; sıraları kodda doğrulandı.
+Değişiklikler commit edilmedi.

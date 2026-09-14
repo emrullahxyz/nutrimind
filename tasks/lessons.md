@@ -159,9 +159,10 @@ Sebep: nginx hiçbir dosyaya `Cache-Control` göndermiyordu. Başlık yokken tar
 o eski HTML de eski JS'i işaret ediyor.
 
 **Kural:** SPA dağıtımında iki sınıf dosya vardır ve ikisi de AÇIKÇA etiketlenmeli:
+
 - `index.html` + `sw.js` → `no-cache` ("önbellekleme" değil, "kullanmadan önce sor")
 - hash'li varlıklar → `immutable`, uzun ömür (ad değişince içerik değişir)
-Başlık yokluğu "önbellekleme yok" DEĞİLDİR; tarayıcının kendi kararını vermesidir.
+  Başlık yokluğu "önbellekleme yok" DEĞİLDİR; tarayıcının kendi kararını vermesidir.
 
 **İkinci ders:** Bir hata mesajının METNİ hangi sürümün çalıştığını söyleyebilir. Mimariyi
 suçlamadan önce "bu cümle hangi koddan geliyor?" diye sor.
@@ -273,3 +274,21 @@ diff'iyle yakalandı.
 Dolayısıyla gösterim katmanındaki herhangi bir yuvarlama/biçim dönüşümü kalıcı veri mutasyonu olur.
 Dönüşümü ölçekleme yoluna (m≠1) ayır; temel değer kayıpsız kalmalı. Bir form işlevini değiştirirken
 "gösterilen değer kaydediliyor mu, gösterim veriyi tırnaklıyor mu" diye aç-kaydet testi yaz.
+
+## L21 — Ekranın adı ile veri kaynağı aynı sözleşmedir
+
+**Olay:** Ayarlar → "Kilo & Vücut Geçmişi" ekranı aylarca uydurma veri gösterdi ve kimse fark
+etmedi, çünkü ekran **çalışıyor** görünüyordu: "Mevcut Kilo" `localStorage`→`profile.weightKg`→
+literal `"78"` zincirinden, "Hedef Kilo" üç dilde sabit yazılmış `"75 kg"` çeviri metninden,
+ilerleme çubuğu sabit `w-3/4` sınıfından geliyordu. Adında "Geçmişi" yazan ekran
+`config.weight.entries`'i hiç okumuyordu. Kullanıcı bunu "çok önceden girilen bilgiler mevcut ya da
+saçma sapan veriler var" diye bildirdi — yani hata, ekranın **adı ile verisinin uyuşmamasıydı**.
+
+**Kural:** Bir ekranı yer tutucu (stub) olarak bırakmak serbest değildir; "sonra bağlarız" diye
+bırakılan sabit sayı, kullanıcı için sessizce yanlış bir veridir. Üç kontrol:
+(1) Ekranda gösterilen **her** değerin kaynağını tek tek yazabiliyor musun? Yazamıyorsan o değer
+uydurmadır. (2) Alan, adını taşıdığı veriyi okuyor mu — "Geçmiş" ekranı geçmişi, "Mevcut" etiketi
+en son kaydı? (3) Bir alan sadece YAZILIYOR ama hiç OKUNMUYORSA (burada `profile.targetWeightKg`)
+ölü veridir; ya okunacağı yere bağla ya da toplamayı bırak. Ayrıca boş durumda uydurma varsayılan
+(yaş 29 / 78 kg) ve sahibinin baş harfleri ("EB") gibi kişisel görünen literaller, kullanıcının
+kendi verisi sanılır: boşsa "—" göster ve gerçek kaynağı işaret et.

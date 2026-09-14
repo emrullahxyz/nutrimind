@@ -46,7 +46,9 @@ export function StatCardCarousel({
   }
 
   return (
-    <div className="flex flex-col gap-3">
+    /* `data-guide-target`: ilk kullanım rehberinin 1. adımı bu bloğu vurgular
+       (bkz. src/lib/guide.ts). Sınıf/DOM sırası yerine kararlı bir işaret. */
+    <div data-guide-target="day-summary" className="flex flex-col gap-3">
       <div
         ref={scrollRef}
         onScroll={handleScroll}

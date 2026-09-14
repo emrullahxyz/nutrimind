@@ -178,6 +178,11 @@ export function BottomNav({
                     setOpen(false);
                     onTabChange(tab.id as TabType);
                   }}
+                  /* Kararlı işaret: ilk kullanım rehberi sekmeleri bu değerle
+                     bulur (`${tab.id}-tab`, ör. "aliases-tab"). Ölçüt DOM sırası
+                     değil — sekme eklemek rehberi sessizce kaydırmasın
+                     (bkz. src/lib/guide.ts). */
+                  data-guide-target={`${tab.id}-tab`}
                   aria-current={isActive ? "page" : undefined}
                   aria-label={tab.label}
                   className={`flex flex-col items-center justify-center py-1 px-2 transition-colors duration-200 ${
@@ -198,6 +203,8 @@ export function BottomNav({
           <button
             type="button"
             onClick={() => setOpen(!open)}
+            /* Rehberin 4. adımı (hızlı işlemler) bu düğmeyi vurgular. */
+            data-guide-target="fab"
             className="flex h-12 w-12 sm:h-14 sm:w-14 items-center justify-center rounded-full bg-white text-black shadow-card transition-transform duration-200 hover:scale-105 active:scale-95 flex-none z-50 ml-1"
             aria-label={t("common.add")}
           >

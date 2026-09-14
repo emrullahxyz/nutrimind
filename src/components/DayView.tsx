@@ -484,6 +484,10 @@ export function DayView({
               type="button"
               onClick={() => setEditIndex(null)}
               disabled={busy}
+              /* Rehberin 2. adımı: gün dolu olduğunda görünen tek ekleme kapısı
+                 (boş gündeki büyük CTA ile AYNI işaret — ikisi asla birlikte
+                 render edilmez, bkz. aşağıdaki `hasData` dalı). */
+              data-guide-target="add-meal"
               className="self-start rounded-pill bg-accent px-3 py-1.5 text-xs font-extrabold text-accent-ink transition hover:opacity-90 disabled:opacity-40"
             >
               + {t("day.addMeal")}
@@ -518,6 +522,9 @@ export function DayView({
             type="button"
             onClick={() => setEditIndex(null)}
             disabled={busy}
+            /* Rehberin 2. adımı — boş günün "ilk öğün" CTA'sı (bkz. yukarıdaki
+               dolu-gün dalındaki aynı işaret). */
+            data-guide-target="add-meal"
             className="anim-fadeup flex flex-col items-center justify-center gap-3 rounded-card bg-calCard border border-calBorder shadow-card px-4 py-8 text-center transition hover:border-white/20 hover:bg-white/[0.07] disabled:opacity-40"
           >
             <span className="flex h-12 w-12 items-center justify-center rounded-full bg-icon-well text-white">

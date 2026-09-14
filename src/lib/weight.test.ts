@@ -2,9 +2,15 @@ import { describe, expect, it } from "vitest";
 import {
   EMPTY_WEIGHT,
   buildWeightSeries,
+  latestEntry,
   latestEntryBefore,
+  parseBodyStats,
   parseWeightConfig,
+  profileWeightEntries,
+  seedEntry,
+  sortedEntries,
   weightDelta,
+  weightProgress,
   withWeightEntry,
 } from "./weight";
 import type { AppConfig } from "../types";
@@ -201,6 +207,151 @@ describe("weight", () => {
       expect(series.length).toBe(11); // -10 to 0 inclusive
       expect(series[0].date).toBe(dOld);
       expect(series[series.length - 1].date).toBe(today);
+    });
+  });
+
+  // ------------------------------------------------------------------------
+  // v0.30.1: Ayarlar > Kilo & Vücut Geçmişi ekranı gerçek veriye bağlanırken
+  // eklenen çekirdek. Ekranın gösterdiği HER sayı buradan geçer — "mevcut
+  // kilo", "yolun %x'i", "kalan kg" uydurulamaz.
+  // ------------------------------------------------------------------------
+
+  describe("sortedEntries", () => {
+    it("tarihe göre ARTAN sıralar (giriş sırasına güvenmez)", () => {
+      const entries = { "2026-08-05": 78, "2026-07-25": 80, "2026-08-01": 79 };
+      expect(sortedEntries(entries)).toEqual([
+        { date: "2026-07-25", kg: 80 },
+        { date: "2026-08-01", kg: 79 },
+        { date: "2026-08-05", kg: 78 },
+      ]);
+    });
+
+    it("boş entries'te boş dizi döner", () => {
+      expect(sortedEntries({})).toEqual([]);
+    });
+  });
+
+  describe("latestEntry", () => {
+    it("en büyük TARİHLİ ölçümü döner (en son eklenen değil)", () => {
+      const entries = { "2026-07-25": 80, "2026-08-05": 76.5, "2026-08-01": 79 };
+      expect(latestEntry(entries)).toEqual({ date: "2026-08-05", kg: 76.5 });
+    });
+
+    it("kayıt yoksa null döner (uydurma varsayılan YOK)", () => {
+      expect(latestEntry({})).toBeNull();
+    });
+  });
+
+  describe("seedEntry — gerçek ölçüm, form değerini yener", () => {
+    it("o gün için kayıt yoksa yazar", () => {
+      expect(seedEntry({}, "2026-09-15", 82)).toEqual({ "2026-09-15": 82 });
+    });
+
+    it("o gün için kayıt VARSA dokunmaz (ölçüm silinmez)", () => {
+      const entries = { "2026-09-15": 79.2 };
+      expect(seedEntry(entries, "2026-09-15", 82)).toBe(entries);
+    });
+
+    it("geçersiz kg'de entries değişmeden döner", () => {
+      const entries = { "2026-09-10": 80 };
+      expect(seedEntry(entries, "2026-09-15", 0)).toBe(entries);
+    });
+  });
+
+  describe("profileWeightEntries — yalnızca kilo alanı düzenlendiyse yazar", () => {
+    // Sadece ismi düzeltmek için "Profili Kaydet"e basmak, form açılışında
+    // okunan bayat kilo değerini bugünün gerçek ölçümünün üzerine yazıyordu.
+    it("weightChanged=false ise entries'e DOKUNMAZ", () => {
+      const entries = { "2026-09-15": 79.2 };
+      expect(profileWeightEntries(entries, "2026-09-15", 82, false)).toBe(entries);
+    });
+
+    it("weightChanged=true ise bugünün ölçümünü günceller", () => {
+      expect(profileWeightEntries({ "2026-09-15": 79.2 }, "2026-09-15", 82, true)).toEqual({
+        "2026-09-15": 82,
+      });
+    });
+
+    it("weightChanged=true olsa bile geçersiz kg yazılmaz", () => {
+      const entries = { "2026-09-10": 80 };
+      expect(profileWeightEntries(entries, "2026-09-15", -1, true)).toBe(entries);
+    });
+  });
+
+  describe("parseBodyStats", () => {
+    it("profil alanlarını okur", () => {
+      expect(
+        parseBodyStats({ profile: { weightKg: 82.5, targetWeightKg: 74, heightCm: 178 } }),
+      ).toEqual({ weightKg: 82.5, targetWeightKg: 74, heightCm: 178 });
+    });
+
+    it("profil yoksa hepsi null — 0 ya da 78 gibi uydurma varsayılan DEĞİL", () => {
+      expect(parseBodyStats({})).toEqual({ weightKg: null, targetWeightKg: null, heightCm: null });
+      expect(parseBodyStats({ profile: null as unknown as Record<string, unknown> })).toEqual({
+        weightKg: null,
+        targetWeightKg: null,
+        heightCm: null,
+      });
+    });
+
+    it("geçersiz/0/negatif alanları null'a düşürür", () => {
+      expect(
+        parseBodyStats({
+          profile: { weightKg: 0, targetWeightKg: -5, heightCm: "178" as unknown as number },
+        }),
+      ).toEqual({ weightKg: null, targetWeightKg: null, heightCm: null });
+    });
+  });
+
+  describe("weightProgress — yolun ne kadarı alındı", () => {
+    it("hiç ölçüm yoksa null", () => {
+      expect(weightProgress({}, 74)).toBeNull();
+    });
+
+    it("kilo VERME: 85 → 80, hedef 75 → %50", () => {
+      const p = weightProgress({ "2026-08-01": 85, "2026-09-01": 80 }, 75)!;
+      expect(p.direction).toBe("loss");
+      expect(p.pct).toBeCloseTo(0.5);
+      expect(p.remainingKg).toBeCloseTo(5);
+      expect(p.start).toEqual({ date: "2026-08-01", kg: 85 });
+      expect(p.current).toEqual({ date: "2026-09-01", kg: 80 });
+    });
+
+    it("kilo ALMA: 60 → 65, hedef 70 → %50", () => {
+      const p = weightProgress({ "2026-08-01": 60, "2026-09-01": 65 }, 70)!;
+      expect(p.direction).toBe("gain");
+      expect(p.pct).toBeCloseTo(0.5);
+      expect(p.remainingKg).toBeCloseTo(-5);
+    });
+
+    it("hedef AŞILDIĞINDA %100'de kırpılır (negatif ya da >1 yüzde yok)", () => {
+      const p = weightProgress({ "2026-08-01": 85, "2026-09-01": 72 }, 75)!;
+      expect(p.pct).toBe(1);
+      expect(p.remainingKg).toBeCloseTo(-3);
+    });
+
+    it("geriye gidildiğinde %0'da kırpılır (çubuk negatif genişlik üretmez)", () => {
+      const p = weightProgress({ "2026-08-01": 85, "2026-09-01": 87 }, 75)!;
+      expect(p.pct).toBe(0);
+    });
+
+    it("tek ölçümde yol henüz başlamamış: pct 0", () => {
+      const p = weightProgress({ "2026-09-15": 80 }, 75)!;
+      expect(p.pct).toBe(0);
+      expect(p.start).toEqual(p.current);
+    });
+
+    it("başlangıç = hedef ise yüzde anlamsız: pct null, direction hold", () => {
+      const p = weightProgress({ "2026-09-15": 75 }, 75)!;
+      expect(p.pct).toBeNull();
+      expect(p.direction).toBe("hold");
+    });
+
+    it("hedef yok/geçersizse de pct null döner (sahte çubuk çizilmez)", () => {
+      expect(weightProgress({ "2026-09-15": 80 }, null)!.pct).toBeNull();
+      expect(weightProgress({ "2026-09-15": 80 }, 0)!.pct).toBeNull();
+      expect(weightProgress({ "2026-09-15": 80 }, Number.NaN)!.pct).toBeNull();
+      expect(weightProgress({ "2026-09-15": 80 }, null)!.direction).toBe("hold");
     });
   });
 });

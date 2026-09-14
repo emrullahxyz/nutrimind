@@ -12,9 +12,14 @@ import { ExerciseModal } from "./components/ExerciseModal";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 import type { AIParseItem } from "./types";
 import { todayISO } from "./lib/format";
+import { parseWeightConfig, seedEntry } from "./lib/weight";
 import { calculateStreak } from "./lib/streak";
 import { fabTarget } from "./lib/fabRouting";
-import { classifyPopState, consumeProgrammaticBack, shouldExitOnSecondPress } from "./lib/backStack";
+import {
+  classifyPopState,
+  consumeProgrammaticBack,
+  shouldExitOnSecondPress,
+} from "./lib/backStack";
 import { AuthProvider, useAuth } from "./lib/auth";
 import { AuthScreen } from "./components/AuthScreen";
 import { OnboardingModal } from "./components/OnboardingModal";
@@ -27,6 +32,9 @@ import { ChangeLogModal } from "./components/ChangeLogModal";
 import { CHANGELOG } from "./lib/changelog";
 import { parseSeen, unseenVersions, CHANGELOG_SEEN_KEY } from "./lib/changelogUi";
 import { readStringPref } from "./lib/prefs";
+import { ProductGuide } from "./components/ProductGuide";
+import { GUIDE_CONFIG_KEY, guideDonePayload, parseGuideState, shouldShowGuide } from "./lib/guide";
+import type { GuideStatus } from "./lib/guide";
 
 function MainContent() {
   const [tab, setTab] = useState<TabType>("daily");
@@ -89,6 +97,24 @@ function MainContent() {
   ) {
     await updateGoals(goalConfig);
     await updateConfig("profile", { ...profilVerisi, hasCompletedOnboarding: true });
+
+    // Sihirbazda girilen kilo, kilo geçmişinin BAŞLANGIÇ ölçümü olur.
+    // ⚠️ Öncesinde yalnızca profile yazılıyordu; kilo takibi (`config.weight`)
+    // boş kalıyordu ve Ayarlar > Kilo & Vücut Geçmişi "mevcut kilo" diye
+    // profildeki değeri gösteriyordu — geçmişin ilk noktası hiç oluşmuyordu.
+    // `seedEntry` o gün için kayıt varsa dokunmaz (gerçek ölçüm üstündür) ve bu
+    // yazma başarısız olsa bile kurulum TAMAMLANIR: bir ölçüm noktası için
+    // kullanıcıyı sihirbazda bırakmak orantısız olurdu.
+    try {
+      const entries = parseWeightConfig(config).entries;
+      const nextEntries = seedEntry(entries, todayISO(), profilVerisi.weightKg);
+      if (nextEntries !== entries) {
+        await updateConfig("weight", { entries: nextEntries });
+      }
+    } catch {
+      // yoksay — kurulum akışı devam eder
+    }
+
     sihirbazKaydettiRef.current = true;
   }
 
@@ -110,18 +136,73 @@ function MainContent() {
   }
   const streak = calculateStreak(days);
 
-  // Sürüm popup'ı: sihirbaz kapalıyken, görülmemiş sürüm varsa oturum başına BİR KEZ göster.
-  // `sihirbazAcik` bağımlılığı: sihirbaz KAPANINCA efekt yeniden değerlendirir → yeni kayıt
-  // onboarding'i bitirip popup'ı görür. İlk render'da sihirbaz açıksa atlanır, aç kapanınca gelir.
+  // --- İlk kullanım rehberi (coach-mark turu) --------------------------------
+  // Kararın TAMAMI `lib/guide.ts`'te (saf + testli); burada yalnızca config'ten
+  // okuma ve oturum içi bastırma var. Rehber sihirbazın HEMEN ardından gelir ve
+  // tetikleyicisi sihirbazla aynı kapıya dayanır (kurulum bitti + gün verisi
+  // yok) — yani uzun süredir kullanan birine kendiliğinden çıkmaz.
+  const rehberDurumu = parseGuideState(config[GUIDE_CONFIG_KEY]);
+  const [rehberBuOturumdaKapatildi, setRehberBuOturumdaKapatildi] = useState(false);
+  /** Ayarlar > "Rehberi tekrar göster": gün verisi ve "zaten görüldü" koşullarını
+   *  aşar (açan taraf oturum içi kapanış bayrağını da temizler — bkz. aşağıdaki
+   *  `rehberiTekrarBaslat`). */
+  const [rehberZorla, setRehberZorla] = useState(false);
+  const guideAcik = shouldShowGuide({
+    state: rehberDurumu,
+    hasCompletedOnboarding: profil?.hasCompletedOnboarding === true,
+    dayCount: Object.keys(days).length,
+    wizardOpen: sihirbazAcik,
+    dismissedThisSession: rehberBuOturumdaKapatildi,
+    forceOpen: rehberZorla,
+  });
+
+  /** Rehberin bittiği TEK yer: hangi yolla kapanırsa kapansın durum hesaba
+   *  yazılır (`completed` = son adımda "Tamam", diğer her yol = `skipped`).
+   *
+   *  ⚠️ Yazma başarısız olursa (çevrimdışıyken `updateConfig` kuyruğa girmiyor)
+   *  kullanıcı rehberde KİLİTLENMEZ — oturum içi bayrak zaten kapandı. Bedeli,
+   *  sunucuya yazılmadığı için bir sonraki açılışta bir kez daha gösterilmesi;
+   *  rehberi tekrar görmek, çıkılamayan bir ekranda kalmaktan iyidir. */
+  async function rehberiBitir(status: GuideStatus) {
+    setRehberBuOturumdaKapatildi(true);
+    setRehberZorla(false);
+    try {
+      await updateConfig(GUIDE_CONFIG_KEY, guideDonePayload(status, new Date().toISOString()));
+    } catch {
+      // Bir UI tercihi — akışı bozmamalı.
+    }
+  }
+
+  /** Ayarlar'daki "Rehberi tekrar göster" — TEK giriş noktası.
+   *
+   *  ⚠️ Oturum içi kapanış bayrağı BURADA sıfırlanmak ZORUNDA: bayrak, kapanan
+   *  bir rehberin aynı karede yeniden açılmasını engellemek için var (çift açılma
+   *  kilidi), kullanıcının AÇIK isteğini engellemek için değil. Temizlenmezse
+   *  turu bir kez kapatmış kullanıcı aynı oturumda satıra dokunur ve hiçbir şey
+   *  olmaz — ancak sekmeyi yenileyince çalışır (tarayıcıda doğrulandı). */
+  function rehberiTekrarBaslat() {
+    setRehberBuOturumdaKapatildi(false);
+    setRehberZorla(true);
+  }
+
+  // Sürüm popup'ı: sihirbaz ve rehber kapalıyken, görülmemiş sürüm varsa oturum
+  // başına BİR KEZ göster. Bağımlılıklar bilinçli: sihirbaz/rehber KAPANINCA
+  // efekt yeniden değerlendirir → yeni kayıt önce kurulumu, sonra turu bitirip
+  // popup'ı görür. İlk render'da biri açıksa atlanır, kapanınca gelir.
   const changelogShownOnceRef = useRef(false);
   useEffect(() => {
-    if (changelogShownOnceRef.current || sihirbazAcik) return;
+    if (changelogShownOnceRef.current || sihirbazAcik || guideAcik) return;
     const seen = parseSeen(readStringPref(CHANGELOG_SEEN_KEY, "[]"));
-    if (unseenVersions(CHANGELOG.map((v) => v.version), seen).length > 0) {
+    if (
+      unseenVersions(
+        CHANGELOG.map((v) => v.version),
+        seen,
+      ).length > 0
+    ) {
       setChangelogOpen(true);
     }
     changelogShownOnceRef.current = true;
-  }, [sihirbazAcik]);
+  }, [sihirbazAcik, guideAcik]);
 
   // Tab değiştirme sarmalayıcısı (Her sekme ana sekmedir, replaceState ile kök tutulur)
   const handleTabChange = (newTab: TabType) => {
@@ -236,7 +317,10 @@ function MainContent() {
     <>
       <div className="ambient-glow fixed top-0 left-0 right-0 h-72 pointer-events-none z-0" />
       {theme === "glass" && (
-        <div className="glass-orbs fixed inset-0 z-0 pointer-events-none overflow-hidden" aria-hidden="true">
+        <div
+          className="glass-orbs fixed inset-0 z-0 pointer-events-none overflow-hidden"
+          aria-hidden="true"
+        >
           <div className="glass-orb glass-orb-1" />
           <div className="glass-orb glass-orb-2" />
           <div className="glass-orb glass-orb-3" />
@@ -255,9 +339,7 @@ function MainContent() {
             <source srcSet="/NutriMind_Logo.webp" type="image/webp" />
             <img src="/NutriMind_Logo.png" alt="NutriMind" className="h-7 w-7 rounded-lg" />
           </picture>
-          <h1 className="text-xl font-extrabold text-white sm:text-2xl">
-            NutriMind
-          </h1>
+          <h1 className="text-xl font-extrabold text-white sm:text-2xl">NutriMind</h1>
         </div>
 
         <div
@@ -288,7 +370,22 @@ function MainContent() {
         ) : tab === "aliases" ? (
           <AliasPage resetKey={tabResetKey.aliases} onVisionResult={handleVisionResult} />
         ) : (
-          <SettingsSheet onClose={() => { handleTabChange("daily"); setSettingsTarget(null); }} embedded resetKey={tabResetKey.settings} initialSubView={settingsTarget as any} />
+          <SettingsSheet
+            onClose={() => {
+              handleTabChange("daily");
+              setSettingsTarget(null);
+            }}
+            embedded
+            resetKey={tabResetKey.settings}
+            initialSubView={settingsTarget as any}
+            /* Rehber günlük ekrandaki hedefleri vurguladığı için önce o sekmeye
+               dönülür, sonra rehber açılır — ters sırada ilk adımın hedefi
+               ekranda olmazdı. */
+            onReplayGuide={() => {
+              handleTabChange("daily");
+              rehberiTekrarBaslat();
+            }}
+          />
         )}
       </main>
 
@@ -330,6 +427,10 @@ function MainContent() {
         onClose={sihirbaziAtla}
         onSaveProfileAndGoals={sihirbaziTamamla}
       />
+
+      {/* İlk kullanım rehberi: coach-mark turu. Sihirbaz kapandıktan SONRA
+          açılır; karar `shouldShowGuide`'ta (bkz. lib/guide.ts). */}
+      {guideAcik && <ProductGuide onFinish={rehberiBitir} />}
 
       {/* Yeni sürüm: değişiklik popup'ı (görülmemiş sürümler) */}
       {changelogOpen && (

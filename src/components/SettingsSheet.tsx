@@ -22,6 +22,7 @@ import {
   Trash2,
   Globe,
   History,
+  Compass,
 } from "lucide-react";
 import { Modal } from "./Modal";
 import { APP_VERSION } from "../lib/version";
@@ -30,12 +31,25 @@ import { GoalsForm } from "./GoalsForm";
 import { ExportModal } from "./ExportModal";
 import { ReportView } from "./ReportView";
 import { SupplementSettings } from "./SupplementSettings";
+import { WeightSettings } from "./WeightSettings";
 import { useData } from "../lib/data";
-import { todayISO } from "../lib/format";
-import { parseWeightConfig, withWeightEntry } from "../lib/weight";
+import { formatNumber, todayISO } from "../lib/format";
+import {
+  latestEntry,
+  parseBodyStats,
+  parseWeightConfig,
+  profileWeightEntries,
+} from "../lib/weight";
 import { useSubViewRegistration } from "../hooks/useSubViewRegistration";
 import { useAuth } from "../lib/auth";
-import { addAllowlistEmail, changePassword, deleteAccount, exportAccount, fetchAllowlist, removeAllowlistEmail } from "../lib/authApi";
+import {
+  addAllowlistEmail,
+  changePassword,
+  deleteAccount,
+  exportAccount,
+  fetchAllowlist,
+  removeAllowlistEmail,
+} from "../lib/authApi";
 import { emailProblem, passwordProblem } from "../lib/authRules";
 import { ErrorText, FormActions, Label, TextField, fieldCls } from "./FormBits";
 import { FeedbackForm } from "./FeedbackForm";
@@ -105,9 +119,7 @@ function MenuItem({
           >
             {title}
           </div>
-          {subtitle && (
-            <div className="text-[11px] text-white/50 truncate mt-0.5">{subtitle}</div>
-          )}
+          {subtitle && <div className="text-[11px] text-white/50 truncate mt-0.5">{subtitle}</div>}
         </div>
       </div>
 
@@ -126,9 +138,7 @@ function MenuItem({
 function SectionGroup({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <div className="flex flex-col gap-1.5">
-      <h4 className="px-1 text-[11px] font-bold tracking-wider text-white/40 uppercase">
-        {title}
-      </h4>
+      <h4 className="px-1 text-[11px] font-bold tracking-wider text-white/40 uppercase">{title}</h4>
       <div className="glass-card divide-y divide-white/[0.06] overflow-hidden rounded-2xl border border-white/10 bg-row">
         {children}
       </div>
@@ -141,11 +151,16 @@ export function SettingsSheet({
   embedded = false,
   resetKey = 0,
   initialSubView = null,
+  onReplayGuide,
 }: {
   onClose: () => void;
   embedded?: boolean;
   resetKey?: number;
   initialSubView?: SubView;
+  /** İlk kullanım rehberini yeniden başlatır (App'te: günlük sekmeye dön +
+   *  rehberi zorla aç). Verilmezse satır HİÇ gösterilmez — bileşen rehberden
+   *  habersiz kalabilsin diye opsiyonel. */
+  onReplayGuide?: () => void;
 }) {
   const [subView, setSubView] = useState<SubView>(null);
 
@@ -229,24 +244,65 @@ export function SettingsSheet({
     window.history.back();
   };
 
-  // Profil Bilgileri State — kaynak önceliği: localStorage (elle düzenlenen) →
-  // config.profile (sihirbazda girilen) → user.name (kayıttaki ad)
+  // Profil Bilgileri State — kaynak önceliği: config.profile (HESAP) →
+  // localStorage (bu cihaz) → user.name (kayıttaki ad).
+  //
+  // ⚠️ Öncelik v0.30.1'de ters çevrildi: `handleSaveProfile` artık gerçekten
+  // `config.profile`a yazdığı için hesap verisi asıl kaynaktır (başka cihazda
+  // kaydedilen ad/yaş/boy/kilo bu cihazın bayat localStorage değeriyle
+  // ezilmesin). localStorage yalnızca profil hiç yokken devreye girer.
   const profile = dataCtx.config.profile as
-    | { name?: string; age?: number; weightKg?: number; heightCm?: number }
+    | {
+        name?: string;
+        age?: number;
+        weightKg?: number;
+        heightCm?: number;
+        targetWeightKg?: number;
+      }
     | undefined;
+  /** Profildeki vücut alanları — savunmacı okuma (`null` = bilinmiyor, `0` ya da
+   *  literal varsayılan DEĞİL). */
+  const bodyStats = parseBodyStats(dataCtx.config);
+  const weightEntries = parseWeightConfig(dataCtx.config).entries;
+  /** Profil kartındaki kilo: son ÖLÇÜM → profildeki kilo → (hiçbiri yoksa
+   *  satır kilosuz). Sabit `"78"` varsayılanı kaldırıldı. */
+  const heroWeightKg = latestEntry(weightEntries)?.kg ?? bodyStats.weightKg;
   const [userName, setUserName] = useState(
-    () => localStorage.getItem("nutrimind_username") || profile?.name || user?.name || "",
+    () => profile?.name || localStorage.getItem("nutrimind_username") || user?.name || "",
   );
-  const [userAge, setUserAge] = useState(
-    () => localStorage.getItem("nutrimind_userage") || (profile?.age != null ? String(profile.age) : "29"),
+  const [userAge, setUserAge] = useState(() =>
+    profile?.age != null ? String(profile.age) : localStorage.getItem("nutrimind_userage") || "",
   );
-  const [userWeight, setUserWeight] = useState(
-    () => localStorage.getItem("nutrimind_userweight") || (profile?.weightKg != null ? String(profile.weightKg) : "78"),
+  const [userWeight, setUserWeight] = useState(() =>
+    profile?.weightKg != null
+      ? String(profile.weightKg)
+      : localStorage.getItem("nutrimind_userweight") || "",
   );
-  const [userHeight, setUserHeight] = useState(
-    () => localStorage.getItem("nutrimind_userheight") || (profile?.heightCm != null ? String(profile.heightCm) : "178"),
+  const [userHeight, setUserHeight] = useState(() =>
+    profile?.heightCm != null
+      ? String(profile.heightCm)
+      : localStorage.getItem("nutrimind_userheight") || "",
+  );
+  /** Hedef kilo — sihirbazın 2. adımında sorulan alan; v0.30.1'e kadar hiçbir
+   *  yerde OKUNMUYORDU ve Ayarlar'da sahte bir `"75 kg"` metni gösteriliyordu. */
+  const [userTarget, setUserTarget] = useState(() =>
+    profile?.targetWeightKg != null
+      ? String(profile.targetWeightKg)
+      : localStorage.getItem("nutrimind_usertarget") || "",
   );
   const [savedProfileMsg, setSavedProfileMsg] = useState(false);
+  /** Kilo alanı BU oturumda düzenlendi mi — `profileWeightEntries` buna bakar:
+   *  yalnızca adı düzeltmek için kaydetmek bugünün gerçek ölçümünü ezmemeli. */
+  const [weightEdited, setWeightEdited] = useState(false);
+  const [savingProfile, setSavingProfile] = useState(false);
+  /** Ad yoksa boş kalır ve kart jenerik ikon çizer (eskiden `"EB"` vardı). */
+  const avatarInitials = userName
+    .trim()
+    .split(/\s+/)
+    .map((n) => n[0] ?? "")
+    .join("")
+    .toUpperCase()
+    .slice(0, 2);
 
   // Profil verisi HESABA bağlı: hesap değişince eski kullanıcının localStorage
   // kalıntısı yeni kullanıcıya taşınmasın. İlk açılışta sahip yoksa da sıfırla.
@@ -254,37 +310,74 @@ export function SettingsSheet({
     if (!user) return;
     const owner = localStorage.getItem("nutrimind_profile_owner");
     if (owner === user.id) return;
-    ["nutrimind_username", "nutrimind_userage", "nutrimind_userweight", "nutrimind_userheight"].forEach((k) =>
-      localStorage.removeItem(k),
-    );
+    [
+      "nutrimind_username",
+      "nutrimind_userage",
+      "nutrimind_userweight",
+      "nutrimind_userheight",
+      "nutrimind_usertarget",
+    ].forEach((k) => localStorage.removeItem(k));
     localStorage.setItem("nutrimind_profile_owner", user.id);
     const name = profile?.name || user?.name || "";
     setUserName(name);
     setUserAge(profile?.age != null ? String(profile.age) : "");
     setUserWeight(profile?.weightKg != null ? String(profile.weightKg) : "");
     setUserHeight(profile?.heightCm != null ? String(profile.heightCm) : "");
+    setUserTarget(profile?.targetWeightKg != null ? String(profile.targetWeightKg) : "");
+    setWeightEdited(false);
     if (name) localStorage.setItem("nutrimind_username", name);
   }, [user]);
 
-  const handleSaveProfile = () => {
-    localStorage.setItem("nutrimind_username", userName);
-    localStorage.setItem("nutrimind_userage", userAge);
-    localStorage.setItem("nutrimind_userweight", userWeight);
-    localStorage.setItem("nutrimind_userheight", userHeight);
+  /**
+   * Profili kaydeder. v0.30.1'e kadar bu fonksiyon YALNIZCA localStorage'a
+   * yazıyordu: ad, yaş, boy, kilo ve (hiç okunmayan) hedef kilo hesaba değil
+   * CİHAZA bağlı kalıyordu — başka cihazda görünmüyor, tarayıcı verisi
+   * temizlenince kayboluyordu. Artık `config.profile`a yazılır (TDEE girdileri
+   * olan cinsiyet/aktivite/hedef alanları `...profile` ile korunur).
+   *
+   * Kilo, kilo geçmişine sadece kullanıcı o alanı BU oturumda düzenlediyse
+   * yazılır; boş bırakılan alanlar mevcut değeri KORUR (silmez).
+   */
+  const handleSaveProfile = async () => {
+    if (savingProfile) return;
+    setSavingProfile(true);
+    try {
+      localStorage.setItem("nutrimind_username", userName);
+      localStorage.setItem("nutrimind_userage", userAge);
+      localStorage.setItem("nutrimind_userweight", userWeight);
+      localStorage.setItem("nutrimind_userheight", userHeight);
+      localStorage.setItem("nutrimind_usertarget", userTarget);
 
-    const weightNum = parseFloat(userWeight);
-    if (!isNaN(weightNum) && weightNum > 0) {
-      // Kilo takibiyle AYNI anahtar/biçim (`weight` / `{entries}`) — WeightCard'ın
-      // kullandığı yapı. Ayrı bir `weight_${tarih}` anahtarına yazmak (eski
-      // davranış) kilo kartı/trendinin hiç görmediği yetim bir kayıt üretiyordu.
-      const currentEntries = parseWeightConfig(dataCtx.config).entries;
-      void dataCtx.updateConfig("weight", {
-        entries: withWeightEntry(currentEntries, todayISO(), weightNum),
-      });
+      const ageNum = parseFloat(userAge);
+      const weightNum = parseFloat(userWeight);
+      const heightNum = parseFloat(userHeight);
+      const targetNum = parseFloat(userTarget);
+
+      const entriesBefore = parseWeightConfig(dataCtx.config).entries;
+      const nextEntries = profileWeightEntries(entriesBefore, todayISO(), weightNum, weightEdited);
+
+      const profileUpdate: Record<string, unknown> = { ...(profile ?? {}) };
+      if (userName.trim()) profileUpdate.name = userName.trim();
+      if (Number.isFinite(ageNum) && ageNum > 0) profileUpdate.age = ageNum;
+      if (Number.isFinite(weightNum) && weightNum > 0) profileUpdate.weightKg = weightNum;
+      if (Number.isFinite(heightNum) && heightNum > 0) profileUpdate.heightCm = heightNum;
+      if (Number.isFinite(targetNum) && targetNum > 0) profileUpdate.targetWeightKg = targetNum;
+
+      await dataCtx.updateConfig("profile", profileUpdate);
+      // `profileWeightEntries` değişmeyen girdide AYNI referansı döndürür:
+      // gereksiz bir ikinci yazma (ve gereksiz bir refetch) yapılmaz.
+      if (nextEntries !== entriesBefore) {
+        await dataCtx.updateConfig("weight", { entries: nextEntries });
+      }
+
+      setWeightEdited(false);
+      setSavedProfileMsg(true);
+      setTimeout(() => setSavedProfileMsg(false), 2000);
+    } catch (e) {
+      showToast(t("settings.profileSaveError", { message: (e as Error).message }), "error");
+    } finally {
+      setSavingProfile(false);
     }
-
-    setSavedProfileMsg(true);
-    setTimeout(() => setSavedProfileMsg(false), 2000);
   };
 
   const handleClearCache = async () => {
@@ -313,640 +406,712 @@ export function SettingsSheet({
 
   const mainBody = (
     <div ref={scrollRef} className="flex flex-col gap-5">
-        {/* ==================== CAL AI ANA PROFİL & AYARLAR LAYOUT ==================== */}
-        <div className={subView === null ? "flex flex-col gap-5" : "hidden"}>
-          <>
-            {/* 1. ÜST KULLANICI PROFİL KARTI */}
-            <div
-              onClick={() => openSubView("profile")}
-              className="group relative flex cursor-pointer items-center justify-between overflow-hidden rounded-3xl border border-white/15 bg-gradient-to-br from-grad-top via-grad-mid to-grad-bot p-4 shadow-lg transition hover:border-white/25 hover:from-grad-hover"
-            >
-              <div className="flex items-center gap-3.5">
-                <div className="relative flex h-13 w-13 flex-none items-center justify-center rounded-2xl bg-gradient-to-tr from-accent via-purple-500 to-sky-400 text-lg font-extrabold text-white shadow-md">
-                  {userName
-                    .split(" ")
-                    .map((n) => n[0])
-                    .join("")
-                    .toUpperCase()
-                    .slice(0, 2) || "EB"}
-                  <span className="absolute -bottom-0.5 -right-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-emerald-500 ring-2 ring-grad-bot">
-                    <Check className="h-2.5 w-2.5 text-white" />
-                  </span>
-                </div>
-                <div>
-                  <div className="text-base font-extrabold text-white group-hover:text-accent transition-colors">
-                    {userName}
-                  </div>
-                  <div className="text-xs text-white/50">
-                    {userAge ? t("settings.yearsOld", { age: userAge }) : t("settings.defaultMember")} • {userWeight} kg
-                  </div>
-                </div>
+      {/* ==================== CAL AI ANA PROFİL & AYARLAR LAYOUT ==================== */}
+      <div className={subView === null ? "flex flex-col gap-5" : "hidden"}>
+        <>
+          {/* 1. ÜST KULLANICI PROFİL KARTI */}
+          <div
+            onClick={() => openSubView("profile")}
+            className="group relative flex cursor-pointer items-center justify-between overflow-hidden rounded-3xl border border-white/15 bg-gradient-to-br from-grad-top via-grad-mid to-grad-bot p-4 shadow-lg transition hover:border-white/25 hover:from-grad-hover"
+          >
+            <div className="flex items-center gap-3.5">
+              <div className="relative flex h-13 w-13 flex-none items-center justify-center rounded-2xl bg-gradient-to-tr from-accent via-purple-500 to-sky-400 text-lg font-extrabold text-white shadow-md">
+                {/* ⚠️ Burada literal `"EB"` vardı: adı olmayan HER kullanıcı
+                      (yeni hesap) uygulama sahibinin baş harflerini görüyordu.
+                      Ad yoksa jenerik kullanıcı ikonu çizilir. */}
+                {avatarInitials || <User className="h-5 w-5" />}
+                <span className="absolute -bottom-0.5 -right-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-emerald-500 ring-2 ring-grad-bot">
+                  <Check className="h-2.5 w-2.5 text-white" />
+                </span>
               </div>
-
-              <div className="flex items-center gap-1.5 rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs font-bold text-white/80 transition group-hover:bg-white/10">
-                <span>{t("settings.editProfile")}</span>
-                <ChevronRight className="h-3.5 w-3.5 text-white/40" />
+              <div>
+                <div className="text-base font-extrabold text-white group-hover:text-accent transition-colors">
+                  {userName || t("settings.defaultMember")}
+                </div>
+                {/* Kilo yalnızca GERÇEK bir değer varsa yazılır (son ölçüm →
+                      profildeki kilo); yoksa satır kilosuz kalır. Daha önce
+                      sabit `"78"` varsayılanı vardı ve hiç veri girmemiş
+                      kullanıcıya kendi kilosu gibi görünüyordu. */}
+                <div className="text-xs text-white/50">
+                  {userAge ? t("settings.yearsOld", { age: userAge }) : t("settings.defaultMember")}
+                  {heroWeightKg !== null && ` • ${formatNumber(heroWeightKg, 1)} kg`}
+                </div>
               </div>
             </div>
 
-            {/* 3. GRUPLANDIRILMIŞ KARTLAR (CAL AI STİLİ) */}
+            <div className="flex items-center gap-1.5 rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs font-bold text-white/80 transition group-hover:bg-white/10">
+              <span>{t("settings.editProfile")}</span>
+              <ChevronRight className="h-3.5 w-3.5 text-white/40" />
+            </div>
+          </div>
 
-            {/* HESAP & KİŞİSEL */}
-            <SectionGroup title={t("settings.sectionAccount")}>
-              <MenuItem
-                icon={User}
-                iconBg="bg-blue-500/15"
-                iconColor="text-blue-400"
-                title={t("settings.profileTitle")}
-                subtitle={t("settings.profileSubtitle")}
-                onClick={() => openSubView("profile")}
-              />
-              <MenuItem
-                icon={Sliders}
-                iconBg="bg-purple-500/15"
-                iconColor="text-purple-400"
-                title={t("settings.preferencesTitle")}
-                subtitle={t("settings.preferencesSubtitle")}
-                onClick={() => openSubView("preferences")}
-              />
-              <MenuItem
-                icon={Globe}
-                iconBg="bg-cyan-500/15"
-                iconColor="text-cyan-400"
-                title={t("settings.language")}
-                subtitle={currentLang.toUpperCase()}
-                onClick={() => openSubView("language")}
-              />
-              {!authDisabled && user && (
-                <MenuItem
-                  icon={Download}
-                  iconBg="bg-emerald-500/15"
-                  iconColor="text-emerald-400"
-                  title={t("settings.dataTitle")}
-                  subtitle={t("settings.dataSubtitle")}
-                  onClick={() => openSubView("data")}
-                />
-              )}
-              {!authDisabled && (
-                <MenuItem
-                  icon={KeyRound}
-                  iconBg="bg-amber-500/15"
-                  iconColor="text-amber-400"
-                  title={t("settings.passwordTitle")}
-                  subtitle={t("settings.passwordSubtitle")}
-                  onClick={() => openSubView("password")}
-                />
-              )}
-              {!authDisabled && capabilities.isAdmin && (
-                <MenuItem
-                  icon={ListPlus}
-                  iconBg="bg-teal-500/15"
-                  iconColor="text-teal-400"
-                  title={t("settings.allowlistTitle")}
-                  subtitle={t("settings.allowlistSubtitle")}
-                  onClick={() => openSubView("allowlist")}
-                />
-              )}
-            </SectionGroup>
+          {/* 3. GRUPLANDIRILMIŞ KARTLAR (CAL AI STİLİ) */}
 
-            {/* HEDEFLER & TAKİP */}
-            <SectionGroup title={t("settings.sectionGoals")}>
+          {/* HESAP & KİŞİSEL */}
+          <SectionGroup title={t("settings.sectionAccount")}>
+            <MenuItem
+              icon={User}
+              iconBg="bg-blue-500/15"
+              iconColor="text-blue-400"
+              title={t("settings.profileTitle")}
+              subtitle={t("settings.profileSubtitle")}
+              onClick={() => openSubView("profile")}
+            />
+            <MenuItem
+              icon={Sliders}
+              iconBg="bg-purple-500/15"
+              iconColor="text-purple-400"
+              title={t("settings.preferencesTitle")}
+              subtitle={t("settings.preferencesSubtitle")}
+              onClick={() => openSubView("preferences")}
+            />
+            <MenuItem
+              icon={Globe}
+              iconBg="bg-cyan-500/15"
+              iconColor="text-cyan-400"
+              title={t("settings.language")}
+              subtitle={currentLang.toUpperCase()}
+              onClick={() => openSubView("language")}
+            />
+            {!authDisabled && (
               <MenuItem
-                icon={Target}
-                iconBg="bg-accent/20"
-                iconColor="text-accent"
-                title={t("settings.goalsTitle")}
-                subtitle={t("settings.goalsSubtitle")}
-                onClick={() => openSubView("goals")}
-              />
-              <MenuItem
-                icon={Pill}
+                icon={KeyRound}
                 iconBg="bg-amber-500/15"
                 iconColor="text-amber-400"
-                title={t("settings.supplementsTitle")}
-                subtitle={t("settings.supplementsSubtitle")}
-                onClick={() => openSubView("supplements")}
+                title={t("settings.passwordTitle")}
+                subtitle={t("settings.passwordSubtitle")}
+                onClick={() => openSubView("password")}
               />
+            )}
+            {!authDisabled && capabilities.isAdmin && (
               <MenuItem
-                icon={Scale}
-                iconBg="bg-rose-500/15"
-                iconColor="text-rose-400"
-                title={t("settings.weightTitle")}
-                subtitle={t("settings.weightSubtitle")}
-                onClick={() => openSubView("weight")}
-              />
-            </SectionGroup>
-
-            {/* WIDGET'LAR & RAPORLAR */}
-            <SectionGroup title={t("settings.sectionReports")}>
-              <MenuItem
-                icon={FileText}
+                icon={ListPlus}
                 iconBg="bg-teal-500/15"
                 iconColor="text-teal-400"
-                title={t("settings.reportTitle")}
-                subtitle={t("settings.reportSubtitle")}
-                onClick={() => openSubView("report")}
+                title={t("settings.allowlistTitle")}
+                subtitle={t("settings.allowlistSubtitle")}
+                onClick={() => openSubView("allowlist")}
               />
-              <MenuItem
-                icon={LayoutGrid}
-                iconBg="bg-violet-500/15"
-                iconColor="text-violet-400"
-                title={t("settings.widgetsTitle")}
-                subtitle={t("settings.widgetsSubtitle")}
-                onClick={() => openSubView("widgets")}
-              />
-            </SectionGroup>
+            )}
+          </SectionGroup>
 
-            {/* DESTEK & YASAL */}
-            <SectionGroup title={t("settings.sectionData")}>
-              {capabilities.isAdmin && (
-                <MenuItem
-                  icon={Inbox}
-                  iconBg="bg-emerald-500/15"
-                  iconColor="text-emerald-400"
-                  title={t("settings.inboxTitle")}
-                  subtitle={t("settings.inboxSubtitle")}
-                  onClick={() => openSubView("feedbackInbox")}
-                />
-              )}
+          {/* HEDEFLER & TAKİP — sıra: hedefler → kilo (hedefin takip edildiği
+                yer) → takviyeler. Kilo geçmişi, Ayarlar'da hedefle en yakın
+                ilişkili ekran olduğu için hedeflerin hemen altında durur. */}
+          <SectionGroup title={t("settings.sectionGoals")}>
+            <MenuItem
+              icon={Target}
+              iconBg="bg-accent/20"
+              iconColor="text-accent"
+              title={t("settings.goalsTitle")}
+              subtitle={t("settings.goalsSubtitle")}
+              onClick={() => openSubView("goals")}
+            />
+            <MenuItem
+              icon={Scale}
+              iconBg="bg-rose-500/15"
+              iconColor="text-rose-400"
+              title={t("settings.weightTitle")}
+              subtitle={t("settings.weightSubtitle")}
+              onClick={() => openSubView("weight")}
+            />
+            <MenuItem
+              icon={Pill}
+              iconBg="bg-amber-500/15"
+              iconColor="text-amber-400"
+              title={t("settings.supplementsTitle")}
+              subtitle={t("settings.supplementsSubtitle")}
+              onClick={() => openSubView("supplements")}
+            />
+          </SectionGroup>
+
+          {/* WIDGET'LAR & RAPORLAR */}
+          <SectionGroup title={t("settings.sectionReports")}>
+            <MenuItem
+              icon={FileText}
+              iconBg="bg-teal-500/15"
+              iconColor="text-teal-400"
+              title={t("settings.reportTitle")}
+              subtitle={t("settings.reportSubtitle")}
+              onClick={() => openSubView("report")}
+            />
+            <MenuItem
+              icon={LayoutGrid}
+              iconBg="bg-violet-500/15"
+              iconColor="text-violet-400"
+              title={t("settings.widgetsTitle")}
+              subtitle={t("settings.widgetsSubtitle")}
+              onClick={() => openSubView("widgets")}
+            />
+          </SectionGroup>
+
+          {/* VERİ & DESTEK — bölümün adı "Veri & Destek" olduğu hâlde veri
+                yönetimi (yedekleme/içe-dışa aktarma/hesap verileri) Hesap &
+                Profil içinde duruyordu; kendi bölümüne taşındı. Sıra: kendi
+                verini yönet → gizlilik → geri bildirim (ve yanıtları) → destek
+                → yardım → sürüm notları (altbilgi sürümünün hemen üstünde). */}
+          <SectionGroup title={t("settings.sectionData")}>
+            {!authDisabled && user && (
               <MenuItem
-                icon={HelpCircle}
-                iconBg="bg-yellow-500/15"
-                iconColor="text-yellow-400"
-                title={t("settings.feedbackTitle")}
-                subtitle={t("settings.feedbackSubtitle")}
-                onClick={() => openSubView("feedback")}
-              />
-              <MenuItem
-                icon={History}
-                iconBg="bg-cyan-500/15"
-                iconColor="text-cyan-400"
-                title={t("settings.changelogTitle")}
-                subtitle={t("settings.changelogSubtitle")}
-                onClick={() => openSubView("changelog")}
-              />
-              <MenuItem
-                icon={Mail}
-                iconBg="bg-pink-500/15"
-                iconColor="text-pink-400"
-                title={t("settings.supportTitle")}
-                subtitle={t("settings.supportEmail")}
-                onClick={() => window.open("mailto:support@emrullah.xyz")}
-              />
-              <MenuItem
-                icon={ShieldCheck}
+                icon={Download}
                 iconBg="bg-emerald-500/15"
                 iconColor="text-emerald-400"
-                title={t("settings.privacyTitle")}
-                subtitle={t("settings.privacySubtitle")}
-                onClick={() => openSubView("privacy")}
+                title={t("settings.dataTitle")}
+                subtitle={t("settings.dataSubtitle")}
+                onClick={() => openSubView("data")}
               />
-            </SectionGroup>
-
-            {/* HESAP İŞLEMLERİ */}
-            <SectionGroup title={t("settings.accountActions")}>
-              <MenuItem
-                icon={RefreshCw}
-                iconBg="bg-blue-500/15"
-                iconColor="text-blue-400"
-                title={t("settings.cacheTitle")}
-                subtitle={t("settings.cacheSubtitle")}
-                onClick={handleClearCache}
-              />
-              {!authDisabled && (
-                <MenuItem
-                  icon={LogOut}
-                  iconBg="bg-rose-500/15"
-                  iconColor="text-rose-400"
-                  title={t("settings.logout")}
-                  subtitle={user?.email}
-                  onClick={() => {
-                    if (window.confirm(t("settings.logoutConfirm"))) void logout();
-                  }}
-                  isDanger
-                />
-              )}
-            </SectionGroup>
-
-            {cacheStatus && (
-              <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-3 text-center text-xs font-bold text-emerald-400">
-                {cacheStatus}
-              </div>
             )}
-
-            {/* FOOTER VERSİYON BİLGİSİ */}
-            <div className="mt-2 text-center pb-2">
-              <div className="text-[11px] font-bold text-white/30 tracking-widest uppercase">
-                {t("settings.footerVersion", { version: APP_VERSION })}
-              </div>
-              <div className="text-[10px] text-white/20 mt-0.5">
-                {t("settings.footerCredit")}
-              </div>
-            </div>
-          </>
-        </div>
-
-        {/* ==================== SUB-VIEW BİLEŞENLERİ ==================== */}
-        {subView !== null && (
-          <div className="glass-push flex flex-col gap-4">
-            {/* Alt Ekran Başlığı & Geri Butonu */}
-            <div className="flex items-center gap-2 border-b border-white/10 pb-3">
-              <button
-                type="button"
-                onClick={goBack}
-                className="flex items-center gap-1.5 rounded-xl border border-white/15 bg-white/5 px-3 py-1.5 text-xs font-bold text-white transition hover:bg-white/10 active:scale-95"
-              >
-                <ArrowLeft className="h-4 w-4" />
-                <span>{t("common.back")}</span>
-              </button>
-              <h3 className="text-sm font-bold text-white/90">
-                {subView === "goals" && t("settings.subviewGoals")}
-                {subView === "supplements" && t("settings.subviewSupplements")}
-                {subView === "data" && t("settings.subviewData")}
-                {subView === "report" && t("settings.subviewReport")}
-                {subView === "profile" && t("settings.subviewProfile")}
-                {subView === "preferences" && t("settings.subviewPreferences")}
-                {subView === "weight" && t("settings.subviewWeight")}
-                {subView === "widgets" && t("settings.subviewWidgets")}
-                {subView === "feedback" && t("settings.subviewFeedback")}
-                {subView === "feedbackInbox" && t("settings.subviewFeedbackInbox")}
-                {subView === "privacy" && t("settings.subviewPrivacy")}
-                {subView === "password" && t("settings.subviewPassword")}
-                {subView === "allowlist" && t("settings.subviewAllowlist")}
-                {subView === "language" && t("settings.language")}
-                {subView === "changelog" && t("settings.subviewChangelog")}
-              </h3>
-            </div>
-
-        {/* 1. HEDEFLER */}
-        {subView === "goals" && <GoalsForm onClose={goBack} embedded />}
-
-        {/* 2. TAKVİYELER */}
-        {subView === "supplements" && <SupplementSettings />}
-
-        {/* 3. VERİ YEDEKLEME & YÜKLEME + HESAP VERİLERİ (KVKK/GDPR) */}
-        {subView === "data" && (
-          <div className="flex flex-col gap-4">
-            <ExportModal
-              data={dataCtx}
-              refresh={dataCtx.refresh}
-              onClose={onClose}
-              embedded
+            <MenuItem
+              icon={ShieldCheck}
+              iconBg="bg-emerald-500/15"
+              iconColor="text-emerald-400"
+              title={t("settings.privacyTitle")}
+              subtitle={t("settings.privacySubtitle")}
+              onClick={() => openSubView("privacy")}
             />
+            <MenuItem
+              icon={HelpCircle}
+              iconBg="bg-yellow-500/15"
+              iconColor="text-yellow-400"
+              title={t("settings.feedbackTitle")}
+              subtitle={t("settings.feedbackSubtitle")}
+              onClick={() => openSubView("feedback")}
+            />
+            {capabilities.isAdmin && (
+              <MenuItem
+                icon={Inbox}
+                iconBg="bg-emerald-500/15"
+                iconColor="text-emerald-400"
+                title={t("settings.inboxTitle")}
+                subtitle={t("settings.inboxSubtitle")}
+                onClick={() => openSubView("feedbackInbox")}
+              />
+            )}
+            <MenuItem
+              icon={Mail}
+              iconBg="bg-pink-500/15"
+              iconColor="text-pink-400"
+              title={t("settings.supportTitle")}
+              subtitle={t("settings.supportEmail")}
+              onClick={() => window.open("mailto:support@emrullah.xyz")}
+            />
+            {onReplayGuide && (
+              <MenuItem
+                icon={Compass}
+                iconBg="bg-violet-500/15"
+                iconColor="text-violet-400"
+                title={t("settings.guideRestartTitle")}
+                subtitle={t("settings.guideRestartSubtitle")}
+                onClick={onReplayGuide}
+              />
+            )}
+            <MenuItem
+              icon={History}
+              iconBg="bg-cyan-500/15"
+              iconColor="text-cyan-400"
+              title={t("settings.changelogTitle")}
+              subtitle={t("settings.changelogSubtitle")}
+              onClick={() => openSubView("changelog")}
+            />
+          </SectionGroup>
 
-            {!authDisabled && user && (
-              <div className="flex flex-col gap-1.5">
-                <h4 className="px-1 text-[11px] font-bold tracking-wider text-white/40 uppercase">
-                  {t("settings.dataExport")}
-                </h4>
-                <div className="glass-card divide-y divide-white/[0.06] overflow-hidden rounded-2xl border border-white/10 bg-row">
-                  <MenuItem
-                    icon={Download}
-                    iconBg="bg-emerald-500/15"
-                    iconColor="text-emerald-400"
-                    title={exportBusy ? t("settings.exportButtonBusy") : t("settings.exportButton")}
-                    subtitle={t("settings.exportSubtitle")}
-                    onClick={async () => {
-                      if (exportBusy) return;
-                      setExportBusy(true);
-                      haptic("light");
-                      try {
-                        await exportAccount();
-                        showToast(t("settings.exportSuccess"), "success");
-                      } catch (e) {
-                        showToast(t("settings.exportError", { message: (e as Error).message }), "error");
-                      } finally {
-                        setExportBusy(false);
+          {/* UYGULAMA & HESAP — başlık v0.30.1'de "Hesap İşlemleri" iken
+                "Uygulama & Hesap" oldu: önbellek temizleme bir hesap işlemi
+                değil, cihazdaki uygulamayı tazeler. Sıra da bilinçli: zararsız
+                satır önce, geri dönüşsüz Çıkış Yap (onay diyaloglu, kırmızı) en
+                sonda — yanlış dokunuşla oturum kapatılmasın. */}
+          <SectionGroup title={t("settings.accountActions")}>
+            <MenuItem
+              icon={RefreshCw}
+              iconBg="bg-blue-500/15"
+              iconColor="text-blue-400"
+              title={t("settings.cacheTitle")}
+              subtitle={t("settings.cacheSubtitle")}
+              onClick={handleClearCache}
+            />
+            {!authDisabled && (
+              <MenuItem
+                icon={LogOut}
+                iconBg="bg-rose-500/15"
+                iconColor="text-rose-400"
+                title={t("settings.logout")}
+                subtitle={user?.email}
+                onClick={() => {
+                  if (window.confirm(t("settings.logoutConfirm"))) void logout();
+                }}
+                isDanger
+              />
+            )}
+          </SectionGroup>
+
+          {cacheStatus && (
+            <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-3 text-center text-xs font-bold text-emerald-400">
+              {cacheStatus}
+            </div>
+          )}
+
+          {/* FOOTER VERSİYON BİLGİSİ */}
+          <div className="mt-2 text-center pb-2">
+            <div className="text-[11px] font-bold text-white/30 tracking-widest uppercase">
+              {t("settings.footerVersion", { version: APP_VERSION })}
+            </div>
+            <div className="text-[10px] text-white/20 mt-0.5">{t("settings.footerCredit")}</div>
+          </div>
+        </>
+      </div>
+
+      {/* ==================== SUB-VIEW BİLEŞENLERİ ==================== */}
+      {subView !== null && (
+        <div className="glass-push flex flex-col gap-4">
+          {/* Alt Ekran Başlığı & Geri Butonu */}
+          <div className="flex items-center gap-2 border-b border-white/10 pb-3">
+            <button
+              type="button"
+              onClick={goBack}
+              className="flex items-center gap-1.5 rounded-xl border border-white/15 bg-white/5 px-3 py-1.5 text-xs font-bold text-white transition hover:bg-white/10 active:scale-95"
+            >
+              <ArrowLeft className="h-4 w-4" />
+              <span>{t("common.back")}</span>
+            </button>
+            <h3 className="text-sm font-bold text-white/90">
+              {subView === "goals" && t("settings.subviewGoals")}
+              {subView === "supplements" && t("settings.subviewSupplements")}
+              {subView === "data" && t("settings.subviewData")}
+              {subView === "report" && t("settings.subviewReport")}
+              {subView === "profile" && t("settings.subviewProfile")}
+              {subView === "preferences" && t("settings.subviewPreferences")}
+              {subView === "weight" && t("settings.subviewWeight")}
+              {subView === "widgets" && t("settings.subviewWidgets")}
+              {subView === "feedback" && t("settings.subviewFeedback")}
+              {subView === "feedbackInbox" && t("settings.subviewFeedbackInbox")}
+              {subView === "privacy" && t("settings.subviewPrivacy")}
+              {subView === "password" && t("settings.subviewPassword")}
+              {subView === "allowlist" && t("settings.subviewAllowlist")}
+              {subView === "language" && t("settings.language")}
+              {subView === "changelog" && t("settings.subviewChangelog")}
+            </h3>
+          </div>
+
+          {/* 1. HEDEFLER */}
+          {subView === "goals" && <GoalsForm onClose={goBack} embedded />}
+
+          {/* 2. TAKVİYELER */}
+          {subView === "supplements" && <SupplementSettings />}
+
+          {/* 3. VERİ YEDEKLEME & YÜKLEME + HESAP VERİLERİ (KVKK/GDPR) */}
+          {subView === "data" && (
+            <div className="flex flex-col gap-4">
+              <ExportModal data={dataCtx} refresh={dataCtx.refresh} onClose={onClose} embedded />
+
+              {!authDisabled && user && (
+                <div className="flex flex-col gap-1.5">
+                  <h4 className="px-1 text-[11px] font-bold tracking-wider text-white/40 uppercase">
+                    {t("settings.dataExport")}
+                  </h4>
+                  <div className="glass-card divide-y divide-white/[0.06] overflow-hidden rounded-2xl border border-white/10 bg-row">
+                    <MenuItem
+                      icon={Download}
+                      iconBg="bg-emerald-500/15"
+                      iconColor="text-emerald-400"
+                      title={
+                        exportBusy ? t("settings.exportButtonBusy") : t("settings.exportButton")
                       }
-                    }}
-                  />
-                  <MenuItem
-                    icon={Trash2}
-                    iconBg="bg-rose-500/15"
-                    iconColor="text-rose-400"
-                    title={t("settings.deleteAccount")}
-                    subtitle={t("settings.deleteSubtitle")}
-                    onClick={() => {
-                      haptic("medium");
+                      subtitle={t("settings.exportSubtitle")}
+                      onClick={async () => {
+                        if (exportBusy) return;
+                        setExportBusy(true);
+                        haptic("light");
+                        try {
+                          await exportAccount();
+                          showToast(t("settings.exportSuccess"), "success");
+                        } catch (e) {
+                          showToast(
+                            t("settings.exportError", { message: (e as Error).message }),
+                            "error",
+                          );
+                        } finally {
+                          setExportBusy(false);
+                        }
+                      }}
+                    />
+                    <MenuItem
+                      icon={Trash2}
+                      iconBg="bg-rose-500/15"
+                      iconColor="text-rose-400"
+                      title={t("settings.deleteAccount")}
+                      subtitle={t("settings.deleteSubtitle")}
+                      onClick={() => {
+                        haptic("medium");
+                        setDeletePassword("");
+                        setDeleteConfirm("");
+                        setDeleteStep(1);
+                      }}
+                      isDanger
+                    />
+                  </div>
+                </div>
+              )}
+
+              {deleteStep > 0 && (
+                <Modal
+                  onClose={() => {
+                    if (!deleteBusy) {
+                      setDeleteStep(0);
                       setDeletePassword("");
                       setDeleteConfirm("");
-                      setDeleteStep(1);
-                    }}
-                    isDanger
-                  />
-                </div>
-              </div>
-            )}
-
-            {deleteStep > 0 && (
-              <Modal
-                onClose={() => {
-                  if (!deleteBusy) {
-                    setDeleteStep(0);
-                    setDeletePassword("");
-                    setDeleteConfirm("");
-                  }
-                }}
-                title={t("settings.deleteTitle")}
-              >
-                {deleteStep === 1 && (
-                  <div className="space-y-3">
-                    <p className="text-sm text-white/80">
-                      {t("settings.deleteStep1")}
-                    </p>
-                    <div className="flex gap-2 pt-2">
-                      <button
-                        type="button"
-                        onClick={() => setDeleteStep(0)}
-                        className="flex-1 rounded-xl border border-white/10 bg-white/5 py-2.5 text-sm font-semibold text-white/80"
-                      >
-                        {t("settings.deleteCancel")}
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setDeleteStep(2)}
-                        className="flex-1 rounded-xl bg-rose-500/20 py-2.5 text-sm font-semibold text-rose-300"
-                      >
-                        {t("settings.deleteContinue")}
-                      </button>
+                    }
+                  }}
+                  title={t("settings.deleteTitle")}
+                >
+                  {deleteStep === 1 && (
+                    <div className="space-y-3">
+                      <p className="text-sm text-white/80">{t("settings.deleteStep1")}</p>
+                      <div className="flex gap-2 pt-2">
+                        <button
+                          type="button"
+                          onClick={() => setDeleteStep(0)}
+                          className="flex-1 rounded-xl border border-white/10 bg-white/5 py-2.5 text-sm font-semibold text-white/80"
+                        >
+                          {t("settings.deleteCancel")}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setDeleteStep(2)}
+                          className="flex-1 rounded-xl bg-rose-500/20 py-2.5 text-sm font-semibold text-rose-300"
+                        >
+                          {t("settings.deleteContinue")}
+                        </button>
+                      </div>
                     </div>
-                  </div>
-                )}
-                {deleteStep === 2 && (
-                  <div className="space-y-3">
-                    <p className="text-sm text-white/80">
-                      {t("settings.deleteStep2", { confirm: t("settings.deleteConfirmValue") })}
-                    </p>
-                    <TextField
-                      type="password"
-                      label={t("settings.deletePasswordLabel")}
-                      placeholder={t("settings.deletePasswordPlaceholder")}
-                      value={deletePassword}
-                      onChange={setDeletePassword}
-                      autoComplete="current-password"
-                    />
-                    <div>
-                      <Label>{t("settings.deleteConfirmLabel")}</Label>
-                      <input
-                        type="text"
-                        value={deleteConfirm}
-                        onChange={(e) => setDeleteConfirm(e.target.value)}
-                        placeholder={t("settings.deleteConfirmPlaceholder", { confirm: t("settings.deleteConfirmValue") })}
-                        className={fieldCls}
-                        autoComplete="off"
+                  )}
+                  {deleteStep === 2 && (
+                    <div className="space-y-3">
+                      <p className="text-sm text-white/80">
+                        {t("settings.deleteStep2", { confirm: t("settings.deleteConfirmValue") })}
+                      </p>
+                      <TextField
+                        type="password"
+                        label={t("settings.deletePasswordLabel")}
+                        placeholder={t("settings.deletePasswordPlaceholder")}
+                        value={deletePassword}
+                        onChange={setDeletePassword}
+                        autoComplete="current-password"
                       />
-                    </div>
-                    <div className="flex gap-2 pt-2">
-                      <button
-                        type="button"
-                        onClick={() => setDeleteStep(1)}
-                        disabled={deleteBusy}
-                        className="flex-1 rounded-xl border border-white/10 bg-white/5 py-2.5 text-sm font-semibold text-white/80 disabled:opacity-50"
-                      >
-                        {t("settings.deleteBack")}
-                      </button>
-                      <button
-                        type="button"
-                        onClick={async () => {
-                          if (deleteConfirm !== t("settings.deleteConfirmValue") || deleteBusy) return;
-                          setDeleteBusy(true);
-                          try {
-                            await deleteAccount({
-                              confirm: t("settings.deleteServerConfirm"),
-                              ...(deletePassword ? { password: deletePassword } : {}),
-                            });
-                            showToast(t("settings.deleteSuccess"), "success");
-                            setDeleteStep(0);
-                            await logout();
-                            window.location.reload();
-                          } catch (e) {
-                            showToast(t("settings.deleteError", { message: (e as Error).message }), "error");
-                          } finally {
-                            setDeleteBusy(false);
+                      <div>
+                        <Label>{t("settings.deleteConfirmLabel")}</Label>
+                        <input
+                          type="text"
+                          value={deleteConfirm}
+                          onChange={(e) => setDeleteConfirm(e.target.value)}
+                          placeholder={t("settings.deleteConfirmPlaceholder", {
+                            confirm: t("settings.deleteConfirmValue"),
+                          })}
+                          className={fieldCls}
+                          autoComplete="off"
+                        />
+                      </div>
+                      <div className="flex gap-2 pt-2">
+                        <button
+                          type="button"
+                          onClick={() => setDeleteStep(1)}
+                          disabled={deleteBusy}
+                          className="flex-1 rounded-xl border border-white/10 bg-white/5 py-2.5 text-sm font-semibold text-white/80 disabled:opacity-50"
+                        >
+                          {t("settings.deleteBack")}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={async () => {
+                            if (deleteConfirm !== t("settings.deleteConfirmValue") || deleteBusy)
+                              return;
+                            setDeleteBusy(true);
+                            try {
+                              await deleteAccount({
+                                confirm: t("settings.deleteServerConfirm"),
+                                ...(deletePassword ? { password: deletePassword } : {}),
+                              });
+                              showToast(t("settings.deleteSuccess"), "success");
+                              setDeleteStep(0);
+                              await logout();
+                              window.location.reload();
+                            } catch (e) {
+                              showToast(
+                                t("settings.deleteError", { message: (e as Error).message }),
+                                "error",
+                              );
+                            } finally {
+                              setDeleteBusy(false);
+                            }
+                          }}
+                          disabled={
+                            deleteConfirm !== t("settings.deleteConfirmValue") || deleteBusy
                           }
-                        }}
-                        disabled={deleteConfirm !== t("settings.deleteConfirmValue") || deleteBusy}
-                        className="flex-1 rounded-xl bg-rose-500 py-2.5 text-sm font-bold text-white disabled:opacity-40"
-                      >
-                        {deleteBusy ? t("settings.deleteSubmitting") : t("settings.deleteSubmit")}
-                      </button>
+                          className="flex-1 rounded-xl bg-rose-500 py-2.5 text-sm font-bold text-white disabled:opacity-40"
+                        >
+                          {deleteBusy ? t("settings.deleteSubmitting") : t("settings.deleteSubmit")}
+                        </button>
+                      </div>
                     </div>
-                  </div>
-                )}
-              </Modal>
-            )}
-          </div>
-        )}
-
-        {/* 4. ÖZET PDF RAPORU */}
-        {subView === "report" && <ReportView data={dataCtx} />}
-
-        {/* 5. PROFİL BİLGİLERİ DÜZENLEME */}
-        {subView === "profile" && (
-          <div className="flex flex-col gap-4">
-            <div className="flex flex-col gap-3 rounded-card border border-line bg-calCard p-4">
-              <div>
-                <label className="text-xs font-bold text-white/70 block mb-1">
-                  {t("settings.fieldFullName")}
-                </label>
-                <input
-                  type="text"
-                  value={userName}
-                  onChange={(e) => setUserName(e.target.value)}
-                  className="w-full rounded-xl border border-white/15 bg-white/5 px-3.5 py-2.5 text-sm font-semibold text-white focus:border-accent focus:outline-none"
-                />
-              </div>
-
-              <div className="grid grid-cols-3 gap-2.5">
-                <div>
-                  <label className="text-xs font-bold text-white/70 block mb-1">
-                    {t("settings.fieldAge")}
-                  </label>
-                  <input
-                    type="number"
-                    value={userAge}
-                    onChange={(e) => setUserAge(e.target.value)}
-                    className="w-full rounded-xl border border-white/15 bg-white/5 px-3 py-2 text-sm font-semibold text-white focus:border-accent focus:outline-none text-center"
-                  />
-                </div>
-                <div>
-                  <label className="text-xs font-bold text-white/70 block mb-1">
-                    {t("settings.fieldWeight")}
-                  </label>
-                  <input
-                    type="number"
-                    value={userWeight}
-                    onChange={(e) => setUserWeight(e.target.value)}
-                    className="w-full rounded-xl border border-white/15 bg-white/5 px-3 py-2 text-sm font-semibold text-white focus:border-accent focus:outline-none text-center"
-                  />
-                </div>
-                <div>
-                  <label className="text-xs font-bold text-white/70 block mb-1">
-                    {t("settings.fieldHeight")}
-                  </label>
-                  <input
-                    type="number"
-                    value={userHeight}
-                    onChange={(e) => setUserHeight(e.target.value)}
-                    className="w-full rounded-xl border border-white/15 bg-white/5 px-3 py-2 text-sm font-semibold text-white focus:border-accent focus:outline-none text-center"
-                  />
-                </div>
-              </div>
-
-              <button
-                type="button"
-                onClick={handleSaveProfile}
-                className="mt-2 flex items-center justify-center gap-2 rounded-xl bg-accent py-2.5 text-sm font-extrabold text-black transition hover:bg-accent/90 active:scale-[0.98]"
-              >
-                <Check className="h-4 w-4" />
-                <span>{t("settings.saveProfile")}</span>
-              </button>
-
-              {savedProfileMsg && (
-                <div className="text-center text-xs font-bold text-emerald-400">
-                  {t("settings.profileSaved")}
-                </div>
+                  )}
+                </Modal>
               )}
             </div>
-          </div>
-        )}
+          )}
 
-        {/* 7. KİLO & VÜCUT TAKİBİ */}
-        {subView === "weight" && (
-          <div className="flex flex-col gap-3 rounded-2xl border border-white/10 bg-row p-4">
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-bold text-white/70">{t("settings.currentWeight")}</span>
-              <span className="text-base font-extrabold text-white">{userWeight} kg</span>
-            </div>
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-bold text-white/70">{t("settings.targetWeight")}</span>
-              <span className="text-base font-extrabold text-accent">{t("settings.targetWeightValue")}</span>
-            </div>
-            <div className="h-2 w-full rounded-full bg-white/10 overflow-hidden mt-1">
-              <div className="h-full bg-accent w-3/4 rounded-full" />
-            </div>
-          </div>
-        )}
+          {/* 4. ÖZET PDF RAPORU */}
+          {subView === "report" && <ReportView data={dataCtx} />}
 
-        {/* 8. WIDGET REHBERİ */}
-        {subView === "widgets" && (
-          <div className="flex flex-col gap-3 rounded-2xl border border-white/10 bg-row p-4">
-            <div className="text-sm font-extrabold text-white">{t("settings.widgetsHeader")}</div>
-            <p className="text-xs text-white/70 leading-relaxed">
-              {t("settings.widgetsBody")}
-            </p>
-          </div>
-        )}
+          {/* 5. PROFİL BİLGİLERİ DÜZENLEME */}
+          {subView === "profile" && (
+            <div className="flex flex-col gap-4">
+              <div className="flex flex-col gap-3 rounded-card border border-line bg-calCard p-4">
+                <div>
+                  <label className="text-xs font-bold text-white/70 block mb-1">
+                    {t("settings.fieldFullName")}
+                  </label>
+                  <input
+                    type="text"
+                    value={userName}
+                    onChange={(e) => setUserName(e.target.value)}
+                    className="w-full rounded-xl border border-white/15 bg-white/5 px-3.5 py-2.5 text-sm font-semibold text-white focus:border-accent focus:outline-none"
+                  />
+                </div>
 
-        {/* CHANGELOG */}
-        {subView === "changelog" && <ChangeLogView />}
+                <div className="grid grid-cols-3 gap-2.5">
+                  <div>
+                    <label className="text-xs font-bold text-white/70 block mb-1">
+                      {t("settings.fieldAge")}
+                    </label>
+                    <input
+                      type="number"
+                      value={userAge}
+                      onChange={(e) => setUserAge(e.target.value)}
+                      className="w-full rounded-xl border border-white/15 bg-white/5 px-3 py-2 text-sm font-semibold text-white focus:border-accent focus:outline-none text-center"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs font-bold text-white/70 block mb-1">
+                      {t("settings.fieldWeight")}
+                    </label>
+                    <input
+                      type="number"
+                      step="0.1"
+                      value={userWeight}
+                      onChange={(e) => {
+                        setUserWeight(e.target.value);
+                        // Yalnızca ELLE düzenlenen kilo, kilo geçmişine yazılır
+                        // (bkz. profileWeightEntries).
+                        setWeightEdited(true);
+                      }}
+                      placeholder={t("settings.fieldWeightPlaceholder")}
+                      className="w-full rounded-xl border border-white/15 bg-white/5 px-3 py-2 text-sm font-semibold text-white focus:border-accent focus:outline-none text-center"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs font-bold text-white/70 block mb-1">
+                      {t("settings.fieldHeight")}
+                    </label>
+                    <input
+                      type="number"
+                      value={userHeight}
+                      onChange={(e) => setUserHeight(e.target.value)}
+                      className="w-full rounded-xl border border-white/15 bg-white/5 px-3 py-2 text-sm font-semibold text-white focus:border-accent focus:outline-none text-center"
+                    />
+                  </div>
+                </div>
 
-        {/* 9. DESTEK & BİLDİRİM */}
-        {subView === "feedback" && <FeedbackForm />}
-        {subView === "feedbackInbox" && <FeedbackInbox />}
+                <div>
+                  <label className="text-xs font-bold text-white/70 block mb-1">
+                    {t("settings.targetWeightLabel")}
+                  </label>
+                  <input
+                    type="number"
+                    step="0.1"
+                    value={userTarget}
+                    onChange={(e) => setUserTarget(e.target.value)}
+                    placeholder={t("settings.targetWeightPlaceholder")}
+                    className="w-full rounded-xl border border-white/15 bg-white/5 px-3.5 py-2.5 text-sm font-semibold text-white focus:border-accent focus:outline-none"
+                  />
+                  <p className="mt-1 text-[11px] leading-relaxed text-white/40">
+                    {t("settings.targetWeightHelp")}
+                  </p>
+                </div>
 
-        {/* 10. GİZLİLİK & GÜVENLİK */}
-        {subView === "privacy" && (
-          <div className="flex flex-col gap-3 rounded-2xl border border-white/10 bg-row p-4 text-xs text-white/70 leading-relaxed">
-            <div className="text-sm font-extrabold text-white mb-1">{t("settings.privacyHeader")}</div>
-            {t("settings.privacyBody")}
-          </div>
-        )}
-
-        {/* 11. UYGULAMA TERCİHLERİ */}
-        {subView === "preferences" && (
-          <div className="flex flex-col gap-3 rounded-2xl border border-white/10 bg-row p-4">
-            <div className="flex flex-col gap-1.5">
-              <span className="text-xs font-bold text-white">{t("settings.appearance")}</span>
-              <p className="text-[11px] leading-relaxed text-ink-tertiary">{t("settings.themeStoredLocally")}</p>
-              <div className="mt-0.5 grid grid-cols-2 gap-2">
                 <button
                   type="button"
-                  onClick={() => {
-                    setTheme("velvet");
-                    haptic("light");
-                  }}
-                  aria-pressed={theme === "velvet"}
-                  className={`flex flex-col gap-1.5 rounded-2xl border p-3 text-left transition ${
-                    theme === "velvet"
-                      ? "border-accent/40 bg-accent/10"
-                      : "border-white/10 bg-white/[0.03] hover:bg-white/[0.07]"
-                  }`}
+                  onClick={() => void handleSaveProfile()}
+                  disabled={savingProfile}
+                  className="mt-2 flex items-center justify-center gap-2 rounded-xl bg-accent py-2.5 text-sm font-extrabold text-black transition hover:bg-accent/90 active:scale-[0.98] disabled:opacity-50"
                 >
-                  <span className="text-xs font-bold text-white">{t("settings.themeVelvet")}</span>
-                  <span className="text-[10px] leading-relaxed text-ink-tertiary">{t("settings.themeVelvetDesc")}</span>
-                  <span className="flex gap-1.5 pt-0.5" aria-hidden="true">
-                    <span className="h-2.5 w-2.5 rounded-full" style={{ background: "var(--svg-protein)" }} />
-                    <span className="h-2.5 w-2.5 rounded-full" style={{ background: "var(--svg-carb)" }} />
-                    <span className="h-2.5 w-2.5 rounded-full" style={{ background: "var(--svg-fat)" }} />
-                  </span>
+                  <Check className="h-4 w-4" />
+                  <span>{savingProfile ? t("common.loading") : t("settings.saveProfile")}</span>
                 </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setTheme("glass");
-                    haptic("light");
-                  }}
-                  aria-pressed={theme === "glass"}
-                  className={`flex flex-col gap-1.5 rounded-2xl border p-3 text-left transition ${
-                    theme === "glass"
-                      ? "border-accent/40 bg-accent/10"
-                      : "border-white/10 bg-white/[0.03] hover:bg-white/[0.07]"
-                  }`}
-                >
-                  <span className="text-xs font-bold text-white">{t("settings.themeGlass")}</span>
-                  <span className="text-[10px] leading-relaxed text-ink-tertiary">{t("settings.themeGlassDesc")}</span>
-                  <span className="flex gap-1.5 pt-0.5" aria-hidden="true">
-                    <span className="h-2.5 w-2.5 rounded-full" style={{ background: "var(--svg-protein)" }} />
-                    <span className="h-2.5 w-2.5 rounded-full" style={{ background: "var(--svg-carb)" }} />
-                    <span className="h-2.5 w-2.5 rounded-full" style={{ background: "var(--svg-fat)" }} />
-                  </span>
-                </button>
+
+                {savedProfileMsg && (
+                  <div className="text-center text-xs font-bold text-emerald-400">
+                    {t("settings.profileSaved")}
+                  </div>
+                )}
               </div>
             </div>
-            <div className="flex items-center justify-between border-t border-white/5 pt-3">
-              <span className="text-xs font-bold text-white">{t("settings.fiberTracking")}</span>
-              <span className="rounded-full bg-accent/20 px-2.5 py-0.5 text-[10px] font-bold text-accent">
-                {t("settings.active")}
-              </span>
+          )}
+
+          {/* 7. KİLO & VÜCUT TAKİBİ — gerçek veriye bağlı (bkz. WeightSettings) */}
+          {subView === "weight" && <WeightSettings onOpenProfile={() => openSubView("profile")} />}
+
+          {/* 8. WIDGET REHBERİ */}
+          {subView === "widgets" && (
+            <div className="flex flex-col gap-3 rounded-2xl border border-white/10 bg-row p-4">
+              <div className="text-sm font-extrabold text-white">{t("settings.widgetsHeader")}</div>
+              <p className="text-xs text-white/70 leading-relaxed">{t("settings.widgetsBody")}</p>
             </div>
-          </div>
-        )}
+          )}
 
-        {/* 12. PAROLA DEĞİŞTİR */}
-        {subView === "password" && <PasswordForm goBack={goBack} />}
+          {/* CHANGELOG */}
+          {subView === "changelog" && <ChangeLogView />}
 
-        {/* 13. İZİNLİ E-POSTALAR */}
-        {subView === "allowlist" && <AllowlistForm />}
+          {/* 9. DESTEK & BİLDİRİM */}
+          {subView === "feedback" && <FeedbackForm />}
+          {subView === "feedbackInbox" && <FeedbackInbox />}
 
-        {/* 14. DİL SEÇİMİ */}
-        {subView === "language" && (
-          <div className="flex flex-col gap-3 rounded-2xl border border-white/10 bg-row p-4">
-            <div className="flex gap-2 px-1 pb-1" role="group" aria-label={t("settings.language")}>
-              {SUPPORTED_LANGS.map((lng) => (
-                <button
-                  key={lng}
-                  type="button"
-                  onClick={() => setLang(lng)}
-                  aria-pressed={currentLang === lng}
-                  className={
-                    "flex-1 rounded-pill border px-3 py-2 text-sm font-semibold transition " +
-                    (currentLang === lng
-                      ? "border-emerald-500/50 bg-emerald-500/15 text-emerald-200"
-                      : "border-line bg-white/[0.04] text-ink-secondary hover:text-ink-primary")
-                  }
-                >
-                  {lng === "tr" ? t("settings.languageTr") : lng === "en" ? t("settings.languageEn") : t("settings.languagePl")}
-                </button>
-              ))}
+          {/* 10. GİZLİLİK & GÜVENLİK */}
+          {subView === "privacy" && (
+            <div className="flex flex-col gap-3 rounded-2xl border border-white/10 bg-row p-4 text-xs text-white/70 leading-relaxed">
+              <div className="text-sm font-extrabold text-white mb-1">
+                {t("settings.privacyHeader")}
+              </div>
+              {t("settings.privacyBody")}
             </div>
-          </div>
-        )}
+          )}
 
-        {/* 15. accountData sub-view removed — merged into "data" */}
-          </div>
-        )}
-      </div>
+          {/* 11. UYGULAMA TERCİHLERİ */}
+          {subView === "preferences" && (
+            <div className="flex flex-col gap-3 rounded-2xl border border-white/10 bg-row p-4">
+              <div className="flex flex-col gap-1.5">
+                <span className="text-xs font-bold text-white">{t("settings.appearance")}</span>
+                <p className="text-[11px] leading-relaxed text-ink-tertiary">
+                  {t("settings.themeStoredLocally")}
+                </p>
+                <div className="mt-0.5 grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setTheme("velvet");
+                      haptic("light");
+                    }}
+                    aria-pressed={theme === "velvet"}
+                    className={`flex flex-col gap-1.5 rounded-2xl border p-3 text-left transition ${
+                      theme === "velvet"
+                        ? "border-accent/40 bg-accent/10"
+                        : "border-white/10 bg-white/[0.03] hover:bg-white/[0.07]"
+                    }`}
+                  >
+                    <span className="text-xs font-bold text-white">
+                      {t("settings.themeVelvet")}
+                    </span>
+                    <span className="text-[10px] leading-relaxed text-ink-tertiary">
+                      {t("settings.themeVelvetDesc")}
+                    </span>
+                    <span className="flex gap-1.5 pt-0.5" aria-hidden="true">
+                      <span
+                        className="h-2.5 w-2.5 rounded-full"
+                        style={{ background: "var(--svg-protein)" }}
+                      />
+                      <span
+                        className="h-2.5 w-2.5 rounded-full"
+                        style={{ background: "var(--svg-carb)" }}
+                      />
+                      <span
+                        className="h-2.5 w-2.5 rounded-full"
+                        style={{ background: "var(--svg-fat)" }}
+                      />
+                    </span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setTheme("glass");
+                      haptic("light");
+                    }}
+                    aria-pressed={theme === "glass"}
+                    className={`flex flex-col gap-1.5 rounded-2xl border p-3 text-left transition ${
+                      theme === "glass"
+                        ? "border-accent/40 bg-accent/10"
+                        : "border-white/10 bg-white/[0.03] hover:bg-white/[0.07]"
+                    }`}
+                  >
+                    <span className="text-xs font-bold text-white">{t("settings.themeGlass")}</span>
+                    <span className="text-[10px] leading-relaxed text-ink-tertiary">
+                      {t("settings.themeGlassDesc")}
+                    </span>
+                    <span className="flex gap-1.5 pt-0.5" aria-hidden="true">
+                      <span
+                        className="h-2.5 w-2.5 rounded-full"
+                        style={{ background: "var(--svg-protein)" }}
+                      />
+                      <span
+                        className="h-2.5 w-2.5 rounded-full"
+                        style={{ background: "var(--svg-carb)" }}
+                      />
+                      <span
+                        className="h-2.5 w-2.5 rounded-full"
+                        style={{ background: "var(--svg-fat)" }}
+                      />
+                    </span>
+                  </button>
+                </div>
+              </div>
+              <div className="flex items-center justify-between border-t border-white/5 pt-3">
+                <span className="text-xs font-bold text-white">{t("settings.fiberTracking")}</span>
+                <span className="rounded-full bg-accent/20 px-2.5 py-0.5 text-[10px] font-bold text-accent">
+                  {t("settings.active")}
+                </span>
+              </div>
+            </div>
+          )}
+
+          {/* 12. PAROLA DEĞİŞTİR */}
+          {subView === "password" && <PasswordForm goBack={goBack} />}
+
+          {/* 13. İZİNLİ E-POSTALAR */}
+          {subView === "allowlist" && <AllowlistForm />}
+
+          {/* 14. DİL SEÇİMİ */}
+          {subView === "language" && (
+            <div className="flex flex-col gap-3 rounded-2xl border border-white/10 bg-row p-4">
+              <div
+                className="flex gap-2 px-1 pb-1"
+                role="group"
+                aria-label={t("settings.language")}
+              >
+                {SUPPORTED_LANGS.map((lng) => (
+                  <button
+                    key={lng}
+                    type="button"
+                    onClick={() => setLang(lng)}
+                    aria-pressed={currentLang === lng}
+                    className={
+                      "flex-1 rounded-pill border px-3 py-2 text-sm font-semibold transition " +
+                      (currentLang === lng
+                        ? "border-emerald-500/50 bg-emerald-500/15 text-emerald-200"
+                        : "border-line bg-white/[0.04] text-ink-secondary hover:text-ink-primary")
+                    }
+                  >
+                    {lng === "tr"
+                      ? t("settings.languageTr")
+                      : lng === "en"
+                        ? t("settings.languageEn")
+                        : t("settings.languagePl")}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* 15. accountData sub-view removed — merged into "data" */}
+        </div>
+      )}
+    </div>
   );
 
   if (embedded) {
@@ -954,7 +1119,12 @@ export function SettingsSheet({
   }
 
   return (
-    <Modal title={subView ? t("settings.title") : t("settings.titleWithProfile")} onClose={onClose} fullScreen contentRef={scrollRef}>
+    <Modal
+      title={subView ? t("settings.title") : t("settings.titleWithProfile")}
+      onClose={onClose}
+      fullScreen
+      contentRef={scrollRef}
+    >
       {mainBody}
     </Modal>
   );
@@ -1015,9 +1185,7 @@ function PasswordForm({ goBack }: { goBack: () => void }) {
             type="password"
             autoComplete="current-password"
           />
-          <p className="mt-1 text-[11px] text-white/50">
-            {t("settings.passwordGoogleHint")}
-          </p>
+          <p className="mt-1 text-[11px] text-white/50">{t("settings.passwordGoogleHint")}</p>
         </div>
 
         <div>
@@ -1046,9 +1214,7 @@ function PasswordForm({ goBack }: { goBack: () => void }) {
           />
         </div>
 
-        {validationProblem && (
-          <p className="text-xs text-amber-400">{validationProblem}</p>
-        )}
+        {validationProblem && <p className="text-xs text-amber-400">{validationProblem}</p>}
 
         {err && <ErrorText>{err}</ErrorText>}
 
@@ -1187,9 +1353,7 @@ function AllowlistForm() {
         {emails === null ? (
           <p className="text-xs text-white/50">{t("common.loading")}</p>
         ) : emails.length === 0 ? (
-          <p className="text-xs text-white/50 leading-relaxed">
-            {t("settings.allowlistEmpty")}
-          </p>
+          <p className="text-xs text-white/50 leading-relaxed">{t("settings.allowlistEmpty")}</p>
         ) : (
           <ul className="flex flex-col divide-y divide-white/[0.06]">
             {emails.map((email) => (
