@@ -13,6 +13,27 @@ export interface ChangeLogVersion {
 
 export const CHANGELOG: ChangeLogVersion[] = [
   {
+    version: "0.30.3",
+    date: "2026-09-15",
+    summary: {
+      tr: "Yeni kayıt olan kullanıcıda kurulum sonrası sürüm notları ekranı ile tanıtım turu aynı anda açılıyordu; sıra artık net: önce kurulum, sonra kısa tur, en son sürüm notları.",
+      en: "For new users the release-notes screen and the walkthrough used to open at the same time right after setup; the order is now clear: setup, then the short tour, then the release notes.",
+    },
+    items: [
+      {
+        type: "fixed",
+        tr: "Yeni hesapta kurulum sihirbazını bitirdiğinde tanıtım turu, “Ne Var Yeni?” ekranı açıkken başlıyordu ve iki ekran üst üste biniyordu. Artık kurulum → tur → sürüm notları sırasıyla açılıyor; ikisi hiçbir koşulda aynı anda görünmüyor.",
+        en: "On a new account the walkthrough started while the “What's new?” screen was open, so the two overlapped. They now appear in order — setup, tour, release notes — and never at the same time.",
+      },
+    ],
+    dev: [
+      "Kök neden: `sihirbaziAtla` bayrağı profili yazmadan ÖNCE açıyordu (`setSihirbazKapatildi(true)` → `await updateConfig`). O ağ turu boyunca hem `sihirbazAcik` hem `guideAcik` false kalıyor, sürüm popup'ı efektini tetikliyordu; yazma dönünce tur bayrağı true olup popup'ın üstüne biniyordu. Tarayıcıda üretildi (izole boş DB): 15 ms'de [], 22 ms'de [Ne Var Yeni?], 55 ms'de [Ne Var Yeni? | Hızlı Tur].",
+      "Düzeltme iki katmanlı: (1) `guideAcik` artık `hasCompletedOnboarding || sihirbazKapatildi` kullanır — kapatma zaten tamamlanma sayıldığı için tur AYNI render'da sıraya girer ve ağ turunu beklemez; (2) `shouldShowGuide` yeni bir `changelogOpen` kapısı aldı, yani tur popup açıkken başlamaz (Ayarlar > “Ne Var Yeni?” tur sırası beklerken elle açılabiliyor). Kapı KARŞILIKLI: popup da tur/sihirbaz açıkken açılmaz.",
+      "Doğrulama (izole boş DB + üretim derlemesi): kapatma yolu 18 ms'de yalnız [Hızlı Tur]; tamamlama yolu (5/5 “Hedeflerimi Kaydet”) 76 ms'de yalnız [Hızlı Tur]; tur “Atla” → 22 ms'de [Ne Var Yeni?]. Üç senaryoda da üst üste binme yok.",
+      "guide.test.ts +3 test: popup açıkken tur başlamaz, popup kapanınca başlar (kapı kalıcı engel değil), `forceOpen` bile popup açıkken beklemez.",
+    ],
+  },
+  {
     version: "0.30.2",
     date: "2026-09-15",
     summary: {

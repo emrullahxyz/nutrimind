@@ -348,3 +348,39 @@ Aynı kural doğrulama/uyarı satırları için de geçerlidir: `"<ad>: kcal 0'd
 `profileDisplayName` üzerinden yazılır, ham `name` üzerinden değil.
 **Genel test:** Bir veri alanı ekranda çevrilmiş görünüyorsa, o ekranın kaydet düğmesine BASMADAN
 önce ve sonra sunucudaki ham değerin AYNI kaldığını doğrula.
+
+## L24 — Overlay sırası, sunucu onayı bekleyen bayrağa bağlanamaz (ve kapı KARŞILIKLI olmalı)
+
+**Olay (2026-09-15, kullanıcı bildirimi):** Yeni kayıt olan kullanıcı kurulum sihirbazını geçtikten
+sonra sürüm notları ekranı ("Ne Var Yeni?") ile tanıtım turu ("Hızlı Tur") AYNI ANDA ekranda
+görünüyordu. İzole boş bir veritabanı + üretim derlemesiyle tarayıcıda zaman çizelgesi alındı
+(MutationObserver, ms damgalı):
+
+```
+0ms   [Kurulum Sihirbazı]  →  15ms []  →  22ms [Ne Var Yeni?]  →  55ms [Ne Var Yeni? | Hızlı Tur]
+```
+
+**Kök neden iki ayrı kusurun birleşimi:**
+1. **Sıralama bayrağı sunucu onayını bekliyordu.** `sihirbaziAtla` önce `setSihirbazKapatildi(true)`
+   çağırıp SONRA `await updateConfig("profile", …)` yazıyordu. O ağ turu boyunca `sihirbazAcik`
+   false, `guideAcik` de (profil BAYAT olduğu için) false kaldı → sürüm popup'ının efekti tetiklendi.
+   Yazma dönünce `guideAcik` true oldu ve tur popup'ın ÜSTÜNE bindi.
+2. **Kapı tek yönlüydü.** Popup "sihirbaz/rehber açıkken açılmam" diyordu, ama tur "popup açıkken
+   başlamam" demiyordu. Tek yönlü bekçi, karşı yönden gelen ikinci overlay'i engelleyemez.
+
+**Kural:**
+1. İki overlay'in sırasını belirleyen bayrak SENKRON olmalı; ağ isteğinin dönüşüne bağlanmamalı.
+   Yerel kapanış zaten "tamamlandı" demekse (`sihirbaziAtla` sözleşmesi) sıralamada o bayrağı
+   kullan: `hasCompletedOnboarding: profil?.… === true || sihirbazKapatildi`. Tur böylece AYNI
+   render'da sıraya girer, sunucuyu beklemez.
+2. Üst üste binme kapıları KARŞILIKLI yazılır: "A, B açıkken açılmaz" yetmez, "B de A açıkken
+   açılmaz" gerekir (`shouldShowGuide` artık `changelogOpen` alır; popup tarafı da sihirbaz+rehber
+   bekler). Elle açılabilen yollar (Ayarlar > "Ne Var Yeni?", Ayarlar > "Rehberi tekrar göster")
+   bu yüzden sayılır.
+3. Böyle bir sıra iddiası ancak ZAMAN ÇİZELGESİYLE kanıtlanır: iki overlay aynı karede mi, hangisi
+   önce? Tek ekran görüntüsü ya da "kodda sıra doğru görünüyor" bunu göstermez — 7 ms'lik bir
+   pencere gözle görünmez.
+
+**Genel test:** "X kapanınca Y açılır" diyen bir kod, X'in kapanışı ile Y'nin açılışı arasında bir
+ağ isteği varsa sırayı kaybedebilir. Sıralama kararını yerel (senkron) duruma bağla; ve iki modal
+birbirini bekliyorsa iki yönlü bekçi yaz.

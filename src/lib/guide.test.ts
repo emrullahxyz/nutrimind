@@ -16,7 +16,9 @@ import {
 
 describe("parseGuideState", () => {
   it("geçerli durumu okur", () => {
-    expect(parseGuideState({ version: 2, status: "completed", at: "2026-09-14T10:00:00.000Z" })).toEqual({
+    expect(
+      parseGuideState({ version: 2, status: "completed", at: "2026-09-14T10:00:00.000Z" }),
+    ).toEqual({
       version: 2,
       status: "completed",
       at: "2026-09-14T10:00:00.000Z",
@@ -92,6 +94,7 @@ describe("shouldShowGuide", () => {
     wizardOpen: false,
     dismissedThisSession: false,
     forceOpen: false,
+    changelogOpen: false,
   };
 
   it("yeni hesapta (kurulum bitti, veri yok, kayıt yok) gösterilir", () => {
@@ -110,6 +113,22 @@ describe("shouldShowGuide", () => {
     expect(shouldShowGuide({ ...base, wizardOpen: true })).toBe(false);
   });
 
+  it("sürüm popup'ı açıkken tur BAŞLAMAZ (ölçülen üst üste binme bug'ı)", () => {
+    expect(shouldShowGuide({ ...base, changelogOpen: true })).toBe(false);
+  });
+
+  it("popup kapanınca tur başlar — kapı turu kalıcı olarak engellemez", () => {
+    expect(shouldShowGuide({ ...base, changelogOpen: true })).toBe(false);
+    expect(shouldShowGuide({ ...base, changelogOpen: false })).toBe(true);
+  });
+
+  it("zorla açma (Ayarlar) da popup açıkken bekler — aynı anda iki tam ekran overlay olmaz", () => {
+    // Kapı `forceOpen`'dan ÖNCE: kullanıcı açıkça istese bile sıra korunur;
+    // popup kapanınca `forceOpen` hâlâ yürürlükte olduğu için tur açılır.
+    expect(shouldShowGuide({ ...base, changelogOpen: true, forceOpen: true })).toBe(false);
+    expect(shouldShowGuide({ ...base, changelogOpen: false, forceOpen: true })).toBe(true);
+  });
+
   it("bu oturumda kapatıldıysa yeniden açılmaz", () => {
     expect(shouldShowGuide({ ...base, dismissedThisSession: true })).toBe(false);
   });
@@ -122,7 +141,10 @@ describe("shouldShowGuide", () => {
 
   it("eski sürüm kaydı yeni turu engellemez", () => {
     expect(
-      shouldShowGuide({ ...base, state: { version: GUIDE_VERSION - 1, status: "completed", at: "" } }),
+      shouldShowGuide({
+        ...base,
+        state: { version: GUIDE_VERSION - 1, status: "completed", at: "" },
+      }),
     ).toBe(true);
   });
 });
@@ -135,6 +157,7 @@ describe("shouldShowGuide — forceOpen (Ayarlar > Rehberi tekrar göster)", () 
     wizardOpen: false,
     dismissedThisSession: false,
     forceOpen: true,
+    changelogOpen: false,
   };
 
   it("görülmüş ve veri dolu olsa bile açılır (kullanıcı açıkça istedi)", () => {

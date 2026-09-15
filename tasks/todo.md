@@ -704,3 +704,19 @@ Kanıt (4173 üretim derlemesi + gerçek 8790 backend, aynı oturum/aynı veri):
   ve geri silinebilir bir DELETE ucu yok).
 - `goals.test.ts` +4 test (41 test geçiyor): sentinel dile göre çevrilir, kullanıcı adı asla
   çevrilmez, alan dokunulmadıkça çevrilmiş adı gösterir, dokunulduysa yazılanı gösterir.
+
+### v0.30.3 — yeni kullanıcıda tur ile sürüm popup'ının üst üste binmesi
+
+Kullanıcı bildirimi: kayıt sonrası kurulum sihirbazı geçilince tanıtım turu, "Ne Var Yeni?" ekranı
+açıkken çalışıyordu. Kök neden: `sihirbaziAtla` bayrağı profili yazmadan ÖNCE açıyor, o ağ turu
+boyunca iki overlay de "kapalı" görünüp popup'ı tetikliyor, yazma dönünce tur popup'ın üstüne
+biniyordu; ayrıca bekçi tek yönlüydü (popup turu bekliyordu, tur popup'ı beklemiyordu).
+
+Tarayıcıda üretildi (izole boş DB + üretim derlemesi): 15 ms [], 22 ms [Ne Var Yeni?],
+55 ms [Ne Var Yeni? | Hızlı Tur].
+
+Düzeltme: (1) `guideAcik` artık `hasCompletedOnboarding || sihirbazKapatildi` — tur ağ turunu
+beklemeden sıraya girer; (2) `shouldShowGuide` yeni `changelogOpen` kapısıyla turu popup açıkken
+başlatmaz (karşılıklı bekçi). Doğrulama: kapatma yolu 18 ms'de yalnız [Hızlı Tur], tamamlama yolu
+(5/5 "Hedeflerimi Kaydet") 76 ms'de yalnız [Hızlı Tur], tur "Atla" → 22 ms'de [Ne Var Yeni?].
+guide.test.ts +3 test. Sürüm 0.30.3 + changelog girişi. Ders: L24.

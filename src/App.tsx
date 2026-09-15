@@ -151,11 +151,19 @@ function MainContent() {
   const [rehberZorla, setRehberZorla] = useState(false);
   const guideAcik = shouldShowGuide({
     state: rehberDurumu,
-    hasCompletedOnboarding: profil?.hasCompletedOnboarding === true,
+    // ⚠️ `|| sihirbazKapatildi` ÖLÇÜLMÜŞ bir yarışı kapatır: kapatma yolu
+    // profili sunucuya yazmayı beklerken `hasCompletedOnboarding` bir süre
+    // BAYAT kalır; o boşlukta hem sihirbaz hem rehber "kapalı" görünüp sürüm
+    // popup'ı açılıyor, yazma dönünce tur popup'ın üstüne biniyordu (tarayıcıda
+    // üretildi: 15 ms'de boş, 22 ms'de popup, 55 ms'de popup + tur). Kapatma
+    // zaten "tamamlandı" demektir (bkz. `sihirbaziAtla`), dolayısıyla tur
+    // OTOMATİK olarak sıraya girer ve ağ turunu beklemez.
+    hasCompletedOnboarding: profil?.hasCompletedOnboarding === true || sihirbazKapatildi,
     dayCount: Object.keys(days).length,
     wizardOpen: sihirbazAcik,
     dismissedThisSession: rehberBuOturumdaKapatildi,
     forceOpen: rehberZorla,
+    changelogOpen,
   });
 
   /** Rehberin bittiği TEK yer: hangi yolla kapanırsa kapansın durum hesaba
@@ -191,6 +199,10 @@ function MainContent() {
   // başına BİR KEZ göster. Bağımlılıklar bilinçli: sihirbaz/rehber KAPANINCA
   // efekt yeniden değerlendirir → yeni kayıt önce kurulumu, sonra turu bitirip
   // popup'ı görür. İlk render'da biri açıksa atlanır, kapanınca gelir.
+  //
+  // ⚠️ Kapı TEK yönlü değil, karşılıklı: tur da popup açıkken başlamaz
+  // (`shouldShowGuide` içindeki `changelogOpen`) — aksi hâlde Ayarlar > "Ne Var
+  // Yeni?" popup'ı tur sırasını beklerken elle açılınca üst üste binerlerdi.
   const changelogShownOnceRef = useRef(false);
   useEffect(() => {
     if (changelogShownOnceRef.current || sihirbazAcik || guideAcik) return;

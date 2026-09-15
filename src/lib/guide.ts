@@ -71,6 +71,14 @@ export interface GuideEligibility {
   dayCount: number;
   /** Profil sihirbazı şu an ekranda mı (üst üste binmesin). */
   wizardOpen: boolean;
+  /** Sürüm popup'ı şu an ekranda mı.
+   *
+   *  Ölçülen bug: yeni kullanıcı kurulum sihirbazını kapattığında popup 7 ms
+   *  içinde açılıyor, tur ise profili yazan istek dönünce 33 ms sonra ÜSTÜNE
+   *  biniyordu — ikisi aynı anda, "Hızlı Tur" popup'ı okuyan kullanıcının
+   *  karşısında. Bu kapı ikisinin aynı karede açılmasını yapısal olarak
+   *  engeller (sıra: kurulum → tur → popup). */
+  changelogOpen: boolean;
   /** Kullanıcı bu oturumda rehberi kapattı/bitirdi mi. */
   dismissedThisSession: boolean;
   /** Ayarlar > "Rehberi tekrar göster": gün verisi olsa bile aç. */
@@ -85,6 +93,8 @@ export interface GuideEligibility {
  *   1. Oturum içi kapanış her şeyi bastırır — aksi hâlde `updateConfig` sonrası
  *      yenileme gelmeden önce rehber yeniden açılıp kullanıcıyı kilitlerdi.
  *   2. Sihirbaz açıkken gösterilmez (ikisi aynı anda tam ekran olamaz).
+ *   2b. Sürüm popup'ı açıkken de gösterilmez — aynı gerekçe. Ayarlar > "Ne Var
+ *      Yeni?" tur sırası beklerken elle açılabildiği için bu kapı gerekli.
  *   3. `forceOpen` BİLEREK yukarıda: Ayarlar'dan çağrılan yol veri koşulunu da
  *      "zaten görüldü" koşulunu da aşmalıdır — kullanıcı açıkça istedi.
  *   4. Profil kurulumu bitmemişse rehber erken olur; önce sihirbaz var.
@@ -95,6 +105,7 @@ export interface GuideEligibility {
 export function shouldShowGuide(p: GuideEligibility): boolean {
   if (p.dismissedThisSession) return false;
   if (p.wizardOpen) return false;
+  if (p.changelogOpen) return false;
   if (p.forceOpen) return true;
   if (!p.hasCompletedOnboarding) return false;
   if (p.dayCount > 0) return false;
