@@ -50,7 +50,11 @@ async function loadAi(env = {}) {
   return mod.default ?? mod;
 }
 
-function makeGeminiOkResponse(items = [{ name: "Elma", kcal: 50, protein: 0.3, carbs: 14, fat: 0.2, fiber: 2.4, confidence: 0.95 }]) {
+function makeGeminiOkResponse(
+  items = [
+    { name: "Elma", kcal: 50, protein: 0.3, carbs: 14, fat: 0.2, fiber: 2.4, confidence: 0.95 },
+  ],
+) {
   return {
     ok: true,
     status: 200,
@@ -67,7 +71,11 @@ function makeGeminiOkResponse(items = [{ name: "Elma", kcal: 50, protein: 0.3, c
   };
 }
 
-function makeNimOkResponse(items = [{ name: "Elma", kcal: 50, protein: 0.3, carbs: 14, fat: 0.2, fiber: 2.4, confidence: 0.95 }]) {
+function makeNimOkResponse(
+  items = [
+    { name: "Elma", kcal: 50, protein: 0.3, carbs: 14, fat: 0.2, fiber: 2.4, confidence: 0.95 },
+  ],
+) {
   return {
     ok: true,
     status: 200,
@@ -388,5 +396,99 @@ describe("AI istem dili (server/ai.js `lang`)", () => {
     });
     expect(res.status).toBe(200);
     expect(promptOf(mockFetch.mock.calls[0])).toContain("Odpowiedz w języku polskim");
+  });
+});
+
+describe("etiket tabanı (baseAmount) — canlıdan depoya taşındı", () => {
+  /** Gemini isteğinin gövdesinden prompt metnini çıkarır (kendi kopyamız:
+   *  üstteki bloktaki yardımcı o describe'un içindedir). */
+  function geminiPromptOf(call) {
+    return JSON.parse(call[1].body).contents[0].parts[0].text;
+  }
+
+  it("etiket istemi baseAmount alanını ve kuralını içerir (üç dilde)", async () => {
+    const { parseMealImage } = await loadAi({
+      NUTRIMIND_LLM_PROVIDER: "gemini",
+      GEMINI_API_KEY: "test_gemini_key",
+    });
+
+    for (const [lang, needle] of [
+      ["tr", "baseAmount"],
+      ["en", "baseAmount"],
+      ["pl", "baseAmount"],
+    ]) {
+      const mockFetch = vi.fn().mockResolvedValue(makeGeminiOkResponse());
+      vi.stubGlobal("fetch", mockFetch);
+      const res = await parseMealImage({
+        imageBase64: "x",
+        mimeType: "image/jpeg",
+        mode: "food_label",
+        aliases: [],
+        lang,
+      });
+      expect(res.status).toBe(200);
+      const prompt = geminiPromptOf(mockFetch.mock.calls[0]);
+      expect(prompt).toContain(needle);
+      expect(prompt).toMatch(/100\s?g/);
+      vi.unstubAllGlobals();
+    }
+  });
+
+  it("NIM/OpenCode JSON talimatı da istem dilini izler (Türkçe talimat sızmaz)", async () => {
+    const mockFetch = vi.fn().mockResolvedValue(makeNimOkResponse());
+    vi.stubGlobal("fetch", mockFetch);
+
+    // GEMINI key'i YOK: zincir doğrudan NIM'e düşer ve JSON talimatı oraya gider.
+    // `""` şart — `.env`'deki gerçek anahtar aksi hâlde devreye girip testi
+    // Gemini yoluna kaydırır (bkz. yukarıdaki "GEMINI_API_KEY yokken" testi).
+    const { parseMealText } = await loadAi({
+      NUTRIMIND_LLM_PROVIDER: "auto",
+      GEMINI_API_KEY: "",
+      NVIDIA_NIM_API_KEY: "test_nim_key",
+    });
+
+    const res = await parseMealText({ text: "2 eggs", aliases: [], lang: "en" });
+    expect(res.status).toBe(200);
+
+    const body = JSON.parse(mockFetch.mock.calls[0][1].body);
+    const prompt = body.messages[0].content;
+    expect(prompt).toContain("Reply ONLY with JSON");
+    expect(prompt).toContain('"baseAmount":number');
+    expect(prompt).not.toContain("SADECE aşağıdaki JSON");
+  });
+
+  it("yanıttaki baseAmount yalnızca POZİTİF ve sonlu geldiğinde taşınır", async () => {
+    const cases = [
+      { raw: 100, expected: 100 },
+      { raw: 30, expected: 30 },
+      { raw: 0, expected: undefined },
+      { raw: -5, expected: undefined },
+      { raw: "100", expected: undefined },
+      { raw: undefined, expected: undefined },
+    ];
+
+    for (const c of cases) {
+      const item = {
+        name: "Ürün (100g)",
+        kcal: 250,
+        protein: 10,
+        carbs: 30,
+        fat: 8,
+        fiber: 3,
+        confidence: 0.9,
+      };
+      if (c.raw !== undefined) item.baseAmount = c.raw;
+      const mockFetch = vi.fn().mockResolvedValue(makeGeminiOkResponse([item]));
+      vi.stubGlobal("fetch", mockFetch);
+
+      const { parseMealText } = await loadAi({
+        NUTRIMIND_LLM_PROVIDER: "gemini",
+        GEMINI_API_KEY: "test_gemini_key",
+      });
+      const res = await parseMealText({ text: "ürün", aliases: [], lang: "tr" });
+      expect(res.status).toBe(200);
+      expect(res.body.items[0].baseAmount).toBe(c.expected);
+      vi.unstubAllGlobals();
+    }
   });
 });

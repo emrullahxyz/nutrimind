@@ -54,7 +54,10 @@ function loadDotEnvOnce() {
     const key = trimmed.slice(0, eq).trim();
     if (!key || process.env[key] !== undefined) continue;
     let value = trimmed.slice(eq + 1).trim();
-    if ((value.startsWith('"') && value.endsWith('"')) || (value.startsWith("'") && value.endsWith("'"))) {
+    if (
+      (value.startsWith('"') && value.endsWith('"')) ||
+      (value.startsWith("'") && value.endsWith("'"))
+    ) {
       value = value.slice(1, -1);
     }
     process.env[key] = value;
@@ -69,7 +72,8 @@ const GEMINI_TIER2_MODEL = process.env.GEMINI_TIER2_MODEL || "gemini-3.5-flash";
 const GEMINI_TIER3_MODEL = process.env.GEMINI_TIER3_MODEL || "gemini-flash-lite-latest";
 const NVIDIA_NIM_API_KEY = process.env.NVIDIA_NIM_API_KEY || "";
 const NVIDIA_NIM_MODEL = process.env.NVIDIA_NIM_MODEL || "meta/llama-3.1-8b-instruct";
-const NVIDIA_NIM_VISION_MODEL = process.env.NVIDIA_NIM_VISION_MODEL || "meta/llama-3.2-90b-vision-instruct";
+const NVIDIA_NIM_VISION_MODEL =
+  process.env.NVIDIA_NIM_VISION_MODEL || "meta/llama-3.2-90b-vision-instruct";
 const OPENCODE_API_KEY = process.env.OPENCODE_API_KEY || "";
 const OPENCODE_MODEL = process.env.OPENCODE_MODEL || "deepseek-v4-flash-free";
 const LLM_PROVIDER = process.env.NUTRIMIND_LLM_PROVIDER || "none";
@@ -147,6 +151,9 @@ const RESPONSE_SCHEMA = {
           fat: { type: "number" },
           fiber: { type: "number" },
           confidence: { type: "number" },
+          // Besin etiketi taramasında değerlerin dayandığı miktar (100 g / porsiyon).
+          // Alan `required` DEĞİL: metin ve yemek fotoğrafı akışlarında anlamsız.
+          baseAmount: { type: "number" },
         },
         required: ["name", "kcal", "protein", "carbs", "fat", "fiber"],
       },
@@ -175,9 +182,36 @@ function normalizeLang(lang) {
 
 /** Besin adlarını kullanıcının DİLİNDE yazar; istem tek dilde kalsın. */
 const NUTRIENT_WORDS = {
-  en: { kcal: "kcal", protein: "g protein", carbs: "g carbs", fat: "g fat", fiber: "g fiber", sugar: "g sugar", satFat: "g sat. fat", sodium: "mg sodium" },
-  tr: { kcal: "kcal", protein: "g protein", carbs: "g karbonhidrat", fat: "g yağ", fiber: "g lif", sugar: "g şeker", satFat: "g doymuş yağ", sodium: "mg sodyum" },
-  pl: { kcal: "kcal", protein: "g białka", carbs: "g węglowodanów", fat: "g tłuszczu", fiber: "g błonnika", sugar: "g cukru", satFat: "g tł. nasyconych", sodium: "mg sodu" },
+  en: {
+    kcal: "kcal",
+    protein: "g protein",
+    carbs: "g carbs",
+    fat: "g fat",
+    fiber: "g fiber",
+    sugar: "g sugar",
+    satFat: "g sat. fat",
+    sodium: "mg sodium",
+  },
+  tr: {
+    kcal: "kcal",
+    protein: "g protein",
+    carbs: "g karbonhidrat",
+    fat: "g yağ",
+    fiber: "g lif",
+    sugar: "g şeker",
+    satFat: "g doymuş yağ",
+    sodium: "mg sodyum",
+  },
+  pl: {
+    kcal: "kcal",
+    protein: "g białka",
+    carbs: "g węglowodanów",
+    fat: "g tłuszczu",
+    fiber: "g błonnika",
+    sugar: "g cukru",
+    satFat: "g tł. nasyconych",
+    sodium: "mg sodu",
+  },
 };
 
 const PH = {
@@ -189,14 +223,16 @@ const PH = {
     more: "(… and {n} more foods)",
   },
   tr: {
-    memoryHeader: "KULLANICININ BESİN HAFIZASI (bu besinleri tanıyorsan bu değerleri birebir kullan)",
+    memoryHeader:
+      "KULLANICININ BESİN HAFIZASI (bu besinleri tanıyorsan bu değerleri birebir kullan)",
     memoryEmpty: "(hafızada henüz besin yok)",
     perServing: "başına",
     knownAs: "şu ifadelerle anılır",
     more: "(… ve {n} besin daha)",
   },
   pl: {
-    memoryHeader: "PAMIĘĆ ŻYWIENIOWA UŻYTKOWNIKA (jeśli rozpoznajesz te produkty, użyj tych wartości dokładnie)",
+    memoryHeader:
+      "PAMIĘĆ ŻYWIENIOWA UŻYTKOWNIKA (jeśli rozpoznajesz te produkty, użyj tych wartości dokładnie)",
     memoryEmpty: "(brak produktów w pamięci)",
     perServing: "na",
     knownAs: "znane również jako",
@@ -272,6 +308,7 @@ const PROMPTS = {
     labelRules: [
       "Read the nutrition values (kcal, protein, carbs, fat, fiber) from the label EXACTLY, without estimating.",
       'State in the name whether the label is per 100 g or per serving (e.g. "Product Name (100g)").',
+      'Also write the amount these values are based on into the "baseAmount" field as a NUMBER (the figure printed on the label: 100 if it is "per 100 g", 30 if it is "1 serving of 30 g"). If the label has several columns (per 100 g/100 ml AND per serving), prefer the "per 100 g/100 ml" column. If unsure, write 100.',
       "Usually there is a SINGLE item.",
       'For every item give a "confidence" value between 0 and 1 (lower it if the label is unclear).',
       "Answer in English.",
@@ -302,6 +339,7 @@ const PROMPTS = {
     labelRules: [
       "Etiketteki besin değerlerini (kcal, protein, carbs, fat, fiber) BİREBİR, tahmin etmeden oku.",
       'Etiket "100g başına" mı yoksa "porsiyon başına" mı gösteriyor, isimde belirt (ör. "Ürün Adı (100g)").',
+      'Bu değerlerin dayandığı miktarı SAYI olarak "baseAmount" alanına da yaz (etikette yazan rakamın ta kendisi, ör. "100g başına" ise 100, "30g\u2019lik 1 porsiyon" ise 30). Etikette birden fazla sütun varsa (100g/100ml VE porsiyon) "100g/100ml başına" olan sütunu tercih et. Emin değilsen 100 yaz.',
       "Genellikle TEK bir öğe olur.",
       'Her öğe için 0 ile 1 arasında bir "confidence" değeri ver (etiket net değilse düşür).',
       "Yanıtı Türkçe ver.",
@@ -332,6 +370,7 @@ const PROMPTS = {
     labelRules: [
       "Odczytaj wartości odżywcze (kcal, białko, węglowodany, tłuszcz, błonnik) z etykiety DOKŁADNIE, bez szacowania.",
       'W nazwie podaj, czy etykieta dotyczy 100 g, czy porcji (np. "Nazwa produktu (100g)").',
+      'Ilość, na której opierają się te wartości, zapisz jako LICZBĘ w polu "baseAmount" (dokładnie ta liczba, która jest na etykiecie: 100, jeśli jest "na 100 g", 30, jeśli to "1 porcja 30 g"). Jeśli etykieta ma kilka kolumn (na 100 g/100 ml ORAZ na porcję), wybierz kolumnę "na 100 g/100 ml". Jeśli nie masz pewności, wpisz 100.',
       "Zwykle występuje JEDEN produkt.",
       'Dla każdego produktu podaj wartość "confidence" od 0 do 1 (obniż ją, jeśli etykieta jest nieczytelna).',
       "Odpowiedz w języku polskim.",
@@ -375,16 +414,39 @@ function buildLabelPrompt(lang) {
 // talimatı ekleniyor. Eskiden `buildNimPrompt`/`NIM_JSON_INSTRUCTION` adıyla
 // yalnızca NIM için vardı; artık OpenCode de aynı sınırlamayı paylaştığı için
 // isim genelleştirildi.
-const JSON_MODE_INSTRUCTION = `
+// Talimatın KENDİSİ de uygulama dilini izler: eskiden yalnızca Türkçeydi ve
+// İngilizce çıktı isteyen bir isteme Türkçe talimat ekliyordu (çıktı dilini
+// saptırabilir).
+const JSON_MODE_INSTRUCTIONS = {
+  en: `
+
+Reply ONLY with JSON in the shape below. Do NOT add any other text, explanation or markdown
+code block (\`\`\`) — the ENTIRE reply must be valid JSON:
+{"items":[{"name":"string","kcal":number,"protein":number,"carbs":number,"fat":number,"fiber":number,"confidence":number,"baseAmount":number}]}
+
+ALWAYS include the "confidence" field (0 to 1, how sure you are). Fill "baseAmount" only when you
+are reading a nutrition label (the gram/ml amount the values are based on), otherwise write 0.`,
+  tr: `
 
 SADECE aşağıdaki JSON şekline uygun yanıt ver. Başka hiçbir metin, açıklama veya markdown
 kod bloğu (\`\`\`) EKLEME — yanıtın TAMAMI geçerli JSON olmalı:
-{"items":[{"name":"string","kcal":number,"protein":number,"carbs":number,"fat":number,"fiber":number,"confidence":number}]}
+{"items":[{"name":"string","kcal":number,"protein":number,"carbs":number,"fat":number,"fiber":number,"confidence":number,"baseAmount":number}]}
 
-"confidence" alanını HER ZAMAN dahil et (0 ile 1 arası, ne kadar eminsin).`;
+"confidence" alanını HER ZAMAN dahil et (0 ile 1 arası, ne kadar eminsin). "baseAmount" alanını
+yalnızca bir besin etiketi okuyorsan (değerlerin dayandığı gram/ml miktarı) doldur, değilse 0 yaz.`,
+  pl: `
 
-function buildJsonModePrompt(basePrompt) {
-  return basePrompt + JSON_MODE_INSTRUCTION;
+Odpowiedz WYŁĄCZNIE w formacie JSON jak poniżej. NIE dodawaj żadnego innego tekstu, wyjaśnienia ani
+bloku kodu markdown (\`\`\`) — CAŁA odpowiedź musi być poprawnym JSON-em:
+{"items":[{"name":"string","kcal":number,"protein":number,"carbs":number,"fat":number,"fiber":number,"confidence":number,"baseAmount":number}]}
+
+ZAWSZE podawaj pole "confidence" (od 0 do 1, jak pewny jesteś). Pole "baseAmount" wypełniaj tylko
+gdy czytasz etykietę wartości odżywczych (ilość w gramach/ml, na której opierają się wartości),
+w przeciwnym razie wpisz 0.`,
+};
+
+function buildJsonModePrompt(basePrompt, lang) {
+  return basePrompt + JSON_MODE_INSTRUCTIONS[normalizeLang(lang)];
 }
 
 // --- Ortak LLM çağrı mantığı ---------------------------------------------------
@@ -436,7 +498,10 @@ async function callLLM({ bucket, url, headers, requestBody, extractText, timeout
     /* aşağıda ele alınıyor */
   }
   if (!json || !r.ok) {
-    return { status: 502, body: { error: `AI service error (HTTP ${r.status})`, code: "ai_provider_error" } };
+    return {
+      status: 502,
+      body: { error: `AI service error (HTTP ${r.status})`, code: "ai_provider_error" },
+    };
   }
 
   const rawText = extractText(json);
@@ -451,7 +516,10 @@ async function callLLM({ bucket, url, headers, requestBody, extractText, timeout
   try {
     parsed = JSON.parse(stripMarkdownFence(rawText));
   } catch {
-    return { status: 502, body: { error: "AI response is not valid JSON", code: "ai_bad_response" } };
+    return {
+      status: 502,
+      body: { error: "AI response is not valid JSON", code: "ai_bad_response" },
+    };
   }
 
   return { status: 200, body: parsed };
@@ -481,7 +549,10 @@ function nimFetch(prompt, opts) {
   const content = opts.imageBase64
     ? [
         { type: "text", text: prompt },
-        { type: "image_url", image_url: { url: `data:${opts.mimeType};base64,${opts.imageBase64}` } },
+        {
+          type: "image_url",
+          image_url: { url: `data:${opts.mimeType};base64,${opts.imageBase64}` },
+        },
       ]
     : prompt;
   return callLLM({
@@ -496,7 +567,7 @@ function nimFetch(prompt, opts) {
       messages: [{ role: "user", content }],
       temperature: 0.2,
       // Bazı NIM vision modelleri response_format'ı desteklemeyebilir — görsel
-      // isteklerde göndermiyoruz, sadece JSON_MODE_INSTRUCTION'a güveniyoruz.
+      // isteklerde göndermiyoruz, sadece JSON_MODE_INSTRUCTIONS'a güveniyoruz.
       ...(opts.imageBase64 ? {} : { response_format: { type: "json_object" } }),
     },
     extractText: (j) => j?.choices?.[0]?.message?.content,
@@ -546,7 +617,10 @@ async function runChain(steps) {
   if (usable.length === 0) {
     return {
       status: 500,
-      body: { error: "AI service not configured (no API key for any provider)", code: "ai_not_configured" },
+      body: {
+        error: "AI service not configured (no API key for any provider)",
+        code: "ai_not_configured",
+      },
     };
   }
   let result;
@@ -557,10 +631,13 @@ async function runChain(steps) {
   return result;
 }
 
-function textChainSteps(prompt) {
-  const jsonPrompt = buildJsonModePrompt(prompt);
+function textChainSteps(prompt, lang) {
+  const jsonPrompt = buildJsonModePrompt(prompt, lang);
   return [
-    { available: !!GEMINI_API_KEY, run: () => geminiFetch(prompt, { model: GEMINI_MODEL, bucket: aiBucket }) },
+    {
+      available: !!GEMINI_API_KEY,
+      run: () => geminiFetch(prompt, { model: GEMINI_MODEL, bucket: aiBucket }),
+    },
     {
       available: !!GEMINI_API_KEY,
       run: () => geminiFetch(prompt, { model: GEMINI_TIER2_MODEL, bucket: geminiTier2Bucket }),
@@ -572,30 +649,51 @@ function textChainSteps(prompt) {
     {
       available: !!NVIDIA_NIM_API_KEY,
       run: () =>
-        nimFetch(jsonPrompt, { model: NVIDIA_NIM_MODEL, bucket: nimBucket, timeoutMs: NIM_FALLBACK_TIMEOUT_MS }),
+        nimFetch(jsonPrompt, {
+          model: NVIDIA_NIM_MODEL,
+          bucket: nimBucket,
+          timeoutMs: NIM_FALLBACK_TIMEOUT_MS,
+        }),
     },
     {
       available: !!OPENCODE_API_KEY,
       run: () =>
-        opencodeFetch(jsonPrompt, { model: OPENCODE_MODEL, bucket: opencodeBucket, timeoutMs: NIM_FALLBACK_TIMEOUT_MS }),
+        opencodeFetch(jsonPrompt, {
+          model: OPENCODE_MODEL,
+          bucket: opencodeBucket,
+          timeoutMs: NIM_FALLBACK_TIMEOUT_MS,
+        }),
     },
   ];
 }
 
-function visionChainSteps(prompt, imageBase64, mimeType) {
-  const jsonPrompt = buildJsonModePrompt(prompt);
+function visionChainSteps(prompt, imageBase64, mimeType, lang) {
+  const jsonPrompt = buildJsonModePrompt(prompt, lang);
   return [
     {
       available: !!GEMINI_API_KEY,
-      run: () => geminiFetch(prompt, { model: GEMINI_MODEL, bucket: visionBucket, imageBase64, mimeType }),
+      run: () =>
+        geminiFetch(prompt, { model: GEMINI_MODEL, bucket: visionBucket, imageBase64, mimeType }),
     },
     {
       available: !!GEMINI_API_KEY,
-      run: () => geminiFetch(prompt, { model: GEMINI_TIER2_MODEL, bucket: geminiTier2Bucket, imageBase64, mimeType }),
+      run: () =>
+        geminiFetch(prompt, {
+          model: GEMINI_TIER2_MODEL,
+          bucket: geminiTier2Bucket,
+          imageBase64,
+          mimeType,
+        }),
     },
     {
       available: !!GEMINI_API_KEY,
-      run: () => geminiFetch(prompt, { model: GEMINI_TIER3_MODEL, bucket: geminiTier3Bucket, imageBase64, mimeType }),
+      run: () =>
+        geminiFetch(prompt, {
+          model: GEMINI_TIER3_MODEL,
+          bucket: geminiTier3Bucket,
+          imageBase64,
+          mimeType,
+        }),
     },
     {
       available: !!NVIDIA_NIM_API_KEY,
@@ -637,6 +735,12 @@ function parseAiItem(raw) {
     item.confidence = confidence;
     item.needsReview = confidence < CONFIDENCE_THRESHOLD;
   }
+  // Etiket taramasında değerlerin dayandığı miktar. Yalnızca POZİTİF ve sonlu
+  // geldiğinde taşınır: model etiket okumadığında "0" yazar, istemciye
+  // anlamsız bir 0 taşımanın faydası yok.
+  if (isFiniteNum(raw.baseAmount) && raw.baseAmount > 0) {
+    item.baseAmount = raw.baseAmount;
+  }
   return item;
 }
 
@@ -657,11 +761,11 @@ async function parseMealText({ text, aliases, lang }) {
   if (LLM_PROVIDER === "gemini") {
     result = await attemptGemini(prompt);
   } else if (LLM_PROVIDER === "nim") {
-    result = await attemptNim(buildJsonModePrompt(prompt));
+    result = await attemptNim(buildJsonModePrompt(prompt, lang));
   } else {
     // "auto": Gemini (3 kademe) → NIM → OpenCode Zen, sırayla. Hepsi başarısız
     // olursa son denenenin sonucu döner (özel birleştirilmiş mesaj YOK).
-    result = await runChain(textChainSteps(prompt));
+    result = await runChain(textChainSteps(prompt, lang));
   }
 
   if (result.status !== 200) return result;
@@ -682,7 +786,10 @@ async function parseMealImage({ imageBase64, mimeType, mode, aliases, lang }) {
   if (typeof mimeType !== "string" || !VALID_IMAGE_MIME.has(mimeType)) {
     return {
       status: 400,
-      body: { error: "geçersiz mimeType (image/jpeg, image/png, image/webp)", code: "ai_bad_request" },
+      body: {
+        error: "geçersiz mimeType (image/jpeg, image/png, image/webp)",
+        code: "ai_bad_request",
+      },
     };
   }
 
@@ -699,13 +806,14 @@ async function parseMealImage({ imageBase64, mimeType, mode, aliases, lang }) {
   // Artık kaldırıldı — runChain zaten hiçbir adım kullanılamıyorsa kendi 500'ünü
   // üretiyor, ve Gemini anahtarı olmasa bile NIM Vision tek başına devreye
   // girebilmeli (zincirin bütün amacı bu).
-  const result = await runChain(visionChainSteps(prompt, imageBase64, mimeType));
+  const result = await runChain(visionChainSteps(prompt, imageBase64, mimeType, lang));
 
   if (result.status !== 200) return result;
 
   const rawItems = Array.isArray(result.body?.items) ? result.body.items : [];
   const items = rawItems.map(parseAiItem).filter((x) => x !== null);
-  const healthNote = typeof result.body?.healthNote === "string" ? result.body.healthNote : undefined;
+  const healthNote =
+    typeof result.body?.healthNote === "string" ? result.body.healthNote : undefined;
   return { status: 200, body: { items, ...(healthNote ? { healthNote } : {}) } };
 }
 
