@@ -609,3 +609,98 @@ profil kartı da aynı hesap için "29 yaşında • 78 kg" ve `"EB"` avatar yaz
 **Not:** backend DEĞİŞMEDİ, `config.weight` şekli aynı — migration yok. Auth kapalı yerel ortamda
 `user` null olduğu için veri/parola/çıkış satırları render edilemedi; sıraları kodda doğrulandı.
 Değişiklikler commit edilmedi.
+
+---
+
+## v0.30.2 — Kayıt sihirbazı yenilemesi, çeviri kaçağı temizliği ve kayıt anında dil seçimi (2026-09-15)
+
+Üç istek: (1) kurulum sihirbazında taşma/sayaç/boşluk düzeltmeleri + görsel yenileme,
+(2) İngilizce arayüzde kalan Türkçe metinlerin TAMAMI + kalıcı kapı,
+(3) üye olurken ilk iş dil seçimi (cihaz dili varsayılan).
+
+### 1) Sihirbaz (`components/OnboardingModal.tsx`, adım sayısı değişmedi)
+
+- [x] Geçersiz Tailwind sınıfları (`p-4.5` — spacing ölçeğinde yok, iç boşluk HİÇ uygulanmıyordu)
+      `p-4 sm:p-5` ile değiştirildi.
+- [x] Sayaç `{step} / 5` düz JSX yerine `onboarding.stepCounter` (i18n) + 5 segmentli ilerleme
+      çubuğu; `onboarding.stepStatus` `{{total}}` aldı, `aria-valuetext` eklendi.
+- [x] Taşma: başlık `min-w-0` + `truncate`, sayaç/kapat `shrink-0`; 320 px'de çarpışma bitti.
+- [x] Adım 5 makro ızgarası: `grid-cols-2 min-[360px]:grid-cols-3`, etiket üstte ve input tam
+      genişlik → 3 haneli değer artık kırpılmıyor.
+- [x] Hareket: `.wizard-step-forward/back` (yönlü 18px translate3d + opacity, `--ease-glass`),
+      seçeneklerde `.wizard-opt-in` + inline `animation-delay` (stagger), `active:scale-[0.98]`.
+- [x] Erişilebilirlik: adım değişince başlığa odak (ekran okuyucu duyurur), `aria-pressed`,
+      `inputMode`, `common.close` ile etiketli kapat düğmesi.
+- [x] Sözleşme korundu: prop'lar, TDEE hesabı, `handleFinish`, `useDialogFocus` +
+      `useBodyScrollLock` + `useModalExit`.
+
+### 2) Çeviri kaçakları + kalıcı kapı
+
+- [x] `lib/ring.ts` SAF hâle getirildi: `{key, params}` (RingMessage) döner; çeviri `CalorieRing`'de.
+      `\u01xx` kaçışlarıyla gizlenmiş "Hedefe ulaşıldı / kcal kaldı / kcal aşıldı" kalmadı.
+- [x] `lib/healthScore.ts`: Türkçe ek üreteçleri silindi; liste bağlacı `formatList`
+      (`Intl.ListFormat`) ile dile göre.
+- [x] `lib/format.ts`: `WEEKDAY_SHORT` import anında donuyordu → `weekdayShortList()` (dil değişince
+      tazelenir); `WeekBars` kendi TR dizisini bıraktı.
+- [x] `lib/goals.ts`: `profileDisplayName` (gömülü adlar gösterimde çevrilir, kullanıcı adı korunur).
+- [x] `lib/exporters.ts` + `lib/nutrients.ts`: CSV başlıkları ve hata metinleri `t()`; `label`/
+      `compactLabel`/`short` alanları kaldırıldı (`nutrient.*`, `nutrientShort.*`).
+- [x] Hata mesajları dile bağlandı: `ai.ts`, `off.ts`, `authApi.ts`, `authRules.ts`, `api.ts`
+      (oturum), `image.ts`, `camera.ts`, `offlineSync.ts` (çakışma artık KOD olarak saklanır),
+      `ScanSheet`/`VisionReview` toast'ı tek anahtarda birleşti.
+- [x] Kapının bulduğu ek kaçaklar: `GoalsForm` başlığı + "Profil Ekle", `DayView` "Seç",
+      `ReportView` boş aralık metni, `ScanSheet` "Tekrar çek"/"Kullan"/"İptal", `VisionReview`
+      "Yemek" yer tutucusu, `App` çıkış uyarısı, ölü `MEAL_CATEGORY_LABELS` ve `tdee` `title/desc`
+      alanları (ölü TR) silindi.
+- [x] `pnpm check:i18n` üç kontrole çıktı: PARITY + KEYS (kodda kullanılan anahtar locale'de var mı)
+      + HARDCODED (özel harf, `\u01xx`, ASCII Türkçe kelime listesi; `// i18n-exempt` ile gerekçeli
+      muafiyet). AGENTS.md kapı satırı güncellendi, ders L22 yazıldı.
+- [x] `server/ai.js`: istemler TR/EN/PL şablonlarına ayrıldı, `lang` normalize edilir (en/tr/pl,
+      tanınmazsa en), hata gövdelerine kararlı `code` eklendi; `server/index.js`'e `lang: b.lang`
+      (2 satır, izole modül kuralı korundu).
+- [x] `lib/ai.ts` her iki çağrıda aktif dili gönderir; `code` → i18n eşlemesi.
+
+### 3) Kayıt anında dil seçimi
+
+- [x] `components/LanguagePicker.tsx` (yeni): `compact` (auth ekranı) + `full` (Ayarlar) — tek
+      bileşen, açılır menü YOK (yeni overlay doğmaz, K9 zorlanmaz).
+- [x] `AuthScreen` üstünde seçici; varsayılan `navigator.language` (EN fallback) — kayıt olmadan
+      değiştirilebilir, seçim anında ekran döner.
+- [x] `SettingsSheet` dil alt-görünümü aynı bileşene geçti (kopya markup silindi).
+
+### Sürüm ve doküman
+
+- [x] `APP_VERSION` → **0.30.2**, `changelog.ts` girişi (tr/en özet + 8 madde + dev notları).
+- [x] `tasks/lessons.md` **L22**, AGENTS.md doğrulama kapısı satırı.
+
+### Doğrulama (dolduruluyor)
+
+- [ ] Kapı: typecheck 0 · test (tümü) · check:i18n PARITY/KEYS/HARDCODED OK · build ✓
+- [ ] Kapının NEGATİF testi (kasıtlı sabit TR + eksik anahtar → kırmızı olmalı)
+- [ ] Tarayıcı: sihirbaz 320/360/390 px (taşma yok, sayaç okunur, makro değerleri tam), adım
+      geçişi, EN/TR/PL'de kalori halkası + sağlık skoru + CSV başlıkları + gün adları,
+      auth ekranında dil seçici + cihaz dili varsayılanı, rehber turu bozulmadı.
+
+### v0.30.2 ek — profil adı alanındaki son çeviri kaçağı (kullanıcı bildirimi)
+
+Kullanıcı önizlemede gördü: İngilizce arayüzde Ayarlar > Beslenme Hedefleri'ndeki **Profile Name
+kutusu "Varsayılan"** yazıyordu (bir üstteki çip ise doğru şekilde "Default"). Kök neden: gömülü üç
+profilin adı VERİ olarak Türkçe saklanır (`goals.ts` sentinel'leri / `singleProfileConfig`), L22
+turunda yalnızca **metin olarak çizilen** yerler `profileDisplayName`'e bağlanmıştı; düzenlenebilir
+girdi ham `selected.name` gösteriyordu. Doğrulama satırı (`"<ad>: kcal 0'dan büyük olmalı"`) da ham
+adı kullanıyordu.
+
+Çözüm (naif çözüm REDDEDİLDİ — bkz. L23): alanı doğrudan `profileDisplayName`'e bağlamak, adı
+dokunmadan kaydeden kullanıcının verisine çevrilmiş adı yazardı ("Default") ve ad bir daha dile göre
+değişmezdi. Bunun yerine `GoalsForm`'da `nameEdited` durumu tutulur; gösterim tek doğruluk kaynağı
+`lib/goals.ts → profileNameFieldValue(profile, t, edited)` (saf, testli): dokunulmadıysa aktif dilde
+göster + ham değeri kaydet, dokunulduysa kullanıcının yazdığını göster ve kaydet.
+
+Kanıt (4173 üretim derlemesi + gerçek 8790 backend, aynı oturum/aynı veri):
+- EN arayüzde alan `Default` · PL arayüzde `Domyślny` (aynı saklanan sentinel'den türetiliyor).
+- Yazınca alan `Moja dieta`; aynı anda hata satırı da `Moja dieta: Cel kaloryczny musi być większy niż 0.`
+- Form kaydetmeden kapatıldı; sunucuda `config.goals` hâlâ **yok**, `goals` (v1 düz) değişmedi →
+  test veriye dokunmadı (yazma yerine gösterim kanıtı seçildi, çünkü `config.goals` ayrılmış anahtar
+  ve geri silinebilir bir DELETE ucu yok).
+- `goals.test.ts` +4 test (41 test geçiyor): sentinel dile göre çevrilir, kullanıcı adı asla
+  çevrilmez, alan dokunulmadıkça çevrilmiş adı gösterir, dokunulduysa yazılanı gösterir.

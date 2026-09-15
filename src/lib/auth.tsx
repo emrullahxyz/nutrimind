@@ -38,6 +38,7 @@ const AuthCtx = createContext<AuthValue | null>(null);
 
 export function useAuth(): AuthValue {
   const v = useContext(AuthCtx);
+  // i18n-exempt: geliştirici hatası — kullanıcı arayüzüne çıkmaz
   if (!v) throw new Error("AuthProvider bulunamadı");
   return v;
 }

@@ -35,8 +35,10 @@ import { readStringPref } from "./lib/prefs";
 import { ProductGuide } from "./components/ProductGuide";
 import { GUIDE_CONFIG_KEY, guideDonePayload, parseGuideState, shouldShowGuide } from "./lib/guide";
 import type { GuideStatus } from "./lib/guide";
+import { useTranslation } from "react-i18next";
 
 function MainContent() {
+  const { t } = useTranslation();
   const [tab, setTab] = useState<TabType>("daily");
   const [tabResetKey, setTabResetKey] = useState<Record<TabType, number>>({
     daily: 0,
@@ -444,7 +446,7 @@ function MainContent() {
       {/* Çift Geri Basma / Çıkış Toast Uyarısı */}
       {showExitToast && (
         <div className="fixed bottom-20 left-1/2 z-[99999] -translate-x-1/2 rounded-full border border-white/20 bg-toast/95 px-4 py-2.5 text-center text-xs font-extrabold text-white shadow-2xl backdrop-blur-md anim-fadeup">
-          Uygulamadan çıkmak için bir kez daha geri kaydırın / geri tuşuna basın
+          {t("common.exitHint")}
         </div>
       )}
     </>

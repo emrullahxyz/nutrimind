@@ -1,7 +1,14 @@
 import { useMemo, useState } from "react";
 import type { AppData } from "../lib/api";
 import { dayTotal } from "../lib/days";
-import { addDaysISO, formatKcal, formatNumber, formatShortDate, todayISO, weekdayShort } from "../lib/format";
+import {
+  addDaysISO,
+  formatKcal,
+  formatNumber,
+  formatShortDate,
+  todayISO,
+  weekdayShort,
+} from "../lib/format";
 import { effectiveGoal, weeklyAverageGoal } from "../lib/goals";
 import { nutrientOf } from "../lib/nutrients";
 import { buildTrend, trendStats } from "../lib/trend";
@@ -118,7 +125,12 @@ export function ReportView({ data }: { data: AppData }) {
             </h2>
           </div>
           <div className="text-right font-mono text-xs text-ink-tertiary print-text-dark">
-            <div>{t("report.dateRange", { start: formatShortDate(startDate), end: formatShortDate(end) })}</div>
+            <div>
+              {t("report.dateRange", {
+                start: formatShortDate(startDate),
+                end: formatShortDate(end),
+              })}
+            </div>
             <div>{t("report.generatedAt", { date: formatShortDate(todayISO()) })}</div>
           </div>
         </div>
@@ -131,7 +143,10 @@ export function ReportView({ data }: { data: AppData }) {
             {t("report.recordedDays")}
           </span>
           <div className="mt-1 font-mono text-lg font-extrabold print-text-dark">
-            {recordedDates.length} <span className="text-xs font-normal text-ink-tertiary">/ {calendarDates.length} {t("report.days")}</span>
+            {recordedDates.length}{" "}
+            <span className="text-xs font-normal text-ink-tertiary">
+              / {calendarDates.length} {t("report.days")}
+            </span>
           </div>
         </div>
 
@@ -150,7 +165,9 @@ export function ReportView({ data }: { data: AppData }) {
           </span>
           <div className="mt-1 font-mono text-lg font-extrabold text-protein print-text-dark">
             {formatTargetHitRate(stats)}
-            <span className="ml-1 text-xs font-normal text-ink-tertiary">({stats.onTargetDays}/{stats.ratedDays} {t("report.days")})</span>
+            <span className="ml-1 text-xs font-normal text-ink-tertiary">
+              ({stats.onTargetDays}/{stats.ratedDays} {t("report.days")})
+            </span>
           </div>
         </div>
 
@@ -176,28 +193,36 @@ export function ReportView({ data }: { data: AppData }) {
               <div className="font-mono text-base font-extrabold print-text-dark">
                 {formatNumber(averages.protein, 1)} g
               </div>
-              <span className="font-mono text-[10px] text-ink-tertiary">%{macroDist.pPct} {t("report.kcalShare")}</span>
+              <span className="font-mono text-[10px] text-ink-tertiary">
+                %{macroDist.pPct} {t("report.kcalShare")}
+              </span>
             </div>
             <div>
               <span className="text-xs text-carb font-bold">{t("report.carbs")}</span>
               <div className="font-mono text-base font-extrabold print-text-dark">
                 {formatNumber(averages.carbs, 1)} g
               </div>
-              <span className="font-mono text-[10px] text-ink-tertiary">%{macroDist.cPct} {t("report.kcalShare")}</span>
+              <span className="font-mono text-[10px] text-ink-tertiary">
+                %{macroDist.cPct} {t("report.kcalShare")}
+              </span>
             </div>
             <div>
               <span className="text-xs text-fat font-bold">{t("report.fat")}</span>
               <div className="font-mono text-base font-extrabold print-text-dark">
                 {formatNumber(averages.fat, 1)} g
               </div>
-              <span className="font-mono text-[10px] text-ink-tertiary">%{macroDist.fPct} {t("report.kcalShare")}</span>
+              <span className="font-mono text-[10px] text-ink-tertiary">
+                %{macroDist.fPct} {t("report.kcalShare")}
+              </span>
             </div>
             <div>
               <span className="text-xs text-memory font-bold">{t("report.fiber")}</span>
               <div className="font-mono text-base font-extrabold print-text-dark">
                 {formatNumber(averages.fiber, 1)} g
               </div>
-              <span className="font-mono text-[10px] text-ink-tertiary">{t("report.fiberHint")}</span>
+              <span className="font-mono text-[10px] text-ink-tertiary">
+                {t("report.fiberHint")}
+              </span>
             </div>
           </div>
         </div>
@@ -236,25 +261,42 @@ export function ReportView({ data }: { data: AppData }) {
                 const goal = effectiveGoal(data.goals, date);
 
                 return (
-                  <tr key={date} className="border-b border-line-faint hover:bg-white/[0.02] print-border-light">
+                  <tr
+                    key={date}
+                    className="border-b border-line-faint hover:bg-white/[0.02] print-border-light"
+                  >
                     <td className="py-2 pr-2 font-bold print-text-dark">
-                      {formatShortDate(date)} <span className="text-[10px] font-normal text-ink-tertiary">({weekdayShort(date)})</span>
+                      {formatShortDate(date)}{" "}
+                      <span className="text-[10px] font-normal text-ink-tertiary">
+                        ({weekdayShort(date)})
+                      </span>
                     </td>
                     <td className="py-2 px-2 print-text-dark">{meals.length}</td>
                     <td className="py-2 px-2 font-bold text-accent print-text-dark">
-                      {formatKcal(tot.kcal)} <span className="text-[10px] font-normal text-ink-tertiary">/ {formatKcal(goal.kcal)}</span>
+                      {formatKcal(tot.kcal)}{" "}
+                      <span className="text-[10px] font-normal text-ink-tertiary">
+                        / {formatKcal(goal.kcal)}
+                      </span>
                     </td>
-                    <td className="py-2 px-2 text-protein print-text-dark">{formatNumber(tot.protein, 1)}g</td>
-                    <td className="py-2 px-2 text-carb print-text-dark">{formatNumber(tot.carbs, 1)}g</td>
-                    <td className="py-2 px-2 text-fat print-text-dark">{formatNumber(tot.fat, 1)}g</td>
-                    <td className="py-2 pl-2 text-memory print-text-dark">{formatNumber(tot.fiber, 1)}g</td>
+                    <td className="py-2 px-2 text-protein print-text-dark">
+                      {formatNumber(tot.protein, 1)}g
+                    </td>
+                    <td className="py-2 px-2 text-carb print-text-dark">
+                      {formatNumber(tot.carbs, 1)}g
+                    </td>
+                    <td className="py-2 px-2 text-fat print-text-dark">
+                      {formatNumber(tot.fat, 1)}g
+                    </td>
+                    <td className="py-2 pl-2 text-memory print-text-dark">
+                      {formatNumber(tot.fiber, 1)}g
+                    </td>
                   </tr>
                 );
               })}
               {recordedDates.length === 0 && (
                 <tr>
                   <td colSpan={7} className="py-6 text-center text-ink-tertiary">
-                    Bu tarih aralığında kayıtlı veri bulunamadı.
+                    {t("report.noRecordsInRange")}
                   </td>
                 </tr>
               )}

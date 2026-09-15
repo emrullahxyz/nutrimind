@@ -20,7 +20,8 @@
     "or": "lub",
     "clear": "Wyczyść",
     "releaseToRefresh": "Puść, aby odświeżyć",
-    "page": "Strona {{n}}"
+    "page": "Strona {{n}}",
+    "exitHint": "Przesuń wstecz / naciśnij wstecz jeszcze raz, aby wyjść z aplikacji."
   },
   "toast": {
     "region": "Powiadomienia"
@@ -28,7 +29,8 @@
   "error": {
     "fallbackTitle": "Coś poszło nie tak",
     "fallbackBody": "W interfejsie wystąpił nieoczekiwany błąd. Spróbuj odświeżyć stronę.",
-    "fallbackReload": "Odśwież stronę"
+    "fallbackReload": "Odśwież stronę",
+    "sessionExpired": "Sesja wygasła — zaloguj się ponownie."
   },
   "cards": {
     "healthScore": "Wynik zdrowia",
@@ -214,7 +216,21 @@
     "nameOptional": " (opcjonalnie)",
     "showPassword": "Pokaż hasło",
     "hidePassword": "Ukryj hasło",
-    "passwordRepeat": "Hasło (powtórz)"
+    "passwordRepeat": "Hasło (powtórz)",
+    "errorForbidden": "Ta operacja jest obecnie niedostępna.",
+    "errorTooMany": "Zbyt wiele prób. Spróbuj ponownie za chwilę.",
+    "errorTooManyRetry": "Zbyt wiele prób. Spróbuj ponownie za {{seconds}} s.",
+    "errorBadResponse": "Serwer zwrócił nieoczekiwaną odpowiedź.",
+    "errorHttp": "Żądanie nie powiodło się (HTTP {{status}}).",      "emailPlaceholder": "imie@example.com",
+      "namePlaceholder": "Twoje imię",
+    "ruleEmailRequired": "Adres e-mail jest wymagany.",
+    "ruleEmailTooLong": "Adres e-mail jest zbyt długi.",
+    "ruleEmailInvalid": "Podaj prawidłowy adres e-mail.",
+    "rulePasswordRequired": "Hasło jest wymagane.",
+    "rulePasswordNoSpaces": "Hasło nie może składać się wyłącznie ze spacji.",
+    "rulePasswordMin": "Hasło musi mieć co najmniej {{min}} znaków.",
+    "rulePasswordMax": "Hasło może mieć najwyżej {{max}} znaków.",
+    "rulePasswordsMismatch": "Hasła nie są identyczne."
   },
   "settings": {
     "title": "Ustawienia",
@@ -429,7 +445,16 @@
     "consentBody": "Twoje zdjęcia i tekst posiłku są wysyłane do Google Gemini. Dane są przetwarzane przez AI i nie są przechowywane na naszym serwerze.",
     "consentPrivacy": "Polityka prywatności strony trzeciej:",
     "consentAccept": "Rozumiem, kontynuuj",
-    "consentCancel": "Anuluj"
+    "consentCancel": "Anuluj",
+    "err": {
+      "network": "Brak połączenia z serwerem — sprawdź sieć.",
+      "rateLimit": "Zbyt wiele żądań. Spróbuj ponownie za chwilę.",
+      "rateLimitSeconds": "Zbyt wiele żądań. Spróbuj ponownie za {{seconds}} s.",
+      "badResponse": "Usługa AI nie odpowiada prawidłowo. Spróbuj ponownie za chwilę.",        "disabled": "Funkcje AI są wyłączone w tym środowisku.",
+        "badRequest": "Nie udało się zrozumieć żądania.",
+      "timeout": "Przekroczono czas oczekiwania usługi AI. Spróbuj ponownie za chwilę.",
+      "http": "Żądanie AI nie powiodło się (HTTP {{status}})."
+    }
   },
   "empty": {
     "dayView": "Dziś jeszcze nic nie zalogowano. Przykład: wpisz \"2 jajka, jogurt, chleb\" — system zapamięta.",
@@ -485,7 +510,9 @@
     "capturedFrameAlt": "Przechwycona klatka",
     "scannedFood": "Skanowany posiłek",
     "allItemsRemoved": "Wszystkie pozycje usunięte — zeskanuj ponownie.",
-    "retake": "Ponów"
+    "retake": "Ponów",
+    "savedButNotAdded": "Zapisano w pamięci żywieniowej, ale nie udało się dodać do dzisiaj: {{error}}. Możesz dodać ręcznie z pamięci.",
+    "useShot": "Użyj"
   },
   "exercise": {
     "title": "Dziennik ćwiczeń i aktywności",
@@ -538,7 +565,8 @@
     "opDeleteAlias": "Usuń pamięć: {{name}}",
     "featureUnavailable": "Ta funkcja wymaga połączenia z internetem. Spróbuj ponownie po połączeniu.",
     "refreshFailed": "Zapisano, ale nie udało się odświeżyć danych — odśwież stronę.",
-    "refreshing": "Odświeżanie..."
+    "refreshing": "Odświeżanie...",
+    "conflictMessage": "Dane na serwerze zmieniły się po tej operacji — rozwiąż konflikt."
   },
   "privacy": {
     "tr": "Türkçe",
@@ -560,7 +588,13 @@
     "unnamed": "bez nazwy",
     "defaultBadge": "⭐ Domyślny",
     "makeDefault": "Ustaw jako domyślny",
-    "deleteProfile": "Usuń profil"
+    "deleteProfile": "Usuń profil",
+    "profileDefault": "Domyślny",
+    "profileTraining": "Trening",
+    "profileRest": "Odpoczynek",
+    "addProfile": "Dodaj profil",
+    "nutritionGoals": "Cele żywieniowe",
+    "newProfileName": "Profil {{n}}"
   },
   "report": {
     "title": "Raport żywieniowy Nutrimind",
@@ -584,7 +618,8 @@
     "dailyDetailTitle": "Tabela szczegółów dziennych ({{count}} zarejestrowanych dni)",
     "date": "Data",
     "meals": "Posiłki",
-    "kcalOverTarget": "Kalorie / cel"
+    "kcalOverTarget": "Kalorie / cel",
+    "noRecordsInRange": "Brak wpisów w tym zakresie dat."
   },
   "history": {
     "title": "Historia",
@@ -647,7 +682,7 @@
     "title": "Kreator Profilu i TDEE",
     "defaultUserName": "Użytkownik",
     "subtitle": "Soft Velvet Dark • Indywidualny Plan Żywieniowy",
-    "stepStatus": "Krok {{step}} / 5",
+    "stepStatus": "Krok {{step}} z {{total}}",
     "step1Title": "Poznajmy Cię",
     "step1Desc": "Twoje podstawowe dane do obliczeń BMR i metabolizmu.",
     "nameLabel": "Imię i Nazwisko",
@@ -712,7 +747,8 @@
         "title": "Przybierz na wadze i zbuduj mięśnie",
         "desc": "Nadwyżka 350 kcal dla masy mięśniowej i objętości"
       }
-    }
+    },
+    "stepCounter": "{{step}} / {{total}}"
   },
   "mealRow": {
     "more": "Więcej opcji"
@@ -836,7 +872,33 @@
     "overwriteConfirm": "Potwierdzam nadpisanie istniejących danych.",
     "processing": "Przetwarzanie...",
     "restoring": "Przywracanie...",
-    "startRestore": "Rozpocznij przywracanie"
+    "startRestore": "Rozpocznij przywracanie",
+    "headerDate": "Data",
+    "headerMealName": "Nazwa posiłku",
+    "headerName": "Nazwa",
+    "headerBrand": "Marka",
+    "headerServingG": "Porcja (g)",
+    "headerTriggers": "Wyzwalacze",
+    "headerUnits": "Jednostki",
+    "headerDefaultUnit": "Domyślna jednostka",
+    "headerBarcode": "Kod kreskowy",
+    "headerOffId": "OFF ID",
+    "err": {
+      "notObject": "Nieprawidłowy format pliku: oczekiwano obiektu JSON.",
+      "missingFields": "W pliku kopii brakuje pól (goals, days lub aliases).",
+      "goalsInvalid": "Nie udało się zweryfikować danych celów: {{detail}}",
+      "daysNotObject": "Nieprawidłowa struktura 'days': oczekiwano obiektu dni.",
+      "badDateFormat": "Nieprawidłowy format daty: '{{date}}' (oczekiwano YYYY-MM-DD).",
+      "mealsNotArray": "Posiłki dla '{{date}}' muszą być tablicą.",
+      "mealNotObject": "Posiłek nr {{index}} w '{{date}}' musi być obiektem.",
+      "mealNameMissing": "Posiłek nr {{index}} w '{{date}}' nie ma nazwy.",
+      "mealNutritionMissing": "Brak wartości odżywczych dla '{{name}}' w '{{date}}'.",
+      "mealKcalInvalid": "Nieprawidłowa wartość kalorii dla '{{name}}' w '{{date}}'.",
+      "aliasesNotArray": "Nieprawidłowa struktura 'aliases': oczekiwano tablicy.",
+      "aliasNotObject": "Produkt nr {{index}} w pamięci jest nieprawidłowy.",
+      "aliasNameMissing": "Produkt nr {{index}} w pamięci nie ma nazwy.",
+      "aliasNutritionMissing": "Brak wartości odżywczych dla '{{name}}' w pamięci."
+    }
   },
   "recipeBuilder": {
     "addTitle": "Utwórz nowy przepis",
@@ -886,7 +948,8 @@
     "nameLabel": "Nazwa",
     "portionLabel": "Porcja",
     "addToMeal": "Dodaj do posiłku",
-    "triggersPlaceholder": "np. płatki owsiane"
+    "triggersPlaceholder": "np. płatki owsiane",
+    "untitledMeal": "Posiłek"
   },
   "relative": {
     "today": "dziś",
@@ -907,8 +970,62 @@
     "noRecords": "Brak dzisiejszych wpisów. Twój wynik pojawi się tutaj po dodaniu posiłków.",
     "noGoal": "Nie ustawiono celu.",
     "perfect": "Wszystkie makroskładniki są na celu, świetnie!",
-    "onTrack": "Jesteś na dobrej drodze.",
-    "under": "Jesteś poniżej.",
-    "over": "Jesteś powyżej."
+    "onTrackList": "{{nutrients}} w normie.",
+    "underList": "{{nutrients}} poniżej celu.",
+    "overList": "{{nutrients}} powyżej celu.",
+    "underOverList": "{{low}} poniżej celu; {{high}} powyżej celu."
+  },
+  "ring": {
+    "captionNoTarget": "kcal · brak celu",
+    "captionMet": "Cel osiągnięty",
+    "captionOver": "kcal powyżej",
+    "captionLeft": "kcal pozostało",
+    "remainingNoTarget": "{{amount}} kcal",
+    "remainingMet": "Cel osiągnięty",
+    "remainingOver": "+{{amount}} kcal powyżej",
+    "remainingLeft": "{{amount}} kcal pozostało",
+    "a11y": "Kalorie: {{consumed}} / {{target}} kcal. {{status}}.",
+    "a11yNoTarget": "Kalorie: {{consumed}} kcal. Brak ustawionego celu."
+  },
+  "off": {
+    "unnamed": "Produkt bez nazwy",
+    "attribution": "Dane z Open Food Facts — licencja ODbL 1.0.",
+    "errNetwork": "Brak połączenia z serwerem — sprawdź sieć.",
+    "errRateLimit": "Zbyt wiele wyszukiwań. Chronimy limit Open Food Facts — spróbuj ponownie za chwilę.",
+    "errRateLimitSeconds": "Zbyt wiele wyszukiwań. Chronimy limit Open Food Facts — spróbuj ponownie za {{seconds}} s.",
+    "errBadResponse": "Open Food Facts nie odpowiada prawidłowo. Spróbuj ponownie za chwilę.",
+    "errTimeout": "Przekroczono czas oczekiwania Open Food Facts. Spróbuj ponownie za chwilę.",
+    "errHttp": "Żądanie do Open Food Facts nie powiodło się (HTTP {{status}})."
+  },
+  "google": {
+    "cancelled": "Logowanie przez Google zostało anulowane.",
+    "sessionExpired": "Logowanie trwało zbyt długo, spróbuj ponownie.",
+    "verifyFailed": "Nie udało się zweryfikować logowania przez Google, spróbuj ponownie.",
+    "tokenFailed": "Weryfikacja Google nie powiodła się. Spróbuj ponownie za chwilę.",
+    "signupClosed": "Z tym kontem Google nie jest powiązany żaden użytkownik, a rejestracja jest zamknięta.",
+    "notAllowed": "Ten e-mail nie może się zarejestrować.",
+    "linkFailed": "Nie udało się powiązać tego konta Google z istniejącym kontem.",
+    "generic": "Nie udało się dokończyć logowania przez Google."
+  },
+  "image": {
+    "errCompress": "Nie udało się skompresować obrazu.",
+    "errRead": "Nie udało się odczytać obrazu.",
+    "errCanvas": "Nie udało się uzyskać kontekstu canvas.",
+    "errLoad": "Nie udało się wczytać obrazu.",
+    "errFrameNotReady": "Klatka z kamery nie jest jeszcze gotowa — odczekaj chwilę i spróbuj ponownie."
+  },
+  "camera": {
+    "errNotStarted": "Nie udało się uruchomić obrazu z kamery. Zamknij ten ekran i spróbuj ponownie.",
+    "errOpen": "Nie udało się otworzyć kamery: {{detail}}"
+  },
+  "nutrientShort": {
+    "kcal": "kcal",
+    "protein": "B",
+    "carbs": "W",
+    "fat": "T",
+    "fiber": "Bł",
+    "sugar": "C",
+    "satFat": "Tn",
+    "sodium": "Na"
   }
 }

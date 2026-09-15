@@ -56,7 +56,8 @@ import { FeedbackForm } from "./FeedbackForm";
 import { FeedbackInbox } from "./FeedbackInbox";
 import { useTheme } from "../lib/theme";
 import { useTranslation } from "react-i18next";
-import { setLang, SUPPORTED_LANGS, type Lang } from "../i18n/i18n";
+import type { Lang } from "../i18n/i18n";
+import { LanguagePicker } from "./LanguagePicker";
 import { useToast } from "./Toast";
 import { haptic } from "../lib/haptics";
 
@@ -1079,32 +1080,8 @@ export function SettingsSheet({
           {/* 14. DİL SEÇİMİ */}
           {subView === "language" && (
             <div className="flex flex-col gap-3 rounded-2xl border border-white/10 bg-row p-4">
-              <div
-                className="flex gap-2 px-1 pb-1"
-                role="group"
-                aria-label={t("settings.language")}
-              >
-                {SUPPORTED_LANGS.map((lng) => (
-                  <button
-                    key={lng}
-                    type="button"
-                    onClick={() => setLang(lng)}
-                    aria-pressed={currentLang === lng}
-                    className={
-                      "flex-1 rounded-pill border px-3 py-2 text-sm font-semibold transition " +
-                      (currentLang === lng
-                        ? "border-emerald-500/50 bg-emerald-500/15 text-emerald-200"
-                        : "border-line bg-white/[0.04] text-ink-secondary hover:text-ink-primary")
-                    }
-                  >
-                    {lng === "tr"
-                      ? t("settings.languageTr")
-                      : lng === "en"
-                        ? t("settings.languageEn")
-                        : t("settings.languagePl")}
-                  </button>
-                ))}
-              </div>
+              {/* Seçici giriş/kayıt ekranıyla AYNI bileşen (kopya yok). */}
+              <LanguagePicker className="px-1 pb-1" />
             </div>
           )}
 

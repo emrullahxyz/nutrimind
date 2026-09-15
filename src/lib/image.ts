@@ -1,3 +1,5 @@
+import i18n from "../i18n/i18n";
+
 export interface CompressedImage {
   base64: string;
   mimeType: string;
@@ -20,7 +22,7 @@ function canvasToBase64(canvas: HTMLCanvasElement, quality: number): Promise<Com
     canvas.toBlob(
       (blob) => {
         if (!blob) {
-          reject(new Error("görsel sıkıştırılamadı"));
+          reject(new Error(i18n.t("image.errCompress")));
           return;
         }
         const reader = new FileReader();
@@ -29,7 +31,7 @@ function canvasToBase64(canvas: HTMLCanvasElement, quality: number): Promise<Com
           const base64 = dataUrl.slice(dataUrl.indexOf(",") + 1);
           resolve({ base64, mimeType: "image/jpeg" });
         };
-        reader.onerror = () => reject(new Error("görsel okunamadı"));
+        reader.onerror = () => reject(new Error(i18n.t("image.errRead")));
         reader.readAsDataURL(blob);
       },
       "image/jpeg",
@@ -59,7 +61,7 @@ export function compressImageToBase64(
         canvas.height = h;
         const ctx = canvas.getContext("2d");
         if (!ctx) {
-          reject(new Error("canvas context alınamadı"));
+          reject(new Error(i18n.t("image.errCanvas")));
           return;
         }
         ctx.drawImage(img, 0, 0, w, h);
@@ -70,7 +72,7 @@ export function compressImageToBase64(
     };
     img.onerror = () => {
       URL.revokeObjectURL(objectUrl);
-      reject(new Error("görsel yüklenemedi"));
+      reject(new Error(i18n.t("image.errLoad")));
     };
     img.src = objectUrl;
   });
@@ -92,7 +94,7 @@ export function captureVideoFrame(
   const srcH = video.videoHeight;
   // Akış bağlandığı anda değil, ilk kare çözüldüğünde ölçü gelir.
   if (!srcW || !srcH) {
-    return Promise.reject(new Error("Kamera karesi henüz hazır değil — bir saniye bekleyip tekrar dene."));
+    return Promise.reject(new Error(i18n.t("image.errFrameNotReady")));
   }
 
   const crop = opts.crop ?? { x: 0, y: 0, width: srcW, height: srcH };
@@ -104,7 +106,7 @@ export function captureVideoFrame(
   canvas.width = w;
   canvas.height = h;
   const ctx = canvas.getContext("2d");
-  if (!ctx) return Promise.reject(new Error("canvas context alınamadı"));
+  if (!ctx) return Promise.reject(new Error(i18n.t("image.errCanvas")));
 
   ctx.drawImage(video, crop.x, crop.y, crop.width, crop.height, 0, 0, w, h);
   return canvasToBase64(canvas, opts.quality);

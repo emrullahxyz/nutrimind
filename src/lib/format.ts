@@ -79,7 +79,46 @@ function weekdaysShortFor(locale: string): string[] {
   return out;
 }
 
-export const WEEKDAY_SHORT = weekdaysShortFor(activeLocale());
+/** Gün adları OKUMA ANINDA ve aktif locale'e göre üretilir.
+ *
+ *  Eskiden `WEEKDAY_SHORT` import anında BİR KEZ hesaplanan bir sabitti: Ayarlar'dan
+ *  dil değiştiren kullanıcı takvim adlarını (WeekStrip, TrendChart, ReportView,
+ *  WeekBars) sayfa yenilenene kadar eski dilde görüyordu. Önbellek locale
+ *  anahtarına bağlı — dil değişirse kendiliğinden tazelenir. */
+let cachedWeekdayLocale: string | null = null;
+let cachedWeekdays: string[] = [];
+
+export function weekdayShortList(): string[] {
+  const locale = activeLocale();
+  if (locale !== cachedWeekdayLocale) {
+    cachedWeekdays = weekdaysShortFor(locale);
+    cachedWeekdayLocale = locale;
+  }
+  return cachedWeekdays;
+}
+
+/** `Intl.ListFormat` ES2022'de geldi; bu proje ES2020 hedefliyor. Bu yüzden
+tip düzeyinde değil, ÇALIŞMA ZAMANINDA korumalı erişim yapılır: yoksa
+düzgün bir `join(", ")` yeterlidir. */
+type ListFormatLike = { format(items: string[]): string };
+type ListFormatCtor = new (locale: string, opts: { style: string; type: string }) => ListFormatLike;
+const ListFormatCtor: ListFormatCtor | undefined = (
+  Intl as unknown as { ListFormat?: ListFormatCtor }
+).ListFormat;
+
+/** Diziyi aktif dile göre doğal biçimde birleştirir: TR "Kalori ve protein",
+ *  EN "Calories and protein", PL "Kalorie i białko". Elle `" ve "` yazmak
+ *  cümleyi dile bağlar (bkz. `healthScore.ts` eski hâli). */
+export function formatList(items: string[], locale: string = activeLocale()): string {
+  if (items.length === 0) return "";
+  if (items.length === 1) return items[0];
+  if (!ListFormatCtor) return items.join(", ");
+  try {
+    return new ListFormatCtor(locale, { style: "long", type: "conjunction" }).format(items);
+  } catch {
+    return items.join(", ");
+  }
+}
 
 /** Haftanın günü: 0=Pazar … 6=Cumartesi.
  *  `addDaysISO` ile AYNI sözleşme (saf tarih, UTC) — gün-tipli hedeflerin
@@ -90,7 +129,7 @@ export function weekdayIndex(iso: string): number {
 }
 
 export function weekdayShort(iso: string): string {
-  return WEEKDAY_SHORT[weekdayIndex(iso)] ?? "";
+  return weekdayShortList()[weekdayIndex(iso)] ?? "";
 }
 
 /** "bugün" / "dün" / "3g önce" / "22 Tem" — locale-aware. */
@@ -100,7 +139,8 @@ export function formatRelativeDay(iso: string): string {
   const locale = activeLocale();
   if (dateOnly === today) return i18n.t("relative.today");
   if (dateOnly === addDaysISO(today, -1)) return i18n.t("relative.yesterday");
-  const diffMs = new Date(`${today}T00:00:00`).getTime() - new Date(`${dateOnly}T00:00:00`).getTime();
+  const diffMs =
+    new Date(`${today}T00:00:00`).getTime() - new Date(`${dateOnly}T00:00:00`).getTime();
   const days = Math.round(diffMs / 86_400_000);
   if (days > 0 && days < 14) return i18n.t("relative.daysAgo", { count: days });
   return formatShortDate(dateOnly);

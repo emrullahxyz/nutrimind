@@ -58,6 +58,7 @@ const DataCtx = createContext<Ctx | null>(null);
 
 export function useData(): Ctx {
   const d = useContext(DataCtx);
+  // i18n-exempt: geliştirici hatası — kullanıcı arayüzüne çıkmaz
   if (!d) throw new Error("DataProvider bulunamadı");
   return d;
 }

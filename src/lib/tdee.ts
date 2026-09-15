@@ -30,58 +30,22 @@ export interface TDEECalculationResult {
   recommendedFiber: number;
 }
 
-export const ACTIVITY_LEVEL_LABELS: Record<ActivityLevel, { title: string; desc: string; icon: string; multiplier: number }> = {
-  sedentary: {
-    title: "Masa Başı / Hareketsiz",
-    desc: "Masa başı iş veya okul, az/hiç egzersiz yok",
-    icon: "🛋️",
-    multiplier: 1.2,
-  },
-  light: {
-    title: "Hafif Aktif",
-    desc: "Haftada 1-3 gün hafif tempolu egzersiz veya yürüyüş",
-    icon: "🚶",
-    multiplier: 1.375,
-  },
-  moderate: {
-    title: "Orta Aktif",
-    desc: "Haftada 3-5 gün düzenli antrenman veya orta fiziksel aktivite",
-    icon: "🏃",
-    multiplier: 1.55,
-  },
-  active: {
-    title: "Çok Aktif",
-    desc: "Haftada 6-7 gün ağır spor veya yüksek fiziksel tempolu iş",
-    icon: "🏋️",
-    multiplier: 1.725,
-  },
-  extra_active: {
-    title: "Aşırı Aktif / Atletik",
-    desc: "Günde 2 kez ağır antrenman veya profesyonel sporcu temposu",
-    icon: "⚡",
-    multiplier: 1.9,
-  },
+// NOT: eskiden bu iki tabloda `title`/`desc` ALANLARI vardı ve TÜRKÇE metin
+// taşıyorlardı — ama hiçbir yerden okunmuyorlardı (ölü kod): sihirbaz görünen
+// metni `onboarding.activity.<key>.title` anahtarlarından alıyor. Buradan
+// kaldırıldılar ki İngilizce arayüzde sessizce Türkçe görünmesinler.
+export const ACTIVITY_LEVEL_LABELS: Record<ActivityLevel, { icon: string; multiplier: number }> = {
+  sedentary: { icon: "🛋️", multiplier: 1.2 },
+  light: { icon: "🚶", multiplier: 1.375 },
+  moderate: { icon: "🏃", multiplier: 1.55 },
+  active: { icon: "🏋️", multiplier: 1.725 },
+  extra_active: { icon: "⚡", multiplier: 1.9 },
 };
 
-export const PRIMARY_GOAL_LABELS: Record<PrimaryGoal, { title: string; desc: string; icon: string; kcalOffset: number }> = {
-  weight_loss: {
-    title: "Kilo Ver & Yağ Yak",
-    desc: "Güvenli ve kalıcı yağ yakımı için 500 kcal kalori açığı",
-    icon: "📉",
-    kcalOffset: -500,
-  },
-  maintenance: {
-    title: "Kilo Koru & Formda Kal",
-    desc: "Mevcut kilonu korumak ve formunu dengelemek için",
-    icon: "⚖️",
-    kcalOffset: 0,
-  },
-  weight_gain: {
-    title: "Kilo Al & Kas Yap",
-    desc: "Kas kütlesi kazanımı ve hacimlenmek için 350 kcal fazlalık",
-    icon: "📈",
-    kcalOffset: 350,
-  },
+export const PRIMARY_GOAL_LABELS: Record<PrimaryGoal, { icon: string; kcalOffset: number }> = {
+  weight_loss: { icon: "📉", kcalOffset: -500 },
+  maintenance: { icon: "⚖️", kcalOffset: 0 },
+  weight_gain: { icon: "📈", kcalOffset: 350 },
 };
 
 /**
@@ -109,7 +73,8 @@ export function calculateTDEE(input: UserProfileInput): TDEECalculationResult {
   const recommendedKcal = Math.max(minKcal, Math.round(tdee + goalOffset));
 
   // Recommended Protein (Yaklaşık 2.0g per kg body weight)
-  const proteinPerKg = primaryGoal === "weight_loss" ? 2.1 : primaryGoal === "weight_gain" ? 2.0 : 1.8;
+  const proteinPerKg =
+    primaryGoal === "weight_loss" ? 2.1 : primaryGoal === "weight_gain" ? 2.0 : 1.8;
   const recommendedProtein = Math.max(60, Math.round(weightKg * proteinPerKg));
 
   // Recommended Fat (Yaklaşık 0.9g per kg body weight)

@@ -1,3 +1,4 @@
+import type { TFunction } from "i18next";
 import { deleteAlias, deleteDay, fetchData, saveAlias, saveDay } from "./api";
 import type { AppData, AliasPayload } from "./api";
 import type { MealPayload } from "../types";
@@ -97,8 +98,18 @@ function scheduleRetry(): void {
   }, delay);
 }
 
-/** Çakışma mesajı — operasyon `conflict` durumuna alınırken saklanır. */
-const CONFLICT_MESSAGE = "Sunucudaki veri bu işlemden sonra değişti — çakışmayı çöz.";
+/** Çakışma işareti — operasyon `conflict` durumuna alınırken saklanır.
+ *
+ *  Burada ÇEVRİLMİŞ METİN değil kararlı bir kod saklanır: operasyon IndexedDB'de
+ *  günlerce kalabilir ve kullanıcı bu arada dil değiştirebilir (bkz.
+ *  `SyncStatus`'un aynı kodu `t()` ile çevirmesi). */
+const CONFLICT_CODE = "conflict";
+
+/** Operasyonun hata metnini gösterilebilir hâle getirir: saklanan kararlı kod
+ *  aktif dile çevrilir, sunucudan gelen ham metin olduğu gibi geçer. */
+export function operationErrorText(error: string, t: TFunction): string {
+  return error === CONFLICT_CODE ? t("offline.conflictMessage") : error;
+}
 
 function makeBase(data: AppData): AppData {
   return structuredClone(data);
@@ -319,7 +330,7 @@ async function runSync(): Promise<SyncResult> {
     const verdict = classifyOperation(operation, serverView);
     if (verdict === "conflict") {
       conflicts++;
-      await updateOperation({ ...operation, status: "conflict", error: CONFLICT_MESSAGE });
+      await updateOperation({ ...operation, status: "conflict", error: CONFLICT_CODE });
       continue;
     }
     if (verdict === "satisfied") {
@@ -345,7 +356,7 @@ async function runSync(): Promise<SyncResult> {
       if (status === 409) {
         // İleride server-side compare-and-swap gelirse: 409 = çakışma.
         conflicts++;
-        await updateOperation({ ...operation, status: "conflict", error: CONFLICT_MESSAGE });
+        await updateOperation({ ...operation, status: "conflict", error: CONFLICT_CODE });
         continue;
       }
       if (typeof status === "number" && status >= 400 && status < 500) {

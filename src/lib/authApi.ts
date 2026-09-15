@@ -14,6 +14,7 @@
 // Desen `ai.ts`/`off.ts` ile aynı: kendi hata sınıfı + kendi fetch sarmalayıcısı.
 // ============================================================================
 import type { AuthCapabilities, AuthUser } from "../types";
+import i18n from "../i18n/i18n";
 
 export class AuthError extends Error {
   readonly status: number;
@@ -27,27 +28,35 @@ export class AuthError extends Error {
   }
 }
 
-/** Durum koduna göre arayüz metni. Sunucunun kendi mesajı varsa o önceliklidir —
- *  sunucu zaten Türkçe ve daha spesifik konuşuyor. */
-export function authErrorMessage(status: number, serverMessage?: string | null, retryAfter?: number | null): string {
-  if (serverMessage && serverMessage.trim()) return serverMessage.trim();
+/** Durum koduna göre arayüz metni — aktif dilde.
+ *
+ *  Sunucunun kendi mesajı YALNIZCA tanınmayan bir durum kodunda son çare olur:
+ *  sunucu gövdesi Türkçe metin taşıyor ve onu İngilizce bir arayüzde göstermek
+ *  tam olarak kaçındığımız sınıftır (bkz. tasks/lessons.md L22). */
+export function authErrorMessage(
+  status: number,
+  serverMessage?: string | null,
+  retryAfter?: number | null,
+): string {
   switch (status) {
     case 0:
-      return "Sunucuya ulaşılamadı — bağlantını kontrol et.";
+      return i18n.t("auth.errorNetwork");
     case 401:
-      return "E-posta veya parola hatalı.";
+      return i18n.t("auth.errorInvalidCreds");
     case 403:
-      return "Bu işlem şu an kapalı.";
+      return i18n.t("auth.errorForbidden");
     case 409:
-      return "Bu e-posta zaten kayıtlı.";
+      return i18n.t("auth.errorEmailExists");
     case 429:
       return retryAfter
-        ? `Çok fazla deneme. ${retryAfter} sn sonra tekrar dene.`
-        : "Çok fazla deneme. Biraz sonra tekrar dene.";
+        ? i18n.t("auth.errorTooManyRetry", { seconds: retryAfter })
+        : i18n.t("auth.errorTooMany");
     case 503:
-      return "Giriş özelliği bu ortamda kapalı.";
+      return i18n.t("auth.errorAuthClosed");
+    case 502:
+      return i18n.t("auth.errorBadResponse");
     default:
-      return `İstek başarısız (HTTP ${status}).`;
+      return serverMessage?.trim() || i18n.t("auth.errorHttp", { status });
   }
 }
 
@@ -67,7 +76,10 @@ async function call(path: string, init?: RequestInit): Promise<RawResponse> {
       // Varsayılan zaten same-origin; açıkça yazmak bağımlılığı görünür kılıyor
       // ve varsayılan değişirse sessizce bozulmasını engelliyor.
       credentials: "same-origin",
-      headers: { Accept: "application/json", ...(init?.body ? { "Content-Type": "application/json" } : {}) },
+      headers: {
+        Accept: "application/json",
+        ...(init?.body ? { "Content-Type": "application/json" } : {}),
+      },
       ...init,
     });
   } catch {
@@ -112,7 +124,11 @@ export interface MeResult {
 export async function fetchMe(): Promise<MeResult> {
   const r = await call("/api/auth/me");
   if (r.status === 200 && r.body.authDisabled === true) {
-    return { authDisabled: true, user: null, capabilities: { signupAllowed: false, googleEnabled: false, isAdmin: false } };
+    return {
+      authDisabled: true,
+      user: null,
+      capabilities: { signupAllowed: false, googleEnabled: false, isAdmin: false },
+    };
   }
   if (r.status === 200) {
     return { authDisabled: false, user: parseUser(r.body.user), capabilities: parseCaps(r.body) };
@@ -124,10 +140,13 @@ export async function fetchMe(): Promise<MeResult> {
 }
 
 export async function login(email: string, password: string): Promise<AuthUser> {
-  const r = await call("/api/auth/login", { method: "POST", body: JSON.stringify({ email, password }) });
+  const r = await call("/api/auth/login", {
+    method: "POST",
+    body: JSON.stringify({ email, password }),
+  });
   if (r.status !== 200) throwFrom(r);
   const user = parseUser(r.body.user);
-  if (!user) throw new AuthError(502, "Sunucu beklenmeyen bir yanıt döndürdü.");
+  if (!user) throw new AuthError(502, authErrorMessage(502));
   return user;
 }
 
@@ -138,7 +157,7 @@ export async function register(email: string, password: string, name?: string): 
   });
   if (r.status !== 201 && r.status !== 200) throwFrom(r);
   const user = parseUser(r.body.user);
-  if (!user) throw new AuthError(502, "Sunucu beklenmeyen bir yanıt döndürdü.");
+  if (!user) throw new AuthError(502, authErrorMessage(502));
   return user;
 }
 
@@ -158,28 +177,30 @@ export const GOOGLE_START_URL = "/api/auth/google/start";
  * yönlendiriyor (ham JSON göstermemek için). Kodları kullanıcı diline çevirir.
  */
 export function googleErrorMessage(code: string): string {
+  // Sunucudan gelen kodlar Türkçe adlar taşıyor (protokol sözleşmesi: sabit
+  // tanımlayıcı) — ama kullanıcıya gösterilen metin aktif dilde olmak zorunda.
   switch (code) {
     case "access_denied":
-      return "Google girişi iptal edildi.";
+      return i18n.t("google.cancelled");
     case "oturum_suresi_doldu":
-      return "Giriş çok uzun sürdü, tekrar dene.";
+      return i18n.t("google.sessionExpired");
     case "state_uyusmadi":
     case "kod_yok":
-      return "Google girişi doğrulanamadı, tekrar dene.";
+      return i18n.t("google.verifyFailed");
     case "token_degisimi_basarisiz":
     case "jwks_alinamadi":
     case "token_dogrulanamadi":
-      return "Google ile doğrulama başarısız oldu. Biraz sonra tekrar dene.";
+      return i18n.t("google.tokenFailed");
     case "yeni_kayit_kapali":
-      return "Bu Google hesabına bağlı bir kullanıcı yok ve yeni kayıtlar kapalı.";
+      return i18n.t("google.signupClosed");
     case "kayit_izinsiz":
-      return "Bu e-posta kayıt için izinli değil.";
+      return i18n.t("google.notAllowed");
     case "hesap_baglanamadi":
       // En sık sebebi: Google e-postası doğrulanmamış ya da e-posta başka bir
       // Google hesabına bağlı. İkisini de ayırmıyoruz — ayırmak bilgi sızdırır.
-      return "Bu Google hesabı mevcut bir hesaba bağlanamadı.";
+      return i18n.t("google.linkFailed");
     default:
-      return "Google girişi tamamlanamadı.";
+      return i18n.t("google.generic");
   }
 }
 
@@ -196,19 +217,27 @@ export async function changePassword(currentPassword: string, newPassword: strin
 export async function fetchAllowlist(): Promise<string[]> {
   const r = await call("/api/auth/admin/allowlist");
   if (r.status !== 200) throwFrom(r);
-  return Array.isArray(r.body.emails) ? r.body.emails.filter((e): e is string => typeof e === "string") : [];
+  return Array.isArray(r.body.emails)
+    ? r.body.emails.filter((e): e is string => typeof e === "string")
+    : [];
 }
 
 /** E-postayı listeye ekler; sunucunun NORMALİZE ettiği hâlini döner. */
 export async function addAllowlistEmail(email: string): Promise<string> {
-  const r = await call("/api/auth/admin/allowlist", { method: "POST", body: JSON.stringify({ email }) });
+  const r = await call("/api/auth/admin/allowlist", {
+    method: "POST",
+    body: JSON.stringify({ email }),
+  });
   if (r.status !== 201 && r.status !== 200) throwFrom(r);
-  if (typeof r.body.email !== "string") throw new AuthError(502, "Sunucu beklenmeyen bir yanıt döndürdü.");
+  if (typeof r.body.email !== "string") throw new AuthError(502, authErrorMessage(502));
   return r.body.email;
 }
 
 export async function removeAllowlistEmail(email: string): Promise<void> {
-  const r = await call("/api/auth/admin/allowlist", { method: "DELETE", body: JSON.stringify({ email }) });
+  const r = await call("/api/auth/admin/allowlist", {
+    method: "DELETE",
+    body: JSON.stringify({ email }),
+  });
   if (r.status !== 200) throwFrom(r);
 }
 
@@ -241,8 +270,10 @@ export async function exportAccount(): Promise<void> {
 export async function deleteAccount(opts: { password?: string; confirm: string }): Promise<void> {
   const r = await call("/api/auth/account", {
     method: "POST",
-    body: JSON.stringify({ confirm: opts.confirm, ...(opts.password ? { password: opts.password } : {}) }),
+    body: JSON.stringify({
+      confirm: opts.confirm,
+      ...(opts.password ? { password: opts.password } : {}),
+    }),
   });
   if (r.status !== 200) throwFrom(r);
 }
-

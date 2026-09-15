@@ -1,62 +1,21 @@
 import type { TFunction } from "i18next";
 import type { Nutrition } from "../types";
+import { formatList } from "./format";
 
 export interface HealthScore {
   score: number; // 0-10 tam sayı
   message: string;
 }
 
-function getPlainName(key: string): string {
-  switch (key) {
-    case "kcal":
-      return "kalori";
-    case "protein":
-      return "protein";
-    case "carbs":
-      return "karbonhidrat";
-    case "fat":
-      return "yağ";
-    default:
-      return key;
-  }
+/** Besin adı `nutrient.*` anahtarlarından gelir — eskiden burada Türkçe ad
+ *  tabloları (`kalori`/`proteinde`…) vardı ve cümle Türkçe eklerle kuruluyordu:
+ *  İngilizce arayüzde "Kalori ve protein You're on track." çıkıyordu. */
+function nutrientName(key: string, t: TFunction): string {
+  return t(`nutrient.${key}`);
 }
 
-function getLocativeName(key: string): string {
-  switch (key) {
-    case "kcal":
-      return "kaloride";
-    case "protein":
-      return "proteinde";
-    case "carbs":
-      return "karbonhidratta";
-    case "fat":
-      return "yağda";
-    default:
-      return key;
-  }
-}
-
-function formatPlainList(keys: string[]): string {
-  if (keys.length === 0) return "";
-  if (keys.length === 1) return getPlainName(keys[0]);
-  const head = keys.slice(0, -1).map(getPlainName).join(", ");
-  const tail = getPlainName(keys[keys.length - 1]);
-  return `${head} ve ${tail}`;
-}
-
-function formatLocativeList(keys: string[]): string {
-  if (keys.length === 0) return "";
-  if (keys.length === 1) return getLocativeName(keys[0]);
-  const head = keys.slice(0, -1).map(getPlainName).join(", ");
-  const tail = getLocativeName(keys[keys.length - 1]);
-  return `${head} ve ${tail}`;
-}
-
-function capitalize(str: string): string {
-  if (!str) return "";
-  return str.charAt(0).toUpperCase() + str.slice(1);
-}
-
+/** Cümle kurulumu TAMAMEN anahtarlara taşındı; liste bağlacı ("ve"/"and"/"i")
+ *  `formatList` içinde `Intl.ListFormat` ile dile göre üretilir. */
 export function computeHealthScore(total: Nutrition, goal: Nutrition, t: TFunction): HealthScore {
   if (total.kcal <= 0) {
     return {
@@ -65,7 +24,12 @@ export function computeHealthScore(total: Nutrition, goal: Nutrition, t: TFuncti
     };
   }
 
-  const keys: (keyof Nutrition & ("kcal" | "protein" | "carbs" | "fat"))[] = ["kcal", "protein", "carbs", "fat"];
+  const keys: (keyof Nutrition & ("kcal" | "protein" | "carbs" | "fat"))[] = [
+    "kcal",
+    "protein",
+    "carbs",
+    "fat",
+  ];
   const activeKeys = keys.filter((k) => (goal[k] ?? 0) > 0);
 
   if (activeKeys.length === 0) {
@@ -122,18 +86,21 @@ export function computeHealthScore(total: Nutrition, goal: Nutrition, t: TFuncti
     };
   }
 
+  const namesOf = (list: string[]) => formatList(list.map((k) => nutrientName(k, t)));
   const sentences: string[] = [];
 
   if (goodKeys.length > 0) {
-    sentences.push(`${capitalize(formatPlainList(goodKeys))} ${t("healthScore.onTrack")}`);
+    sentences.push(t("healthScore.onTrackList", { nutrients: namesOf(goodKeys) }));
   }
 
   if (lowKeys.length > 0 && highKeys.length > 0) {
-    sentences.push(`${capitalize(formatLocativeList(lowKeys))} ${t("healthScore.under")}; ${formatLocativeList(highKeys)} ${t("healthScore.over")}`);
+    sentences.push(
+      t("healthScore.underOverList", { low: namesOf(lowKeys), high: namesOf(highKeys) }),
+    );
   } else if (lowKeys.length > 0) {
-    sentences.push(`${capitalize(formatLocativeList(lowKeys))} ${t("healthScore.under")}`);
+    sentences.push(t("healthScore.underList", { nutrients: namesOf(lowKeys) }));
   } else if (highKeys.length > 0) {
-    sentences.push(`${capitalize(formatLocativeList(highKeys))} ${t("healthScore.over")}`);
+    sentences.push(t("healthScore.overList", { nutrients: namesOf(highKeys) }));
   }
 
   return {

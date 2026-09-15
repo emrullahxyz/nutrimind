@@ -9,6 +9,8 @@
 // tablosu hem istemci hem sunucu testleri tarafından ortaklaşa çalıştırılır.
 // ============================================================================
 
+import i18n from "../i18n/i18n";
+
 const EMAIL_MAX = 254;
 const PASSWORD_MIN = 8;
 const PASSWORD_MAX = 200;
@@ -22,19 +24,19 @@ export function normalizeEmail(raw: string): string {
 
 export function emailProblem(raw: string): string | null {
   const email = normalizeEmail(raw);
-  if (email === "") return "E-posta gerekli.";
-  if (email.length > EMAIL_MAX) return "E-posta çok uzun.";
-  if (!EMAIL_RE.test(email)) return "Geçerli bir e-posta adresi yaz.";
+  if (email === "") return i18n.t("auth.ruleEmailRequired");
+  if (email.length > EMAIL_MAX) return i18n.t("auth.ruleEmailTooLong");
+  if (!EMAIL_RE.test(email)) return i18n.t("auth.ruleEmailInvalid");
   return null;
 }
 
 export function passwordProblem(raw: string): string | null {
   const password = typeof raw === "string" ? raw : "";
-  if (password === "") return "Parola gerekli.";
-  if (password.trim() === "") return "Parola yalnızca boşluktan oluşamaz.";
+  if (password === "") return i18n.t("auth.rulePasswordRequired");
+  if (password.trim() === "") return i18n.t("auth.rulePasswordNoSpaces");
   const length = [...password.normalize("NFKC")].length;
-  if (length < PASSWORD_MIN) return `Parola en az ${PASSWORD_MIN} karakter olmalı.`;
-  if (length > PASSWORD_MAX) return `Parola en fazla ${PASSWORD_MAX} karakter olabilir.`;
+  if (length < PASSWORD_MIN) return i18n.t("auth.rulePasswordMin", { min: PASSWORD_MIN });
+  if (length > PASSWORD_MAX) return i18n.t("auth.rulePasswordMax", { max: PASSWORD_MAX });
   return null;
 }
 
@@ -47,6 +49,6 @@ export function registerProblem(input: {
   if (emailErr) return emailErr;
   const passErr = passwordProblem(input.password);
   if (passErr) return passErr;
-  if (input.password !== input.password2) return "Parolalar eşleşmiyor.";
+  if (input.password !== input.password2) return i18n.t("auth.rulePasswordsMismatch");
   return null;
 }

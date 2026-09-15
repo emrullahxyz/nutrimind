@@ -16,6 +16,7 @@
 //    - Doğrudan `api.ts` fonksiyonları çağrılır, en sonda tek `refresh()` yapılır.
 // ============================================================================
 
+import type { TFunction } from "i18next";
 import type { Alias, GoalConfig, MealItem, MealPayload, Nutrition } from "../types";
 import { NUTRIENTS } from "./nutrients";
 import { deleteAlias, deleteDay, parseGoals, saveAlias, saveDay, saveGoals } from "./api";
@@ -36,9 +37,17 @@ export function escapeCsvCell(cell: string): string {
   return cell;
 }
 
+/** Kolon başlıkları aktif dile göre üretilir. Eskiden burada Türkçe literal
+ *  başlıklar vardı ve İngilizce arayüzde CSV "Tarih;Öğün Adı" ile açılıyordu. */
+function nutrientHeaders(t: TFunction): string[] {
+  return NUTRIENTS.map((def) => `${t(`nutrient.${def.key}`)} (${def.unit})`);
+}
+
 /** Günlük öğünleri CSV biçiminde üretir. */
-export function exportMealsToCsv(data: AppData): string {
-  const headers = ["Tarih", "Öğün Adı", ...NUTRIENTS.map((def) => `${def.label} (${def.unit})`)].join(";");
+export function exportMealsToCsv(data: AppData, t: TFunction): string {
+  const headers = [t("export.headerDate"), t("export.headerMealName"), ...nutrientHeaders(t)].join(
+    ";",
+  );
 
   const rows: string[] = [headers];
   const datesAsc = Object.keys(data.days).sort();
@@ -67,17 +76,17 @@ export function exportMealsToCsv(data: AppData): string {
 }
 
 /** Besin hafızasını (alias) CSV biçiminde üretir. */
-export function exportAliasesToCsv(aliases: Alias[]): string {
+export function exportAliasesToCsv(aliases: Alias[], t: TFunction): string {
   const headers = [
-    "Ad",
-    "Marka",
-    "Porsiyon (g)",
-    "Tetikleyiciler",
-    "Birimler",
-    "Varsayılan Birim",
-    "Barkod",
-    "OFF ID",
-    ...NUTRIENTS.map((def) => `${def.label} (${def.unit})`),
+    t("export.headerName"),
+    t("export.headerBrand"),
+    t("export.headerServingG"),
+    t("export.headerTriggers"),
+    t("export.headerUnits"),
+    t("export.headerDefaultUnit"),
+    t("export.headerBarcode"),
+    t("export.headerOffId"),
+    ...nutrientHeaders(t),
   ].join(";");
 
   const rows: string[] = [headers];
@@ -164,16 +173,17 @@ export interface ValidationError {
 
 export type ValidationResult = ValidationSuccess | ValidationError;
 
-/** Yüklenen JSON ham verisini eksiksiz doğrular. Yarım kalmış/bozuk veriyi saptar. */
-export function validateBackup(raw: unknown): ValidationResult {
+/** Yüklenen JSON ham verisini eksiksiz doğrular. Yarım kalmış/bozuk veriyi saptar.
+ *  Hata metinleri `t` ile üretilir (bkz. `computeHealthScore` aynı desen). */
+export function validateBackup(raw: unknown, t: TFunction): ValidationResult {
   if (typeof raw !== "object" || raw === null || Array.isArray(raw)) {
-    return { ok: false, error: "Geçersiz dosya biçimi: JSON nesnesi bekleniyor." };
+    return { ok: false, error: t("export.err.notObject") };
   }
 
   const obj = raw as Record<string, unknown>;
 
   if (!("goals" in obj) || !("days" in obj) || !("aliases" in obj)) {
-    return { ok: false, error: "Yedek dosyası eksik alanlar içeriyor (goals, days veya aliases eksik)." };
+    return { ok: false, error: t("export.err.missingFields") };
   }
 
   // 1. Hedefler doğrulaması
@@ -181,12 +191,12 @@ export function validateBackup(raw: unknown): ValidationResult {
   try {
     goals = parseGoals(obj.goals);
   } catch (e) {
-    return { ok: false, error: `Hedef verisi doğrulanamadı: ${String(e)}` };
+    return { ok: false, error: t("export.err.goalsInvalid", { detail: String(e) }) };
   }
 
   // 2. Günler doğrulaması
   if (typeof obj.days !== "object" || obj.days === null || Array.isArray(obj.days)) {
-    return { ok: false, error: "Geçersiz 'days' yapısı: gün sözlüğü bekleniyor." };
+    return { ok: false, error: t("export.err.daysNotObject") };
   }
 
   const rawDays = obj.days as Record<string, unknown>;
@@ -195,33 +205,34 @@ export function validateBackup(raw: unknown): ValidationResult {
 
   for (const [date, rawMeals] of Object.entries(rawDays)) {
     if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
-      return { ok: false, error: `Geçersiz tarih biçimi: '${date}' (YYYY-MM-DD bekleniyor).` };
+      return { ok: false, error: t("export.err.badDateFormat", { date }) };
     }
     if (!Array.isArray(rawMeals)) {
-      return { ok: false, error: `'${date}' gününün öğün verisi dizi olmalıdır.` };
+      return { ok: false, error: t("export.err.mealsNotArray", { date }) };
     }
 
     const mealPayloads: MealPayload[] = [];
     for (let i = 0; i < rawMeals.length; i++) {
       const m = rawMeals[i];
       if (typeof m !== "object" || m === null) {
-        return { ok: false, error: `'${date}' tarihindeki ${i + 1}. öğün nesne olmalıdır.` };
+        return { ok: false, error: t("export.err.mealNotObject", { date, index: i + 1 }) };
       }
 
       const rec = m as Record<string, unknown>;
-      const name = typeof rec.name === "string" ? rec.name : typeof rec.label === "string" ? rec.label : "";
+      const name =
+        typeof rec.name === "string" ? rec.name : typeof rec.label === "string" ? rec.label : "";
       if (!name.trim()) {
-        return { ok: false, error: `'${date}' tarihindeki ${i + 1}. öğünün adı eksik.` };
+        return { ok: false, error: t("export.err.mealNameMissing", { date, index: i + 1 }) };
       }
 
       const rawNutr = (rec.nutrition ?? rec.computed) as Record<string, unknown> | undefined;
       if (typeof rawNutr !== "object" || rawNutr === null) {
-        return { ok: false, error: `'${date}' tarihindeki '${name}' öğününün besin değerleri eksik.` };
+        return { ok: false, error: t("export.err.mealNutritionMissing", { date, name }) };
       }
 
       const kcal = Number(rawNutr.kcal);
       if (!Number.isFinite(kcal)) {
-        return { ok: false, error: `'${date}' tarihindeki '${name}' öğününün kalori değeri geçersiz.` };
+        return { ok: false, error: t("export.err.mealKcalInvalid", { date, name }) };
       }
 
       // Besin değerlerini MealPayload biçimine normalize et
@@ -231,9 +242,15 @@ export function validateBackup(raw: unknown): ValidationResult {
         carbs: Number(rawNutr.carbs ?? 0),
         fat: Number(rawNutr.fat ?? 0),
         fiber: Number(rawNutr.fiber ?? 0),
-        ...(rawNutr.sugar !== undefined && rawNutr.sugar !== null ? { sugar: Number(rawNutr.sugar) } : {}),
-        ...(rawNutr.satFat !== undefined && rawNutr.satFat !== null ? { satFat: Number(rawNutr.satFat) } : {}),
-        ...(rawNutr.sodium !== undefined && rawNutr.sodium !== null ? { sodium: Number(rawNutr.sodium) } : {}),
+        ...(rawNutr.sugar !== undefined && rawNutr.sugar !== null
+          ? { sugar: Number(rawNutr.sugar) }
+          : {}),
+        ...(rawNutr.satFat !== undefined && rawNutr.satFat !== null
+          ? { satFat: Number(rawNutr.satFat) }
+          : {}),
+        ...(rawNutr.sodium !== undefined && rawNutr.sodium !== null
+          ? { sodium: Number(rawNutr.sodium) }
+          : {}),
       };
 
       mealPayloads.push({
@@ -248,19 +265,19 @@ export function validateBackup(raw: unknown): ValidationResult {
 
   // 3. Besin hafızası (aliases) doğrulaması
   if (!Array.isArray(obj.aliases)) {
-    return { ok: false, error: "Geçersiz 'aliases' yapısı: dizi bekleniyor." };
+    return { ok: false, error: t("export.err.aliasesNotArray") };
   }
 
   const parsedAliases: Alias[] = [];
   for (let i = 0; i < obj.aliases.length; i++) {
     const a = obj.aliases[i];
     if (typeof a !== "object" || a === null) {
-      return { ok: false, error: `Hafızadaki ${i + 1}. besin nesnesi geçersiz.` };
+      return { ok: false, error: t("export.err.aliasNotObject", { index: i + 1 }) };
     }
     const rec = a as Record<string, unknown>;
     const name = typeof rec.name === "string" ? rec.name.trim() : "";
     if (!name) {
-      return { ok: false, error: `Hafızadaki ${i + 1}. besinin adı eksik.` };
+      return { ok: false, error: t("export.err.aliasNameMissing", { index: i + 1 }) };
     }
     const triggers = Array.isArray(rec.triggers)
       ? rec.triggers.filter((t): t is string => typeof t === "string" && t.trim().length > 0)
@@ -268,7 +285,7 @@ export function validateBackup(raw: unknown): ValidationResult {
 
     const rawNutr = rec.nutrition as Record<string, unknown> | undefined;
     if (typeof rawNutr !== "object" || rawNutr === null) {
-      return { ok: false, error: `Hafızadaki '${name}' besininin besin değerleri eksik.` };
+      return { ok: false, error: t("export.err.aliasNutritionMissing", { name }) };
     }
 
     const nutrition: Nutrition = {
@@ -277,9 +294,15 @@ export function validateBackup(raw: unknown): ValidationResult {
       carbs: Number(rawNutr.carbs ?? 0),
       fat: Number(rawNutr.fat ?? 0),
       fiber: Number(rawNutr.fiber ?? 0),
-      ...(rawNutr.sugar !== undefined && rawNutr.sugar !== null ? { sugar: Number(rawNutr.sugar) } : {}),
-      ...(rawNutr.satFat !== undefined && rawNutr.satFat !== null ? { satFat: Number(rawNutr.satFat) } : {}),
-      ...(rawNutr.sodium !== undefined && rawNutr.sodium !== null ? { sodium: Number(rawNutr.sodium) } : {}),
+      ...(rawNutr.sugar !== undefined && rawNutr.sugar !== null
+        ? { sugar: Number(rawNutr.sugar) }
+        : {}),
+      ...(rawNutr.satFat !== undefined && rawNutr.satFat !== null
+        ? { satFat: Number(rawNutr.satFat) }
+        : {}),
+      ...(rawNutr.sodium !== undefined && rawNutr.sodium !== null
+        ? { sodium: Number(rawNutr.sodium) }
+        : {}),
     };
 
     parsedAliases.push({
@@ -290,7 +313,9 @@ export function validateBackup(raw: unknown): ValidationResult {
       serving_g: typeof rec.serving_g === "number" && rec.serving_g > 0 ? rec.serving_g : 100,
       nutrition,
       ...(rec.units ? { units: rec.units as Alias["units"] } : {}),
-      ...(typeof rec.defaultUnit === "string" && rec.defaultUnit.trim() ? { defaultUnit: rec.defaultUnit.trim() } : {}),
+      ...(typeof rec.defaultUnit === "string" && rec.defaultUnit.trim()
+        ? { defaultUnit: rec.defaultUnit.trim() }
+        : {}),
       ...(rec.barcode ? { barcode: String(rec.barcode) } : {}),
       ...(rec.off_id ? { off_id: String(rec.off_id) } : {}),
       ...(rec.recipe ? { recipe: rec.recipe as Alias["recipe"] } : {}),

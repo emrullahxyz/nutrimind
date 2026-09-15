@@ -1,5 +1,10 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { AiError, aiErrorMessage, parseWithAI } from "./ai";
+import i18n from "../i18n/i18n";
+
+/** Mesajlar artık sabit değil, AKTİF DİLDE üretilir; testler de dili i18n'e
+ *  sorar (bkz. tasks/lessons.md L22). */
+const t = i18n.t.bind(i18n);
 
 afterEach(() => {
   vi.unstubAllGlobals();
@@ -18,11 +23,16 @@ function mockFetchOnce(status: number, body: unknown, headers: Record<string, st
 }
 
 describe("aiErrorMessage", () => {
-  it("429'da retryAfter'ı mesaja gömer", () => {
-    expect(aiErrorMessage(429, null, 12)).toContain("12 sn");
+  it("429'da retryAfter'ı mesaja gömer (aktif dilde)", () => {
+    expect(aiErrorMessage(429, null, 12)).toBe(t("ai.err.rateLimitSeconds", { seconds: 12 }));
   });
-  it("503'te 'kapalı' mesajı döner", () => {
-    expect(aiErrorMessage(503)).toContain("kapalı");
+  it("503'te devre dışı mesajı döner (aktif dilde)", () => {
+    expect(aiErrorMessage(503)).toBe(t("ai.err.disabled"));
+  });
+  it("sunucunun `code` alanı varsa metin ona göre seçilir", () => {
+    expect(aiErrorMessage(400, "text gerekli", null, "ai_bad_request")).toBe(t("ai.err.badRequest"));
+    expect(aiErrorMessage(502, null, null, "ai_bad_response")).toBe(t("ai.err.badResponse"));
+    expect(aiErrorMessage(500, null, null, "ai_not_configured")).toBe(t("ai.err.disabled"));
   });
   it("tanınmayan kodda sunucu mesajını kullanır", () => {
     expect(aiErrorMessage(400, "text gerekli")).toBe("text gerekli");

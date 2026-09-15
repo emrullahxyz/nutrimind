@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { OfflineOperation } from "../lib/offlineCache";
 import type { SyncState } from "../lib/offlineSync";
-import { operationInfo, summarizeOperations } from "../lib/offlineSync";
+import { operationErrorText, operationInfo, summarizeOperations } from "../lib/offlineSync";
 
 type Props = {
   offline: boolean;
@@ -156,7 +156,9 @@ export function SyncStatus({
                   <StatusBadge operation={operation} t={t} />
                 </div>
                 {operation.error && (
-                  <p className="text-[10px] text-ink-tertiary">{operation.error}</p>
+                  <p className="text-[10px] text-ink-tertiary">
+                    {operationErrorText(operation.error, t)}
+                  </p>
                 )}
                 <div className="flex items-center gap-2">
                   {operation.status === "failed" && (

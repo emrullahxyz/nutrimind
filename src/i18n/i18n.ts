@@ -22,14 +22,22 @@ export const DEFAULT_LANG: Lang = "en";
 
 const STORAGE_KEY = "nutrimind.lang";
 
+/** Ham cihaz dili → "en" | "tr" | "pl" (desteklenmiyorsa EN).
+ *
+ *  SAF ve dışa açık: kullanıcı isteği "telefonun dili neyse o default gelsin"
+ *  idi; bu davranış `i18n.test.ts` ile sabitlenir (tr-TR→tr, pl-PL→pl,
+ *  en-GB→en, de-DE→en, boş→en). */
+export function pickLang(raw: string | null | undefined): Lang {
+  // Yalnızca BİRİNCİL alt-etiket: "tr-TR", "tr_TR", "tr" → hepsi "tr".
+  // `startsWith` ile yapmak "tricky" gibi uydurma etiketleri de tr sanırdı.
+  const primary = (raw || "").toLowerCase().split(/[-_]/)[0];
+  return (SUPPORTED_LANGS as readonly string[]).includes(primary) ? (primary as Lang) : DEFAULT_LANG;
+}
+
 /** navigator.language → "en" | "tr" | "pl" (fallback default). */
 function detectLang(): Lang {
   if (typeof navigator === "undefined") return DEFAULT_LANG;
-  const raw = (navigator.language || "").toLowerCase();
-  for (const lang of SUPPORTED_LANGS) {
-    if (raw === lang || raw.startsWith(lang + "-")) return lang;
-  }
-  return DEFAULT_LANG;
+  return pickLang(navigator.language);
 }
 
 function getStoredLang(): Lang | null {

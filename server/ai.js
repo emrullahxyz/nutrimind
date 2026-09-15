@@ -90,6 +90,11 @@ const NIM_FALLBACK_TIMEOUT_MS = Number(process.env.NUTRI_AI_NIM_TIMEOUT_MS || 40
 const NIM_URL = "https://integrate.api.nvidia.com/v1/chat/completions";
 const OPENCODE_URL = "https://opencode.ai/zen/v1/chat/completions";
 
+/** Hata gövdeleri İngilizce tutulur: kullanıcıya gösterilen metni istemci
+ *  `code` alanından aktif dile çevirir (bkz. src/lib/ai.ts `aiErrorMessage`).
+ *  `error` yalnızca son çare ve log dostu metindir. */
+const AI_DISABLED_MESSAGE = "AI features are disabled in this environment";
+
 const geminiUrl = (model) =>
   `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${GEMINI_API_KEY}`;
 
@@ -150,7 +155,59 @@ const RESPONSE_SCHEMA = {
   required: ["items"],
 };
 
-function formatAliasLines(aliases) {
+// --- Dil (uygulama dilini izler) ----------------------------------------------
+//
+// Eskiden TÜM istemler Türkçeydi ve "Yanıtı Türkçe ver" diyordu: İngilizce
+// arayüzde kullanıcı "Tavuk Göğsü (200g)" gibi Türkçe yemek adları alıyordu.
+// İstem dili artık istemciden gelen `lang` alanından gelir (bkz. src/lib/ai.ts).
+// Tanınmayan/eksik değer "en"e düşer (uygulamanın varsayılan dili).
+const SUPPORTED_LANGS = new Set(["en", "tr", "pl"]);
+// İstem HER dilde kendi dilinde yazılır: İngilizce isteme "Turkish" yazmak,
+// Türkçe isteme "Türkçe" yazmak doğru olan. Bu yüzden dil adları istem
+// şablonlarının İÇİNDE tanımlıdır (aşağıdaki PROMPTS).
+
+function normalizeLang(lang) {
+  const v = typeof lang === "string" ? lang.trim().toLowerCase() : "";
+  if (SUPPORTED_LANGS.has(v)) return v;
+  const base = v.split("-")[0];
+  return SUPPORTED_LANGS.has(base) ? base : "en";
+}
+
+/** Besin adlarını kullanıcının DİLİNDE yazar; istem tek dilde kalsın. */
+const NUTRIENT_WORDS = {
+  en: { kcal: "kcal", protein: "g protein", carbs: "g carbs", fat: "g fat", fiber: "g fiber", sugar: "g sugar", satFat: "g sat. fat", sodium: "mg sodium" },
+  tr: { kcal: "kcal", protein: "g protein", carbs: "g karbonhidrat", fat: "g yağ", fiber: "g lif", sugar: "g şeker", satFat: "g doymuş yağ", sodium: "mg sodyum" },
+  pl: { kcal: "kcal", protein: "g białka", carbs: "g węglowodanów", fat: "g tłuszczu", fiber: "g błonnika", sugar: "g cukru", satFat: "g tł. nasyconych", sodium: "mg sodu" },
+};
+
+const PH = {
+  en: {
+    memoryHeader: "USER'S FOOD MEMORY (if you recognise these, use these values verbatim)",
+    memoryEmpty: "(no foods in memory yet)",
+    perServing: "per",
+    knownAs: "also known as",
+    more: "(… and {n} more foods)",
+  },
+  tr: {
+    memoryHeader: "KULLANICININ BESİN HAFIZASI (bu besinleri tanıyorsan bu değerleri birebir kullan)",
+    memoryEmpty: "(hafızada henüz besin yok)",
+    perServing: "başına",
+    knownAs: "şu ifadelerle anılır",
+    more: "(… ve {n} besin daha)",
+  },
+  pl: {
+    memoryHeader: "PAMIĘĆ ŻYWIENIOWA UŻYTKOWNIKA (jeśli rozpoznajesz te produkty, użyj tych wartości dokładnie)",
+    memoryEmpty: "(brak produktów w pamięci)",
+    perServing: "na",
+    knownAs: "znane również jako",
+    more: "(… i jeszcze {n} produktów)",
+  },
+};
+
+function formatAliasLines(aliases, lang) {
+  const L = normalizeLang(lang);
+  const words = NUTRIENT_WORDS[L];
+  const ph = PH[L];
   const list = Array.isArray(aliases) ? aliases : [];
   if (list.length === 0) return "";
 
@@ -163,78 +220,154 @@ function formatAliasLines(aliases) {
     const nut = a.nutrition || {};
 
     const parts = [
-      `${nut.kcal ?? "?"}kcal`,
-      `${nut.protein ?? "?"}g protein`,
-      `${nut.carbs ?? "?"}g karbonhidrat`,
-      `${nut.fat ?? "?"}g yağ`,
-      `${nut.fiber ?? "?"}g lif`,
+      `${nut.kcal ?? "?"}${words.kcal}`,
+      `${nut.protein ?? "?"}${words.protein}`,
+      `${nut.carbs ?? "?"}${words.carbs}`,
+      `${nut.fat ?? "?"}${words.fat}`,
+      `${nut.fiber ?? "?"}${words.fiber}`,
     ];
 
-    if (nut.sugar != null) parts.push(`${nut.sugar}g şeker`);
-    if (nut.satFat != null) parts.push(`${nut.satFat}g doymuş yağ`);
-    if (nut.sodium != null) parts.push(`${nut.sodium}mg sodyum`);
+    if (nut.sugar != null) parts.push(`${nut.sugar}${words.sugar}`);
+    if (nut.satFat != null) parts.push(`${nut.satFat}${words.satFat}`);
+    if (nut.sodium != null) parts.push(`${nut.sodium}${words.sodium}`);
 
-    let line = `${displayName}: ${a.serving_g ?? "?"}g başına ${parts.join(", ")}`;
+    let line = `${displayName}: ${parts.join(", ")} ${ph.perServing} ${a.serving_g ?? "?"}g`;
 
     if (Array.isArray(a.triggers) && a.triggers.length > 0) {
-      line += ` (şu ifadelerle anılır: ${a.triggers.join(", ")})`;
+      line += ` (${ph.knownAs}: ${a.triggers.join(", ")})`;
     }
 
     return line;
   });
 
   if (extraCount > 0) {
-    lines.push(`(… ve ${extraCount} besin daha)`);
+    lines.push(ph.more.replace("{n}", String(extraCount)));
   }
 
   return lines.join("\n");
 }
 
-function buildPrompt(text, aliases) {
-  const aliasLines = formatAliasLines(aliases);
+const PROMPTS = {
+  en: {
+    textIntro: "You are a nutrition expert. Analyse the user's meal.",
+    photoIntro: "You are a nutrition expert. Analyse the food(s) in the attached photo.",
+    labelIntro: "You are a nutrition expert. The attached photo is a nutrition label.",
+    rulesHeader: "RULES:",
+    textRules: [
+      "List every food item separately.",
+      'Estimate the portion size in grams and state it in the name (e.g. "Chicken Breast (200g)").',
+      "Calculate the nutrition values (kcal, protein, carbs, fat, fiber).",
+      "Recognise Turkish and Polish dishes correctly.",
+      'For every item give a "confidence" value between 0 and 1 (how sure you are).',
+      "Answer in English.",
+    ],
+    photoRules: [
+      "List every food item in the photo separately.",
+      "Estimate the portion in grams from visual cues (plate size, comparative scale) and state it in the name.",
+      "Calculate the nutrition values (kcal, protein, carbs, fat, fiber).",
+      "Recognise Turkish and Polish dishes correctly.",
+      'For every item give a "confidence" value between 0 and 1.',
+      "Answer in English.",
+    ],
+    labelRules: [
+      "Read the nutrition values (kcal, protein, carbs, fat, fiber) from the label EXACTLY, without estimating.",
+      'State in the name whether the label is per 100 g or per serving (e.g. "Product Name (100g)").',
+      "Usually there is a SINGLE item.",
+      'For every item give a "confidence" value between 0 and 1 (lower it if the label is unclear).',
+      "Answer in English.",
+    ],
+    userInput: "USER'S INPUT:",
+  },
+  tr: {
+    textIntro: "Sen bir beslenme uzmanısın. Kullanıcının öğününü analiz et.",
+    photoIntro: "Sen bir beslenme uzmanısın. Ekteki fotoğraftaki yemeği/yemekleri analiz et.",
+    labelIntro: "Sen bir beslenme uzmanısın. Ekteki fotoğraf bir besin değerleri etiketi.",
+    rulesHeader: "KURALLAR:",
+    textRules: [
+      "Her yemek öğesini ayrı ayrı listele.",
+      'Porsiyon boyutunu gram cinsinden tahmin et, isimde belirt (ör. "Tavuk Göğsü (200g)").',
+      "Besin değerlerini (kcal, protein, carbs, fat, fiber) hesapla.",
+      "Türk ve Polonya yemeklerini doğru tanı.",
+      'Her öğe için 0 ile 1 arasında bir "confidence" (ne kadar eminsin) değeri ver.',
+      "Yanıtı Türkçe ver.",
+    ],
+    photoRules: [
+      "Fotoğraftaki her yemek öğesini ayrı ayrı listele.",
+      "Görsel ipuçlarından (tabak boyutu, karşılaştırmalı ölçek) porsiyon miktarını gram cinsinden tahmin et, isimde belirt.",
+      "Besin değerlerini (kcal, protein, carbs, fat, fiber) hesapla.",
+      "Türk ve Polonya yemeklerini doğru tanı.",
+      'Her öğe için 0 ile 1 arasında bir "confidence" değeri ver.',
+      "Yanıtı Türkçe ver.",
+    ],
+    labelRules: [
+      "Etiketteki besin değerlerini (kcal, protein, carbs, fat, fiber) BİREBİR, tahmin etmeden oku.",
+      'Etiket "100g başına" mı yoksa "porsiyon başına" mı gösteriyor, isimde belirt (ör. "Ürün Adı (100g)").',
+      "Genellikle TEK bir öğe olur.",
+      'Her öğe için 0 ile 1 arasında bir "confidence" değeri ver (etiket net değilse düşür).',
+      "Yanıtı Türkçe ver.",
+    ],
+    userInput: "KULLANICININ GİRDİSİ:",
+  },
+  pl: {
+    textIntro: "Jesteś ekspertem ds. żywienia. Przeanalizuj posiłek użytkownika.",
+    photoIntro: "Jesteś ekspertem ds. żywienia. Przeanalizuj potrawy na załączonym zdjęciu.",
+    labelIntro: "Jesteś ekspertem ds. żywienia. Załączone zdjęcie to etykieta wartości odżywczych.",
+    rulesHeader: "ZASADY:",
+    textRules: [
+      "Wypisz każdy produkt osobno.",
+      'Oszacuj porcję w gramach i podaj ją w nazwie (np. "Pierś z kurczaka (200g)").',
+      "Oblicz wartości odżywcze (kcal, białko, węglowodany, tłuszcz, błonnik).",
+      "Rozpoznawaj tureckie i polskie potrawy poprawnie.",
+      'Dla każdego produktu podaj wartość "confidence" od 0 do 1 (jak bardzo jesteś pewien).',
+      "Odpowiedz w języku polskim.",
+    ],
+    photoRules: [
+      "Wypisz każdy produkt na zdjęciu osobno.",
+      "Oszacuj porcję w gramach na podstawie wskazówek wizualnych (rozmiar talerza, skala) i podaj ją w nazwie.",
+      "Oblicz wartości odżywcze (kcal, białko, węglowodany, tłuszcz, błonnik).",
+      "Rozpoznawaj tureckie i polskie potrawy poprawnie.",
+      'Dla każdego produktu podaj wartość "confidence" od 0 do 1.',
+      "Odpowiedz w języku polskim.",
+    ],
+    labelRules: [
+      "Odczytaj wartości odżywcze (kcal, białko, węglowodany, tłuszcz, błonnik) z etykiety DOKŁADNIE, bez szacowania.",
+      'W nazwie podaj, czy etykieta dotyczy 100 g, czy porcji (np. "Nazwa produktu (100g)").',
+      "Zwykle występuje JEDEN produkt.",
+      'Dla każdego produktu podaj wartość "confidence" od 0 do 1 (obniż ją, jeśli etykieta jest nieczytelna).',
+      "Odpowiedz w języku polskim.",
+    ],
+    userInput: "DANE OD UŻYTKOWNIKA:",
+  },
+};
 
-  return `Sen bir beslenme uzmanısın. Kullanıcının öğününü analiz et.
-
-KURALLAR:
-- Her yemek öğesini ayrı ayrı listele.
-- Porsiyon boyutunu gram cinsinden tahmin et, isimde belirt (ör. "Tavuk Göğsü (200g)").
-- Besin değerlerini (kcal, protein, carbs, fat, fiber) hesapla.
-- Türk yemeklerini doğru tanı.
-- Her öğe için 0 ile 1 arasında bir "confidence" (ne kadar eminsin) değeri ver.
-- Yanıtı Türkçe ver.
-
-KULLANICININ BESİN HAFIZASI (bu besinleri tanıyorsan bu değerleri birebir kullan):
-${aliasLines || "(hafızada henüz besin yok)"}
-
-KULLANICININ GİRDİSİ:
-${text}`;
+function rulesBlock(rules, header) {
+  return `${header}\n${rules.map((r) => `- ${r}`).join("\n")}`;
 }
 
-function buildFoodPhotoPrompt(aliases) {
-  const aliasLines = formatAliasLines(aliases);
-  return `Sen bir beslenme uzmanısın. Ekteki fotoğraftaki yemeği/yemekleri analiz et.
-
-KURALLAR:
-- Fotoğraftaki her yemek öğesini ayrı ayrı listele.
-- Görsel ipuçlarından (tabak boyutu, karşılaştırmalı ölçek) porsiyon miktarını gram cinsinden tahmin et, isimde belirt.
-- Besin değerlerini (kcal, protein, carbs, fat, fiber) hesapla.
-- Türk yemeklerini doğru tanı.
-- Her öğe için 0 ile 1 arasında bir "confidence" değeri ver.
-- Yanıtı Türkçe ver.
-
-KULLANICININ BESİN HAFIZASI (bu besinleri tanıyorsan bu değerleri birebir kullan):
-${aliasLines || "(hafızada henüz besin yok)"}`;
+function memoryBlock(aliasLines, lang) {
+  const L = normalizeLang(lang);
+  return `${PH[L].memoryHeader}:\n${aliasLines || PH[L].memoryEmpty}`;
 }
 
-function buildLabelPrompt() {
-  return `Sen bir beslenme uzmanısın. Ekteki fotoğraf bir besin değerleri etiketi.
+function buildPrompt(text, aliases, lang) {
+  const L = normalizeLang(lang);
+  const p = PROMPTS[L];
+  const aliasLines = formatAliasLines(aliases, L);
 
-KURALLAR:
-- Etiketteki besin değerlerini (kcal, protein, carbs, fat, fiber) BİREBİR, tahmin etmeden oku.
-- Etiket "100g başına" mı yoksa "porsiyon başına" mı gösteriyor, isimde belirt (ör. "Ürün Adı (100g)").
-- Genellikle TEK bir öğe olur.
-- Her öğe için 0 ile 1 arasında bir "confidence" değeri ver (etiket net değilse düşür).
-- Yanıtı Türkçe ver.`;
+  return `${p.textIntro}\n\n${rulesBlock(p.textRules, p.rulesHeader)}\n\n${memoryBlock(aliasLines, L)}\n\n${p.userInput}\n${text}`;
+}
+
+function buildFoodPhotoPrompt(aliases, lang) {
+  const L = normalizeLang(lang);
+  const p = PROMPTS[L];
+  const aliasLines = formatAliasLines(aliases, L);
+  return `${p.photoIntro}\n\n${rulesBlock(p.photoRules, p.rulesHeader)}\n\n${memoryBlock(aliasLines, L)}`;
+}
+
+function buildLabelPrompt(lang) {
+  const L = normalizeLang(lang);
+  const p = PROMPTS[L];
+  return `${p.labelIntro}\n\n${rulesBlock(p.labelRules, p.rulesHeader)}`;
 }
 
 // NIM ve OpenCode Zen, Gemini'nin `responseSchema` (yapısal çıktı garantisi)
@@ -266,7 +399,11 @@ async function callLLM({ bucket, url, headers, requestBody, extractText, timeout
   if (wait > 0) {
     return {
       status: 429,
-      body: { error: `AI hız sınırı korunuyor; ${wait} sn sonra tekrar deneyin`, retryAfter: wait },
+      body: {
+        error: `AI rate limit protected; retry in ${wait}s`,
+        code: "ai_rate_limit",
+        retryAfter: wait,
+      },
     };
   }
 
@@ -285,7 +422,10 @@ async function callLLM({ bucket, url, headers, requestBody, extractText, timeout
     // DİKKAT: hata mesajına asla ham istek URL'i (API anahtarı içeriyor) eklenmez.
     return {
       status: 504,
-      body: { error: timedOut ? "AI servisi zaman aşımına uğradı" : "AI servisine ulaşılamadı" },
+      body: {
+        error: timedOut ? "AI service timed out" : "AI service unreachable",
+        code: timedOut ? "ai_timeout" : "ai_unreachable",
+      },
     };
   }
 
@@ -296,19 +436,22 @@ async function callLLM({ bucket, url, headers, requestBody, extractText, timeout
     /* aşağıda ele alınıyor */
   }
   if (!json || !r.ok) {
-    return { status: 502, body: { error: `AI servisi hatası (HTTP ${r.status})` } };
+    return { status: 502, body: { error: `AI service error (HTTP ${r.status})`, code: "ai_provider_error" } };
   }
 
   const rawText = extractText(json);
   if (typeof rawText !== "string") {
-    return { status: 502, body: { error: "AI servisi beklenmeyen bir yanıt döndürdü" } };
+    return {
+      status: 502,
+      body: { error: "AI service returned an unexpected response", code: "ai_bad_response" },
+    };
   }
 
   let parsed;
   try {
     parsed = JSON.parse(stripMarkdownFence(rawText));
   } catch {
-    return { status: 502, body: { error: "AI yanıtı geçerli JSON değil" } };
+    return { status: 502, body: { error: "AI response is not valid JSON", code: "ai_bad_response" } };
   }
 
   return { status: 200, body: parsed };
@@ -382,14 +525,14 @@ function opencodeFetch(prompt, opts) {
 
 function attemptGemini(prompt) {
   if (!GEMINI_API_KEY) {
-    return { status: 500, body: { error: "AI servisi yapılandırılmamış (GEMINI_API_KEY yok)" } };
+    return { status: 500, body: { error: "AI service not configured (no GEMINI_API_KEY)" } };
   }
   return geminiFetch(prompt, { model: GEMINI_MODEL, bucket: aiBucket });
 }
 
 function attemptNim(prompt) {
   if (!NVIDIA_NIM_API_KEY) {
-    return { status: 500, body: { error: "AI servisi yapılandırılmamış (NVIDIA_NIM_API_KEY yok)" } };
+    return { status: 500, body: { error: "AI service not configured (no NVIDIA_NIM_API_KEY)" } };
   }
   return nimFetch(prompt, { model: NVIDIA_NIM_MODEL, bucket: nimBucket });
 }
@@ -403,7 +546,7 @@ async function runChain(steps) {
   if (usable.length === 0) {
     return {
       status: 500,
-      body: { error: "AI servisi yapılandırılmamış (hiçbir sağlayıcı için API key yok)" },
+      body: { error: "AI service not configured (no API key for any provider)", code: "ai_not_configured" },
     };
   }
   let result;
@@ -500,15 +643,15 @@ function parseAiItem(raw) {
 // --- Genel giriş noktası -------------------------------------------------------
 /** @param {{text: string, aliases: unknown[]}} input
  *  @returns {Promise<{status:number, body:object}>} */
-async function parseMealText({ text, aliases }) {
+async function parseMealText({ text, aliases, lang }) {
   if (!["gemini", "nim", "auto"].includes(LLM_PROVIDER)) {
-    return { status: 503, body: { error: "AI özelliği bu ortamda kapalı" } };
+    return { status: 503, body: { error: AI_DISABLED_MESSAGE, code: "ai_disabled" } };
   }
   if (typeof text !== "string" || !text.trim()) {
-    return { status: 400, body: { error: "text gerekli" } };
+    return { status: 400, body: { error: "text gerekli", code: "ai_bad_request" } };
   }
 
-  const prompt = buildPrompt(text.trim(), Array.isArray(aliases) ? aliases : []);
+  const prompt = buildPrompt(text.trim(), Array.isArray(aliases) ? aliases : [], lang);
 
   let result;
   if (LLM_PROVIDER === "gemini") {
@@ -529,15 +672,18 @@ async function parseMealText({ text, aliases }) {
   return { status: 200, body: { items } };
 }
 
-async function parseMealImage({ imageBase64, mimeType, mode, aliases }) {
+async function parseMealImage({ imageBase64, mimeType, mode, aliases, lang }) {
   if (LLM_PROVIDER === "none") {
-    return { status: 503, body: { error: "AI özelliği bu ortamda kapalı" } };
+    return { status: 503, body: { error: AI_DISABLED_MESSAGE, code: "ai_disabled" } };
   }
   if (typeof imageBase64 !== "string" || !imageBase64.trim()) {
-    return { status: 400, body: { error: "image gerekli" } };
+    return { status: 400, body: { error: "image gerekli", code: "ai_bad_request" } };
   }
   if (typeof mimeType !== "string" || !VALID_IMAGE_MIME.has(mimeType)) {
-    return { status: 400, body: { error: "geçersiz mimeType (image/jpeg, image/png, image/webp)" } };
+    return {
+      status: 400,
+      body: { error: "geçersiz mimeType (image/jpeg, image/png, image/webp)", code: "ai_bad_request" },
+    };
   }
 
   // İki istem var (bkz. src/types.ts'in `VisionMode`'u — aynı ikili):
@@ -546,8 +692,8 @@ async function parseMealImage({ imageBase64, mimeType, mode, aliases }) {
   // Görselin kameradan mı galeriden mi geldiği farketmez, ikisi de aynı ikiliye düşer.
   const prompt =
     mode === "food_label"
-      ? buildLabelPrompt()
-      : buildFoodPhotoPrompt(Array.isArray(aliases) ? aliases : []);
+      ? buildLabelPrompt(lang)
+      : buildFoodPhotoPrompt(Array.isArray(aliases) ? aliases : [], lang);
 
   // NOT: eskiden burada "GEMINI_API_KEY yoksa 500" diye erken bir kontrol vardı.
   // Artık kaldırıldı — runChain zaten hiçbir adım kullanılamıyorsa kendi 500'ünü

@@ -41,7 +41,17 @@ pnpm format     # prettier --write .
 pnpm run deploy # dist/ → canlıya yükler. "run" ŞART, çıplak `pnpm deploy` pnpm'in kendi komutuna gider.
 ```
 
-**Doğrulama kapısı (bitirmeden önce çalıştır):** `pnpm typecheck` (0 hata) + `pnpm test` (tümü geçmeli) + `pnpm check:i18n` (PARITY OK, 3 dil) + `pnpm build` (✓ built).
+**Doğrulama kapısı (bitirmeden önce çalıştır):** `pnpm typecheck` (0 hata) + `pnpm test` (tümü geçmeli) + `pnpm check:i18n` + `pnpm build` (✓ built).
+
+**`pnpm check:i18n` artık üç kontrol yapar** (bkz. `tasks/lessons.md` L22):
+1. `PARITY OK` — 3 dilde aynı anahtar kümesi + aynı `{{placeholder}}` kümesi.
+2. `KEYS OK` — kodda `t("…")` ile istenen her anahtar locale'de var mı (ham anahtar basma hatası).
+3. `HARDCODED OK` — sabit (çevrilmemiş) Türkçe metin: özel harfler, `\u01xx` keşifleri ve ASCII
+   Türkçe kelime listesi. Muafiyet GEREKÇELİ olmalı: satır için `// i18n-exempt: <sebep>`,
+   dosya için `scripts/check-i18n.mjs` içindeki `FILE_EXEMPT` listesi.
+
+**Kullanıcıya görünen her yeni metin 3 dile eklenir**; saf `lib/` modülleri i18n'e bağlanmaz —
+çevrilebilir metni `{key, params}` olarak döndürüp `t()` çağrısını bileşende yap (ör. `lib/ring.ts`).
 
 **Sürüm (release) kuralı:** Her yeni sürümde `src/lib/version.ts` `APP_VERSION` yükseltilir + `src/lib/changelog.ts` başına giriş eklenir (version, date, summary tr/en, items; `dev` yalnızca gerekiyorsa). Popup, localStorage "seen" bayrağı olmayan sürümleri otomatik gösterir — giriş eklenmezse popup çıkmaz. Kapı: `pnpm test` (changelog.test.ts semver sırası + alan bütünlüğünü zaten doğrular). Kullanıcıya görünen sürüm geçmişinin **tek kaynağı** `src/lib/changelog.ts`'tir; kökteki `CHANGELOG.md` yalnızca köprüdür.
 

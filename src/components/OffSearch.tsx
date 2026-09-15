@@ -16,13 +16,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useData } from "../lib/data";
-import {
-  OFF_ATTRIBUTION,
-  fetchOffProduct,
-  isValidBarcode,
-  missingLabels,
-  searchOff,
-} from "../lib/off";
+import { fetchOffProduct, isValidBarcode, missingLabels, searchOff } from "../lib/off";
 import type { OffFood } from "../lib/off";
 import { useOffCooldown, useOffScanner } from "../lib/offScanner";
 import { formatKcal, formatNumber } from "../lib/format";
@@ -169,9 +163,7 @@ export function OffSearch({ onPick }: { onPick: (food: OffFood) => void }) {
           {/* muted + playsInline: mobil tarayıcılar sessiz olmayan videoyu
               kendiliğinden oynatmaz. */}
           <video ref={videoRef} muted playsInline className="h-44 w-full object-cover" />
-          <p className="px-2 py-1.5 text-[11px] text-ink-tertiary">
-            {t("offSearch.cameraHint")}
-          </p>
+          <p className="px-2 py-1.5 text-[11px] text-ink-tertiary">{t("offSearch.cameraHint")}</p>
         </div>
       )}
 
@@ -205,9 +197,13 @@ export function OffSearch({ onPick }: { onPick: (food: OffFood) => void }) {
       </form>
 
       {/* --- Durum satırı --- */}
-      {status.kind === "loading" && <p className="text-[11px] text-ink-tertiary">{t("offSearch.searching")}</p>}
+      {status.kind === "loading" && (
+        <p className="text-[11px] text-ink-tertiary">{t("offSearch.searching")}</p>
+      )}
       {status.kind === "error" && (
-        <p className="rounded-chip bg-danger/10 px-3 py-2 text-[11px] text-danger">{status.message}</p>
+        <p className="rounded-chip bg-danger/10 px-3 py-2 text-[11px] text-danger">
+          {status.message}
+        </p>
       )}
       {blocked && (
         <p className="rounded-chip bg-warn/10 px-3 py-2 text-[11px] text-warn">
@@ -219,19 +215,13 @@ export function OffSearch({ onPick }: { onPick: (food: OffFood) => void }) {
           {t("offline.featureUnavailable")}
         </p>
       )}
-      {showEmpty && (
-        <p className="text-[11px] text-ink-tertiary">
-          {t("offSearch.emptyPolish")}
-        </p>
-      )}
+      {showEmpty && <p className="text-[11px] text-ink-tertiary">{t("offSearch.emptyPolish")}</p>}
 
       {/* --- Sonuçlar --- */}
       {foods !== null && foods.length > 0 && (
         <>
           {scope === "post-filter" && (
-            <p className="text-[11px] text-ink-faint">
-              {t("offSearch.postFilterNote")}
-            </p>
+            <p className="text-[11px] text-ink-faint">{t("offSearch.postFilterNote")}</p>
           )}
           <ul className="flex max-h-72 flex-col gap-1.5 overflow-y-auto">
             {foods.map((food) => (
@@ -244,7 +234,7 @@ export function OffSearch({ onPick }: { onPick: (food: OffFood) => void }) {
       )}
 
       {/* --- Atıf: OFF verisi ODbL lisanslı, kaynak belirtmek zorunlu --- */}
-      <p className="text-[10px] text-ink-faint">{OFF_ATTRIBUTION}</p>
+      <p className="text-[10px] text-ink-faint">{t("off.attribution")}</p>
     </div>
   );
 }
@@ -254,7 +244,7 @@ export function OffSearch({ onPick }: { onPick: (food: OffFood) => void }) {
  *  düşeceği için kullanıcının bunu görmesi şart. */
 function OffResultRow({ food, onPick }: { food: OffFood; onPick: () => void }) {
   const { t } = useTranslation();
-  const missing = missingLabels(food);
+  const missing = missingLabels(food, t);
   const hasKcal = food.present.includes("kcal");
 
   return (
@@ -290,9 +280,12 @@ function OffResultRow({ food, onPick }: { food: OffFood; onPick: () => void }) {
 
       <span className="flex-none text-right font-mono text-[10px] text-ink-secondary">
         {/* kcal bildirilmemişse "0 kcal" yazmak yalan olur. */}
-        <span className="block">{hasKcal ? formatKcal(food.nutrition.kcal) : t("offSearch.noKcal")}</span>
+        <span className="block">
+          {hasKcal ? formatKcal(food.nutrition.kcal) : t("offSearch.noKcal")}
+        </span>
         <span className="block text-ink-faint">
-          {food.present.includes("protein") ? `P${formatNumber(food.nutrition.protein, 1)}` : "P?"} /100 g
+          {food.present.includes("protein") ? `P${formatNumber(food.nutrition.protein, 1)}` : "P?"}{" "}
+          /100 g
         </span>
       </span>
     </button>

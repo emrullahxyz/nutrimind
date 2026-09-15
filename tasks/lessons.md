@@ -292,3 +292,59 @@ en son kaydı? (3) Bir alan sadece YAZILIYOR ama hiç OKUNMUYORSA (burada `profi
 ölü veridir; ya okunacağı yere bağla ya da toplamayı bırak. Ayrıca boş durumda uydurma varsayılan
 (yaş 29 / 78 kg) ve sahibinin baş harfleri ("EB") gibi kişisel görünen literaller, kullanıcının
 kendi verisi sanılır: boşsa "—" göster ve gerçek kaynağı işaret et.
+
+## L22 — Dile bağlı kullanıcı metni üç ayrı kılıkta saklanır (kapı olmadan tekrar eder)
+
+**Olay (2026-09-15, çeviri taraması):** Kullanıcı "İngilizce arayüzde Türkçe kelimeler görüyorum"
+dedi. Elle baktığımızda ilk bulduğumuz `GoalsForm`'daki düz `<h4>Beslenme Hedefleri</h4>` idi — ama
+tarama büyüdükçe AYNI hatanın farklı kılıkları çıktı: `lib/ring.ts` kalori halkasının alt yazısı
+`"Hedefe ula\u015f\u0131ld\u0131"` diye **unicode kaçışıyla** yazılmıştı (harf taraması görmüyor),
+`lib/healthScore.ts` cümleyi Türkçe eklerle kuruyordu (`"ve"`, `kaloride/proteinde`) ve İngilizce
+arayüzde "Kalori ve protein You're on track." üretiyordu, CSV başlıkları ile `nutrient.label`
+Türkçe sabitti, `WEEKDAY_SHORT` import anında hesaplandığı için dil değişince takvim adları eski
+dilde kalıyordu, `onboarding.stepStatus` anahtarının İÇİNE sabit `"/ 5"` yazılmıştı, ve Gemini
+istemleri tümüyle Türkçe olduğu için İngilizce kullanıcı Türkçe yemek adları alıyordu.
+
+**Kural:** "BU ekranda sabit metin yok" iddiası, ancak ve ancak aşağıdaki ÜÇ imza birlikte
+aranarak doğrulanabilir — biri tek başına yetmez:
+1. Türkçe'ye özgü harfler (ç ğ ı ö ş ü),
+2. `\u01xx` kaçışları (gözle ve harf taramasıyla görünmez),
+3. ASCII'yle yazılabilen kelimeler (Hedef, Beslenme, Ekle, Kaydet…) — `>` … `<` ile sınırlı bir
+   JSX taraması bunları kaçırır, çünkü `<Plus /> Profil Ekle` gibi metin düğümü elementten SONRA
+   gelir.
+Bu yüzden kural koda değil KAPIYA bağlandı: `pnpm check:i18n` artık (a) anahtar parity, (b) kodda
+`t("…")` ile istenen anahtarın locale'de var olup olmadığı, (c) yukarıdaki üç imzayı arar. Muafiyet
+satır bazlı ve GEREKÇELİ olmak zorunda (`// i18n-exempt: <sebep>`) — ör. cihaz etiketi regex'i,
+geliştirici hatası, `goals.ts`'teki profil ADLARI (bunlar veridir, çevirisi gösterim katmanında
+yapılır). Ders: bu hata sınıfı üç kez ürünüle çıktı; dördüncüsünü yakalayan şey dikkat değil,
+otomatik kapıdır. Ayrıca bir metin kaynağını "sadece gösterim" diye ayırırken çeviriyi gösterim
+katmanına koy (ör. `ring.ts` artık `{key, params}` döner) — aksi hâlde saf lib'ler i18n'e bağımlı
+hale gelir ve testleri dile bağlanır.
+
+## L23 — Gösterim katmanındaki çeviri, YAZMA yoluna sızarsa veriyi dondurur
+
+**Olay (2026-09-15, kullanıcı bildirimi):** L22'nin kuralı uygulandıktan sonra bile İngilizce
+arayüzde Ayarlar > Hedefler ekranındaki **"Profile Name" kutusu "Varsayılan" yazıyordu** — bir üst
+satırdaki profil çipi ise doğru şekilde "Default" diyordu. Sebep: `profileDisplayName` yalnızca
+METİN olarak çizilen yerlerde kullanılıyordu; düzenlenebilir girdi hâlâ ham veriyi
+(`selected.name`) gösteriyordu. Yani gömülü profilin adı VERİ olarak Türkçe saklanırken
+(backend seed ediyor / `singleProfileConfig` üretiyor) alan onu çevirmiyordu.
+
+**Neden basit çözüm YANLIŞ olurdu:** `value={profileDisplayName(p, t)}` yazmak alanı düzeltirdi ama
+"aç → kaydet" yolunu bozardı: kullanıcı yalnızca Kalori'yi değiştirip kaydettiğinde, dokunmadığı
+ad veriye **çevrilmiş hâliyle** yazılırdı ("Default"). O andan sonra `profileDisplayName` sentinel'i
+tanımaz ve ad bir daha dile göre değişmez — kullanıcı Türkçe'ye döndüğünde "Default" görür. Bu,
+L20'nin (gösterim dönüşümü = veri mutasyonu) sinsi kardeşi: dönüşümü GÖSTERİMDE yapmak yetmiyor,
+YAZARKEN de dönüşümü geri almamak gerekiyor.
+
+**Kural:** Çeviri gösterim katmanında yaşıyorsa, o veriyi TAŞIYAN düzenlenebilir alan üç durumu
+ayırmak zorundadır:
+1. **Dokunulmadı** → aktif dildeki adı GÖSTER, ham (dil-nötr) değeri KAYDET.
+2. **Dokunuldu** → kullanıcının yazdığını hem göster hem kaydet (gerçek yeniden adlandırma).
+3. **Dokunuldu ve boşaltıldı** → doğrulama hatası, sentinel'e geri düşme YOK.
+Bu yüzden `GoalsForm`'da ayrı bir `nameEdited` durumu tutulur ve tek doğruluk kaynağı
+`lib/goals.ts` içindeki `profileNameFieldValue(profile, t, edited)` saf fonksiyonudur (testli).
+Aynı kural doğrulama/uyarı satırları için de geçerlidir: `"<ad>: kcal 0'dan büyük olmalı"` mesajı da
+`profileDisplayName` üzerinden yazılır, ham `name` üzerinden değil.
+**Genel test:** Bir veri alanı ekranda çevrilmiş görünüyorsa, o ekranın kaydet düğmesine BASMADAN
+önce ve sonra sunucudaki ham değerin AYNI kaldığını doğrula.

@@ -637,7 +637,12 @@ const server = http.createServer(async (req, res) => {
       const b = await readBody(req);
       // Besin hafızası isteme giriyor — kullanıcıya özel olmak ZORUNDA, yoksa
       // AI bir kullanıcının besinlerini diğerine önerirdi.
-      const { status, body } = await parseMealText({ text: b.text, aliases: getAliases(uid) });
+      // `lang`: istem yanıtı uygulamanın dilinde üretsin (bkz. server/ai.js).
+      const { status, body } = await parseMealText({
+        text: b.text,
+        aliases: getAliases(uid),
+        lang: b.lang,
+      });
       return send(res, status, body);
     }
     if (req.method === "POST" && p === "/api/ai/vision") {
@@ -647,6 +652,7 @@ const server = http.createServer(async (req, res) => {
         mimeType: b.mimeType,
         mode: b.mode,
         aliases: getAliases(uid),
+        lang: b.lang,
       });
       return send(res, status, body);
     }

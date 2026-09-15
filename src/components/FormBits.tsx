@@ -5,6 +5,7 @@ import { parseNum } from "../lib/nutrition";
 import { MACROS, MICROS, NUTRIENTS, makeNutrition } from "../lib/nutrients";
 import type { NutrientDef, NutrientKey } from "../lib/nutrients";
 import { formatKcal, formatNumber } from "../lib/format";
+import i18n from "../i18n/i18n";
 import type { Nutrition } from "../types";
 
 /** Input ve select için ortak görsel dil. */
@@ -219,7 +220,7 @@ export function NutritionFields({
               <span className={sectionLabelCls}>{t("nutrition.microNutrients")}</span>
               {filled.length > 0 && (
                 <span className="rounded-pill bg-micro/15 px-2 py-0.5 font-mono text-[10px] font-semibold text-micro">
-                  {filled.map((def) => def.short).join(" · ")}
+                  {filled.map((def) => t(`nutrientShort.${def.key}`)).join(" · ")}
                 </span>
               )}
             </span>
@@ -241,22 +242,23 @@ export function NutritionFields({
         </div>
       )}
 
-      {open && (
-        <p className="text-[11px] text-ink-faint">
-          {t("nutrition.microEmptyNote")}
-        </p>
-      )}
+      {open && <p className="text-[11px] text-ink-faint">{t("nutrition.microEmptyNote")}</p>}
     </div>
   );
 }
 
+/** Mono özet satırı ("P12 · C45 · F8"). Etiketler i18n'den gelir — `FormBits`
+ *  dışından da çağrıldığı için hook değil, global i18n örneği kullanılır. */
 export function nutrientSummary(
   n: Nutrition,
   defs: readonly NutrientDef[],
   decimals?: number,
 ): string {
   return defs
-    .map((def) => `${def.short}${formatNumber(n[def.key] ?? 0, decimals ?? def.decimals)}`)
+    .map(
+      (def) =>
+        `${i18n.t(`nutrientShort.${def.key}`)}${formatNumber(n[def.key] ?? 0, decimals ?? def.decimals)}`,
+    )
     .join(" · ");
 }
 
@@ -287,7 +289,10 @@ export function NutrientSummaryLine({
   if (kcal === "total")
     return (
       <Tag className={className}>
-        <strong>{t("nutrition.total")} {formatKcal(nutrition.kcal)}</strong> ({summary})
+        <strong>
+          {t("nutrition.total")} {formatKcal(nutrition.kcal)}
+        </strong>{" "}
+        ({summary})
       </Tag>
     );
 
@@ -407,13 +412,7 @@ export function hasUnsavedBasketEntry(params: {
 }
 
 /** Uzun öğün adlarını varsayılan 2 satıra sıkan, dokununca tam açan/kapatan bileşen. */
-export function ExpandableMealName({
-  name,
-  className = "",
-}: {
-  name: string;
-  className?: string;
-}) {
+export function ExpandableMealName({ name, className = "" }: { name: string; className?: string }) {
   const [expanded, setExpanded] = useState(false);
 
   return (
@@ -431,4 +430,3 @@ export function ExpandableMealName({
     </span>
   );
 }
-

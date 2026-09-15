@@ -11,7 +11,14 @@
 // ============================================================================
 import { useState } from "react";
 import { useData } from "../lib/data";
-import { effectiveProfile, hasOverride, nextProfileId, profileIcon, withOverride } from "../lib/goals";
+import {
+  effectiveProfile,
+  hasOverride,
+  nextProfileId,
+  profileDisplayName,
+  profileIcon,
+  withOverride,
+} from "../lib/goals";
 import { useTranslation } from "react-i18next";
 
 export function DayTypeBadge({ date }: { date: string }) {
@@ -51,7 +58,7 @@ export function DayTypeBadge({ date }: { date: string }) {
         className="flex items-center gap-1.5 rounded-pill border border-line bg-white/[0.06] px-3 py-1.5 text-xs font-bold text-ink-primary transition hover:border-memory/40 hover:bg-white/[0.09] disabled:opacity-40"
       >
         <span aria-hidden>{profileIcon(profile.id)}</span>
-        {profile.name}
+        {profileDisplayName(profile, t)}
       </button>
 
       {pinned ? (

@@ -47,6 +47,7 @@ import {
   visionAliasUnitNutrition,
 } from "../lib/visionReview";
 import { todayISO } from "../lib/format";
+import i18n from "../i18n/i18n";
 import type { AIParseItem, MealPayload, MealSource, Nutrition, VisionMode } from "../types";
 
 type Saving = "today" | "memory" | "dayOnly" | "add" | null;
@@ -355,9 +356,7 @@ export function VisionReviewScreen({
       await setDayMeals(date, [...existing, entry]);
       onClose();
     } catch (e) {
-      setErr(
-        `Besin hafızaya kaydedildi, ancak bugüne eklenemedi: ${String((e as Error)?.message ?? e)}. Hafızadan elle ekleyebilirsin.`,
-      );
+      setErr(t("scan.savedButNotAdded", { error: String((e as Error)?.message ?? e) }));
     } finally {
       setSavingState(null);
     }
@@ -382,7 +381,12 @@ export function VisionReviewScreen({
       const date = todayISO();
       const fresh = await fetchData();
       const existing = toPayload(mealsOf(fresh.days, date));
-      const entry: MealPayload = { name: combinedName || "Yemek", nutrition: combinedNutrition };
+      // Insan tarafından görülebilen son çare ad — kaydedilen VERİ olduğu için
+      // aktif dilde üretilir ve kullanıcı düzenleyebilir.
+      const entry: MealPayload = {
+        name: combinedName || i18n.t("vision.untitledMeal"),
+        nutrition: combinedNutrition,
+      };
       await setDayMeals(date, [...existing, entry]);
       onClose();
     } catch (e) {
@@ -432,7 +436,10 @@ export function VisionReviewScreen({
         {triggerList.length > 0 ? (
           <div className="flex flex-wrap gap-1.5">
             {triggerList.map((t) => (
-              <span key={t} className="rounded-pill bg-memory/15 px-2.5 py-1 text-[11px] font-semibold text-memory">
+              <span
+                key={t}
+                className="rounded-pill bg-memory/15 px-2.5 py-1 text-[11px] font-semibold text-memory"
+              >
                 {t}
               </span>
             ))}

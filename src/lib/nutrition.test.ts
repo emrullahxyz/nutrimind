@@ -17,6 +17,7 @@ import { coverage, sumMeals } from "./days";
 import { CORE_KEYS, MACROS, MICROS, NUTRIENTS, nutrientOf } from "./nutrients";
 import type { NutrientKey } from "./nutrients";
 import type { Alias, AliasUnit, MealItem, MealSource, Nutrition } from "../types";
+import i18n from "../i18n/i18n";
 
 const BASE: Nutrition = { kcal: 100, protein: 10, carbs: 20, fat: 5, fiber: 2 };
 
@@ -329,9 +330,11 @@ describe("besin kaydı (registry)", () => {
     }
   });
   it("nutrientOf kayıtlı tanımı döner, kayıtlı olmayanda patlar", () => {
-    expect(nutrientOf("carbs").label).toBe("Karbonhidrat");
+    // Görünen ad artık tanımda DEĞİL, `nutrient.<key>` anahtarında yaşıyor
+    // (bkz. exporters/CSV başlıkları — sabit Türkçe etiket kalmadı).
+    expect(i18n.t("nutrient.carbs")).toBeTruthy();
     expect(nutrientOf("carbs").classes.text).toBe("text-carb"); // domain `carbs` ↔ token `carb`
-    expect(nutrientOf("sodium").label).toBe("Sodyum");
+    expect(i18n.t("nutrient.sodium")).toBeTruthy();
     // Kayıtta olmayan anahtar hâlâ çağrı hatası — kayıt dışı bir anahtar
     // uydurulamaz. (Tip zaten engelliyor; bu çalışma-zamanı kilidi.)
     expect(() => nutrientOf("magnesium" as NutrientKey)).toThrow();
@@ -361,10 +364,18 @@ describe("besin kaydı (registry)", () => {
     // Makroların rengiyle çakışmıyor: yanındaki makro kadar bağırmasın.
     for (const macro of MACROS) expect(macro.classes.bg).not.toBe("bg-micro");
   });
-  it("mikroların kısa etiketleri ayrı ve boş değil", () => {
-    const shorts = MICROS.map((d) => d.short);
-    expect(shorts).toEqual(["Ş", "DY", "Na"]);
-    expect(new Set(NUTRIENTS.map((d) => d.short)).size).toBe(NUTRIENTS.length);
+  it("kısa (mono) etiketler ÜÇ DİLDE de dolu, birbirinden farklı ve benzersiz", () => {
+    // Etiketler tanımda değil `nutrientShort.<key>` anahtarında yaşar.
+    for (const lang of ["en", "tr", "pl"]) {
+      const tl = i18n.getFixedT(lang);
+      const shorts = NUTRIENTS.map((d) => tl(`nutrientShort.${d.key}`));
+      for (const s of shorts) {
+        expect(s).toBeTruthy();
+        expect(s).not.toContain("nutrientShort");
+      }
+      // Aynı kısaltmanın iki besine düşmesi mono özeti okunamaz yapardı.
+      expect(new Set(shorts).size).toBe(NUTRIENTS.length);
+    }
   });
 });
 

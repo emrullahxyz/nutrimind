@@ -30,12 +30,13 @@ export type NutrientKey = CoreNutrientKey | MicroNutrientKey;
 /** Bir besinin arayüze girmesi için gereken her şey. */
 export interface NutrientDef {
   key: NutrientKey;
-  /** Form etiketi / bar başlığı: "Karbonhidrat". */
-  label: string;
-  /** Daralan alanlarda (donut efsanesi) kullanılan kısa etiket; yoksa `label`. */
-  compactLabel?: string;
-  /** Mono özet satırlarının öneki: "P… · K… · Y… · L…". */
-  short: string;
+  // DİKKAT: burada etiket YOK. Eskiden `label`/`compactLabel` alanları Türkçe
+  // metin taşıyordu ("Karbonhidrat", "Doymuş yağ") ve CSV başlıkları ile "eksik
+  // veri" rozeti dile bakmadan Türkçe çıkıyordu. Görünen ad tek kaynaktan,
+  // `nutrient.<key>` anahtarından gelir.
+  // NOT: mono özet önekleri de ("P12 · K45 …") artık `nutrientShort.<key>`
+  // anahtarlarından gelir — burada tutulsalardı her dilde Türkçe kısaltma
+  // ("Ş", "DY") görünürdü.
   unit: "kcal" | "g" | "mg";
   group: "energy" | "macro" | "micro";
   /** Hedefe ulaşılacak mı (protein, lif) yoksa aşılmayacak mı (sodyum, şeker). */
@@ -105,9 +106,7 @@ const MICRO_HEX = "var(--nutr-micro)";
 export const NUTRIENTS: readonly NutrientDef[] = [
   {
     key: "kcal",
-    label: "Kalori",
     // Özet satırlarında kcal `formatKcal` ile yazılır; `short` bütünlük için.
-    short: "kcal",
     unit: "kcal",
     group: "energy",
     direction: "target",
@@ -118,8 +117,6 @@ export const NUTRIENTS: readonly NutrientDef[] = [
   },
   {
     key: "protein",
-    label: "Protein",
-    short: "P",
     unit: "g",
     group: "macro",
     direction: "target",
@@ -131,9 +128,6 @@ export const NUTRIENTS: readonly NutrientDef[] = [
   },
   {
     key: "carbs",
-    label: "Karbonhidrat",
-    compactLabel: "Karb",
-    short: "K",
     unit: "g",
     group: "macro",
     direction: "target",
@@ -145,8 +139,6 @@ export const NUTRIENTS: readonly NutrientDef[] = [
   },
   {
     key: "fat",
-    label: "Yağ",
-    short: "Y",
     unit: "g",
     group: "macro",
     direction: "target",
@@ -158,8 +150,6 @@ export const NUTRIENTS: readonly NutrientDef[] = [
   },
   {
     key: "fiber",
-    label: "Lif",
-    short: "L",
     unit: "g",
     group: "macro",
     direction: "target",
@@ -174,8 +164,6 @@ export const NUTRIENTS: readonly NutrientDef[] = [
   // göstermenin anlamı yok. Yeni satır eklemek her zaman tek satırlık iş.
   {
     key: "sugar",
-    label: "Şeker",
-    short: "Ş",
     unit: "g",
     group: "micro",
     direction: "limit",
@@ -186,9 +174,6 @@ export const NUTRIENTS: readonly NutrientDef[] = [
   },
   {
     key: "satFat",
-    label: "Doymuş yağ",
-    compactLabel: "Doymuş",
-    short: "DY",
     unit: "g",
     group: "micro",
     direction: "limit",
@@ -199,8 +184,6 @@ export const NUTRIENTS: readonly NutrientDef[] = [
   },
   {
     key: "sodium",
-    label: "Sodyum",
-    short: "Na",
     // mg cinsinden tutulur; 1 ondalık "1.399,5 mg" gibi sahte bir hassasiyet
     // gösterirdi — mg zaten yeterince ince.
     unit: "mg",
@@ -228,6 +211,7 @@ const BY_KEY = new Map<NutrientKey, NutrientDef>(NUTRIENTS.map((n) => [n.key, n]
  *  hatasıdır — sessizce boş tanım dönmek yerine patlar. */
 export function nutrientOf(key: NutrientKey): NutrientDef {
   const def = BY_KEY.get(key);
+  // i18n-exempt: geliştirici hatası (kayıt dışı anahtar) — kullanıcıya gösterilmez
   if (!def) throw new Error(`Kayıtlı olmayan besin anahtarı: ${key}`);
   return def;
 }

@@ -1,4 +1,20 @@
-import { useRef, useState } from "react";
+// ============================================================================
+// Nutrimind — ilk kurulum sihirbazı (profil → TDEE → hedef onayı).
+//
+// TASARIM KARARI: adım SAYISI değişmedi (5). Bu bir yeniden düzenleme:
+//   • Sayaç artık i18n'li ve segmented ilerleme çubuğuyla birlikte okunuyor
+//     (`onboarding.stepCounter` / `onboarding.stepStatus`).
+//   • 320–360 px genişlikte taşma bitti: başlık `min-w-0` + `truncate`, sayaç
+//     ve kapat düğmesi `shrink-0`; adım 5'in makro ızgarası dar ekranda 2 kolona
+//     düşüyor ve inputlar tam sayıyı gösteriyor.
+//   • `p-4.5` gibi GEÇERSİZ Tailwind sınıfları kaldırıldı (spacing ölçeğinde
+//     `4.5` yok → iç boşluk hiç uygulanmıyordu).
+//   • Adım değişiminde yön duygusu var (ileri/geri), seçenekler kademeli girer.
+//
+// DEĞİŞMEYEN SÖZLEŞME: prop'lar, TDEE hesabı, `handleFinish` akışı ve odak/
+// kaydırma/çıkış reçetesi (`useDialogFocus` + `useBodyScrollLock` + `useModalExit`).
+// ============================================================================
+import { useEffect, useRef, useState } from "react";
 import {
   User,
   Activity,
@@ -35,10 +51,16 @@ interface OnboardingModalProps {
   onClose: () => void;
   onSaveProfileAndGoals: (
     profileData: UserProfileInput & { bmr: number; tdee: number },
-    goalConfig: GoalConfig
+    goalConfig: GoalConfig,
   ) => Promise<void>;
   initialName?: string;
 }
+
+/** Toplam adım sayısı — ilerleme çubuğu, sayaç ve ekran okuyucu metni TEK
+ *  kaynaktan beslenir (eskiden anahtarın içine sabit "/ 5" yazılıydı). */
+const TOTAL_STEPS = 5;
+
+type Step = 1 | 2 | 3 | 4 | 5;
 
 export function OnboardingModal({
   isOpen,
@@ -60,9 +82,14 @@ export function OnboardingModal({
     autoFocus: "container",
   });
 
-  const [step, setStep] = useState<1 | 2 | 3 | 4 | 5>(1);
+  const [step, setStep] = useState<Step>(1);
+  const [gidisYonu, setGidisYonu] = useState<"ileri" | "geri">("ileri");
   const [saving, setSaving] = useState(false);
   const { t } = useTranslation();
+
+  /** Adım başlığı: adım değişince odak buraya taşınır ki ekran okuyucu yeni
+   *  adımı DUYURSUN (tuzak içinde kalır — gövdeye kaçmaz). */
+  const headingRef = useRef<HTMLHeadingElement>(null);
 
   // Form State: Hepsi boş / seçilmemiş başlar
   const [name, setName] = useState(initialName);
@@ -81,6 +108,13 @@ export function OnboardingModal({
   const [customFat, setCustomFat] = useState<number | null>(null);
   const [customFiber, setCustomFiber] = useState<number | null>(null);
 
+  useEffect(() => {
+    if (!isOpen) return;
+    // İlk açılışta da çalışır: giriş yapan kullanıcı hangi adımda olduğunu
+    // ekran okuyucudan duyar.
+    headingRef.current?.focus({ preventScroll: true });
+  }, [isOpen, step]);
+
   if (!isOpen) return null;
 
   // Adım Geçerlilik Kontrolleri
@@ -93,12 +127,12 @@ export function OnboardingModal({
     step === 1
       ? isStep1Valid
       : step === 2
-      ? isStep2Valid
-      : step === 3
-      ? isStep3Valid
-      : step === 4
-      ? isStep4Valid
-      : true;
+        ? isStep2Valid
+        : step === 3
+          ? isStep3Valid
+          : step === 4
+            ? isStep4Valid
+            : true;
 
   // Güvenli TDEE Girdisi (Varsayılan değerlerle hesaplama)
   const currentInput: UserProfileInput = {
@@ -120,6 +154,16 @@ export function OnboardingModal({
   const finalFat = customFat ?? calculated.recommendedFat;
   const finalFiber = customFiber ?? calculated.recommendedFiber;
 
+  function gitIleri() {
+    setGidisYonu("ileri");
+    setStep((s) => Math.min(TOTAL_STEPS, s + 1) as Step);
+  }
+
+  function gitGeri() {
+    setGidisYonu("geri");
+    setStep((s) => Math.max(1, s - 1) as Step);
+  }
+
   async function handleFinish() {
     if (saving) return;
     setSaving(true);
@@ -138,13 +182,75 @@ export function OnboardingModal({
           bmr: calculated.bmr,
           tdee: calculated.tdee,
         },
-        goalConfig
+        goalConfig,
       );
       beginClose();
     } finally {
       setSaving(false);
     }
   }
+
+  /** Adım başlığı — odaklanabilir (tabIndex=-1) ve ekran okuyucuya duyurulur. */
+  function AdimBasligi({
+    icon,
+    title,
+    desc,
+  }: {
+    icon: React.ReactNode;
+    title: string;
+    desc: string;
+  }) {
+    return (
+      <div className="space-y-1">
+        <h3
+          ref={headingRef}
+          tabIndex={-1}
+          className="flex items-center gap-2 text-xl font-extrabold text-white outline-none"
+        >
+          <span aria-hidden className="text-accent">
+            {icon}
+          </span>
+          <span>{title}</span>
+        </h3>
+        <p className="text-xs text-ink-secondary">{desc}</p>
+      </div>
+    );
+  }
+
+  /** Seçenek düğmesi — kart görünümü, basma fiziği ve `aria-pressed` tek yerde. */
+  function Secenek({
+    secili,
+    onClick,
+    children,
+    gecikmeMs = 0,
+    className = "",
+  }: {
+    secili: boolean;
+    onClick: () => void;
+    children: React.ReactNode;
+    gecikmeMs?: number;
+    className?: string;
+  }) {
+    return (
+      <button
+        type="button"
+        onClick={onClick}
+        aria-pressed={secili}
+        style={{ animationDelay: `${gecikmeMs}ms` }}
+        className={`wizard-opt-in w-full rounded-card border p-4 text-left transition-all active:scale-[0.98] flex items-center gap-3.5 ${className} ${
+          secili
+            ? "bg-white/[0.06] border-accent/80 ring-1 ring-accent/40 shadow-lg text-white"
+            : "bg-calCard border-white/10 text-ink-secondary hover:text-white hover:bg-white/[0.04]"
+        }`}
+      >
+        {children}
+      </button>
+    );
+  }
+
+  /** Sayı alanı — mobil klavye için `inputMode`, taşmayan genişlik. */
+  const sayiAlani =
+    "w-full min-w-0 bg-accent-ink border border-white/10 rounded-2xl px-4 py-3.5 text-sm text-white font-bold placeholder:text-ink-secondary/30 focus:border-accent focus:ring-2 focus:ring-accent/20 focus:outline-none transition font-mono";
 
   return (
     <div
@@ -158,407 +264,422 @@ export function OnboardingModal({
         closing ? "glass-screen-out" : ""
       }`}
     >
-      {/* Header Bar */}
-      <div className="flex items-center justify-between px-4 py-3.5 sm:px-6 border-b border-white/10 flex-none bg-app">
-        <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-xl bg-accent/20 text-accent flex items-center justify-center font-bold text-sm border border-accent/30">
-            ✨
-          </div>
-          <div>
-            <h2 className="text-base sm:text-lg font-black text-white tracking-wide leading-none">
-              {t("onboarding.title")}
-            </h2>
-            <p className="text-[11px] text-ink-secondary mt-0.5">{t("onboarding.subtitle")}</p>
-          </div>
+      {/* --- Header: başlık (kırpılabilir) + sayaç + kapat ------------------ */}
+      <div className="flex items-start gap-3 px-4 pt-3.5 pb-3 sm:px-6 flex-none">
+        <div
+          aria-hidden
+          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-accent/30 bg-accent/20 text-sm font-bold text-accent"
+        >
+          ✨
         </div>
-
-        <div className="flex items-center gap-2">
-          <div className="text-xs font-mono font-bold text-accent bg-calCard px-3 py-1.5 rounded-full border border-accent/20">
-            {step} / 5
-          </div>
+        <div className="min-w-0 flex-1">
+          <h2 className="truncate text-base font-black leading-tight tracking-wide text-white sm:text-lg">
+            {t("onboarding.title")}
+          </h2>
+          <p className="truncate text-[11px] text-ink-secondary">{t("onboarding.subtitle")}</p>
+        </div>
+        <div className="flex shrink-0 items-center gap-2">
+          <span className="rounded-full border border-accent/20 bg-calCard px-2.5 py-1 font-mono text-[11px] font-bold text-accent">
+            {t("onboarding.stepCounter", { step, total: TOTAL_STEPS })}
+          </span>
           <button
             type="button"
             onClick={beginClose}
-            className="p-1.5 text-ink-secondary hover:text-white rounded-full hover:bg-calCard transition active:scale-95"
+            aria-label={t("common.close")}
+            className="rounded-full p-1.5 text-ink-secondary transition hover:bg-calCard hover:text-white active:scale-95"
           >
-            <X className="w-5 h-5" />
+            <X className="h-5 w-5" />
           </button>
         </div>
       </div>
 
-      {/* Step Progress Bar */}
+      {/* --- İlerleme: 5 segment; dolgu yalnız transform ile büyür ---------- */}
       <div
-        className="w-full bg-accent-ink h-1.5 flex-none overflow-hidden"
+        className="flex flex-none gap-1.5 px-4 pb-3 sm:px-6"
         role="progressbar"
-        aria-label={t("onboarding.stepStatus", { step })}
+        aria-label={t("onboarding.stepStatus", { step, total: TOTAL_STEPS })}
         aria-valuenow={step}
         aria-valuemin={1}
-        aria-valuemax={5}
+        aria-valuemax={TOTAL_STEPS}
+        aria-valuetext={t("onboarding.stepCounter", { step, total: TOTAL_STEPS })}
       >
+        {Array.from({ length: TOTAL_STEPS }, (_, i) => {
+          const adimNo = i + 1;
+          const tamam = adimNo <= step;
+          return (
+            <span key={adimNo} className="h-1.5 flex-1 overflow-hidden rounded-full bg-white/10">
+              <span
+                className={`block h-full w-full origin-left rounded-full bg-accent transition-transform duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] ${
+                  tamam ? "scale-x-100" : "scale-x-0"
+                }`}
+              />
+            </span>
+          );
+        })}
+      </div>
+
+      {/* --- Gövde: adım içeriği (yönlü geçiş), tek kaydırılan katman ------ */}
+      <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 pb-2 sm:px-6">
         <div
-          className="bg-accent h-full transition-all duration-300"
-          style={{ width: `${(step / 5) * 100}%` }}
-        />
-      </div>
-
-      {/* Main Content Area */}
-      <div className="flex-1 overflow-y-auto p-4 sm:p-6 max-w-xl mx-auto w-full space-y-6">
-        {/* STEP 1: Basic Info */}
-        {step === 1 && (
-          <div className="space-y-5 animate-fadeIn">
-            <div className="space-y-1">
-              <h3 className="text-xl font-extrabold text-white flex items-center gap-2">
-                <User className="w-5 h-5 text-accent" />
-                <span>{t("onboarding.step1Title")}</span>
-              </h3>
-              <p className="text-xs text-ink-secondary">
-                {t("onboarding.step1Desc")}
-              </p>
-            </div>
-
-            <div className="space-y-4 bg-calCard p-4 sm:p-6 rounded-card border border-white/10 shadow-card">
-              {/* Name */}
-              <div className="space-y-1.5">
-                <label className="text-xs font-bold text-ink-secondary">{t("onboarding.nameLabel")}</label>
-                <input
-                  type="text"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  placeholder={t("onboarding.namePlaceholder")}
-                  className="w-full bg-accent-ink border border-white/10 rounded-2xl px-4 py-3.5 text-sm text-white font-bold placeholder:text-ink-secondary/30 focus:border-accent focus:ring-2 focus:ring-accent/20 focus:outline-none transition"
-                />
-              </div>
-
-              {/* Gender */}
-              <div className="space-y-1.5">
-                <label className="text-xs font-bold text-ink-secondary">{t("onboarding.genderLabel")}</label>
-                <div className="grid grid-cols-2 gap-3">
-                  <button
-                    type="button"
-                    onClick={() => setGender("female")}
-                    className={`py-3.5 px-4 rounded-2xl border text-sm font-extrabold flex items-center justify-center gap-2 transition active:scale-95 ${
-                      gender === "female"
-                        ? "bg-white/[0.06] text-accent border-accent/80 ring-1 ring-accent/40 shadow-lg"
-                        : "bg-accent-ink text-ink-secondary border-white/10 hover:text-white hover:bg-calCard"
-                    }`}
-                  >
-                    <span>👩 {t("onboarding.female")}</span>
-                    {gender === "female" && <CheckCircle2 className="w-4 h-4 text-accent" />}
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => setGender("male")}
-                    className={`py-3.5 px-4 rounded-2xl border text-sm font-extrabold flex items-center justify-center gap-2 transition active:scale-95 ${
-                      gender === "male"
-                        ? "bg-white/[0.06] text-accent border-accent/80 ring-1 ring-accent/40 shadow-lg"
-                        : "bg-accent-ink text-ink-secondary border-white/10 hover:text-white hover:bg-calCard"
-                    }`}
-                  >
-                    <span>👨 {t("onboarding.male")}</span>
-                    {gender === "male" && <CheckCircle2 className="w-4 h-4 text-accent" />}
-                  </button>
+          key={step}
+          className={`mx-auto w-full max-w-xl space-y-5 ${
+            gidisYonu === "ileri" ? "wizard-step-forward" : "wizard-step-back"
+          }`}
+        >
+          {/* STEP 1: Basic Info */}
+          {step === 1 && (
+            <>
+              <AdimBasligi
+                icon={<User className="h-5 w-5" />}
+                title={t("onboarding.step1Title")}
+                desc={t("onboarding.step1Desc")}
+              />
+              <div className="space-y-4 rounded-card border border-white/10 bg-calCard p-4 shadow-card sm:p-5">
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold text-ink-secondary" htmlFor="onboarding-name">
+                    {t("onboarding.nameLabel")}
+                  </label>
+                  <input
+                    id="onboarding-name"
+                    type="text"
+                    autoComplete="name"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    placeholder={t("onboarding.namePlaceholder")}
+                    className={sayiAlani}
+                  />
                 </div>
-              </div>
 
-              {/* Age */}
-              <div className="space-y-1.5">
-                <label className="text-xs font-bold text-ink-secondary">{t("onboarding.ageLabel")}</label>
-                <input
-                  type="number"
-                  value={age}
-                  onChange={(e) => setAge(e.target.value)}
-                  placeholder={t("onboarding.agePlaceholder")}
-                  className="w-full bg-accent-ink border border-white/10 rounded-2xl px-4 py-3.5 text-sm text-white font-bold placeholder:text-ink-secondary/30 focus:border-accent focus:ring-2 focus:ring-accent/20 focus:outline-none transition font-mono"
-                />
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* STEP 2: Body Stats */}
-        {step === 2 && (
-          <div className="space-y-5 animate-fadeIn">
-            <div className="space-y-1">
-              <h3 className="text-xl font-extrabold text-white flex items-center gap-2">
-                <Scale className="w-5 h-5 text-accent" />
-                <span>{t("onboarding.step2Title")}</span>
-              </h3>
-              <p className="text-xs text-ink-secondary">
-                {t("onboarding.step2Desc")}
-              </p>
-            </div>
-
-            <div className="space-y-4 bg-calCard p-4 sm:p-6 rounded-card border border-white/10 shadow-card">
-              {/* Current Weight */}
-              <div className="space-y-1.5">
-                <label className="text-xs font-bold text-ink-secondary">{t("onboarding.weightLabel")}</label>
-                <input
-                  type="number"
-                  step="0.1"
-                  value={weightKg}
-                  onChange={(e) => setWeightKg(e.target.value)}
-                  placeholder={t("onboarding.weightPlaceholder")}
-                  className="w-full bg-accent-ink border border-white/10 rounded-2xl px-4 py-3.5 text-sm text-white font-bold placeholder:text-ink-secondary/30 focus:border-accent focus:ring-2 focus:ring-accent/20 focus:outline-none transition font-mono"
-                />
-              </div>
-
-              {/* Height */}
-              <div className="space-y-1.5">
-                <label className="text-xs font-bold text-ink-secondary">{t("onboarding.heightLabel")}</label>
-                <input
-                  type="number"
-                  value={heightCm}
-                  onChange={(e) => setHeightCm(e.target.value)}
-                  placeholder={t("onboarding.heightPlaceholder")}
-                  className="w-full bg-accent-ink border border-white/10 rounded-2xl px-4 py-3.5 text-sm text-white font-bold placeholder:text-ink-secondary/30 focus:border-accent focus:ring-2 focus:ring-accent/20 focus:outline-none transition font-mono"
-                />
-              </div>
-
-              {/* Target Weight */}
-              <div className="space-y-1.5">
-                <label className="text-xs font-bold text-ink-secondary">{t("onboarding.targetWeightLabel")}</label>
-                <input
-                  type="number"
-                  step="0.1"
-                  value={targetWeightKg}
-                  onChange={(e) => setTargetWeightKg(e.target.value)}
-                  placeholder={t("onboarding.targetWeightPlaceholder")}
-                  className="w-full bg-accent-ink border border-white/10 rounded-2xl px-4 py-3.5 text-sm text-white font-bold placeholder:text-ink-secondary/30 focus:border-accent focus:ring-2 focus:ring-accent/20 focus:outline-none transition font-mono"
-                />
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* STEP 3: Activity Level */}
-        {step === 3 && (
-          <div className="space-y-5 animate-fadeIn">
-            <div className="space-y-1">
-              <h3 className="text-xl font-extrabold text-white flex items-center gap-2">
-                <Activity className="w-5 h-5 text-accent" />
-                <span>{t("onboarding.step3Title")}</span>
-              </h3>
-              <p className="text-xs text-ink-secondary">
-                {t("onboarding.step3Desc")}
-              </p>
-            </div>
-
-            <div className="space-y-3">
-              {(Object.keys(ACTIVITY_LEVEL_LABELS) as ActivityLevel[]).map((key) => {
-                const item = ACTIVITY_LEVEL_LABELS[key];
-                const isSelected = activityLevel === key;
-                return (
-                  <button
-                    key={key}
-                    type="button"
-                    onClick={() => setActivityLevel(key)}
-                    className={`w-full p-4 sm:p-4.5 rounded-card border text-left transition-all active:scale-[0.99] flex items-center gap-3.5 ${
-                      isSelected
-                        ? "bg-white/[0.06] border-accent/80 ring-1 ring-accent/40 shadow-xl text-white"
-                        : "bg-calCard border-white/10 text-ink-secondary hover:text-white hover:bg-white/[0.04]"
-                    }`}
-                  >
-                    <span className="text-2xl shrink-0">{item.icon}</span>
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center justify-between">
-                        <h4 className="font-extrabold text-sm text-white">{t(`onboarding.activity.${key}.title`)}</h4>
-                        <span className="text-[10px] font-mono font-bold text-accent bg-accent/10 px-2.5 py-0.5 rounded-full border border-accent/20">
-                          x{item.multiplier}
+                <div className="space-y-1.5">
+                  <span className="text-xs font-bold text-ink-secondary">
+                    {t("onboarding.genderLabel")}
+                  </span>
+                  <div className="grid grid-cols-2 gap-3">
+                    {(["female", "male"] as Gender[]).map((g, i) => (
+                      <Secenek
+                        key={g}
+                        secili={gender === g}
+                        onClick={() => setGender(g)}
+                        gecikmeMs={i * 40}
+                        className="justify-center"
+                      >
+                        <span className="text-sm font-extrabold">
+                          {g === "female" ? "👩" : "👨"} {t(`onboarding.${g}`)}
                         </span>
+                        {gender === g && <CheckCircle2 className="h-4 w-4 shrink-0 text-accent" />}
+                      </Secenek>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold text-ink-secondary" htmlFor="onboarding-age">
+                    {t("onboarding.ageLabel")}
+                  </label>
+                  <input
+                    id="onboarding-age"
+                    type="number"
+                    inputMode="numeric"
+                    value={age}
+                    onChange={(e) => setAge(e.target.value)}
+                    placeholder={t("onboarding.agePlaceholder")}
+                    className={sayiAlani}
+                  />
+                </div>
+              </div>
+            </>
+          )}
+
+          {/* STEP 2: Body Stats */}
+          {step === 2 && (
+            <>
+              <AdimBasligi
+                icon={<Scale className="h-5 w-5" />}
+                title={t("onboarding.step2Title")}
+                desc={t("onboarding.step2Desc")}
+              />
+              <div className="space-y-4 rounded-card border border-white/10 bg-calCard p-4 shadow-card sm:p-5">
+                {[
+                  {
+                    id: "onboarding-weight",
+                    label: t("onboarding.weightLabel"),
+                    value: weightKg,
+                    set: setWeightKg,
+                    placeholder: t("onboarding.weightPlaceholder"),
+                    step: "0.1",
+                  },
+                  {
+                    id: "onboarding-height",
+                    label: t("onboarding.heightLabel"),
+                    value: heightCm,
+                    set: setHeightCm,
+                    placeholder: t("onboarding.heightPlaceholder"),
+                    step: undefined,
+                  },
+                  {
+                    id: "onboarding-target",
+                    label: t("onboarding.targetWeightLabel"),
+                    value: targetWeightKg,
+                    set: setTargetWeightKg,
+                    placeholder: t("onboarding.targetWeightPlaceholder"),
+                    step: "0.1",
+                  },
+                ].map((f) => (
+                  <div key={f.id} className="space-y-1.5">
+                    <label className="text-xs font-bold text-ink-secondary" htmlFor={f.id}>
+                      {f.label}
+                    </label>
+                    <input
+                      id={f.id}
+                      type="number"
+                      inputMode="decimal"
+                      step={f.step}
+                      value={f.value}
+                      onChange={(e) => f.set(e.target.value)}
+                      placeholder={f.placeholder}
+                      className={sayiAlani}
+                    />
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
+
+          {/* STEP 3: Activity Level */}
+          {step === 3 && (
+            <>
+              <AdimBasligi
+                icon={<Activity className="h-5 w-5" />}
+                title={t("onboarding.step3Title")}
+                desc={t("onboarding.step3Desc")}
+              />
+              <div className="space-y-3">
+                {(Object.keys(ACTIVITY_LEVEL_LABELS) as ActivityLevel[]).map((key, i) => {
+                  const item = ACTIVITY_LEVEL_LABELS[key];
+                  const isSelected = activityLevel === key;
+                  return (
+                    <Secenek
+                      key={key}
+                      secili={isSelected}
+                      onClick={() => setActivityLevel(key)}
+                      gecikmeMs={i * 40}
+                    >
+                      <span aria-hidden className="shrink-0 text-2xl">
+                        {item.icon}
+                      </span>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center justify-between gap-2">
+                          <h4 className="truncate text-sm font-extrabold text-white">
+                            {t(`onboarding.activity.${key}.title`)}
+                          </h4>
+                          <span className="shrink-0 rounded-full border border-accent/20 bg-accent/10 px-2.5 py-0.5 font-mono text-[10px] font-bold text-accent">
+                            x{item.multiplier}
+                          </span>
+                        </div>
+                        <p className="mt-1 text-xs leading-snug text-ink-secondary">
+                          {t(`onboarding.activity.${key}.desc`)}
+                        </p>
                       </div>
-                      <p className="text-xs text-ink-secondary mt-1 leading-snug">{t(`onboarding.activity.${key}.desc`)}</p>
+                      {isSelected && <CheckCircle2 className="h-5 w-5 shrink-0 text-accent" />}
+                    </Secenek>
+                  );
+                })}
+              </div>
+            </>
+          )}
+
+          {/* STEP 4: Primary Goal */}
+          {step === 4 && (
+            <>
+              <AdimBasligi
+                icon={<Target className="h-5 w-5" />}
+                title={t("onboarding.step4Title")}
+                desc={t("onboarding.step4Desc")}
+              />
+              <div className="space-y-3">
+                {(Object.keys(PRIMARY_GOAL_LABELS) as PrimaryGoal[]).map((key, i) => {
+                  const item = PRIMARY_GOAL_LABELS[key];
+                  const isSelected = primaryGoal === key;
+                  return (
+                    <Secenek
+                      key={key}
+                      secili={isSelected}
+                      onClick={() => setPrimaryGoal(key)}
+                      gecikmeMs={i * 40}
+                    >
+                      <span aria-hidden className="shrink-0 text-2xl">
+                        {item.icon}
+                      </span>
+                      <div className="min-w-0 flex-1">
+                        <h4 className="text-sm font-extrabold text-white sm:text-base">
+                          {t(`onboarding.goal.${key}.title`)}
+                        </h4>
+                        <p className="mt-1 text-xs leading-snug text-ink-secondary">
+                          {t(`onboarding.goal.${key}.desc`)}
+                        </p>
+                      </div>
+                      {isSelected && <CheckCircle2 className="h-5 w-5 shrink-0 text-accent" />}
+                    </Secenek>
+                  );
+                })}
+              </div>
+            </>
+          )}
+
+          {/* STEP 5: TDEE Result & Goal Confirmation */}
+          {step === 5 && (
+            <>
+              <div className="space-y-1 text-center">
+                <span className="mb-1 inline-flex items-center gap-1.5 rounded-full border border-accent/30 bg-accent/20 px-3 py-1 text-xs font-bold text-accent">
+                  <Sparkles className="h-3.5 w-3.5" />
+                  {t("onboarding.step5Badge")}
+                </span>
+                <h3
+                  ref={headingRef}
+                  tabIndex={-1}
+                  className="text-xl font-black tracking-tight text-white outline-none sm:text-2xl"
+                >
+                  {t("onboarding.step5Title")}
+                </h3>
+                <p className="mx-auto max-w-md text-xs text-ink-secondary">
+                  {t("onboarding.step5Desc", { bmr: calculated.bmr, tdee: calculated.tdee })}
+                </p>
+              </div>
+
+              <div className="space-y-3 rounded-card border border-white/10 bg-calCard p-4 shadow-card sm:p-5">
+                {/* Günlük kalori — tam satır, dar ekranda da sayı kırpılmaz */}
+                <div className="flex items-center justify-between gap-3 rounded-2xl border border-white/5 bg-accent-ink p-3.5">
+                  <div className="flex min-w-0 items-center gap-2.5">
+                    <Flame className="h-5 w-5 shrink-0 text-accent" />
+                    <span className="truncate text-xs font-extrabold text-white">
+                      {t("onboarding.dailyKcal")}
+                    </span>
+                  </div>
+                  <div className="flex shrink-0 items-center gap-2">
+                    <input
+                      type="number"
+                      inputMode="numeric"
+                      aria-label={t("onboarding.dailyKcal")}
+                      value={finalKcal}
+                      onChange={(e) => setCustomKcal(Number(e.target.value))}
+                      className="w-[76px] rounded-xl border border-accent/30 bg-white/[0.06] px-2.5 py-1.5 text-right font-mono text-base font-black text-white outline-none focus:border-accent sm:w-24"
+                    />
+                    <span className="text-xs font-bold text-ink-secondary">kcal</span>
+                  </div>
+                </div>
+
+                {/* Makrolar: 2 kolon (≥360px'te 3) — 320px'de 3 haneli değer
+                    kırpılmasın diye etiket ÜSTTE, input tam genişlikte. */}
+                <div className="grid grid-cols-2 gap-2.5 min-[360px]:grid-cols-3">
+                  {[
+                    {
+                      key: "protein",
+                      label: t("onboarding.protein"),
+                      icon: <Beef className="h-3.5 w-3.5" />,
+                      renk: "text-protein",
+                      value: finalProtein,
+                      set: setCustomProtein,
+                    },
+                    {
+                      key: "carbs",
+                      label: t("onboarding.carbs"),
+                      icon: <Wheat className="h-3.5 w-3.5" />,
+                      renk: "text-carb",
+                      value: finalCarbs,
+                      set: setCustomCarbs,
+                    },
+                    {
+                      key: "fat",
+                      label: t("onboarding.fat"),
+                      icon: <Droplet className="h-3.5 w-3.5" />,
+                      renk: "text-fat",
+                      value: finalFat,
+                      set: setCustomFat,
+                    },
+                  ].map((m, i) => (
+                    <div
+                      key={m.key}
+                      className="flex flex-col gap-2 rounded-2xl border border-white/5 bg-accent-ink p-3"
+                    >
+                      <div className={`flex items-center gap-1 text-[11px] font-bold ${m.renk}`}>
+                        {m.icon}
+                        <span className="truncate">{m.label}</span>
+                      </div>
+                      <div className="flex items-baseline gap-1">
+                        <input
+                          type="number"
+                          inputMode="numeric"
+                          aria-label={m.label}
+                          style={{ animationDelay: `${i * 40}ms` }}
+                          value={m.value}
+                          onChange={(e) => m.set(Number(e.target.value))}
+                          className="w-full min-w-0 rounded-xl border border-white/10 bg-white/[0.06] px-2 py-1.5 text-right font-mono text-sm font-black text-white outline-none focus:border-accent"
+                        />
+                        <span className="shrink-0 text-[10px] font-bold text-ink-secondary">g</span>
+                      </div>
                     </div>
-                    {isSelected && <CheckCircle2 className="w-5 h-5 text-accent shrink-0" />}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-        )}
-
-        {/* STEP 4: Primary Goal */}
-        {step === 4 && (
-          <div className="space-y-5 animate-fadeIn">
-            <div className="space-y-1">
-              <h3 className="text-xl font-extrabold text-white flex items-center gap-2">
-                <Target className="w-5 h-5 text-accent" />
-                <span>{t("onboarding.step4Title")}</span>
-              </h3>
-              <p className="text-xs text-ink-secondary">
-                {t("onboarding.step4Desc")}
-              </p>
-            </div>
-
-            <div className="space-y-3">
-              {(Object.keys(PRIMARY_GOAL_LABELS) as PrimaryGoal[]).map((key) => {
-                const item = PRIMARY_GOAL_LABELS[key];
-                const isSelected = primaryGoal === key;
-                return (
-                  <button
-                    key={key}
-                    type="button"
-                    onClick={() => setPrimaryGoal(key)}
-                    className={`w-full p-4.5 rounded-card border text-left transition-all active:scale-[0.99] flex items-center gap-4 ${
-                      isSelected
-                        ? "bg-white/[0.06] border-accent/80 ring-1 ring-accent/40 shadow-xl text-white"
-                        : "bg-calCard border-white/10 text-ink-secondary hover:text-white hover:bg-white/[0.04]"
-                    }`}
-                  >
-                    <span className="text-3xl shrink-0">{item.icon}</span>
-                    <div className="min-w-0 flex-1">
-                      <h4 className="font-extrabold text-base text-white">{t(`onboarding.goal.${key}.title`)}</h4>
-                      <p className="text-xs text-ink-secondary mt-1 leading-snug">{t(`onboarding.goal.${key}.desc`)}</p>
-                    </div>
-                    {isSelected && <CheckCircle2 className="w-5 h-5 text-accent shrink-0" />}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-        )}
-
-        {/* STEP 5: TDEE Result & Goal Confirmation */}
-        {step === 5 && (
-          <div className="space-y-5 animate-fadeIn">
-            <div className="space-y-1 text-center">
-              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-accent/20 text-accent text-xs font-bold border border-accent/30 mb-1">
-                <Sparkles className="w-3.5 h-3.5" />
-                <span>{t("onboarding.step5Badge")}</span>
-              </div>
-              <h3 className="text-2xl font-black text-white tracking-tight">{t("onboarding.step5Title")}</h3>
-              <p className="text-xs text-ink-secondary max-w-md mx-auto">
-                {t("onboarding.step5Desc", { bmr: calculated.bmr, tdee: calculated.tdee })}
-              </p>
-            </div>
-
-            {/* Calculated Cards */}
-            <div className="bg-calCard p-4 sm:p-6 rounded-card border border-white/10 space-y-4 shadow-card">
-              {/* Daily Kcal */}
-              <div className="flex items-center justify-between p-4 rounded-2xl bg-accent-ink border border-white/5">
-                <div className="flex items-center gap-2.5">
-                  <Flame className="w-5 h-5 text-accent" />
-                  <span className="text-xs font-extrabold text-white">{t("onboarding.dailyKcal")}</span>
+                  ))}
                 </div>
-                <div className="flex items-center gap-2">
-                  <input
-                    type="number"
-                    value={finalKcal}
-                    onChange={(e) => setCustomKcal(Number(e.target.value))}
-                    className="w-20 sm:w-24 bg-white/[0.06] border border-accent/30 rounded-xl px-3 py-1.5 text-right font-black text-base text-white font-mono focus:border-accent outline-none"
-                  />
-                  <span className="text-xs font-bold text-ink-secondary">kcal</span>
-                </div>
-              </div>
 
-              {/* 3 Macros */}
-              <div className="grid grid-cols-3 gap-2.5">
-                {/* Protein */}
-                <div className="p-3 rounded-2xl bg-accent-ink border border-white/5 flex flex-col justify-between">
-                  <div className="flex items-center gap-1 text-[11px] font-bold text-protein">
-                    <Beef className="w-3.5 h-3.5" />
-                    <span>{t("onboarding.protein")}</span>
-                  </div>
-                  <div className="flex items-center gap-1 mt-2.5">
+                {/* Lif */}
+                <div className="flex items-center justify-between gap-3 rounded-2xl border border-white/5 bg-accent-ink p-3.5">
+                  <span className="min-w-0 truncate text-xs font-bold text-memory">
+                    🌿 {t("onboarding.dailyFiber")}
+                  </span>
+                  <div className="flex shrink-0 items-center gap-1.5">
                     <input
                       type="number"
-                      value={finalProtein}
-                      onChange={(e) => setCustomProtein(Number(e.target.value))}
-                      className="w-full bg-white/[0.06] border border-white/10 rounded-xl px-2 py-1 text-right font-black text-sm text-white font-mono focus:border-accent outline-none"
+                      inputMode="numeric"
+                      aria-label={t("onboarding.dailyFiber")}
+                      value={finalFiber}
+                      onChange={(e) => setCustomFiber(Number(e.target.value))}
+                      className="w-16 rounded-xl border border-white/10 bg-white/[0.06] px-2 py-1.5 text-right font-mono text-xs font-bold text-white outline-none focus:border-accent"
                     />
-                    <span className="text-[10px] text-ink-secondary font-bold">g</span>
-                  </div>
-                </div>
-
-                {/* Carbs */}
-                <div className="p-3 rounded-2xl bg-accent-ink border border-white/5 flex flex-col justify-between">
-                  <div className="flex items-center gap-1 text-[11px] font-bold text-carb">
-                    <Wheat className="w-3.5 h-3.5" />
-                    <span>{t("onboarding.carbs")}</span>
-                  </div>
-                  <div className="flex items-center gap-1 mt-2.5">
-                    <input
-                      type="number"
-                      value={finalCarbs}
-                      onChange={(e) => setCustomCarbs(Number(e.target.value))}
-                      className="w-full bg-white/[0.06] border border-white/10 rounded-xl px-2 py-1 text-right font-black text-sm text-white font-mono focus:border-accent outline-none"
-                    />
-                    <span className="text-[10px] text-ink-secondary font-bold">g</span>
-                  </div>
-                </div>
-
-                {/* Fat */}
-                <div className="p-3 rounded-2xl bg-accent-ink border border-white/5 flex flex-col justify-between">
-                  <div className="flex items-center gap-1 text-[11px] font-bold text-fat">
-                    <Droplet className="w-3.5 h-3.5" />
-                    <span>{t("onboarding.fat")}</span>
-                  </div>
-                  <div className="flex items-center gap-1 mt-2.5">
-                    <input
-                      type="number"
-                      value={finalFat}
-                      onChange={(e) => setCustomFat(Number(e.target.value))}
-                      className="w-full bg-white/[0.06] border border-white/10 rounded-xl px-2 py-1 text-right font-black text-sm text-white font-mono focus:border-accent outline-none"
-                    />
-                    <span className="text-[10px] text-ink-secondary font-bold">g</span>
+                    <span className="text-xs font-bold text-ink-secondary">g</span>
                   </div>
                 </div>
               </div>
-
-              {/* Fiber */}
-              <div className="flex items-center justify-between p-3.5 rounded-2xl bg-accent-ink border border-white/5">
-                <span className="text-xs font-bold text-memory">🌿 {t("onboarding.dailyFiber")}</span>
-                <div className="flex items-center gap-1.5">
-                  <input
-                    type="number"
-                    value={finalFiber}
-                    onChange={(e) => setCustomFiber(Number(e.target.value))}
-                    className="w-16 bg-white/[0.06] border border-white/10 rounded-xl px-2 py-1 text-right font-bold text-xs text-white font-mono focus:border-accent outline-none"
-                  />
-                  <span className="text-xs font-bold text-ink-secondary">g</span>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
+            </>
+          )}
+        </div>
       </div>
 
-      {/* Bottom Action Bar */}
-      <div className="p-4 sm:p-5 border-t border-white/10 bg-app flex-none">
-        <div className="max-w-xl mx-auto flex items-center gap-3">
+      {/* --- Alt eylem çubuğu ---------------------------------------------- */}
+      <div className="flex-none border-t border-white/10 bg-app p-4 sm:p-5">
+        <div className="mx-auto flex max-w-xl items-center gap-3">
           {step > 1 && (
             <button
               type="button"
-              onClick={() => setStep((s) => (s - 1) as any)}
-              className="px-4 py-3.5 rounded-full bg-calCard hover:bg-white/[0.04] text-xs font-extrabold text-ink-secondary hover:text-white transition flex items-center gap-1.5 active:scale-95"
+              onClick={gitGeri}
+              className="flex shrink-0 items-center gap-1.5 rounded-full bg-calCard px-4 py-3.5 text-xs font-extrabold text-ink-secondary transition hover:bg-white/[0.04] hover:text-white active:scale-95"
             >
-              <ArrowLeft className="w-4 h-4" />
-              <span>{t("common.back")}</span>
+              <ArrowLeft className="h-4 w-4" />
+              <span className="hidden min-[360px]:inline">{t("common.back")}</span>
             </button>
           )}
 
-          {step < 5 ? (
+          {step < TOTAL_STEPS ? (
             <button
               type="button"
               disabled={!currentStepValid}
-              onClick={() => setStep((s) => (s + 1) as any)}
-              className={`flex-1 py-3.5 px-6 rounded-full font-extrabold text-sm shadow-lg transition active:scale-95 flex items-center justify-center gap-2 ${
+              onClick={gitIleri}
+              className={`flex flex-1 items-center justify-center gap-2 rounded-full px-6 py-3.5 text-sm font-extrabold shadow-lg transition active:scale-[0.98] ${
                 currentStepValid
                   ? "bg-accent text-accent-ink hover:bg-accent/90"
-                  : "bg-white/10 text-white/40 cursor-not-allowed"
+                  : "cursor-not-allowed bg-white/10 text-white/40"
               }`}
             >
               <span>{t("common.continue")}</span>
-              <ArrowRight className="w-4 h-4" />
+              <ArrowRight className="h-4 w-4" />
             </button>
           ) : (
             <button
               type="button"
               disabled={saving}
               onClick={handleFinish}
-              className="flex-1 py-3.5 px-6 rounded-full bg-accent text-accent-ink font-black text-sm shadow-lg hover:opacity-95 transition active:scale-95 flex items-center justify-center gap-2 disabled:opacity-50"
+              className="flex flex-1 items-center justify-center gap-2 rounded-full bg-accent px-6 py-3.5 text-sm font-black text-accent-ink shadow-lg transition hover:opacity-95 active:scale-[0.98] disabled:opacity-50"
             >
-              <CheckCircle2 className="w-5 h-5" />
+              <CheckCircle2 className="h-5 w-5" />
               <span>{saving ? t("common.loading") : t("onboarding.saveAndStart")}</span>
             </button>
           )}

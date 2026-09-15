@@ -12,6 +12,11 @@ import type { Alias, GoalConfig, MealItem } from "../types";
 import type { AppData } from "./api";
 import { NUTRIENTS } from "./nutrients";
 import * as api from "./api";
+import i18n from "../i18n/i18n";
+
+/** Testler diller arası kararlı olsun diye GERÇEK i18n örneği kullanılır
+ *  (vitest'te aktif dil "en"). */
+const t = i18n.t.bind(i18n);
 
 // Mock API functions for batch restore testing
 vi.mock("./api", async (importOriginal) => {
@@ -99,26 +104,26 @@ describe("exporters — CSV & JSON", () => {
   });
 
   it("CSV dışa aktarma UTF-8 BOM (\\uFEFF) ile başlar", () => {
-    const mealsCsv = exportMealsToCsv(mockAppData);
-    const aliasCsv = exportAliasesToCsv(mockAppData.aliases);
+    const mealsCsv = exportMealsToCsv(mockAppData, t);
+    const aliasCsv = exportAliasesToCsv(mockAppData.aliases, t);
 
     expect(mealsCsv.startsWith("\uFEFF")).toBe(true);
     expect(aliasCsv.startsWith("\uFEFF")).toBe(true);
-    expect(aliasCsv.split("\r\n")[0]).toContain("Varsayılan Birim");
+    expect(aliasCsv.split("\r\n")[0]).toContain(t("export.headerDefaultUnit"));
   });
 
   it("CSV sütun başlıkları besin kaydından (NUTRIENTS) dinamik türetilir", () => {
-    const mealsCsv = exportMealsToCsv(mockAppData);
+    const mealsCsv = exportMealsToCsv(mockAppData, t);
     const lines = mealsCsv.split("\r\n");
     const headerRow = lines[0].replace("\uFEFF", "");
 
     for (const def of NUTRIENTS) {
-      expect(headerRow).toContain(def.label);
+      expect(headerRow).toContain(t(`nutrient.${def.key}`));
     }
   });
 
   it("girilmemiş mikro besin hücreleri CSV'de BOŞ bırakılır (0 yazılmaz)", () => {
-    const mealsCsv = exportMealsToCsv(mockAppData);
+    const mealsCsv = exportMealsToCsv(mockAppData, t);
     const lines = mealsCsv.split("\r\n");
     const dataRow = lines[1];
     const cells = dataRow.split(";");
@@ -138,7 +143,7 @@ describe("exporters — CSV & JSON", () => {
     const jsonStr = exportBackupToJson(mockAppData);
     const parsed = JSON.parse(jsonStr);
 
-    const validation = validateBackup(parsed);
+    const validation = validateBackup(parsed, t);
     expect(validation.ok).toBe(true);
 
     if (validation.ok) {
@@ -151,27 +156,27 @@ describe("exporters — CSV & JSON", () => {
     }
   });
 
-  it("bozuk veya eksik JSON yedeğini anlaşılır Türkçe hatayla reddeder", () => {
-    expect(validateBackup(null).ok).toBe(false);
-    expect(validateBackup("gecersiz json string").ok).toBe(false);
-    expect(validateBackup({}).ok).toBe(false);
+  it("bozuk veya eksik JSON yedeğini anlaşılır hatayla reddeder", () => {
+    expect(validateBackup(null, t).ok).toBe(false);
+    expect(validateBackup("gecersiz json string", t).ok).toBe(false);
+    expect(validateBackup({}, t).ok).toBe(false);
 
     // Eksik alan
-    expect(validateBackup({ goals: mockGoals }).ok).toBe(false);
+    expect(validateBackup({ goals: mockGoals }, t).ok).toBe(false);
 
     // Bozuk öğün verisi
     const badDays = {
       "2026-07-31": [{ name: "", nutrition: null }],
     };
-    const badRes = validateBackup({ goals: mockGoals, days: badDays, aliases: [] });
+    const badRes = validateBackup({ goals: mockGoals, days: badDays, aliases: [] }, t);
     expect(badRes.ok).toBe(false);
     if (!badRes.ok) {
-      expect(badRes.error).toContain("adı eksik");
+      expect(badRes.error).toBe(t("export.err.mealNameMissing", { date: "2026-07-31", index: 1 }));
     }
   });
 
   it("executeRestore batch yazma yapar ve refresh() fonksiyonunu en sonda TEK bir kez çağırır", async () => {
-    const validation = validateBackup(JSON.parse(exportBackupToJson(mockAppData)));
+    const validation = validateBackup(JSON.parse(exportBackupToJson(mockAppData)), t);
     expect(validation.ok).toBe(true);
     if (!validation.ok) return;
 

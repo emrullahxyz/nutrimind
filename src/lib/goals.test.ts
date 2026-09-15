@@ -7,6 +7,7 @@
 // halka hem de bütün geçmiş grafikleri sessizce yanlış olur.
 // ============================================================================
 import { describe, expect, it } from "vitest";
+import type { TFunction } from "i18next";
 import { parseGoals } from "./api";
 import {
   DEFAULT_PROFILE_ID,
@@ -17,6 +18,8 @@ import {
   effectiveProfile,
   hasOverride,
   nextProfileId,
+  profileDisplayName,
+  profileNameFieldValue,
   singleProfileConfig,
   suggestSplit,
   trainingDayCount,
@@ -103,7 +106,11 @@ describe("parseGoals — v1 → v2 göçü", () => {
       version: 2,
       profiles: [
         { id: "", name: "Boş id", nutrition: { kcal: 1 } },
-        { id: "a", name: "  ", nutrition: { kcal: 2000, protein: 100, carbs: 200, fat: 60, fiber: 20 } },
+        {
+          id: "a",
+          name: "  ",
+          nutrition: { kcal: 2000, protein: 100, carbs: 200, fat: 60, fiber: 20 },
+        },
         { id: "a", name: "Kopya id", nutrition: { kcal: 9999 } },
         null,
       ],
@@ -183,7 +190,13 @@ describe("effectiveGoal — öncelik sırası", () => {
 describe("effectiveGoal — silinmiş profile işaret eden atama", () => {
   const base: GoalConfig = {
     version: 2,
-    profiles: [{ id: "a", name: "A", nutrition: { kcal: 2000, protein: 100, carbs: 200, fat: 60, fiber: 20 } }],
+    profiles: [
+      {
+        id: "a",
+        name: "A",
+        nutrition: { kcal: 2000, protein: 100, carbs: 200, fat: 60, fiber: 20 },
+      },
+    ],
     defaultProfileId: "a",
     weekday: { 4: "silinmis" },
     overrides: { "2026-07-30": "silinmis" },
@@ -354,7 +367,9 @@ describe("applySuggestion — form düğmesinin ürettiği yapı", () => {
     for (const p of c.profiles) {
       expect(p.id.trim()).not.toBe("");
       expect(p.name.trim()).not.toBe("");
-      expect(Object.values(p.nutrition).every((v) => typeof v === "number" && Number.isFinite(v))).toBe(true);
+      expect(
+        Object.values(p.nutrition).every((v) => typeof v === "number" && Number.isFinite(v)),
+      ).toBe(true);
     }
     expect(c.profiles.some((p) => p.id === c.defaultProfileId)).toBe(true);
     for (const v of [...Object.values(c.weekday), ...Object.values(c.overrides)]) {
@@ -371,7 +386,10 @@ describe("weeklyAverageGoal", () => {
   it("günlük istisnalar ortalamaya girmez (şablon haftalıktır)", () => {
     const c = singleProfileConfig({ ...V1_GOAL });
     const withPin = withOverride(
-      { ...c, profiles: [...c.profiles, { id: "x", name: "X", nutrition: { ...V1_GOAL, kcal: 9999 } }] },
+      {
+        ...c,
+        profiles: [...c.profiles, { id: "x", name: "X", nutrition: { ...V1_GOAL, kcal: 9999 } }],
+      },
       "2026-07-30",
       "x",
     );
@@ -383,7 +401,11 @@ describe("weeklyAverageGoal", () => {
       version: 2,
       profiles: [
         { id: "a", name: "A", nutrition: { ...V1_GOAL } },
-        { id: "b", name: "B", nutrition: { kcal: 2000, protein: 145, carbs: 200, fat: 72, fiber: 30 } },
+        {
+          id: "b",
+          name: "B",
+          nutrition: { kcal: 2000, protein: 145, carbs: 200, fat: 72, fiber: 30 },
+        },
       ],
       defaultProfileId: "a",
       weekday: { 0: "b" },
@@ -406,5 +428,38 @@ describe("singleProfileConfig", () => {
     expect(c.profiles[0].id).toBe(DEFAULT_PROFILE_ID);
     expect(c.defaultProfileId).toBe(DEFAULT_PROFILE_ID);
     expect(trainingDayCount(c)).toBe(0);
+  });
+});
+
+describe("profil adı gösterimi (dil-nötr veri, dile bağlı görünüm)", () => {
+  const EN: Record<string, string> = {
+    "goals.profileDefault": "Default",
+    "goals.profileTraining": "Training",
+    "goals.profileRest": "Rest",
+  };
+  const t = ((key: string) => EN[key] ?? key) as unknown as TFunction;
+
+  it("gömülü profilin Türkçe saklanan adını aktif dilde gösterir", () => {
+    expect(profileDisplayName({ id: DEFAULT_PROFILE_ID, name: "Varsayılan" }, t)).toBe("Default");
+    expect(profileDisplayName({ id: TRAINING_PROFILE_ID, name: "Antrenman" }, t)).toBe("Training");
+    expect(profileDisplayName({ id: REST_PROFILE_ID, name: "Dinlenme" }, t)).toBe("Rest");
+  });
+
+  it("kullanıcının verdiği adı ASLA çevirmez", () => {
+    expect(profileDisplayName({ id: DEFAULT_PROFILE_ID, name: "Kilo koruma" }, t)).toBe(
+      "Kilo koruma",
+    );
+    expect(profileDisplayName({ id: "p_abc", name: "Varsayılan" }, t)).toBe("Varsayılan");
+  });
+
+  it("ad ALANI dokunulmadıkça çevrilmiş adı gösterir (İngilizce arayüzde 'Varsayılan' sızmaz)", () => {
+    const p = { id: DEFAULT_PROFILE_ID, name: "Varsayılan" };
+    expect(profileNameFieldValue(p, t, false)).toBe("Default");
+  });
+
+  it("ad ALANI dokunulduysa kullanıcının yazdığını gösterir", () => {
+    expect(profileNameFieldValue({ id: DEFAULT_PROFILE_ID, name: "Yarışma" }, t, true)).toBe(
+      "Yarışma",
+    );
   });
 });

@@ -11,7 +11,7 @@ const langs = ["en", "tr", "pl"];
  *  placeholder içermez ve key denetimi dışında tutulur. */
 const flatten = (obj, prefix = "") =>
   Object.entries(obj).flatMap(([k, v]) =>
-    typeof v === "string" ? [[`${prefix}${k}`, v]] : flatten(v, `${prefix}${k}.`)
+    typeof v === "string" ? [[`${prefix}${k}`, v]] : flatten(v, `${prefix}${k}.`),
   );
 
 /** Bir string değerdeki `{{name}}` placeholder adlarını çıkarır. */
@@ -47,7 +47,9 @@ for (const [key] of sets[ref]) {
 const allKeys = new Set([...langs].flatMap((l) => [...sets[l].keys()]));
 let placeholderMismatch = 0;
 for (const key of allKeys) {
-  const perLang = langs.map((l) => (sets[l].has(key) ? new Set(placeholders(sets[l].get(key))) : null));
+  const perLang = langs.map((l) =>
+    sets[l].has(key) ? new Set(placeholders(sets[l].get(key))) : null,
+  );
   if (perLang.some((p) => p === null)) continue; // key zaten MISSING'te raporlanır
   const refSet = [...perLang[0]];
   for (const p of refSet) {
@@ -160,7 +162,9 @@ for (const file of collectDirFiles(srcDir)) {
 
 let interpWarnings = 0;
 for (const key of allKeys) {
-  const needed = new Set([...langs].flatMap((l) => (sets[l].has(key) ? placeholders(sets[l].get(key)) : [])));
+  const needed = new Set(
+    [...langs].flatMap((l) => (sets[l].has(key) ? placeholders(sets[l].get(key)) : [])),
+  );
   if (needed.size === 0) continue;
   const supplied = codeVars.get(key);
   if (!supplied) {
@@ -179,14 +183,149 @@ for (const key of allKeys) {
   }
 }
 
+// ---------------------------------------------------------------------------
+// 4) KOD → LOCALE — kodda `t("...")` ile İSTENEN her anahtar locale'de olmalı.
+//
+// Neden gerekli: bu kapı yalnızca 3 dil arasındaki tutarlılığı görüyordu, kodun
+// kendisiyle olan bağı görmüyordu. Yazım hatası olan ya da hiç eklenmemiş bir
+// anahtar (`t("settings.targetWeightLabel")`) ekranda ham `settings.…` olarak
+// görünür — ve bunu testler de yakalamaz. Dinamik anahtarlar (`${...}`) atlanır.
+// ---------------------------------------------------------------------------
+function collectUsedKeys(text) {
+  const keys = new Set();
+  const re = /(?:^|[^\w$.])(?:i18n\.)?t\s*\(\s*(["'`])((?:[^"'`\\]|\\.)*)\1/g;
+  let m;
+  while ((m = re.exec(text)) !== null) {
+    const key = m[2];
+    if (!key || key.includes("${") || key.includes("\n")) continue; // dinamik — atla
+    // Yalnızca GERÇEK anahtar şekli: harfle başlar, harf/rakam/nokta/alt çizgi.
+    // Gerekçe: düz metin içinde geçen örnekler (`t("...")` gibi) anahtar sanılıp
+    // yanlış alarm üretiyordu — bkz. tasks/lessons.md L23 (kapı, prozayla kandırılamaz).
+    if (!/^[A-Za-z][\w.]*$/.test(key)) continue;
+    keys.add(key);
+  }
+  return keys;
+}
+
+/** Bir nesnenin TÜM yolları — DİZİLERİ yaprak sayar. `flatten` dizi değerleri
+ *  atladığı için (`day.weekdaysShort` gibi `returnObjects` anahtarları) burada
+ *  ayrıca toplanır: "kod bu anahtarı istiyor, locale'de var mı?" sorusunun
+ *  doğru cevabı budur. */
+const pathsOfLocale = (o, p = "") =>
+  Object.entries(o).flatMap(([k, v]) =>
+    v !== null && typeof v === "object" && !Array.isArray(v)
+      ? pathsOfLocale(v, `${p}${k}.`)
+      : [`${p}${k}`],
+  );
+
+const knownKeys = new Set(
+  pathsOfLocale(JSON.parse(readFileSync(join(localesDir, "en.json"), "utf8"))),
+);
+let missingInCode = 0;
+for (const file of collectDirFiles(srcDir)) {
+  const text = readFileSync(file, "utf8");
+  for (const key of collectUsedKeys(text)) {
+    if (!knownKeys.has(key)) {
+      console.log(`MISSING KEY ${key} — used in ${file.slice(root.length + 1)}`);
+      missingInCode++;
+    }
+  }
+}
+
+// ---------------------------------------------------------------------------
+// 5) SABİT TÜRKÇE METİN — dile bağlı olmadan yazılmış kullanıcı metni.
+//
+// Bu hata sınıfı üç kez ürünüle çıktı: "Beslenme Hedefleri" başlığı, kalori
+// halkasının `\u00xx` kaçışlarıyla gizlenmiş alt yazısı, CSV başlıkları. Üç
+// farklı yolla saklandığı için üç imza birlikte aranır:
+//   1. Türkçe'ye özgü harfler (ç ğ ı ö ş ü), 2. `\u01xx` kaçışları,
+//   3. ASCII'yle yazılabilen Türkçe kelimeler (Hedef, Kaydet, Ekle…).
+// `// i18n-exempt: <gerekçe>` yorumu olan satırlar ve dosya bazlı muafiyetler
+// (aşağıdaki liste, her biri gerekçeli) atlanır.
+// ---------------------------------------------------------------------------
+const FILE_EXEMPT = [
+  ["src/lib/changelog.ts", "sürüm notları tr/en alanları çevirinin KENDİSİ"],
+  ["src/i18n/i18n.ts", "i18n altyapısı ve dil algılama"],
+  ["src/lib/goals.ts", "gömülü profil ADLARI veri değeri (backend sözleşmesi)"],
+];
+
+const TR_LETTERS = /[çğıöşüÇĞİÖŞÜ]/;
+const TR_ESCAPE = /\\u01[0-9a-fA-F]{2}/;
+const TR_WORDS = [
+  "Hedef",
+  "Hedefe",
+  "Beslenme",
+  "Kaydet",
+  "Varsayilan",
+  "Ekle",
+  "Kalan",
+  "Toplam",
+  "Ortalama",
+  "Takip",
+  "Tema",
+  "Destek",
+  "Gizlilik",
+  "Profil",
+  "Porsiyon",
+  "Tarif",
+  "Besin",
+  "Yemek",
+  "Isim",
+];
+const TR_WORD_RE = new RegExp(`\\b(?:${TR_WORDS.join("|")})\\b`);
+
+/** Yorumları boşlukla değiştirir (satır numarası ve kod yapısı bozulmadan). */
+function stripComments(text) {
+  let out = text.replace(/\/\*[\s\S]*?\*\//g, (m) => m.replace(/[^\n]/g, " "));
+  out = out.replace(/(^|[^:])\/\/[^\n]*/g, (m, p1) => p1 + " ".repeat(m.length - p1.length));
+  return out;
+}
+
+const exemptFiles = new Set(FILE_EXEMPT.map(([f]) => join(root, f)));
+let hardcoded = 0;
+for (const file of collectDirFiles(srcDir)) {
+  if (exemptFiles.has(file)) continue;
+  if (/\.test\.(ts|tsx)$/.test(file)) continue; // test verisi kullanıcıya görünmez
+  const rel = file.slice(root.length + 1);
+  const rawLines = readFileSync(file, "utf8").split(/\r?\n/);
+  const lines = stripComments(readFileSync(file, "utf8")).split(/\r?\n/);
+  lines.forEach((line, i) => {
+    // Muafiyet işareti YORUMDA yaşar; yorumlar yukarıda boşaltıldığı için hem
+    // ham hem temizlenmiş satıra bakılır (aynı zamanda bir üst satırdaki
+    // işaret de geçerlidir — çok satırlı yapılar için).
+    if (/i18n-exempt/.test(line) || /i18n-exempt/.test(rawLines[i] ?? "")) return;
+    if (i > 0 && /i18n-exempt/.test(rawLines[i - 1] ?? "")) return;
+    const hit = TR_LETTERS.test(line) || TR_ESCAPE.test(line) || TR_WORD_RE.test(line);
+    if (!hit) return;
+    console.log(`HARDCODED ${rel}:${i + 1} — ${line.trim().slice(0, 110)}`);
+    hardcoded++;
+  });
+}
+
 let fail = false;
 if (missing > 0 || placeholderMismatch > 0) {
   console.log(
-    `PARITY FAIL: ${missing} missing key(s), ${placeholderMismatch} placeholder mismatch(es)`
+    `PARITY FAIL: ${missing} missing key(s), ${placeholderMismatch} placeholder mismatch(es)`,
   );
   fail = true;
 } else {
   console.log(`PARITY OK (${totals[langs[0]]} keys x${langs.length})`);
 }
-if (interpWarnings > 0) console.log(`INTERP: ${interpWarnings} warning(s) — code-side lenient, not failing`);
-if (fail) process.exit(1);
+
+if (missingInCode > 0) {
+  console.log(`KEYS FAIL: ${missingInCode} key(s) used in code but absent from locales`);
+  fail = true;
+} else {
+  console.log(`KEYS OK (kodda kullanılan her t("…") anahtarı locale'de var)`);
+}
+
+if (hardcoded > 0) {
+  console.log(`HARDCODED FAIL: ${hardcoded} satırda dile bağlı metin`);
+  fail = true;
+} else {
+  console.log(`HARDCODED OK (sabit Türkçe metin yok)`);
+}
+
+if (interpWarnings > 0)
+  console.log(`INTERP: ${interpWarnings} warning(s) — code-side lenient, not failing`);
+if (fail) process.exit(1);

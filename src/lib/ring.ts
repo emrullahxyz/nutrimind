@@ -1,5 +1,16 @@
 import { formatNumber } from "./format";
 
+/** Çevrilebilir metin sözleşmesi: anahtar + hazır parametreler.
+ *
+ *  `ring.ts` SAF kalır — i18n'i tanımaz, aktif dili bilmez. Sayılar burada
+ *  locale-duyarlı `formatNumber` ile biçimlendirilip METİN olarak taşınır, böylece
+ *  çeviri anında binlik ayırıcı kaybolmaz. Çağıran bileşen
+ *  `t(msg.key, msg.params)` yazar (bkz. `CalorieRing`). */
+export interface RingMessage {
+  key: string;
+  params: Record<string, string>;
+}
+
 export interface RingState {
   hasTarget: boolean;
   pct: number;
@@ -7,10 +18,10 @@ export interface RingState {
   isMet: boolean;
   diff: number;
   headline: string;
-  caption: string;
-  remainingText: string;
   ratioText: string;
-  a11yLabel: string;
+  caption: RingMessage;
+  remaining: RingMessage;
+  a11y: RingMessage;
 }
 
 export function ringState(consumed: number, target: number): RingState {
@@ -21,37 +32,43 @@ export function ringState(consumed: number, target: number): RingState {
   const pct = hasTarget ? Math.min(100, Math.max(0, (consumed / target) * 100)) : 0;
 
   let headline: string;
-  let caption: string;
-  let remainingText: string;
+  let caption: RingMessage;
+  let remaining: RingMessage;
   let ratioText: string;
 
   if (!hasTarget) {
     headline = formatNumber(consumed);
-    caption = "kcal \u00b7 hedef yok";
-    remainingText = `${formatNumber(consumed)} kcal`;
+    caption = { key: "ring.captionNoTarget", params: {} };
+    remaining = { key: "ring.remainingNoTarget", params: { amount: formatNumber(consumed) } };
     ratioText = "";
   } else if (isMet) {
     headline = formatNumber(consumed);
-    caption = "Hedefe ula\u015f\u0131ld\u0131";
-    remainingText = "Hedefe ula\u015f\u0131ld\u0131";
+    caption = { key: "ring.captionMet", params: {} };
+    remaining = { key: "ring.remainingMet", params: {} };
     ratioText = `${formatNumber(consumed)} / ${formatNumber(target)}`;
   } else if (isOver) {
     headline = `+${formatNumber(Math.abs(diff))}`;
-    caption = "kcal a\u015f\u0131ld\u0131";
-    remainingText = `+${formatNumber(Math.abs(diff))} kcal a\u015f\u0131ld\u0131`;
+    caption = { key: "ring.captionOver", params: {} };
+    remaining = { key: "ring.remainingOver", params: { amount: formatNumber(Math.abs(diff)) } };
     ratioText = `${formatNumber(consumed)} / ${formatNumber(target)}`;
   } else {
     headline = formatNumber(diff);
-    caption = "kcal kald\u0131";
-    remainingText = `${formatNumber(diff)} kcal kald\u0131`;
+    caption = { key: "ring.captionLeft", params: {} };
+    remaining = { key: "ring.remainingLeft", params: { amount: formatNumber(diff) } };
     ratioText = `${formatNumber(consumed)} / ${formatNumber(target)}`;
   }
 
-  const a11yLabel = hasTarget
-    ? `Kalori: ${formatNumber(consumed)} / ${formatNumber(target)} kcal. ${remainingText}.`
-    : `Kalori: ${formatNumber(consumed)} kcal. Hedef belirlenmemi\u015f.`;
+  // Ekran okuyucu cümlesi. Kalan/özet ifadesi AYRI bir cümle olarak
+  // kopyalanmaz: bileşen `remaining` metnini `status` parametresi olarak geçirir
+  // (bkz. `CalorieRing`), böylece tek doğruluk kaynağı korunur.
+  const a11y: RingMessage = hasTarget
+    ? {
+        key: "ring.a11y",
+        params: { consumed: formatNumber(consumed), target: formatNumber(target) },
+      }
+    : { key: "ring.a11yNoTarget", params: { consumed: formatNumber(consumed) } };
 
-  return { hasTarget, pct, isOver, isMet, diff, headline, caption, remainingText, ratioText, a11yLabel };
+  return { hasTarget, pct, isOver, isMet, diff, headline, ratioText, caption, remaining, a11y };
 }
 
 export function ringGradient(isOver: boolean, pct: number): string {

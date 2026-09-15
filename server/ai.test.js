@@ -279,3 +279,114 @@ describe("AI fallback zinciri (server/ai.js)", () => {
     expect(imagePart.image_url.url).toBe("data:image/jpeg;base64,test_base64_data");
   });
 });
+
+describe("AI istem dili (server/ai.js `lang`)", () => {
+  /** Gemini isteğinin gövdesinden prompt metnini çıkarır. */
+  function promptOf(call) {
+    const body = JSON.parse(call[1].body);
+    return body.contents[0].parts[0].text;
+  }
+
+  it("lang=tr iken istem Türkçe ve 'Yanıtı Türkçe ver' talimatı içerir", async () => {
+    const mockFetch = vi.fn().mockResolvedValue(makeGeminiOkResponse());
+    vi.stubGlobal("fetch", mockFetch);
+
+    const { parseMealText } = await loadAi({
+      NUTRIMIND_LLM_PROVIDER: "gemini",
+      GEMINI_API_KEY: "test_gemini_key",
+    });
+
+    const res = await parseMealText({ text: "2 yumurta", aliases: [], lang: "tr" });
+    expect(res.status).toBe(200);
+
+    const prompt = promptOf(mockFetch.mock.calls[0]);
+    expect(prompt).toContain("Sen bir beslenme uzmanısın");
+    expect(prompt).toContain("Yanıtı Türkçe ver");
+    expect(prompt).toContain("KULLANICININ GİRDİSİ");
+    expect(prompt).toContain("2 yumurta");
+  });
+
+  it("lang=pl iken istem Lehçe üretilir", async () => {
+    const mockFetch = vi.fn().mockResolvedValue(makeGeminiOkResponse());
+    vi.stubGlobal("fetch", mockFetch);
+
+    const { parseMealText } = await loadAi({
+      NUTRIMIND_LLM_PROVIDER: "gemini",
+      GEMINI_API_KEY: "test_gemini_key",
+    });
+
+    const res = await parseMealText({ text: "2 jajka", aliases: [], lang: "pl" });
+    expect(res.status).toBe(200);
+
+    const prompt = promptOf(mockFetch.mock.calls[0]);
+    expect(prompt).toContain("ekspertem ds. żywienia");
+    expect(prompt).toContain("Odpowiedz w języku polskim");
+  });
+
+  it("lang verilmezse (ya da tanınmıyorsa) İngilizce'ye düşer — varsayılan uygulama dili", async () => {
+    const mockFetch = vi.fn().mockResolvedValue(makeGeminiOkResponse());
+    vi.stubGlobal("fetch", mockFetch);
+
+    const { parseMealText } = await loadAi({
+      NUTRIMIND_LLM_PROVIDER: "gemini",
+      GEMINI_API_KEY: "test_gemini_key",
+    });
+
+    const noLang = await parseMealText({ text: "2 eggs", aliases: [] });
+    expect(noLang.status).toBe(200);
+    expect(promptOf(mockFetch.mock.calls[0])).toContain("Answer in English");
+
+    const bogus = await parseMealText({ text: "2 eggs", aliases: [], lang: "de-DE" });
+    expect(bogus.status).toBe(200);
+    expect(promptOf(mockFetch.mock.calls[1])).toContain("Answer in English");
+  });
+
+  it("besin hafızası satırları da istem diliyle yazılır (karışık dil yok)", async () => {
+    const mockFetch = vi.fn().mockResolvedValue(makeGeminiOkResponse());
+    vi.stubGlobal("fetch", mockFetch);
+
+    const { parseMealText } = await loadAi({
+      NUTRIMIND_LLM_PROVIDER: "gemini",
+      GEMINI_API_KEY: "test_gemini_key",
+    });
+
+    await parseMealText({
+      text: "1 scoop",
+      aliases: [
+        {
+          name: "Whey",
+          serving_g: 30,
+          nutrition: { kcal: 120, protein: 24, carbs: 3, fat: 1.5, fiber: 0 },
+          triggers: ["protein tozu"],
+        },
+      ],
+      lang: "en",
+    });
+
+    const prompt = promptOf(mockFetch.mock.calls[0]);
+    expect(prompt).toContain("USER'S FOOD MEMORY");
+    expect(prompt).toContain("g protein");
+    expect(prompt).not.toContain("KULLANICININ BESİN HAFIZASI");
+    expect(prompt).not.toContain("karbonhidrat");
+  });
+
+  it("görsel istemi de `lang` alır (etiket modu)", async () => {
+    const mockFetch = vi.fn().mockResolvedValue(makeGeminiOkResponse());
+    vi.stubGlobal("fetch", mockFetch);
+
+    const { parseMealImage } = await loadAi({
+      NUTRIMIND_LLM_PROVIDER: "gemini",
+      GEMINI_API_KEY: "test_gemini_key",
+    });
+
+    const res = await parseMealImage({
+      imageBase64: "x",
+      mimeType: "image/jpeg",
+      mode: "food_label",
+      aliases: [],
+      lang: "pl",
+    });
+    expect(res.status).toBe(200);
+    expect(promptOf(mockFetch.mock.calls[0])).toContain("Odpowiedz w języku polskim");
+  });
+});

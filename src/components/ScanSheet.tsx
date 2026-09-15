@@ -49,13 +49,7 @@ import {
 } from "../lib/nutrition";
 import { MACROS } from "../lib/nutrients";
 import { defaultScanGrams, seedTrigger } from "../lib/scan";
-import {
-  OFF_ATTRIBUTION,
-  OFF_SERVING_G,
-  fetchOffProduct,
-  isValidBarcode,
-  missingLabels,
-} from "../lib/off";
+import { OFF_SERVING_G, fetchOffProduct, isValidBarcode, missingLabels } from "../lib/off";
 import type { OffFood } from "../lib/off";
 import { useOffCooldown } from "../lib/offScanner";
 import {
@@ -100,7 +94,6 @@ const CAPTURE_OPTS: Record<VisionMode, { maxDim: number; quality: number }> = {
   food_photo: { maxDim: 1024, quality: 0.7 },
 };
 
-
 /** AI consent onay ekranı — portalsız, ScanSheet'in kendi Modal DOM'u içinde
  *  render edilir. Nested <Modal> yerine CSS overlay kullanılarak:
  *  - Tek portal (dış Modal)
@@ -135,7 +128,9 @@ function AiConsentOverlay({
   return (
     <div
       className="absolute inset-0 z-30 flex items-center justify-center bg-black/70 backdrop-blur-sm"
-      onMouseDown={(e) => { mouseDownTargetRef.current = e.target; }}
+      onMouseDown={(e) => {
+        mouseDownTargetRef.current = e.target;
+      }}
       onClick={(e) => {
         if (mouseDownTargetRef.current === e.target && e.target === e.currentTarget) onClose();
       }}
@@ -245,13 +240,18 @@ export function ScanSheet({
   const [visionSaving, setVisionSaving] = useState(false);
   const [aiConsentOpen, setAiConsentOpen] = useState(false);
   // Onay bekleyen görsel çağrısı: kullanıcı "Anladım"a basınca otomatik tekrar parse edilir.
-  const pendingVisionRef = useRef<{ base64: string; mimeType: string; mode: VisionMode } | null>(null);
+  const pendingVisionRef = useRef<{ base64: string; mimeType: string; mode: VisionMode } | null>(
+    null,
+  );
 
   const scanning = food === null && visionItems === null;
 
-  const { videoRef, ready, error: cameraError, retry: retryCamera } = useCameraStream(
-    scanning && canUseCamera && !offline,
-  );
+  const {
+    videoRef,
+    ready,
+    error: cameraError,
+    retry: retryCamera,
+  } = useCameraStream(scanning && canUseCamera && !offline);
 
   // Barkod taraması YALNIZCA barkod modunda ve akış hazırken çalışır. `blocked`
   // değişimi yalnızca bu aralığı yeniden kurar — kamerayı DEĞİL (telefon ışığı
@@ -478,7 +478,8 @@ export function ScanSheet({
   const selectedUnit = availableUnits.find((u) => u.name === unitName) ?? GRAM_UNIT;
   const amountValue = parseNum(grams);
   const gramsTotal = toGrams(amountValue, selectedUnit);
-  const scaledNutrition = food && gramsTotal > 0 ? scaleNutrition(food.nutrition, OFF_SERVING_G, gramsTotal) : null;
+  const scaledNutrition =
+    food && gramsTotal > 0 ? scaleNutrition(food.nutrition, OFF_SERVING_G, gramsTotal) : null;
 
   const canSaveAlias = triggerList.length > 0;
   const canLogWithMemory = canSaveAlias && scaledNutrition !== null;
@@ -600,9 +601,7 @@ export function ScanSheet({
     } catch (e) {
       // Besin GERÇEKTEN hafızaya kaydedildi — bunu toptan başarısızlık gibi
       // göstermek yanlış olur.
-      setErr(
-        `Besin hafızaya kaydedildi, ancak bugüne eklenemedi: ${String((e as Error)?.message ?? e)}. Hafızadan elle ekleyebilirsin.`,
-      );
+      setErr(t("scan.savedButNotAdded", { error: String((e as Error)?.message ?? e) }));
     } finally {
       setSaving(null);
     }
@@ -691,13 +690,19 @@ export function ScanSheet({
     ) : null;
 
   const visionTitle =
-    visionMode === "food_label" ? t("scan.titleFoodLabel") : visionMode === "food_photo" ? t("scan.titleFoodPhoto") : t("scan.title");
+    visionMode === "food_label"
+      ? t("scan.titleFoodLabel")
+      : visionMode === "food_photo"
+        ? t("scan.titleFoodPhoto")
+        : t("scan.title");
 
   return (
     <Modal
       fullScreen
       bleed={scanning}
-      title={food ? t("scan.titleReview") : visionItems && visionMode ? visionTitle : t("scan.title")}
+      title={
+        food ? t("scan.titleReview") : visionItems && visionMode ? visionTitle : t("scan.title")
+      }
       // SABİT referans — capturedPreview'a göre koşullu DEĞİL. Kararı kendi
       // içinde senkron ref'ten okuyor (bkz. `handleModalClose` yorumu); render
       // bekleyen bir koşullu swap, arka arkaya hızlı iki geri basışta yarışa
@@ -707,7 +712,13 @@ export function ScanSheet({
     >
       {/* Galeri seçici: SADECE "Galeri" düğmesi tetikler. Eskiden "Food Label"
           da bunu açıyordu — canlı etiket okuma diye bir şey yoktu. */}
-      <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleGallerySelect} />
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/*"
+        className="hidden"
+        onChange={handleGallerySelect}
+      />
 
       {scanning ? (
         <div ref={stageRef} className="relative h-full w-full overflow-hidden bg-black">
@@ -715,7 +726,12 @@ export function ScanSheet({
             <>
               {/* muted + playsInline: mobil tarayıcılar sessiz olmayan videoyu
                   kendiliğinden oynatmaz. */}
-              <video ref={videoRef} muted playsInline className="absolute inset-0 h-full w-full object-cover" />
+              <video
+                ref={videoRef}
+                muted
+                playsInline
+                className="absolute inset-0 h-full w-full object-cover"
+              />
 
               {/* Asist çerçevesi. Dev `box-shadow` yayılımı çerçevenin DIŞINI
                   karartıyor — tek eleman hem çerçeve hem maske (sahne
@@ -754,9 +770,7 @@ export function ScanSheet({
                   {t("scan.cameraSettingsHint")}
                 </p>
               ) : (
-                <p className="text-[11px] text-ink-tertiary">
-                  {t("scan.cameraFallback")}
-                </p>
+                <p className="text-[11px] text-ink-tertiary">{t("scan.cameraFallback")}</p>
               )}
               {canUseCamera && (
                 <button
@@ -782,7 +796,9 @@ export function ScanSheet({
                   onClick={() => setScanMode(m.mode)}
                   aria-pressed={scanMode === m.mode}
                   className={`flex items-center gap-1 rounded-pill px-3 py-1.5 transition ${
-                    scanMode === m.mode ? "bg-white font-bold text-black shadow" : "hover:text-white"
+                    scanMode === m.mode
+                      ? "bg-white font-bold text-black shadow"
+                      : "hover:text-white"
                   }`}
                 >
                   <span aria-hidden>{m.icon}</span>
@@ -807,9 +823,7 @@ export function ScanSheet({
                     onClick={captureAndAnalyze}
                     disabled={!ready || analyzing || offline}
                     aria-label={
-                      scanMode === "food_label"
-                        ? t("scan.captureLabel")
-                        : t("scan.captureFood")
+                      scanMode === "food_label" ? t("scan.captureLabel") : t("scan.captureFood")
                     }
                     className="flex h-[68px] w-[68px] items-center justify-center rounded-full border-4 border-white/90 transition active:scale-95 disabled:opacity-40"
                   >
@@ -831,7 +845,7 @@ export function ScanSheet({
             {scanMode === "barcode" && (
               <div className="rounded-chip border border-white/10 bg-black/60 p-3 backdrop-blur-md">
                 {manualBarcodeForm}
-                <p className="mt-2 text-[10px] text-ink-faint">{OFF_ATTRIBUTION}</p>
+                <p className="mt-2 text-[10px] text-ink-faint">{t("off.attribution")}</p>
               </div>
             )}
           </div>
@@ -850,14 +864,14 @@ export function ScanSheet({
                   onClick={retakeCapture}
                   className="rounded-pill border border-white/15 bg-black/40 px-5 py-2.5 text-sm font-semibold text-white/80 backdrop-blur-sm transition hover:text-white"
                 >
-                  ↺ Tekrar çek
+                  ↺ {t("scan.retake")}
                 </button>
                 <button
                   type="button"
                   onClick={confirmCapture}
                   className="rounded-pill bg-white px-6 py-2.5 text-sm font-extrabold text-black transition active:scale-95"
                 >
-                  ✓ Kullan
+                  ✓ {t("scan.useShot")}
                 </button>
               </div>
             </div>
@@ -876,7 +890,7 @@ export function ScanSheet({
                 onClick={cancelAnalyze}
                 className="mt-2 rounded-pill border border-line px-4 py-2 text-sm font-semibold text-ink-secondary transition hover:text-ink-primary"
               >
-                İptal
+                {t("common.cancel")}
               </button>
             </div>
           )}
@@ -903,8 +917,10 @@ export function ScanSheet({
               prefix="100 g · "
               className="mt-2 border-t border-line pt-2 font-mono text-[11px] text-ink-secondary"
             />
-            {missingLabels(food!).length > 0 && (
-              <p className="mt-1 text-[10px] text-warn">{t("scan.missingData")}: {missingLabels(food!).join(", ")}</p>
+            {missingLabels(food!, t).length > 0 && (
+              <p className="mt-1 text-[10px] text-warn">
+                {t("scan.missingData")}: {missingLabels(food!, t).join(", ")}
+              </p>
             )}
           </div>
 
@@ -930,7 +946,10 @@ export function ScanSheet({
           {triggerList.length > 0 ? (
             <div className="flex flex-wrap gap-1.5">
               {triggerList.map((t) => (
-                <span key={t} className="rounded-pill bg-memory/15 px-2.5 py-1 text-[11px] font-semibold text-memory">
+                <span
+                  key={t}
+                  className="rounded-pill bg-memory/15 px-2.5 py-1 text-[11px] font-semibold text-memory"
+                >
                   {t}
                 </span>
               ))}
@@ -940,7 +959,9 @@ export function ScanSheet({
                bunu söylemeli — eskiden "düğmeler bu yüzden kapalı" diyordu ve
                taranan ürünü bugüne eklemenin tek yolu uydurma bir ifade yazmaktı. */
             <p className="text-[11px] text-ink-tertiary">
-              {t("scan.memoryHint", { memory: <span className="font-semibold text-memory">{t("scan.memoryWord")}</span> })}
+              {t("scan.memoryHint", {
+                memory: <span className="font-semibold text-memory">{t("scan.memoryWord")}</span>,
+              })}
             </p>
           )}
 
@@ -951,7 +972,11 @@ export function ScanSheet({
             <div className="w-24 flex-none">
               <label className="block">
                 <Label>{t("scan.unitLabel")}</Label>
-                <select className={fieldCls} value={unitName} onChange={(e) => setUnitName(e.target.value)}>
+                <select
+                  className={fieldCls}
+                  value={unitName}
+                  onChange={(e) => setUnitName(e.target.value)}
+                >
                   {availableUnits.map((u) => (
                     <option key={u.name} value={u.name} className="bg-elevated-2">
                       {u.name}

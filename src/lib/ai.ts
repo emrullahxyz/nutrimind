@@ -7,6 +7,7 @@
 import type { AIParseItem, AIParseResult, Nutrition, VisionMode } from "../types";
 import { signalUnauthorizedFromApi } from "./api";
 import { isBrowserOffline } from "./netStatus";
+import i18n from "../i18n/i18n";
 
 /** Proxy'den dönen hata. `status` HTTP kodudur (0 = ağa hiç çıkılamadı),
  *  `retryAfter` yalnızca 429'da doludur (saniye). */
@@ -21,28 +22,64 @@ export class AiError extends Error {
   }
 }
 
-/** Durum koduna göre arayüz metni. */
-export function aiErrorMessage(status: number, serverMessage?: string | null, retryAfter?: number | null): string {
+/** Durum koduna göre arayüz metni — aktif dilde (i18n, toast/inline hata olarak
+ *  gösterilir; sabit metin olamaz). Sunucunun kendi mesajı yalnızca tanınmayan
+ *  durumlarda son çare olarak kullanılır. */
+export function aiErrorMessage(
+  status: number,
+  serverMessage?: string | null,
+  retryAfter?: number | null,
+  code?: string | null,
+): string {
+  // Sunucu kararlı bir `code` gönderiyorsa metin ona göre seçilir: sunucu
+  // gövdesi İngilizce/teknik, kullanıcıya giden metin aktif dilde olmalı.
+  switch (code) {
+    case "ai_disabled":
+    case "ai_not_configured":
+      return i18n.t("ai.err.disabled");
+    case "ai_rate_limit":
+      return retryAfter
+        ? i18n.t("ai.err.rateLimitSeconds", { seconds: retryAfter })
+        : i18n.t("ai.err.rateLimit");
+    case "ai_timeout":
+      return i18n.t("ai.err.timeout");
+    case "ai_unreachable":
+      return i18n.t("ai.err.network");
+    case "ai_bad_response":
+    case "ai_provider_error":
+      return i18n.t("ai.err.badResponse");
+    case "ai_bad_request":
+      return i18n.t("ai.err.badRequest");
+    default:
+      break;
+  }
+
   switch (status) {
     case 0:
-      return "Sunucuya ulaşılamadı — bağlantını kontrol et.";
+      return i18n.t("ai.err.network");
     case 429:
       return retryAfter
-        ? `Çok hızlı istek yapıldı. ${retryAfter} sn sonra tekrar dene.`
-        : "Çok hızlı istek yapıldı. Biraz sonra tekrar dene.";
+        ? i18n.t("ai.err.rateLimitSeconds", { seconds: retryAfter })
+        : i18n.t("ai.err.rateLimit");
     case 502:
-      return "AI servisi şu an düzgün yanıt vermiyor. Biraz sonra tekrar dene.";
+      return i18n.t("ai.err.badResponse");
     case 503:
-      return "AI özelliği bu ortamda kapalı.";
+      return i18n.t("ai.err.disabled");
     case 504:
-      return "AI servisi zaman aşımına uğradı. Biraz sonra tekrar dene.";
+      return i18n.t("ai.err.timeout");
     default:
-      return serverMessage?.trim() || `AI isteği başarısız (HTTP ${status}).`;
+      return serverMessage?.trim() || i18n.t("ai.err.http", { status });
   }
 }
 
 const isRecord = (v: unknown): v is Record<string, unknown> =>
   typeof v === "object" && v !== null && !Array.isArray(v);
+
+/** Sunucu prompt'u ve yanıt dili uygulamanın aktif dilini izler (`server/ai.js`).
+ *  Desteklenmeyen bir değer sunucuda "en"e düşer. */
+function activeLang(): string {
+  return i18n.resolvedLanguage || i18n.language || "en";
+}
 
 function isFiniteNum(v: unknown): v is number {
   return typeof v === "number" && Number.isFinite(v);
@@ -101,9 +138,15 @@ async function aiPost<T>(path: string, body: unknown, signal?: AbortSignal): Pro
     const b = isRecord(json) ? json : {};
     const header = Number(res.headers.get("Retry-After"));
     const fromBody = typeof b.retryAfter === "number" ? b.retryAfter : NaN;
-    const retryAfter = Number.isFinite(header) && header > 0 ? header : Number.isFinite(fromBody) ? fromBody : null;
+    const retryAfter =
+      Number.isFinite(header) && header > 0 ? header : Number.isFinite(fromBody) ? fromBody : null;
     const serverMessage = typeof b.error === "string" ? b.error : null;
-    throw new AiError(res.status, aiErrorMessage(res.status, serverMessage, retryAfter), retryAfter);
+    const code = typeof b.code === "string" ? b.code : null;
+    throw new AiError(
+      res.status,
+      aiErrorMessage(res.status, serverMessage, retryAfter, code),
+      retryAfter,
+    );
   }
 
   return json as T;
@@ -111,7 +154,11 @@ async function aiPost<T>(path: string, body: unknown, signal?: AbortSignal): Pro
 
 /** Serbest metni Gemini'ye gönderir, yapısal besin öğelerine çevirir. */
 export async function parseWithAI(text: string, signal?: AbortSignal): Promise<AIParseResult> {
-  const raw = await aiPost<{ items?: unknown[] }>("/api/ai/parse", { text }, signal);
+  const raw = await aiPost<{ items?: unknown[] }>(
+    "/api/ai/parse",
+    { text, lang: activeLang() },
+    signal,
+  );
   const rawItems = Array.isArray(raw?.items) ? raw.items : [];
   const items = rawItems.map(parseAIItem).filter((x): x is AIParseItem => x !== null);
   return { items };
@@ -127,7 +174,11 @@ export async function parseMealImage(
   signal?: AbortSignal,
 ): Promise<AIParseResult> {
   if (!hasAiConsent()) throw new Error("AI_CONSENT_REQUIRED");
-  const raw = await aiPost<{ items?: unknown[]; healthNote?: string }>("/api/ai/vision", { image: base64, mimeType, mode }, signal);
+  const raw = await aiPost<{ items?: unknown[]; healthNote?: string }>(
+    "/api/ai/vision",
+    { image: base64, mimeType, mode, lang: activeLang() },
+    signal,
+  );
   const rawItems = Array.isArray(raw?.items) ? raw.items : [];
   const items = rawItems.map(parseAIItem).filter((x): x is AIParseItem => x !== null);
   const healthNote = typeof raw?.healthNote === "string" ? raw.healthNote : undefined;
@@ -159,4 +210,3 @@ export function revokeAiConsent(): void {
     localStorage.removeItem(CONSENT_KEY);
   } catch {}
 }
-

@@ -2,12 +2,9 @@ import type { MealCategory } from "../types";
 
 export const MEAL_CATEGORIES: MealCategory[] = ["breakfast", "lunch", "dinner", "snack"];
 
-export const MEAL_CATEGORY_LABELS: Record<MealCategory, string> = {
-  breakfast: "Kahvaltı",
-  lunch: "Öğle",
-  dinner: "Akşam",
-  snack: "Atıştırmalık",
-};
+// NOT: sabit bir `MEAL_CATEGORY_LABELS` tablosu vardı ve TÜRKÇE metin taşıyordu —
+// hiçbir yerden okunmuyordu (ölü kod). Görünen adlar `meal.category*` i18n
+// anahtarlarından gelir (bkz. DayView'daki CATEGORY_LABEL_KEY).
 
 /** Saat (0-23) -> otomatik kategori. 05-10 Kahvaltı, 11-14 Öğle, 15-20 Akşam,
  *  21-04 Atıştırmalık. */
@@ -42,5 +39,7 @@ export function groupMealsByCategory<T extends { category?: MealCategory }>(
     const key = meal.category ?? "other";
     buckets[key].push({ meal, index });
   });
-  return order.filter((k) => buckets[k].length > 0).map((category) => ({ category, items: buckets[category] }));
+  return order
+    .filter((k) => buckets[k].length > 0)
+    .map((category) => ({ category, items: buckets[category] }));
 }

@@ -16,6 +16,7 @@
 //      de uygulanır; kalıcı olarak saklanan tek şey kullanıcının elle dokunduğu
 //      `overrides` kayıtlarıdır.
 // ============================================================================
+import type { TFunction } from "i18next";
 import { weekdayIndex } from "./format";
 import { NUTRIENT_KEYS, makeNutrition, nutrientOf } from "./nutrients";
 import type { NutrientKey } from "./nutrients";
@@ -26,9 +27,48 @@ export const DEFAULT_PROFILE_ID = "default";
 export const TRAINING_PROFILE_ID = "training";
 export const REST_PROFILE_ID = "rest";
 
+// DİKKAT: bu üç AD bir VERİ değeridir — profillerle birlikte `config.goals`
+// içinde saklanır. Bu yüzden burada dile göre değiştirilmezler; gösterim
+// katmanında `profileDisplayName` çevirir.
 export const DEFAULT_PROFILE_NAME = "Varsayılan";
 export const TRAINING_PROFILE_NAME = "Antrenman";
 export const REST_PROFILE_NAME = "Dinlenme";
+
+/** Bir profilin GÖRÜNEN adı.
+ *
+ *  Gömülü üç profil (varsayılan/antrenman/dinlenme) kullanıcı tarafından
+ *  yeniden adlandırılmadıysa arayüzde aktif dilde görünür — böylece İngilizce
+ *  arayüzde gün tipi rozeti "Antrenman" yazmaz.
+ *
+ *  Kullanıcı adı DEĞİŞTİRDİYSE kendi yazdığı ad aynen korunur (veriye dokunulmaz,
+ *  backend sözleşmesi değişmez, göç gerekmez). */
+export function profileDisplayName(profile: { id: string; name: string }, t: TFunction): string {
+  if (profile.id === DEFAULT_PROFILE_ID && profile.name === DEFAULT_PROFILE_NAME)
+    return t("goals.profileDefault");
+  if (profile.id === TRAINING_PROFILE_ID && profile.name === TRAINING_PROFILE_NAME)
+    return t("goals.profileTraining");
+  if (profile.id === REST_PROFILE_ID && profile.name === REST_PROFILE_NAME)
+    return t("goals.profileRest");
+  return profile.name;
+}
+
+/** Profil adı ALANININ gösterdiği değer (Ayarlar → Hedefler'deki girdi).
+ *
+ *  Gömülü üç profilin adı VERİ olarak Türkçe saklanır (`DEFAULT_PROFILE_NAME`),
+ *  çünkü backend onları seed eder. Kullanıcı o adı kendisi yazmadıysa alanda
+ *  aktif dildeki karşılığı görünür — böylece İngilizce arayüzde "Profile Name"
+ *  kutusu "Varsayılan" demez.
+ *
+ *  `edited` bayrağı ŞARTTIR: dokunulmamış alanı olduğu gibi kaydetmek verideki
+ *  dil-nötr sentinel'i çevrilmiş bir ada dönüştürürdü; o addan sonra
+ *  `profileDisplayName` eşleşmeyi kaybeder ve ad bir daha dile göre değişmezdi. */
+export function profileNameFieldValue(
+  profile: { id: string; name: string },
+  t: TFunction,
+  edited: boolean,
+): string {
+  return edited ? profile.name : profileDisplayName(profile, t);
+}
 
 /** Profil simgesi. Kimlikten türetilir — modele alan eklemek backend
  *  sözleşmesini genişletirdi, oysa simge tamamen görünüm meselesi. */

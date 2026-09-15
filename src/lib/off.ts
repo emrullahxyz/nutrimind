@@ -20,10 +20,12 @@
 // bildirildiği `present`/`missing` ile ayrıca taşınır ki arayüz "bu üründe
 // eksik veri var" diyebilsin.
 // ============================================================================
+import type { TFunction } from "i18next";
 import type { Nutrition } from "../types";
-import { NUTRIENTS, makeNutrition, nutrientOf } from "./nutrients";
+import { NUTRIENTS, makeNutrition } from "./nutrients";
 import type { NutrientKey } from "./nutrients";
 import { isBrowserOffline } from "./netStatus";
+import i18n from "../i18n/i18n";
 
 // --- Sabitler ---------------------------------------------------------------
 
@@ -43,11 +45,12 @@ const KJ_PER_KCAL = 4.184;
 export const OFF_SERVING_G = 100;
 
 /** Adı olmayan ürünler gerçekten var (bkz. off.fixtures.ts). Uydurmak yerine
- *  bunu gösteriyoruz; kullanıcı forma düşen adı düzeltebiliyor. */
-export const OFF_UNNAMED = "İsimsiz ürün";
-
-/** Atıf zorunlu: OFF verisi ODbL 1.0 lisanslı. */
-export const OFF_ATTRIBUTION = "Veriler Open Food Facts'ten — ODbL 1.0 lisansı.";
+ *  bunu gösteriyoruz; kullanıcı forma düşen adı düzeltebiliyor.
+ *  Metin i18n'den gelir (`off.unnamed`) — bu bir ÜRÜN adı değil, arayüz
+ *  yer tutucusudur. */
+export function offUnnamedProduct(): string {
+  return i18n.t("off.unnamed");
+}
 
 // --- Hata tipi --------------------------------------------------------------
 
@@ -64,24 +67,31 @@ export class OffError extends Error {
   }
 }
 
-/** Durum koduna göre arayüz metni. Sunucunun kendi Türkçe mesajı varsa ve
- *  durum tanınmıyorsa o kullanılır — iki katman aynı dili konuşuyor. */
-export function offErrorMessage(status: number, serverMessage?: string | null, retryAfter?: number | null): string {
+/** Durum koduna göre arayüz metni (aktif dilde). Sunucunun kendi mesajı varsa ve
+ *  durum tanınmıyorsa o kullanılır. */
+export function offErrorMessage(
+  status: number,
+  _serverMessage?: string | null,
+  retryAfter?: number | null,
+): string {
   switch (status) {
     case 0:
-      return "Sunucuya ulaşılamadı — bağlantını kontrol et.";
+      return i18n.t("off.errNetwork");
     case 429:
       // Hız sınırı Open Food Facts'in kotasıdır, kullanıcının hatası değil.
       // Sayı verilmezse "biraz sonra" demek uydurma bir süreden dürüsttür.
       return retryAfter
-        ? `Çok hızlı arama yapıldı. Open Food Facts kotası korunuyor — ${retryAfter} sn sonra tekrar dene.`
-        : "Çok hızlı arama yapıldı. Open Food Facts kotası korunuyor — biraz sonra tekrar dene.";
+        ? i18n.t("off.errRateLimitSeconds", { seconds: retryAfter })
+        : i18n.t("off.errRateLimit");
     case 502:
-      return "Open Food Facts şu an düzgün yanıt vermiyor. Biraz sonra tekrar dene.";
+      return i18n.t("off.errBadResponse");
     case 504:
-      return "Open Food Facts zaman aşımına uğradı. Biraz sonra tekrar dene.";
+      return i18n.t("off.errTimeout");
     default:
-      return serverMessage?.trim() || `Open Food Facts isteği başarısız (HTTP ${status}).`;
+      // Sunucu gövdesi İngilizce/teknik; kullanıcıya giden metin aktif dilde
+      // olmak ZORUNDA (bkz. tasks/lessons.md L22). Beklenmeyen her durumda
+      // kontrol edilebilir bir HTTP mesajına düşülür.
+      return i18n.t("off.errHttp", { status });
   }
 }
 
@@ -107,9 +117,14 @@ async function offGet<T>(path: string, signal?: AbortSignal): Promise<T> {
     // `Retry-After` başlığı asıl kaynak; proxy aynı sayıyı gövdeye de koyuyor.
     const header = Number(res.headers.get("Retry-After"));
     const fromBody = typeof body.retryAfter === "number" ? body.retryAfter : NaN;
-    const retryAfter = Number.isFinite(header) && header > 0 ? header : Number.isFinite(fromBody) ? fromBody : null;
+    const retryAfter =
+      Number.isFinite(header) && header > 0 ? header : Number.isFinite(fromBody) ? fromBody : null;
     const serverMessage = typeof body.error === "string" ? body.error : null;
-    throw new OffError(res.status, offErrorMessage(res.status, serverMessage, retryAfter), retryAfter);
+    throw new OffError(
+      res.status,
+      offErrorMessage(res.status, serverMessage, retryAfter),
+      retryAfter,
+    );
   }
 
   return json as T;
@@ -147,7 +162,11 @@ export interface OffSearchResult {
   foods: OffFood[];
 }
 
-export async function searchOff(query: string, limit = 20, signal?: AbortSignal): Promise<OffSearchResult> {
+export async function searchOff(
+  query: string,
+  limit = 20,
+  signal?: AbortSignal,
+): Promise<OffSearchResult> {
   if (isBrowserOffline()) throw new OffError(0, offErrorMessage(0));
   const url = `/api/off/search?q=${encodeURIComponent(query)}&limit=${limit}`;
   const raw = await offGet<OffSearchResponse>(url, signal);
@@ -163,9 +182,15 @@ export async function searchOff(query: string, limit = 20, signal?: AbortSignal)
 }
 
 /** Barkodla tek ürün. Ürün OFF'ta yoksa `null` döner — bu bir HATA DEĞİL. */
-export async function fetchOffProduct(barcode: string, signal?: AbortSignal): Promise<OffFood | null> {
+export async function fetchOffProduct(
+  barcode: string,
+  signal?: AbortSignal,
+): Promise<OffFood | null> {
   if (isBrowserOffline()) throw new OffError(0, offErrorMessage(0));
-  const raw = await offGet<OffProductResponse>(`/api/off/product/${encodeURIComponent(barcode)}`, signal);
+  const raw = await offGet<OffProductResponse>(
+    `/api/off/product/${encodeURIComponent(barcode)}`,
+    signal,
+  );
   if (!raw?.found || !raw.product) return null;
   return toOffFood(raw.product);
 }
@@ -300,7 +325,7 @@ function firstBrand(v: unknown): string | null {
  * Ham OFF ürününü arayüz nesnesine çevirir. `code` yoksa `null` döner: barkodsuz
  * bir kayıt ne aranabilir ne de alias'a bağlanabilir.
  *
- * Ad sırası: Lehçe ad → genel ad → `OFF_UNNAMED`. Kullanıcı Polonya'da yaşıyor;
+ * Ad sırası: Lehçe ad → genel ad → i18n'deki `off.unnamed` yer tutucusu. Kullanıcı Polonya'da yaşıyor;
  * rafta gördüğü isim Lehçe olan.
  */
 export function toOffFood(raw: unknown): OffFood | null {
@@ -311,7 +336,7 @@ export function toOffFood(raw: unknown): OffFood | null {
   const mapped = mapOffNutriments(raw.nutriments);
   return {
     code,
-    name: str(raw.product_name_pl) ?? str(raw.product_name) ?? OFF_UNNAMED,
+    name: str(raw.product_name_pl) ?? str(raw.product_name) ?? offUnnamedProduct(),
     brand: firstBrand(raw.brands),
     quantity: str(raw.quantity),
     servingSize: str(raw.serving_size),
@@ -324,9 +349,10 @@ export function toOffFood(raw: unknown): OffFood | null {
   };
 }
 
-/** Eksik besinlerin okunur adları — arayüzdeki "eksik veri" rozeti için. */
-export function missingLabels(food: OffFood): string[] {
-  return food.missing.map((key) => nutrientOf(key).label);
+/** Eksik besinlerin okunur adları — arayüzdeki "eksik veri" rozeti için.
+ *  Ad `nutrient.<key>` anahtarından gelir, yani aktif dilde. */
+export function missingLabels(food: OffFood, t: TFunction): string[] {
+  return food.missing.map((key) => t(`nutrient.${key}`));
 }
 
 // --- Barkod tarayıcı yetenek testi ------------------------------------------

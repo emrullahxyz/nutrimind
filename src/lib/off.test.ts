@@ -8,10 +8,9 @@
 // olduğunu YAKALAMAZ. Yükler `off.fixtures.ts`'te, çekildikleri uçlarla birlikte.
 // ============================================================================
 import { afterEach, describe, expect, it, vi } from "vitest";
+import i18n from "../i18n/i18n";
 import {
-  OFF_ATTRIBUTION,
   OFF_SERVING_G,
-  OFF_UNNAMED,
   OffError,
   barcodeDetectorCtor,
   cameraScanSupported,
@@ -211,9 +210,9 @@ describe("toOffFood", () => {
     expect("brands" in noBrand).toBe(false);
     expect(toOffFood(noBrand)!.brand).toBeNull();
   });
-  it("adı olmayan gerçek ürün uydurulmaz, açıkça 'İsimsiz ürün' olur", () => {
+  it("adı olmayan gerçek ürün uydurulmaz, aktif dildeki yer tutucuya düşer", () => {
     expect("product_name" in namelessHit).toBe(false);
-    expect(toOffFood(namelessHit)!.name).toBe(OFF_UNNAMED);
+    expect(toOffFood(namelessHit)!.name).toBe(i18n.t("off.unnamed"));
   });
   it("Lehçe ad varsa onu tercih eder (kullanıcı Polonya'da, rafta o yazıyor)", () => {
     const food = toOffFood({ code: "1", product_name: "Cottage cheese", product_name_pl: "Twaróg" })!;
@@ -225,8 +224,13 @@ describe("toOffFood", () => {
     expect(toOffFood(null)).toBeNull();
     expect(toOffFood("metin")).toBeNull();
   });
-  it("eksik besinlerin okunur adlarını verir", () => {
-    expect(missingLabels(toOffFood(pilosHit)!)).toEqual(["Lif", "Şeker", "Doymuş yağ", "Sodyum"]);
+  it("eksik besinlerin okunur adlarını aktif dilde verir", () => {
+    expect(missingLabels(toOffFood(pilosHit)!, i18n.t.bind(i18n))).toEqual([
+      i18n.t("nutrient.fiber"),
+      i18n.t("nutrient.sugar"),
+      i18n.t("nutrient.satFat"),
+      i18n.t("nutrient.sodium"),
+    ]);
   });
 });
 
@@ -346,13 +350,18 @@ describe("searchOff — proxy zarfı", () => {
 });
 
 describe("mesajlar, barkod ve yetenek testi", () => {
-  it("429 mesajı süresiz de olsa dürüst kalır", () => {
-    expect(offErrorMessage(429, null, null)).toContain("biraz sonra");
-    expect(offErrorMessage(429, null, 5)).toContain("5 sn");
+  const t = i18n.t.bind(i18n);
+
+  it("429 mesajı süresiz de olsa dürüst kalır (aktif dilde)", () => {
+    expect(offErrorMessage(429, null, null)).toBe(t("off.errRateLimit"));
+    expect(offErrorMessage(429, null, 5)).toBe(t("off.errRateLimitSeconds", { seconds: 5 }));
   });
-  it("tanınmayan durumda sunucunun kendi mesajı kullanılır", () => {
-    expect(offErrorMessage(400, "arama terimi (q) gerekli")).toBe("arama terimi (q) gerekli");
-    expect(offErrorMessage(418, null)).toContain("HTTP 418");
+  it("tanınmayan durumda AKTİF DİLDE, HTTP kodlu mesaj döner (sunucu gövdesi gösterilmez)", () => {
+    // Sunucu gövdesi Türkçe olabilir; onu İngilizce bir arayüze basmak bu
+    // düzeltmenin kapatmak istediği kaçak sınıfıdır.
+    expect(offErrorMessage(400, "arama terimi (q) gerekli")).toBe(t("off.errHttp", { status: 400 }));
+    expect(offErrorMessage(418, null)).toBe(t("off.errHttp", { status: 418 }));
+    expect(offErrorMessage(418, null)).not.toContain("arama");
   });
   it("barkod doğrulaması sunucununkiyle aynı (boşuna jeton yakılmasın)", () => {
     expect(isValidBarcode("5900531004544")).toBe(true);
@@ -364,9 +373,12 @@ describe("mesajlar, barkod ve yetenek testi", () => {
   it("OFF ürünleri 100 g başına — alias porsiyonu da öyle", () => {
     expect(OFF_SERVING_G).toBe(100);
   });
-  it("ODbL atıfı boş bırakılamaz (lisans gereği)", () => {
-    expect(OFF_ATTRIBUTION).toContain("Open Food Facts");
-    expect(OFF_ATTRIBUTION).toContain("ODbL");
+  it("ODbL atıfı boş bırakılamaz (lisans gereği) — üç dilde de", () => {
+    for (const lang of ["en", "tr", "pl"]) {
+      const attribution = i18n.getFixedT(lang)("off.attribution");
+      expect(attribution).toContain("Open Food Facts");
+      expect(attribution).toContain("ODbL");
+    }
   });
 
   // --- BarcodeDetector yetenek testi ---

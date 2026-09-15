@@ -13,6 +13,76 @@ export interface ChangeLogVersion {
 
 export const CHANGELOG: ChangeLogVersion[] = [
   {
+    version: "0.30.2",
+    date: "2026-09-15",
+    summary: {
+      tr: "Kurulum sihirbazı yenilendi: soru sayacı artık anlaşılır, küçük ekranlarda hiçbir şey taşmıyor ve adımlar arasında geçerken yön hissi var. Giriş/kayıt ekranının üstünde bir dil seçici var — telefonun dili neyse o seçili gelir, kayıt olmadan önce değiştirebilirsin. Arayüzü İngilizce veya Lehçe kullandığında artık hiçbir yerde Türkçe metin kalmıyor: kalori halkası, sağlık skoru, dışa aktarma başlıkları, ay/gün adları ve hata mesajları dahil her şey seçtiğin dilde.",
+      en: "The setup wizard has been refreshed: the step counter is clearer, nothing overflows on small screens and moving between steps now has a direction. There is a language picker above the sign-in/sign-up form — it defaults to your phone's language and you can change it before creating an account. When you use the interface in English or Polish, no Turkish text is left anywhere: the calorie ring, health score, export headers, weekday names and error messages are all in your language.",
+    },
+    items: [
+      {
+        type: "improved",
+        tr: "Kurulum sihirbazı elden geçirildi: “1 / 5” sayacı yerine beş bölmeli bir ilerleme göstergesi, adımlar arasında sağdan/soldan gelen yumuşak geçiş ve seçeneklerin kademeli girişi.",
+        en: "The setup wizard was reworked: a five-segment progress indicator instead of the “1 / 5” badge, gentle direction-aware transitions between steps and a staggered entrance for the options.",
+      },
+      {
+        type: "fixed",
+        tr: "Küçük ekranlarda (320–360 px) sihirbazdaki başlık ve sayaç üst üste biniyordu; hedef adımındaki kartların iç boşluğu hiç uygulanmıyordu ve makro değerleri üç haneli olduğunda kırpılıyordu. Hepsi düzeltildi.",
+        en: "On small screens (320–360 px) the wizard's title and counter collided; the goal step's cards had no inner padding at all, and three-digit macro values were clipped. All fixed.",
+      },
+      {
+        type: "new",
+        tr: "Giriş/kayıt ekranının üstünde dil seçici: telefonunun dili otomatik seçili gelir, hesap açmadan önce Türkçe/English/Polski arasında geçebilirsin. Seçim anında tüm ekran o dile döner.",
+        en: "A language picker above the sign-in/sign-up form: it starts with your phone's language and you can switch between Türkçe/English/Polski before creating an account. The screen switches immediately.",
+      },
+      {
+        type: "fixed",
+        tr: "Kahraman kalori halkasının altındaki metinler (“kcal kaldı”, “Hedefe ulaşıldı”, “kcal aşıldı”) ve ekran okuyucu açıklaması artık seçtiğin dilde.",
+        en: "The text under the hero calorie ring (“kcal left”, “Goal met”, “kcal over”) and its screen-reader description now follow your language.",
+      },
+      {
+        type: "fixed",
+        tr: "Beslenme Hedefleri ekranının başlığı, sağlık skoru cümlesi (“Kalori ve protein yolunda”) ve CSV dışa aktarma sütun başlıkları artık çevriliyor.",
+        en: "The Nutrition Goals heading, the health-score sentence and the CSV export column headers are now translated.",
+      },
+      {
+        type: "fixed",
+        tr: "Haftanın gün adları (takvim şeritleri ve grafikler) dil değiştirdiğinde artık anında güncelleniyor — önceden sayfa yenilenene kadar eski dilde kalıyordu.",
+        en: "Weekday names (calendar strips and charts) now update immediately when you change the language — they used to stay in the old language until you refreshed the page.",
+      },
+      {
+        type: "fixed",
+        tr: "“Beslenme Hedeflerini Düzenle” ekranındaki Profil Adı kutusu, sesli olarak saklanan gömülü profil adını gösteriyordu: İngilizce arayüzde “Varsayılan” yazıyordu. Artık seçtiğin dilde görünüyor (“Default”, “Domyślny”) — ama adı değiştirmediysen kaydettiğinde veriye çevrilmiş hâli yazılmıyor, ad dile bağlı kalmaya devam ediyor. Kendi yazdığın ad ise aynen korunuyor.",
+        en: "The Profile Name box on the “Edit Nutrition Goals” screen showed the built-in profile's stored name, which is kept in Turkish: it read “Varsayılan” even in the English interface. It now follows your language (“Default”, “Domyślny”) — and if you did not rename it, saving no longer writes the translated name into your data, so it keeps following the language. A name you typed yourself is preserved exactly.",
+      },
+      {
+        type: "fixed",
+        tr: "Giriş/kayıt hataları, kamera ve görsel hataları, AI hata mesajları, alışveriş çakışması uyarısı ve “besin hafızaya kaydedildi ama bugüne eklenemedi” bildirimi dahil tüm hata metinleri seçtiğin dilde.",
+        en: "All error messages follow your language: sign-in/sign-up errors, camera and image errors, AI errors, the sync conflict warning and the “saved to food memory but not added to today” notification.",
+      },
+      {
+        type: "improved",
+        tr: "AI analizi artık yanıtı senin dilinde üretiyor: İngilizce arayüzde yemek adları da İngilizce gelir.",
+        en: "AI analysis now answers in your language: in the English interface the food names come back in English too.",
+      },
+    ],
+    dev: [
+      'Kapı: scripts/check-i18n.mjs artik Uc kontrol yapar — PARITY (3 dil anahtar/placeholder), KEYS (kodda t("...") ile istenen her anahtar locale\'de var mi) ve HARDCODED (sabit Turkce metin dedektoru).',
+      "HARDCODED dedektoru uc imzayi birlikte arar: Turkce'ye ozgu harfler, `\\u01xx` kacislari ve ASCII Turkce kelime listesi (Hedef/Beslenme/Ekle...). Muafiyet: satir bazli `// i18n-exempt: <gerekce>` + 3 dosya (changelog.ts, i18n.ts, goals.ts profil ADLARI veri degeri).",
+      "ring.ts artik SAF: cevrilmis metin degil `{key, params}` doner (RingMessage); sayilar locale-duyarli formatNumber ile METIN olarak tasinir. Ceviri CalorieRing'de t() ile yapilir. ring.test.ts anahtar+param sozlesmesini ve uc dilde cevrilebilirligini dogrular.",
+      "healthScore.ts: Turkce ek uretecleri (getPlainName/getLocativeName/'ve') silindi; liste baglaci `format.ts: formatList` ile Intl.ListFormat uzerinden dile gore uretilir (ES2022 oldugu icin korumali calisma-zamani erisimi).",
+      "format.ts: WEEKDAY_SHORT import aninda bir kez hesaplanan sabitti -> dil degisince takvim adlari bayatliyordu (WeekStrip/TrendChart/ReportView/WeekBars). Artik `weekdayShortList()` locale anahtarina bagli onbellekle calisir.",
+      "nutrients.ts: `label`/`compactLabel` (Turkce etiketler) ve `short` (mono onek 'S'/'DY') alanlari kaldirildi -> `nutrient.<key>` ve `nutrientShort.<key>` anahtarlari. CSV basliklari ve 'eksik veri' rozeti artik dile duyarli.",
+      "exporters.ts: validateBackup/exportMealsToCsv/exportAliasesToCsv `t: TFunction` alir (computeHealthScore ile ayni desen). off.ts missingLabels(food, t).",
+      "server/ai.js: istemler TR/EN/PL sablonlarina ayrildi (PROMPTS); `lang` parametresi normalizeLang ile en/tr/pl'ye dusurulur, taninmazsa 'en'. Hata govdelerine kararli `code` eklendi (ai_disabled/ai_rate_limit/ai_timeout/...), istemci code'u i18n'e esler.",
+      "server/index.js: /api/ai/parse ve /api/ai/vision'a `lang: b.lang` (2 satir; kullanici onayi alindi). Baska degisiklik yok.",
+      "offlineSync.ts: cakisma mesaji artik IndexedDB'ye METIN degil `conflict` KODU olarak yazilir; SyncStatus operationErrorText() ile aktif dile cevirir (operasyon gunlerce kuyrukta kalabilir, dil degisebilir).",
+      "bilesenler/LanguagePicker.tsx (yeni): AuthScreen (compact) ve SettingsSheet (full) ayni bileseni kullanir. Acilir menu yok, satir ici 3 segment -> yeni overlay/diyalog dogmaz (AGENTS.md K9).",
+      "OnboardingModal: gecersiz `p-4.5` siniflari kaldirildi (Tailwind 3.4 spacing'de 4.5 yok -> ic bosluk hic uygulanmiyordu), `onboarding.stepStatus` {{total}} aldi, stepCounter eklendi, adim 5 izgarasi 2/3 kolona duyarli, adim basligi odaklanir (ekran okuyucu duyurur).",
+      "index.css: .wizard-step-forward/back (18px yonlu translate3d + opacity, --ease-glass) ve .wizard-opt-in (menuItemIn yeniden kullanimi + inline animation-delay).",
+    ],
+  },
+  {
     version: "0.30.1",
     date: "2026-09-15",
     summary: {

@@ -3,6 +3,7 @@ import { ringState, ringGradient } from "../lib/ring";
 import { useValueSpring } from "../hooks/useValueSpring";
 import { formatNumber } from "../lib/format";
 import { bigNumCls } from "./FormBits";
+import { useTranslation } from "react-i18next";
 
 interface CalorieRingProps {
   consumed: number;
@@ -11,13 +12,25 @@ interface CalorieRingProps {
 }
 
 export function CalorieRing({ consumed, target, size }: CalorieRingProps) {
+  const { t } = useTranslation();
   const state = ringState(consumed, target);
+  // Metinler `ring.ts`'ten ANAHTAR olarak gelir (o modül i18n'i tanımaz) ve
+  // burada aktif dile çevrilir.
+  const captionText = t(state.caption.key, state.caption.params);
+  const remainingText = t(state.remaining.key, state.remaining.params);
+  const a11yLabel = t(state.a11y.key, { ...state.a11y.params, status: remainingText });
   const animPct = useValueSpring(state.pct, { round: "none" });
   // isMet: `headline` tam hedefte "kalan" (~0) değil, tamamlanan tüketimi
   // gösterir (ring.ts'teki headline semantiğiyle birebir) — aksi halde
   // "Hedefe ulaşıldı" yazarken sayı 0 görünürdü.
   const animNum = useValueSpring(
-    state.isOver ? Math.abs(state.diff) : state.isMet ? consumed : state.hasTarget ? state.diff : consumed,
+    state.isOver
+      ? Math.abs(state.diff)
+      : state.isMet
+        ? consumed
+        : state.hasTarget
+          ? state.diff
+          : consumed,
     {},
   );
 
@@ -28,7 +41,7 @@ export function CalorieRing({ consumed, target, size }: CalorieRingProps) {
   return (
     <div
       role="img"
-      aria-label={state.a11yLabel}
+      aria-label={a11yLabel}
       className={
         size
           ? "relative flex items-center justify-center rounded-full shrink-0"
@@ -36,7 +49,9 @@ export function CalorieRing({ consumed, target, size }: CalorieRingProps) {
       }
       style={{
         background: gradient,
-        ...(size ? { width: `${size}px`, height: `${size}px`, padding: `${Math.round(size * 0.07)}px` } : {}),
+        ...(size
+          ? { width: `${size}px`, height: `${size}px`, padding: `${Math.round(size * 0.07)}px` }
+          : {}),
       }}
     >
       <div
@@ -52,10 +67,12 @@ export function CalorieRing({ consumed, target, size }: CalorieRingProps) {
           <Flame size={Math.round(size * 0.32)} className="text-accent" />
         ) : (
           <>
-            <span className={`${bigNumCls} text-[44px] leading-none text-ink-primary sm:text-[52px]`}>
+            <span
+              className={`${bigNumCls} text-[44px] leading-none text-ink-primary sm:text-[52px]`}
+            >
               {displayNum}
             </span>
-            <span className="mt-1 text-xs text-ink-secondary">{state.caption}</span>
+            <span className="mt-1 text-xs text-ink-secondary">{captionText}</span>
             {state.ratioText && (
               <span className="mt-0.5 font-mono text-[11px] text-ink-faint">{state.ratioText}</span>
             )}

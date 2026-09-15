@@ -1,12 +1,11 @@
 import { useMemo, useState } from "react";
 import { useData } from "../lib/data";
 import { effectiveGoal } from "../lib/goals";
-import { formatNumber } from "../lib/format";
+import { formatNumber, weekdayShort } from "../lib/format";
 import type { Week } from "../lib/weeks";
 import { useValueSpring } from "../hooks/useValueSpring";
 import { easeShowcase } from "../lib/animation";
 
-const DOW = ["Pzt", "Sal", "Çar", "Per", "Cum", "Cmt", "Paz"];
 const BEAM_SPEEDS = ["3.0s", "3.6s", "2.8s", "4.0s", "3.4s", "3.2s", "3.8s"];
 
 /** Sona doğru erkenden yavaşlayan canlı kalori sayıcı komponenti */
@@ -76,7 +75,8 @@ export function WeekBars({
                       background: over
                         ? "linear-gradient(180deg, var(--bar-rose-0) 0%, var(--bar-rose-1) 35%, var(--bar-rose-2) 70%, var(--bar-rose-3) 100%)"
                         : "linear-gradient(180deg, var(--bar-teal-0) 0%, var(--bar-teal-1) 30%, var(--bar-teal-2) 70%, var(--bar-teal-3) 100%)",
-                      boxShadow: "inset 1px 1px 1px rgba(255,255,255,0.3), inset -1px -1px 3px rgba(0,0,0,0.5)",
+                      boxShadow:
+                        "inset 1px 1px 1px rgba(255,255,255,0.3), inset -1px -1px 3px rgba(0,0,0,0.5)",
                       filter: "brightness(0.96)",
                     }}
                   >
@@ -141,7 +141,10 @@ export function WeekBars({
               >
                 <div className="relative w-full" style={{ height: `${springH}%` }}>
                   {d.hasData && (
-                    <div className="anim-zoom absolute -top-6 inset-x-0 z-30 text-center font-mono text-[10px] font-bold text-white" style={{ animationDelay: `${i * 90 + 350}ms` }}>
+                    <div
+                      className="anim-zoom absolute -top-6 inset-x-0 z-30 text-center font-mono text-[10px] font-bold text-white"
+                      style={{ animationDelay: `${i * 90 + 350}ms` }}
+                    >
                       <span className="inline-block rounded-full border border-white/20 bg-white/12 px-2 py-0.5 shadow-md backdrop-blur-md">
                         <AnimatedKcal value={d.total.kcal} delayMs={i * 90 + 350} />
                       </span>
@@ -206,7 +209,7 @@ export function WeekBars({
                 d.hasData ? "text-ink-secondary" : "text-ink-faint"
               }`}
             >
-              {DOW[i]}
+              {weekdayShort(d.date)}
             </div>
           ))}
         </div>
@@ -214,4 +217,3 @@ export function WeekBars({
     </div>
   );
 }
-

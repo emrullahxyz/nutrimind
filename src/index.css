@@ -476,6 +476,33 @@
   from { opacity: 0; transform: translateY(4px); }
 }
 
+/* ---- Kayıt sihirbazı: adım geçişi ve kademeli giriş ------------------------
+   Yön DUYGUSU verir: ileri giderken içerik sağdan, geri dönerken soldan gelir
+   (Apple §7 simetri: aynı eksen, aynı mesafe, aynı süre).
+   Yalnız `transform`/`opacity` — düzen tetikleyen özellik yok (GPU güvenli),
+   `translate3d` ile katmanlanma zorlanır. `backwards` fill + satır başına
+   inline `animation-delay` kademeli girişi verir (menüdeki reçetenin aynısı). */
+.wizard-step-forward {
+  animation: wizardStepForward 0.26s both;
+  animation-timing-function: var(--ease-glass, cubic-bezier(0.16, 1, 0.3, 1));
+}
+@keyframes wizardStepForward {
+  from { opacity: 0; transform: translate3d(18px, 0, 0); }
+  to { opacity: 1; transform: none; }
+}
+.wizard-step-back {
+  animation: wizardStepBack 0.26s both;
+  animation-timing-function: var(--ease-glass, cubic-bezier(0.16, 1, 0.3, 1));
+}
+@keyframes wizardStepBack {
+  from { opacity: 0; transform: translate3d(-18px, 0, 0); }
+  to { opacity: 1; transform: none; }
+}
+.wizard-opt-in {
+  animation: menuItemIn 0.26s backwards;
+  animation-timing-function: var(--ease-glass-hover, cubic-bezier(0.22, 1, 0.36, 1));
+}
+
 /* Satır basıncı. Hover/active burada (Tailwind sınıfı yerine) çünkü basış
    kapısı açıkken ikisi de SÖNDÜRÜLECEK: menüyü doğuran parmak hâlâ ekranda
    olduğu sürece altındaki satır "basılı" görünmemeli. */

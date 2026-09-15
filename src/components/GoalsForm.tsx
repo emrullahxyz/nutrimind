@@ -1,21 +1,16 @@
 import { useState } from "react";
 import { Check, Sparkles, Plus, Trash2, Calendar, Target, Award } from "lucide-react";
 import { Modal } from "./Modal";
-import {
-  ErrorText,
-  Label,
-  NutritionFields,
-  draftNum,
-  fromDraft,
-  toDraft,
-} from "./FormBits";
+import { ErrorText, Label, NutritionFields, draftNum, fromDraft, toDraft } from "./FormBits";
 import type { NutritionDraft } from "./FormBits";
 import { useData } from "../lib/data";
-import { WEEKDAY_SHORT } from "../lib/format";
+import { weekdayShortList } from "../lib/format";
 import {
   applySuggestion,
   defaultProfile,
+  profileDisplayName,
   profileIcon,
+  profileNameFieldValue,
   trainingDayCount,
 } from "../lib/goals";
 import { NUTRIENTS } from "../lib/nutrients";
@@ -42,7 +37,10 @@ function toProfileDrafts(config: GoalConfig): ProfileDraft[] {
   return config.profiles.map((p) => ({ id: p.id, name: p.name, nutrition: toDraft(p.nutrition) }));
 }
 
-function profileErrorOf(p: ProfileDraft, t: (k: string, o?: Record<string, string>) => string): string | null {
+function profileErrorOf(
+  p: ProfileDraft,
+  t: (k: string, o?: Record<string, string>) => string,
+): string | null {
   if (p.name.trim() === "") return t("goals.profileNameRequired");
   if (!(draftNum(p.nutrition, "kcal") > 0)) return t("goals.kcalPositive");
   for (const def of NUTRIENTS) {
@@ -54,9 +52,17 @@ function profileErrorOf(p: ProfileDraft, t: (k: string, o?: Record<string, strin
   return null;
 }
 
-export function GoalsForm({ onClose, embedded = false }: { onClose: () => void; embedded?: boolean }) {
+export function GoalsForm({
+  onClose,
+  embedded = false,
+}: {
+  onClose: () => void;
+  embedded?: boolean;
+}) {
   const { t } = useTranslation();
   const { goals, updateGoals } = useData();
+  // Aktif dile göre gün adları (dil değişince anında tazelenir — bkz. lib/format).
+  const dowNames = weekdayShortList();
 
   const [profiles, setProfiles] = useState<ProfileDraft[]>(() => toProfileDrafts(goals));
   const [defaultId, setDefaultId] = useState<string>(() => defaultProfile(goals).id);
@@ -69,6 +75,7 @@ export function GoalsForm({ onClose, embedded = false }: { onClose: () => void; 
   });
   const [saving, setSaving] = useState(false);
   const [err, setErr] = useState<string | null>(null);
+  const [nameEdited, setNameEdited] = useState<Record<string, boolean>>({});
 
   const selected = profiles.find((p) => p.id === selectedId) ?? profiles[0];
   const invalid = profiles.map((p) => profileErrorOf(p, t));
@@ -93,9 +100,24 @@ export function GoalsForm({ onClose, embedded = false }: { onClose: () => void; 
     setProfiles(profiles.map((p) => (p.id === selected.id ? { ...p, ...patch } : p)));
   }
 
+  /** Kullanıcı ad alanına yazdı mı? Gömülü profilin adı VERİ olarak Türkçe
+   *  durur; alan dokunulmadıkça çevrilmiş adı gösterir. Dokunulduysa kullanıcının
+   *  yazdığı değer hem görünür hem kaydedilir (bkz. `profileNameFieldValue`). */
+  function onNameChange(value: string) {
+    setNameEdited((prev) => ({ ...prev, [selected.id]: true }));
+    patchSelected({ name: value });
+  }
+
   function addProfile() {
     const id = newProfileId();
-    setProfiles([...profiles, { id, name: `Profil ${profiles.length + 1}`, nutrition: { ...selected.nutrition } }]);
+    setProfiles([
+      ...profiles,
+      {
+        id,
+        name: t("goals.newProfileName", { n: profiles.length + 1 }),
+        nutrition: { ...selected.nutrition },
+      },
+    ]);
     setSelectedId(id);
   }
 
@@ -167,7 +189,7 @@ export function GoalsForm({ onClose, embedded = false }: { onClose: () => void; 
               }`}
             >
               <span aria-hidden>{profileIcon(p.id)}</span>
-              <span>{p.name.trim() || t("goals.unnamed")}</span>
+              <span>{p.name.trim() ? profileDisplayName(p, t) : t("goals.unnamed")}</span>
               {invalid[i] !== null && <span className="text-red-400 font-extrabold">•</span>}
             </button>
           );
@@ -177,7 +199,7 @@ export function GoalsForm({ onClose, embedded = false }: { onClose: () => void; 
           onClick={addProfile}
           className="flex items-center gap-1 px-3.5 py-2 rounded-full text-xs font-bold border border-dashed border-amber-400/40 bg-amber-400/10 text-amber-300 hover:bg-amber-400/20 transition whitespace-nowrap active:scale-95"
         >
-          <Plus className="w-3.5 h-3.5" /> Profil Ekle
+          <Plus className="w-3.5 h-3.5" /> {t("goals.addProfile")}
         </button>
       </div>
 
@@ -185,11 +207,13 @@ export function GoalsForm({ onClose, embedded = false }: { onClose: () => void; 
       <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-4 flex flex-col gap-3">
         <div className="flex items-end gap-3">
           <label className="block flex-1">
-            <span className="text-xs font-semibold text-white/80 block mb-1">{t("goals.profileName")}</span>
+            <span className="text-xs font-semibold text-white/80 block mb-1">
+              {t("goals.profileName")}
+            </span>
             <input
               className="w-full px-3.5 py-2.5 rounded-xl bg-black/40 border border-white/15 text-sm font-semibold text-white focus:border-amber-400 focus:outline-none"
-              value={selected.name}
-              onChange={(e) => patchSelected({ name: e.target.value })}
+              value={profileNameFieldValue(selected, t, nameEdited[selected.id] === true)}
+              onChange={(e) => onNameChange(e.target.value)}
             />
           </label>
           {multi && (
@@ -220,7 +244,7 @@ export function GoalsForm({ onClose, embedded = false }: { onClose: () => void; 
       <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-4 flex flex-col gap-3">
         <div className="flex items-center gap-2">
           <Target className="w-4 h-4 text-amber-400" />
-          <h4 className="text-sm font-bold text-white">Beslenme Hedefleri</h4>
+          <h4 className="text-sm font-bold text-white">{t("goals.nutritionGoals")}</h4>
         </div>
         <NutritionFields
           draft={selected.nutrition}
@@ -237,14 +261,17 @@ export function GoalsForm({ onClose, embedded = false }: { onClose: () => void; 
           </div>
           <div className="grid grid-cols-7 gap-1.5 pt-1">
             {WEEK_ORDER.map((dow) => {
-              const p = profiles.find((x) => x.id === weekday[dow]) ?? profiles.find((x) => x.id === defaultId) ?? profiles[0];
+              const p =
+                profiles.find((x) => x.id === weekday[dow]) ??
+                profiles.find((x) => x.id === defaultId) ??
+                profiles[0];
               const isSel = p.id === selected.id;
               return (
                 <button
                   key={dow}
                   type="button"
                   onClick={() => cycleWeekday(dow)}
-                  title={`${WEEKDAY_SHORT[dow]} · ${p.name}`}
+                  title={`${dowNames[dow]} · ${profileDisplayName(p, t)}`}
                   className={`flex flex-col items-center gap-1 rounded-xl border p-2 transition active:scale-95 ${
                     isSel
                       ? "border-amber-400/50 bg-amber-400/10"
@@ -252,7 +279,7 @@ export function GoalsForm({ onClose, embedded = false }: { onClose: () => void; 
                   }`}
                 >
                   <span className="text-[10px] font-bold font-mono text-white/60">
-                    {WEEKDAY_SHORT[dow]}
+                    {dowNames[dow]}
                   </span>
                   <span className="text-sm" aria-hidden>
                     {profileIcon(p.id)}
@@ -261,9 +288,7 @@ export function GoalsForm({ onClose, embedded = false }: { onClose: () => void; 
               );
             })}
           </div>
-          <p className="text-[11px] text-white/50">
-            {t("goals.weekdayTapHint")}
-          </p>
+          <p className="text-[11px] text-white/50">{t("goals.weekdayTapHint")}</p>
         </div>
       )}
 
@@ -278,9 +303,7 @@ export function GoalsForm({ onClose, embedded = false }: { onClose: () => void; 
             {t("goals.trainingDays", { count: trainingDays })}
           </span>
         </div>
-        <p className="text-xs text-white/70">
-          {t("goals.trainingSplitDesc")}
-        </p>
+        <p className="text-xs text-white/70">{t("goals.trainingSplitDesc")}</p>
 
         <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-1">
           {TRAINING_DAY_CHOICES.map((n) => (
@@ -310,7 +333,14 @@ export function GoalsForm({ onClose, embedded = false }: { onClose: () => void; 
 
       {firstInvalid !== -1 && (
         <p className="text-xs font-bold text-red-400">
-          {profiles[firstInvalid].name.trim() || t("goals.unnamed")}: {invalid[firstInvalid]}
+          {profiles[firstInvalid].name.trim()
+            ? profileNameFieldValue(
+                profiles[firstInvalid],
+                t,
+                nameEdited[profiles[firstInvalid].id] === true,
+              )
+            : t("goals.unnamed")}
+          : {invalid[firstInvalid]}
         </p>
       )}
       {err && <ErrorText>{err}</ErrorText>}

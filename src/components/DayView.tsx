@@ -5,7 +5,13 @@ import { MacroBar } from "./MacroBar";
 import { Card } from "./Card";
 import { DayTypeBadge } from "./DayTypeBadge";
 import { MealForm } from "./MealForm";
-import { ErrorText, ExpandableMealName, FormActions, NutrientSummaryLine, TextField } from "./FormBits";
+import {
+  ErrorText,
+  ExpandableMealName,
+  FormActions,
+  NutrientSummaryLine,
+  TextField,
+} from "./FormBits";
 import { Modal } from "./Modal";
 import { ScanSheet } from "./ScanSheet";
 import { SupplementCard } from "./SupplementCard";
@@ -24,7 +30,12 @@ import { MACROS, MICROS } from "../lib/nutrients";
 import { coverage, dayTotal, mealsOf, sumMeals, toPayload } from "../lib/days";
 import { parseTemplatesConfig } from "../lib/templates";
 import type { MealTemplate } from "../lib/templates";
-import { buildRecipePreset, canSaveAsRecipe, duplicatePayload, mealToTemplate } from "../lib/mealActions";
+import {
+  buildRecipePreset,
+  canSaveAsRecipe,
+  duplicatePayload,
+  mealToTemplate,
+} from "../lib/mealActions";
 import type { RecipePreset } from "../lib/mealActions";
 import type { PanelAnchor } from "../lib/anchor";
 import type { AIParseItem, Exercise, MealItem, MealPayload } from "../types";
@@ -74,9 +85,16 @@ function MergeModal({
       }
     >
       <div className="flex flex-col gap-4">
-        <TextField label={t("day.mergeNameLabel")} value={name} onChange={setName} placeholder={t("day.mergeNamePlaceholder")} />
+        <TextField
+          label={t("day.mergeNameLabel")}
+          value={name}
+          onChange={setName}
+          placeholder={t("day.mergeNamePlaceholder")}
+        />
         <div className="rounded-chip border border-line bg-white/[0.03] p-3">
-          <p className="mb-2 text-xs font-semibold text-ink-secondary">{t("day.mergeListHeader")}:</p>
+          <p className="mb-2 text-xs font-semibold text-ink-secondary">
+            {t("day.mergeListHeader")}:
+          </p>
           <ul className="space-y-1.5 text-xs text-ink-tertiary">
             {selectedMeals.map((m) => (
               <li key={m.id} className="flex justify-between items-baseline gap-2">
@@ -154,12 +172,17 @@ export function DayView({
   const hasData = meals.length > 0;
   const templates = parseTemplatesConfig(config);
 
-  const exerciseData = (config[`exercise_${date}`] as { exercises?: Exercise[] }) ?? { exercises: [] };
+  const exerciseData = (config[`exercise_${date}`] as { exercises?: Exercise[] }) ?? {
+    exercises: [],
+  };
   const currentExercises: Exercise[] = exerciseData.exercises ?? [];
   const burnedKcal = currentExercises.reduce((acc, curr) => acc + curr.caloriesBurned, 0);
 
   const [showExerciseModal, setShowExerciseModal] = useState(false);
-  const [selectedMealForSheet, setSelectedMealForSheet] = useState<{ meal: MealItem; index: number } | null>(null);
+  const [selectedMealForSheet, setSelectedMealForSheet] = useState<{
+    meal: MealItem;
+    index: number;
+  } | null>(null);
 
   const [editIndex, setEditIndex] = useState<number | null | undefined>(undefined);
   const [selectedIndices, setSelectedIndices] = useState<number[]>([]);
@@ -244,10 +267,7 @@ export function DayView({
     setErr(null);
     setBusy(true);
     try {
-      await setDayMeals(
-        date,
-        toPayload(meals.filter((_, i) => i !== index)),
-      );
+      await setDayMeals(date, toPayload(meals.filter((_, i) => i !== index)));
       setSelectedIndices(selectedIndices.filter((i) => i !== index));
     } catch (e) {
       setErr(String((e as Error)?.message ?? e));
@@ -336,7 +356,9 @@ export function DayView({
       const selectedMeals = selectedIndices.map((i) => meals[i]);
       const mergedNutrition = sumMeals(selectedMeals);
 
-      const withLoggedAt = selectedMeals.filter((m) => m.loggedAt).sort((a, b) => a.loggedAt!.localeCompare(b.loggedAt!));
+      const withLoggedAt = selectedMeals
+        .filter((m) => m.loggedAt)
+        .sort((a, b) => a.loggedAt!.localeCompare(b.loggedAt!));
       const earliestLoggedAt = withLoggedAt[0]?.loggedAt;
       const mergedCategory = earliestLoggedAt ? categoryForLoggedAt(earliestLoggedAt) : undefined;
 
@@ -443,7 +465,7 @@ export function DayView({
                   onClick={() => setSelectMode(true)}
                   className="rounded-pill border border-line bg-white/[0.06] px-3 py-1.5 text-xs font-semibold text-ink-secondary transition hover:border-memory/40 hover:bg-white/[0.09] hover:text-ink-primary"
                 >
-                  Seç
+                  {t("day.select")}
                 </button>
               )
             )}
@@ -539,7 +561,12 @@ export function DayView({
       </section>
 
       {editIndex !== undefined && (
-        <MealForm date={date} editIndex={editIndex} onClose={closeForm} initialAIItems={pendingAIItems} />
+        <MealForm
+          date={date}
+          editIndex={editIndex}
+          onClose={closeForm}
+          initialAIItems={pendingAIItems}
+        />
       )}
 
       {showMergeModal && (
@@ -582,11 +609,7 @@ export function DayView({
       )}
 
       {recipePreset && (
-        <RecipeBuilder
-          initial={null}
-          preset={recipePreset}
-          onClose={() => setRecipePreset(null)}
-        />
+        <RecipeBuilder initial={null} preset={recipePreset} onClose={() => setRecipePreset(null)} />
       )}
 
       {showScan && (

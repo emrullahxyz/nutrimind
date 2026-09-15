@@ -20,7 +20,8 @@
     "or": "veya",
     "clear": "Temizle",
     "releaseToRefresh": "Bırak, yenile",
-    "page": "Sayfa {{n}}"
+    "page": "Sayfa {{n}}",
+    "exitHint": "Uygulamadan çıkmak için bir kez daha geri kaydırın / geri tuşuna basın"
   },
   "toast": {
     "region": "Bildirimler"
@@ -28,7 +29,8 @@
   "error": {
     "fallbackTitle": "Bir Şeyler Yanlış Gitti",
     "fallbackBody": "Arayüzde beklenmeyen bir hata oluştu. Lütfen sayfayı yenilemeyi deneyin.",
-    "fallbackReload": "Sayfayı Yenile"
+    "fallbackReload": "Sayfayı Yenile",
+    "sessionExpired": "Oturum sona erdi — tekrar giriş yap."
   },
   "cards": {
     "healthScore": "Sağlık skoru",
@@ -214,7 +216,21 @@
     "nameOptional": " (opsiyonel)",
     "showPassword": "Parolayı göster",
     "hidePassword": "Parolayı gizle",
-    "passwordRepeat": "Parola (tekrar)"
+    "passwordRepeat": "Parola (tekrar)",
+    "errorForbidden": "Bu işlem şu an kapalı.",
+    "errorTooMany": "Çok fazla deneme. Biraz sonra tekrar dene.",
+    "errorTooManyRetry": "Çok fazla deneme. {{seconds}} sn sonra tekrar dene.",
+    "errorBadResponse": "Sunucu beklenmeyen bir yanıt döndürdü.",
+    "errorHttp": "İstek başarısız (HTTP {{status}}).",      "emailPlaceholder": "ornek@eposta.com",
+      "namePlaceholder": "Adın",
+    "ruleEmailRequired": "E-posta gerekli.",
+    "ruleEmailTooLong": "E-posta çok uzun.",
+    "ruleEmailInvalid": "Geçerli bir e-posta adresi yaz.",
+    "rulePasswordRequired": "Parola gerekli.",
+    "rulePasswordNoSpaces": "Parola yalnızca boşluktan oluşamaz.",
+    "rulePasswordMin": "Parola en az {{min}} karakter olmalı.",
+    "rulePasswordMax": "Parola en fazla {{max}} karakter olabilir.",
+    "rulePasswordsMismatch": "Parolalar eşleşmiyor."
   },
   "settings": {
     "title": "Ayarlar",
@@ -429,7 +445,16 @@
     "consentBody": "Fotoğrafların ve öğün metnin Google Gemini'ye gönderilir. Verilerin yapay zeka tarafından işlenir, sunucumuzda saklanmaz.",
     "consentPrivacy": "Üçüncü taraf gizlilik politikası:",
     "consentAccept": "Anladım, devam et",
-    "consentCancel": "Vazgeç"
+    "consentCancel": "Vazgeç",
+    "err": {
+      "network": "Sunucuya ulaşılamadı — bağlantını kontrol et.",
+      "rateLimit": "Çok hızlı istek yapıldı. Biraz sonra tekrar dene.",
+      "rateLimitSeconds": "Çok hızlı istek yapıldı. {{seconds}} sn sonra tekrar dene.",
+      "badResponse": "AI servisi şu an düzgün yanıt vermiyor. Biraz sonra tekrar dene.",        "disabled": "AI özelliği bu ortamda kapalı.",
+        "badRequest": "İstek anlaşılamadı.",
+      "timeout": "AI servisi zaman aşımına uğradı. Biraz sonra tekrar dene.",
+      "http": "AI isteği başarısız (HTTP {{status}})."
+    }
   },
   "empty": {
     "dayView": "Bu gün henüz bir şey yok. Örnek: \"2 yumurta, yoğurt, ekmek\" yaz — sistem hatırlar.",
@@ -485,7 +510,9 @@
     "capturedFrameAlt": "Çekilen kare",
     "scannedFood": "Taranan besin",
     "allItemsRemoved": "Tüm kalemler kaldırıldı — eklemek için yeniden çek.",
-    "retake": "Yeniden çek"
+    "retake": "Yeniden çek",
+    "savedButNotAdded": "Besin hafızaya kaydedildi, ancak bugüne eklenemedi: {{error}}. Hafızadan elle ekleyebilirsin.",
+    "useShot": "Kullan"
   },
   "exercise": {
     "title": "Egzersiz & Aktivite Günlüğü",
@@ -538,7 +565,8 @@
     "opDeleteAlias": "Hafıza sil: {{name}}",
     "featureUnavailable": "Bu özellik internet gerektirir. Bağlantı gelince tekrar deneyin.",
     "refreshFailed": "Kaydedildi, ancak veriler yenilenemedi — sayfayı yenileyin.",
-    "refreshing": "Yenileniyor..."
+    "refreshing": "Yenileniyor...",
+    "conflictMessage": "Sunucudaki veri bu işlemden sonra değişti — çakışmayı çöz."
   },
   "privacy": {
     "tr": "Türkçe",
@@ -560,7 +588,13 @@
     "unnamed": "adsız",
     "defaultBadge": "⭐ Varsayılan",
     "makeDefault": "Varsayılan Yap",
-    "deleteProfile": "Profili Sil"
+    "deleteProfile": "Profili Sil",
+    "profileDefault": "Varsayılan",
+    "profileTraining": "Antrenman",
+    "profileRest": "Dinlenme",
+    "addProfile": "Profil Ekle",
+    "nutritionGoals": "Beslenme Hedefleri",
+    "newProfileName": "Profil {{n}}"
   },
   "report": {
     "title": "Nutrimind Beslenme Raporu",
@@ -584,7 +618,8 @@
     "dailyDetailTitle": "Günlük Detay Tablosu ({{count}} Kayıtlı Gün)",
     "date": "Tarih",
     "meals": "Öğün",
-    "kcalOverTarget": "Kalori / Hedef"
+    "kcalOverTarget": "Kalori / Hedef",
+    "noRecordsInRange": "Bu tarih aralığında kayıtlı veri bulunamadı."
   },
   "history": {
     "title": "Geçmiş",
@@ -647,7 +682,7 @@
     "title": "Profil & TDEE Kurulum Sihirbazı",
     "defaultUserName": "Kullanıcı",
     "subtitle": "Soft Velvet Dark • Özel Beslenme Planı",
-    "stepStatus": "Adım {{step}} / 5",
+    "stepStatus": "Adım {{step}} / {{total}}",
     "step1Title": "Seni Tanıyalım",
     "step1Desc": "BMR ve metabolizma hesaplamaların için temel kişisel bilgilerin.",
     "nameLabel": "Adın & Soyadın",
@@ -712,7 +747,8 @@
         "title": "Kilo Al & Kas Yap",
         "desc": "Kas kütlesi kazanımı ve hacimlenmek için 350 kcal fazlalık"
       }
-    }
+    },
+    "stepCounter": "{{step}} / {{total}}"
   },
   "mealRow": {
     "more": "Diğer işlemler"
@@ -836,7 +872,33 @@
     "overwriteConfirm": "Mevcut verinin üzerine yazılmasını onaylıyorum.",
     "processing": "İşleniyor...",
     "restoring": "Geri Yükleniyor...",
-    "startRestore": "Geri Yüklemeyi Başlat"
+    "startRestore": "Geri Yüklemeyi Başlat",
+    "headerDate": "Tarih",
+    "headerMealName": "Öğün Adı",
+    "headerName": "Ad",
+    "headerBrand": "Marka",
+    "headerServingG": "Porsiyon (g)",
+    "headerTriggers": "Tetikleyiciler",
+    "headerUnits": "Birimler",
+    "headerDefaultUnit": "Varsayılan Birim",
+    "headerBarcode": "Barkod",
+    "headerOffId": "OFF ID",
+    "err": {
+      "notObject": "Geçersiz dosya biçimi: JSON nesnesi bekleniyor.",
+      "missingFields": "Yedek dosyası eksik alanlar içeriyor (goals, days veya aliases eksik).",
+      "goalsInvalid": "Hedef verisi doğrulanamadı: {{detail}}",
+      "daysNotObject": "Geçersiz 'days' yapısı: gün sözlüğü bekleniyor.",
+      "badDateFormat": "Geçersiz tarih biçimi: '{{date}}' (YYYY-MM-DD bekleniyor).",
+      "mealsNotArray": "'{{date}}' gününün öğün verisi dizi olmalıdır.",
+      "mealNotObject": "'{{date}}' tarihindeki {{index}}. öğün nesne olmalıdır.",
+      "mealNameMissing": "'{{date}}' tarihindeki {{index}}. öğünün adı eksik.",
+      "mealNutritionMissing": "'{{date}}' tarihindeki '{{name}}' öğününün besin değerleri eksik.",
+      "mealKcalInvalid": "'{{date}}' tarihindeki '{{name}}' öğününün kalori değeri geçersiz.",
+      "aliasesNotArray": "Geçersiz 'aliases' yapısı: dizi bekleniyor.",
+      "aliasNotObject": "Hafızadaki {{index}}. besin nesnesi geçersiz.",
+      "aliasNameMissing": "Hafızadaki {{index}}. besinin adı eksik.",
+      "aliasNutritionMissing": "Hafızadaki '{{name}}' besininin besin değerleri eksik."
+    }
   },
   "recipeBuilder": {
     "addTitle": "Yeni Tarif Oluştur",
@@ -886,7 +948,8 @@
     "nameLabel": "Ad",
     "portionLabel": "Porsiyon",
     "addToMeal": "Öğüne ekle",
-    "triggersPlaceholder": "örn. yulaf gevreği"
+    "triggersPlaceholder": "örn. yulaf gevreği",
+    "untitledMeal": "Yemek"
   },
   "relative": {
     "today": "bugün",
@@ -907,8 +970,62 @@
     "noRecords": "Bugün için henüz kayıt yok. Öğün ekleyince skorun burada görünecek.",
     "noGoal": "Hedef belirlenmemiş.",
     "perfect": "Bugün tüm makrolar hedefinde, harika gidiyor!",
-    "onTrack": "Yolundasın.",
-    "under": "Düşüksün.",
-    "over": "Yükseksin."
+    "onTrackList": "{{nutrients}} yolunda.",
+    "underList": "{{nutrients}} hedefin altında.",
+    "overList": "{{nutrients}} hedefin üstünde.",
+    "underOverList": "{{low}} hedefin altında; {{high}} hedefin üstünde."
+  },
+  "ring": {
+    "captionNoTarget": "kcal · hedef yok",
+    "captionMet": "Hedefe ulaşıldı",
+    "captionOver": "kcal aşıldı",
+    "captionLeft": "kcal kaldı",
+    "remainingNoTarget": "{{amount}} kcal",
+    "remainingMet": "Hedefe ulaşıldı",
+    "remainingOver": "+{{amount}} kcal aşıldı",
+    "remainingLeft": "{{amount}} kcal kaldı",
+    "a11y": "Kalori: {{consumed}} / {{target}} kcal. {{status}}.",
+    "a11yNoTarget": "Kalori: {{consumed}} kcal. Hedef belirlenmemiş."
+  },
+  "off": {
+    "unnamed": "İsimsiz ürün",
+    "attribution": "Veriler Open Food Facts'ten — ODbL 1.0 lisansı.",
+    "errNetwork": "Sunucuya ulaşılamadı — bağlantını kontrol et.",
+    "errRateLimit": "Çok hızlı arama yapıldı. Open Food Facts kotası korunuyor — biraz sonra tekrar dene.",
+    "errRateLimitSeconds": "Çok hızlı arama yapıldı. Open Food Facts kotası korunuyor — {{seconds}} sn sonra tekrar dene.",
+    "errBadResponse": "Open Food Facts şu an düzgün yanıt vermiyor. Biraz sonra tekrar dene.",
+    "errTimeout": "Open Food Facts zaman aşımına uğradı. Biraz sonra tekrar dene.",
+    "errHttp": "Open Food Facts isteği başarısız (HTTP {{status}})."
+  },
+  "google": {
+    "cancelled": "Google girişi iptal edildi.",
+    "sessionExpired": "Giriş çok uzun sürdü, tekrar dene.",
+    "verifyFailed": "Google girişi doğrulanamadı, tekrar dene.",
+    "tokenFailed": "Google ile doğrulama başarısız oldu. Biraz sonra tekrar dene.",
+    "signupClosed": "Bu Google hesabına bağlı bir kullanıcı yok ve yeni kayıtlar kapalı.",
+    "notAllowed": "Bu e-posta kayıt için izinli değil.",
+    "linkFailed": "Bu Google hesabı mevcut bir hesaba bağlanamadı.",
+    "generic": "Google girişi tamamlanamadı."
+  },
+  "image": {
+    "errCompress": "Görsel sıkıştırılamadı.",
+    "errRead": "Görsel okunamadı.",
+    "errCanvas": "Canvas bağlamı alınamadı.",
+    "errLoad": "Görsel yüklenemedi.",
+    "errFrameNotReady": "Kamera karesi henüz hazır değil — bir saniye bekleyip tekrar dene."
+  },
+  "camera": {
+    "errNotStarted": "Kamera görüntüsü başlatılamadı. Ekranı kapatıp tekrar dene.",
+    "errOpen": "Kamera açılamadı: {{detail}}"
+  },
+  "nutrientShort": {
+    "kcal": "kcal",
+    "protein": "P",
+    "carbs": "K",
+    "fat": "Y",
+    "fiber": "L",
+    "sugar": "Ş",
+    "satFat": "DY",
+    "sodium": "Na"
   }
 }

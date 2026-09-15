@@ -19,6 +19,7 @@ import type { MutableRefObject } from "react";
 import { FOOD_BARCODE_FORMATS, barcodeDetectorCtor } from "./off";
 import type { BarcodeDetectorLike } from "./off";
 import type { VisionMode } from "../types";
+import i18n from "../i18n/i18n";
 
 /** Kamera karesi tarama aralığı. 400 ms göze anında görünüyor, CPU'yu yormuyor. */
 const SCAN_INTERVAL_MS = 400;
@@ -161,6 +162,7 @@ export function pickBackCameraDeviceId(devices: CameraDeviceLike[]): string | nu
   // hiç dokunmamak doğru — çağıran mevcut akışla devam eder.
   if (inputs.every((d) => !d.label.trim())) return null;
 
+  // i18n-exempt: cihaz ETİKETİ eşlemesi (tarayıcının verdiği donanım adı), arayüz metni değil
   const isFront = (l: string) => /front|user|selfie|ön kamera/i.test(l);
   const isAux = (l: string) =>
     /ultra|wide[-\s]?angle|telephoto|\btele\b|zoom|depth|macro|monochrome|infrared|\bir\b/i.test(l);
@@ -350,14 +352,14 @@ export function useCameraStream(active: boolean): UseCameraStreamResult {
         if (stopped || hiddenRef.current) return;
         if (!video.videoWidth) {
           release();
-          setError("Kamera görüntüsü başlatılamadı. Ekranı kapatıp tekrar dene.");
+          setError(i18n.t("camera.errNotStarted"));
           return;
         }
         setReady(true);
       } catch (e) {
         if (stopped || hiddenRef.current) return;
         release();
-        setError(`Kamera açılamadı: ${String((e as Error)?.message ?? e)}`);
+        setError(i18n.t("camera.errOpen", { detail: String((e as Error)?.message ?? e) }));
       }
     })();
 
@@ -408,7 +410,11 @@ export interface UseBarcodeDetectionOptions {
  * Canlı `<video>` üzerinde barkod arar. `BarcodeDetector` yoksa SESSİZCE hiçbir şey
  * yapmaz — kamerayı KAPATMAZ. Eski davranışta bu durum tüm kamerayı düşürüyordu.
  */
-export function useBarcodeDetection({ videoRef, active, onDetected }: UseBarcodeDetectionOptions): void {
+export function useBarcodeDetection({
+  videoRef,
+  active,
+  onDetected,
+}: UseBarcodeDetectionOptions): void {
   const onDetectedRef = useRef(onDetected);
   useEffect(() => {
     onDetectedRef.current = onDetected;

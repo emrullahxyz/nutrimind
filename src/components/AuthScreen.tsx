@@ -12,6 +12,7 @@
 import { useEffect, useState } from "react";
 import { Eye, EyeOff } from "lucide-react";
 import { ErrorText, Label, TextField, fieldCls } from "./FormBits";
+import { LanguagePicker } from "./LanguagePicker";
 import { useAuth } from "../lib/auth";
 import { GOOGLE_START_URL, googleErrorMessage } from "../lib/authApi";
 import { emailProblem, passwordProblem, registerProblem } from "../lib/authRules";
@@ -76,6 +77,12 @@ export function AuthScreen() {
 
   return (
     <div className="mx-auto flex min-h-[100dvh] w-full max-w-sm flex-col justify-center px-6 py-10">
+      {/* DİL SEÇİMİ — kayıt/giriş ekranında İLK iş.
+          Varsayılan cihaz dilidir (`navigator.language` → en/tr/pl, EN fallback)
+          ve seçim anında tüm ekranı çevirir. Üye olurken ekstra adım eklememek
+          için sihirbaza değil, bu ekrana konuldu. */}
+      <LanguagePicker variant="compact" className="mb-6 self-center justify-center" />
+
       <div className="mb-8 flex flex-col items-center gap-3">
         <picture>
           <source srcSet="/NutriMind_Logo.webp" type="image/webp" />
@@ -89,14 +96,20 @@ export function AuthScreen() {
 
       <form onSubmit={submit} className="flex flex-col gap-3">
         {kayitMi && (
-          <TextField label={t("auth.name") + t("auth.nameOptional")} value={name} onChange={setName} placeholder="Emrullah" autoComplete="name" />
+          <TextField
+            label={t("auth.name") + t("auth.nameOptional")}
+            value={name}
+            onChange={setName}
+            placeholder={t("auth.namePlaceholder")}
+            autoComplete="name"
+          />
         )}
 
         <TextField
           label={t("auth.email")}
           value={email}
           onChange={setEmail}
-          placeholder="ornek@eposta.com"
+          placeholder={t("auth.emailPlaceholder")}
           type="email"
           inputMode="email"
           autoComplete="email"
@@ -158,7 +171,9 @@ export function AuthScreen() {
         <>
           <div className="my-5 flex items-center gap-3">
             <span className="h-px flex-1 bg-line" />
-            <span className="text-[10px] font-semibold uppercase tracking-widest text-ink-faint">{t("common.or")}</span>
+            <span className="text-[10px] font-semibold uppercase tracking-widest text-ink-faint">
+              {t("common.or")}
+            </span>
             <span className="h-px flex-1 bg-line" />
           </div>
           {/* `fetch` DEĞİL, gerçek bir bağlantı: tarayıcının Google'a gidip

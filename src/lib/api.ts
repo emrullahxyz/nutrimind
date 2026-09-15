@@ -18,6 +18,7 @@ import type {
 import { singleProfileConfig } from "./goals";
 import { NUTRIENT_KEYS, makeNutrition } from "./nutrients";
 import type { NutrientKey } from "./nutrients";
+import i18n from "../i18n/i18n";
 import { parseNum } from "./nutrition";
 
 export interface AppData {
@@ -265,11 +266,14 @@ export function setUnauthorizedHandler(fn: (() => void) | null): void {
   unauthorizedHandler = fn;
 }
 
-const SESSION_EXPIRED = "Oturum sona erdi — tekrar giriş yap.";
+/** Oturum düşme mesajı — toast olarak GÖRÜNÜR, bu yüzden aktif dilde üretilir. */
+function sessionExpiredMessage(): string {
+  return i18n.t("error.sessionExpired");
+}
 
 function signalUnauthorized(): Error {
   if (unauthorizedHandler) unauthorizedHandler();
-  const err = new Error(SESSION_EXPIRED) as Error & { status?: number };
+  const err = new Error(sessionExpiredMessage()) as Error & { status?: number };
   err.status = 401;
   return err;
 }
@@ -277,7 +281,7 @@ function signalUnauthorized(): Error {
 /** `ai.ts` de aynı sinyali kullanabilsin diye (kendi hata sınıfına sarıyor). */
 export function signalUnauthorizedFromApi(): string {
   if (unauthorizedHandler) unauthorizedHandler();
-  return SESSION_EXPIRED;
+  return sessionExpiredMessage();
 }
 
 /** Backend'den { goals, days, aliases } çeker; öğünleri MealItem'a dönüştürür. */
