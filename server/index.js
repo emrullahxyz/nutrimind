@@ -12,6 +12,7 @@
 // GET    /api/off/product/:barcode   -> Open Food Facts ürün proxy'si (önbellekli)
 // GET    /api/off/search?q=&limit=   -> OFF ürün arama, Polonya kataloğu (önbellekli)
 // GET    /api/health                -> { ok, off:{…} }
+// GET    /api/ai/status             -> AI çağrı günlüğü + kova doluluğu (teşhis ucu)
 // POST   /api/ai/vision              -> { image, mimeType, mode } -> { items:[...] }
 // Veritabanı: SQLite dosyası (NUTRI_DB). nginx basic-auth ile korunur.
 // ============================================================================
@@ -24,6 +25,7 @@ const { normalizeMeals } = require("./meals.js");
 const { migrate, OWNER_ID } = require("./migrate.js");
 const authRoutes = require("./authRoutes.js");
 const feedbackRoutes = require("./feedbackRoutes.js");
+const { snapshot: aiStatusSnapshot } = require("./aiLog.js"); // AI teşhis ucu (izole modül)
 const { OFF_UA } = require("./offUA.js");
 
 const PORT = Number(process.env.NUTRI_PORT || 8790);
@@ -796,6 +798,14 @@ const server = http.createServer(async (req, res) => {
       const id = decodeURIComponent(p.slice("/api/alias/".length));
       db.prepare("DELETE FROM aliases WHERE user_id = ? AND id = ?").run(uid, id);
       return send(res, 200, { ok: true, id });
+    }
+
+    // GET /api/ai/status — AI teşhis ucu (izole modül köprüsü; server/aiLog.js).
+    // Oturum kapısı bu bloğun ÖNÜNDE ve PUBLIC_PATHS'e eklenmedı: dışarıya açık
+    // değil. "x saniye sonra tekrar dene" tarzı olaylarda son sağlayıcı adımları
+    // (hangi kademede, hangi durum koduyla) + kova doluluklarını gösterir.
+    if (req.method === "GET" && p === "/api/ai/status") {
+      return send(res, 200, aiStatusSnapshot());
     }
 
     // --- Open Food Facts proxy'si (önbellek isteği kotadan ÖNCE karşılar) ---

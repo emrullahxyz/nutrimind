@@ -25,6 +25,12 @@
 const fs = require("node:fs");
 const path = require("node:path");
 
+// Gözlem katmanı (server/aiLog.js): her sağlayıcı adımının sonucu buraya
+// kaydedilir — hata anında "hangi dakikada, hangi kademede tıkandı" sorusunun
+// cevabı journalctl'de grep '\[ai\]' ile görünür. Katman ASLA throw etmez ve
+// davranışı değiştirmez (bkz. aiLog.js başındaki motivasyon notu).
+const aiLog = require("./aiLog.js");
+
 // --- .env yükleyici (yalnızca yerel geliştirme kolaylığı) -------------------
 // Prod'da systemd zaten process.env'i doldurabilir — burada zaten SET olan
 // hiçbir anahtarın üzerine YAZILMAZ. .env dosyası yoksa sessizce atlanır.
@@ -120,6 +126,18 @@ const VISION_RATE = Number(process.env.NUTRI_AI_RATE_VISION || 15);
 const visionBucket = makeBucket(VISION_RATE);
 const nimVisionBucket = makeBucket(NIM_VISION_RATE);
 const VALID_IMAGE_MIME = new Set(["image/jpeg", "image/png", "image/webp"]);
+
+// Kovalar aiLog'a bildirilir: /api/ai/status anlık doluluk gösterir (teşhis:
+// "429 gerçekten kovadan mı geldi" sorusunun cevabı).
+aiLog.setBuckets([
+  { name: "gemini-tier1-text", cap: aiBucket.cap, peek: () => peekTokens(aiBucket) },
+  { name: "gemini-tier2", cap: geminiTier2Bucket.cap, peek: () => peekTokens(geminiTier2Bucket) },
+  { name: "gemini-tier3", cap: geminiTier3Bucket.cap, peek: () => peekTokens(geminiTier3Bucket) },
+  { name: "vision", cap: visionBucket.cap, peek: () => peekTokens(visionBucket) },
+  { name: "nim", cap: nimBucket.cap, peek: () => peekTokens(nimBucket) },
+  { name: "nim-vision", cap: nimVisionBucket.cap, peek: () => peekTokens(nimVisionBucket) },
+  { name: "opencode", cap: opencodeBucket.cap, peek: () => peekTokens(opencodeBucket) },
+]);
 
 function peekTokens(b) {
   const now = Date.now();
@@ -456,17 +474,29 @@ function stripMarkdownFence(s) {
   return m ? m[1] : trimmed;
 }
 
-async function callLLM({ bucket, url, headers, requestBody, extractText, timeoutMs }) {
+async function callLLM(opts) {
+  const { bucket, url, headers, requestBody, extractText, timeoutMs, provider, endpoint, model } = opts;
+  const startedAt = Date.now();
+  const recordResult = (status, body) =>
+    aiLog.record({
+      endpoint,
+      provider,
+      // Gemini modeli URL'de taşır (requestBody'de yok) — açıkça geçirildi.
+      model: model ?? (typeof requestBody?.model === "string" ? requestBody.model : null),
+      status,
+      code: body?.code ?? null,
+      latencyMs: Date.now() - startedAt,
+      retryAfter: body?.retryAfter ?? null,
+    });
   const wait = takeToken(bucket);
   if (wait > 0) {
-    return {
-      status: 429,
-      body: {
-        error: `AI rate limit protected; retry in ${wait}s`,
-        code: "ai_rate_limit",
-        retryAfter: wait,
-      },
+    const body = {
+      error: `AI rate limit protected; retry in ${wait}s`,
+      code: "ai_rate_limit",
+      retryAfter: wait,
     };
+    recordResult(429, body);
+    return { status: 429, body };
   }
 
   let r;
@@ -482,13 +512,12 @@ async function callLLM({ bucket, url, headers, requestBody, extractText, timeout
   } catch (e) {
     const timedOut = e && (e.name === "TimeoutError" || e.name === "AbortError");
     // DİKKAT: hata mesajına asla ham istek URL'i (API anahtarı içeriyor) eklenmez.
-    return {
-      status: 504,
-      body: {
-        error: timedOut ? "AI service timed out" : "AI service unreachable",
-        code: timedOut ? "ai_timeout" : "ai_unreachable",
-      },
+    const body = {
+      error: timedOut ? "AI service timed out" : "AI service unreachable",
+      code: timedOut ? "ai_timeout" : "ai_unreachable",
     };
+    recordResult(504, body);
+    return { status: 504, body };
   }
 
   let json = null;
@@ -498,30 +527,39 @@ async function callLLM({ bucket, url, headers, requestBody, extractText, timeout
     /* aşağıda ele alınıyor */
   }
   if (!json || !r.ok) {
+    const body = {
+      error: `AI service error (HTTP ${r.status})`,
+      code: "ai_provider_error",
+    };
+    // r.status sağlayıcı kodudur (ör. Gemini 429 kota) — kayıtta O saklanır:
+    // "bizim kovamız mı, upstream kotası mı" ayrımı bundan yapılır.
+    recordResult(r.status, body);
     return {
       status: 502,
-      body: { error: `AI service error (HTTP ${r.status})`, code: "ai_provider_error" },
+      body,
     };
   }
 
   const rawText = extractText(json);
   if (typeof rawText !== "string") {
-    return {
-      status: 502,
-      body: { error: "AI service returned an unexpected response", code: "ai_bad_response" },
+    const body = {
+      error: "AI service returned an unexpected response",
+      code: "ai_bad_response",
     };
+    recordResult(502, body);
+    return { status: 502, body };
   }
 
   let parsed;
   try {
     parsed = JSON.parse(stripMarkdownFence(rawText));
   } catch {
-    return {
-      status: 502,
-      body: { error: "AI response is not valid JSON", code: "ai_bad_response" },
-    };
+    const body = { error: "AI response is not valid JSON", code: "ai_bad_response" };
+    recordResult(502, body);
+    return { status: 502, body };
   }
 
+  recordResult(200, null);
   return { status: 200, body: parsed };
 }
 
@@ -541,6 +579,9 @@ function geminiFetch(prompt, opts) {
     },
     extractText: (j) => j?.candidates?.[0]?.content?.parts?.[0]?.text,
     timeoutMs: opts.timeoutMs,
+    provider: opts.provider || "gemini",
+    endpoint: opts.endpoint,
+    model: opts.model,
   });
 }
 
@@ -572,6 +613,9 @@ function nimFetch(prompt, opts) {
     },
     extractText: (j) => j?.choices?.[0]?.message?.content,
     timeoutMs: opts.timeoutMs,
+    provider: opts.provider || "nim",
+    endpoint: opts.endpoint,
+    model: opts.model,
   });
 }
 
@@ -591,6 +635,9 @@ function opencodeFetch(prompt, opts) {
     },
     extractText: (j) => j?.choices?.[0]?.message?.content,
     timeoutMs: opts.timeoutMs,
+    provider: opts.provider || "opencode",
+    endpoint: opts.endpoint,
+    model: opts.model,
   });
 }
 
@@ -598,14 +645,14 @@ function attemptGemini(prompt) {
   if (!GEMINI_API_KEY) {
     return { status: 500, body: { error: "AI service not configured (no GEMINI_API_KEY)" } };
   }
-  return geminiFetch(prompt, { model: GEMINI_MODEL, bucket: aiBucket });
+  return geminiFetch(prompt, { model: GEMINI_MODEL, bucket: aiBucket, provider: "gemini-tier1", endpoint: "parse" });
 }
 
 function attemptNim(prompt) {
   if (!NVIDIA_NIM_API_KEY) {
     return { status: 500, body: { error: "AI service not configured (no NVIDIA_NIM_API_KEY)" } };
   }
-  return nimFetch(prompt, { model: NVIDIA_NIM_MODEL, bucket: nimBucket });
+  return nimFetch(prompt, { model: NVIDIA_NIM_MODEL, bucket: nimBucket, provider: "nim", endpoint: "parse" });
 }
 
 // --- Sağlayıcı fallback zinciri --------------------------------------------
@@ -636,15 +683,33 @@ function textChainSteps(prompt, lang) {
   return [
     {
       available: !!GEMINI_API_KEY,
-      run: () => geminiFetch(prompt, { model: GEMINI_MODEL, bucket: aiBucket }),
+      run: () =>
+        geminiFetch(prompt, {
+          model: GEMINI_MODEL,
+          bucket: aiBucket,
+          provider: "gemini-tier1",
+          endpoint: "parse",
+        }),
     },
     {
       available: !!GEMINI_API_KEY,
-      run: () => geminiFetch(prompt, { model: GEMINI_TIER2_MODEL, bucket: geminiTier2Bucket }),
+      run: () =>
+        geminiFetch(prompt, {
+          model: GEMINI_TIER2_MODEL,
+          bucket: geminiTier2Bucket,
+          provider: "gemini-tier2",
+          endpoint: "parse",
+        }),
     },
     {
       available: !!GEMINI_API_KEY,
-      run: () => geminiFetch(prompt, { model: GEMINI_TIER3_MODEL, bucket: geminiTier3Bucket }),
+      run: () =>
+        geminiFetch(prompt, {
+          model: GEMINI_TIER3_MODEL,
+          bucket: geminiTier3Bucket,
+          provider: "gemini-tier3",
+          endpoint: "parse",
+        }),
     },
     {
       available: !!NVIDIA_NIM_API_KEY,
@@ -653,6 +718,8 @@ function textChainSteps(prompt, lang) {
           model: NVIDIA_NIM_MODEL,
           bucket: nimBucket,
           timeoutMs: NIM_FALLBACK_TIMEOUT_MS,
+          provider: "nim",
+          endpoint: "parse",
         }),
     },
     {
@@ -662,6 +729,8 @@ function textChainSteps(prompt, lang) {
           model: OPENCODE_MODEL,
           bucket: opencodeBucket,
           timeoutMs: NIM_FALLBACK_TIMEOUT_MS,
+          provider: "opencode",
+          endpoint: "parse",
         }),
     },
   ];
@@ -673,7 +742,14 @@ function visionChainSteps(prompt, imageBase64, mimeType, lang) {
     {
       available: !!GEMINI_API_KEY,
       run: () =>
-        geminiFetch(prompt, { model: GEMINI_MODEL, bucket: visionBucket, imageBase64, mimeType }),
+        geminiFetch(prompt, {
+          model: GEMINI_MODEL,
+          bucket: visionBucket,
+          imageBase64,
+          mimeType,
+          provider: "gemini-tier1",
+          endpoint: "vision",
+        }),
     },
     {
       available: !!GEMINI_API_KEY,
@@ -683,6 +759,8 @@ function visionChainSteps(prompt, imageBase64, mimeType, lang) {
           bucket: geminiTier2Bucket,
           imageBase64,
           mimeType,
+          provider: "gemini-tier2",
+          endpoint: "vision",
         }),
     },
     {
@@ -693,6 +771,8 @@ function visionChainSteps(prompt, imageBase64, mimeType, lang) {
           bucket: geminiTier3Bucket,
           imageBase64,
           mimeType,
+          provider: "gemini-tier3",
+          endpoint: "vision",
         }),
     },
     {
@@ -704,6 +784,8 @@ function visionChainSteps(prompt, imageBase64, mimeType, lang) {
           timeoutMs: NIM_FALLBACK_TIMEOUT_MS,
           imageBase64,
           mimeType,
+          provider: "nim-vision",
+          endpoint: "vision",
         }),
     },
   ];
@@ -817,4 +899,4 @@ async function parseMealImage({ imageBase64, mimeType, mode, aliases, lang }) {
   return { status: 200, body: { items, ...(healthNote ? { healthNote } : {}) } };
 }
 
-module.exports = { parseMealText, parseMealImage };
+module.exports = { parseMealText, parseMealImage, aiLog };

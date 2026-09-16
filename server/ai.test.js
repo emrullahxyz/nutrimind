@@ -492,3 +492,161 @@ describe("etiket tabanı (baseAmount) — canlıdan depoya taşındı", () => {
     }
   });
 });
+
+describe("AI gözlem katmanı (server/aiLog.js kayıtları)", () => {
+  it("başarılı zincir çağrısı tek kayıt bırakır: provider, model, endpoint ve latency dolu", async () => {
+    const mockFetch = vi.fn().mockResolvedValue(makeGeminiOkResponse());
+    vi.stubGlobal("fetch", mockFetch);
+
+    const { parseMealText, aiLog } = await loadAi({
+      NUTRIMIND_LLM_PROVIDER: "auto",
+      GEMINI_API_KEY: "test_gemini_key",
+      NVIDIA_NIM_API_KEY: "test_nim_key",
+    });
+    aiLog.reset();
+
+    const res = await parseMealText({ text: "1 elma", aliases: [] });
+    expect(res.status).toBe(200);
+    expect(mockFetch).toHaveBeenCalledTimes(1);
+
+    const snap = aiLog.snapshot();
+    expect(snap.ok).toBe(true);
+    expect(snap.entries).toHaveLength(1);
+    const e = snap.entries[0];
+    expect(e.status).toBe(200);
+    expect(e.provider).toBe("gemini-tier1");
+    expect(e.endpoint).toBe("parse");
+    expect(e.model).toBe("gemini-flash-latest");
+    expect(e.latencyMs).toBeGreaterThanOrEqual(0);
+    expect(e.code).toBeNull();
+
+    const by = Object.fromEntries(snap.providers.map((p) => [p.provider, p]));
+    expect(by["gemini-tier1"]).toMatchObject({ calls: 1, ok: 1, errors: 0 });
+  });
+
+  it("kova reddi (429): ai_rate_limit kaydı retryAfter taşır, ağa çıkılmaz, console'a '[ai]' satırı düşer", async () => {
+    const logSpy = vi.spyOn(console, "log").mockImplementation(() => {});
+    const mockFetch = vi.fn();
+    vi.stubGlobal("fetch", mockFetch);
+
+    const { parseMealText, aiLog } = await loadAi({
+      // Zorlanmış "gemini" modu: zincir yok, tek adım. "auto" olsaydı kova
+      // reddinden SONRA tier2'ye devam eder ve SON adımın sonucu dönardı.
+      NUTRIMIND_LLM_PROVIDER: "gemini",
+      GEMINI_API_KEY: "test_gemini_key",
+      NUTRI_AI_RATE_PARSE: "0.5", // kova yarım jetonla doğar → ilk istek reddedilir
+    });
+    aiLog.reset();
+
+    const res = await parseMealText({ text: "1 elma", aliases: [] });
+    expect(res.status).toBe(429);
+    expect(res.body.code).toBe("ai_rate_limit");
+    expect(mockFetch).toHaveBeenCalledTimes(0);
+
+    const e = aiLog.snapshot().entries[0];
+    expect(e.status).toBe(429);
+    expect(e.code).toBe("ai_rate_limit");
+    expect(e.retryAfter).toBeGreaterThanOrEqual(1);
+    expect(e.provider).toBe("gemini-tier1");
+
+    expect(logSpy).toHaveBeenCalledTimes(1);
+    const line = logSpy.mock.calls[0][0];
+    expect(line.startsWith("[ai] ")).toBe(true);
+    expect(JSON.parse(line.slice("[ai] ".length))).toMatchObject({
+      provider: "gemini-tier1",
+      status: 429,
+      code: "ai_rate_limit",
+    });
+  });
+
+  it("zincir tükendiğinde (hepsi 502) beş adım da kronolojik kaydedilir; son adım opencode olur", async () => {
+    const mockFetch = vi
+      .fn()
+      .mockResolvedValue(makeErrorResponse(502));
+    vi.stubGlobal("fetch", mockFetch);
+
+    const { parseMealText, aiLog } = await loadAi({
+      NUTRIMIND_LLM_PROVIDER: "auto",
+      GEMINI_API_KEY: "test_gemini_key",
+      NVIDIA_NIM_API_KEY: "test_nim_key",
+      OPENCODE_API_KEY: "test_opencode_key",
+    });
+    aiLog.reset();
+
+    const res = await parseMealText({ text: "1 elma", aliases: [] });
+    expect(res.status).toBe(502);
+    expect(mockFetch).toHaveBeenCalledTimes(5);
+
+    const snap = aiLog.snapshot();
+    // snapshot en yenisi önce verir → kronolojik sıra için reverse.
+    const providers = snap.entries.map((e) => e.provider).reverse();
+    expect(providers).toEqual([
+      "gemini-tier1",
+      "gemini-tier2",
+      "gemini-tier3",
+      "nim",
+      "opencode",
+    ]);
+    for (const e of snap.entries) {
+      expect(e.status).toBe(502); // upstream kodu kayıtta aynen saklanır
+      expect(e.code).toBe("ai_provider_error");
+    }
+    const by = Object.fromEntries(snap.providers.map((p) => [p.provider, p]));
+    expect(by["opencode"]).toMatchObject({ calls: 1, ok: 0, errors: 1 });
+  });
+
+  it("vision akışı kayıtları 'vision' endpoint'i taşır; düşüş nim-vision'a başarıyla gider", async () => {
+    const mockFetch = vi
+      .fn()
+      .mockResolvedValueOnce(makeErrorResponse(502))
+      .mockResolvedValueOnce(makeErrorResponse(502))
+      .mockResolvedValueOnce(makeErrorResponse(502))
+      .mockResolvedValueOnce(makeNimOkResponse());
+    vi.stubGlobal("fetch", mockFetch);
+
+    const { parseMealImage, aiLog } = await loadAi({
+      NUTRIMIND_LLM_PROVIDER: "auto",
+      GEMINI_API_KEY: "test_gemini_key",
+      NVIDIA_NIM_API_KEY: "test_nim_key",
+    });
+    aiLog.reset();
+
+    const res = await parseMealImage({
+      imageBase64: "test_base64_data",
+      mimeType: "image/jpeg",
+      mode: "food_photo",
+      aliases: [],
+    });
+    expect(res.status).toBe(200);
+
+    const snap = aiLog.snapshot();
+    expect(snap.entries).toHaveLength(4);
+    expect(snap.entries.every((e) => e.endpoint === "vision")).toBe(true);
+    // en yeni (nim-vision) başarılı:
+    expect(snap.entries[0]).toMatchObject({ provider: "nim-vision", status: 200 });
+    const providers = snap.entries.map((e) => e.provider).reverse();
+    expect(providers).toEqual(["gemini-tier1", "gemini-tier2", "gemini-tier3", "nim-vision"]);
+  });
+
+  it("snapshot kova doluluklarını verir; tier2/tier3'ün metin+vision paylaşımlı olduğu adlarından okunur", async () => {
+    const { aiLog } = await loadAi({
+      NUTRIMIND_LLM_PROVIDER: "gemini",
+      GEMINI_API_KEY: "test_gemini_key",
+    });
+
+    const snap = aiLog.snapshot();
+    const names = snap.buckets.map((b) => b.name);
+    expect(names).toContain("gemini-tier1-text");
+    expect(names).toContain("gemini-tier2");
+    expect(names).toContain("gemini-tier3");
+    expect(names).toContain("vision");
+    expect(names).toContain("nim");
+    expect(names).toContain("nim-vision");
+    expect(names).toContain("opencode");
+    for (const b of snap.buckets) {
+      expect(b.tokens).toBeGreaterThanOrEqual(0);
+      expect(b.tokens).toBeLessThanOrEqual(b.cap);
+      expect(b.fill).toBeLessThanOrEqual(1);
+    }
+  });
+});

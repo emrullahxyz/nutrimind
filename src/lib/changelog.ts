@@ -13,6 +13,28 @@ export interface ChangeLogVersion {
 
 export const CHANGELOG: ChangeLogVersion[] = [
   {
+    version: "0.30.4",
+    date: "2026-09-16",
+    summary: {
+      tr: "Öğün eklerken yapay zekâ hatası alındığında artık hatanın sebei sunucu günlüğüne kaydediliyor: “x saniye sonra tekrar dene” tarzı hataların hangi dakikada, hangi sağlayıcı kademesinde tıkandığı bundan sonra kanıtlı görülebilecek.",
+      en: "When an AI error occurs while logging a meal, the cause is now recorded in the server log: for “retry in x seconds” style errors, the exact minute and the failing provider tier can now be traced with evidence.",
+    },
+    items: [
+      {
+        type: "improved",
+        tr: "Yapay zekâ hataları artık iz bırakıyor: hız sınırı, zaman aşımı ya da sağlayıcı hatası ayrımı sunucu günlüğüne kaydediliyor. Aynı hatayı tekrar yaşarsan sebei tahmin etmek yerine dakikasıyla birlikte görebileceksin.",
+        en: "AI errors now leave a trace: rate limit, timeout and provider failures are recorded in the server log. If the same error happens again, you will see the reason with its timestamp instead of guessing.",
+      },
+    ],
+    dev: [
+      "Motivasyon: canlıda “x sn sonra tekrar dene” olayının izi yoktu — server/ai.js hataları yalnızca HTTP yanıtına çeviriyordu, tek console.error bile yoktu; kova 429'u ile upstream kota hatası ayırt edilemiyordu.",
+      "server/aiLog.js (yeni izole modül): 200 kayıtlık ring buffer + sağlayıcı başına calls/ok/errors + kova doluluk snapshot'ı; hata durumunda tek satır “[ai] {...}” JSON stdout'a (journalctl'de grep '\\[ai\\]'). PII yok: prompt/görsel/uid kaydedilmez; modül asla throw etmez.",
+      "server/ai.js: her sağlayıcı adımı (gemini-tier1/2/3, nim, nim-vision, opencode) callLLM dönüşlerinde aiLog.record — kova 429'u retryAfter ile, upstream hatada sağlayıcının gerçek HTTP kodu (502'ye çevrilmeden), timeout/unreachable 504, 200'de gecikme. Davranış değişikliği yok.",
+      "server/index.js: izinli desen (1 require + 1 if bloğu) ile GET /api/ai/status — oturum kapısı ardında, PUBLIC_PATHS'e eklenmedi; sahibin teşhis ucu (son kayıtlar + kova dolulukları).",
+      "Doğrulama: +15 yeni test (aiLog birim + ai entegrasyon), toplam 886/886 yeşil; typecheck / check:i18n / build yeşil.",
+    ],
+  },
+  {
     version: "0.30.3",
     date: "2026-09-15",
     summary: {
