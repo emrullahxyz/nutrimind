@@ -22,7 +22,12 @@
     <link rel="manifest" href="/manifest.webmanifest" />
     <link rel="icon" href="/icon-192.png" type="image/png" />
     <link rel="icon" href="/favicon.ico" sizes="any" />
-    <link rel="apple-touch-icon" href="/icon-192.png" />
+    <!-- Ana ekran simgesi: iOS 180 px bekler; elimizde 192 px var ve iOS kare
+         PNG'yi ölçekler. `sizes` bildirmek iOS'a hangi varlığı seçtiğini söyler. -->
+    <link rel="apple-touch-icon" sizes="192x192" href="/icon-192.png" />
+    <!-- Ana ekranda görünen ad. Verilmezse `<title>`'ın TAMAMI ("NutriMind —
+         Besin Hafızası") kırpılarak simgenin altına yazılıyordu. -->
+    <meta name="apple-mobile-web-app-title" content="Nutrimind" />
     <title>Nutrimind — Besin Hafızası</title>
     <script>
       (function () {

@@ -16,6 +16,7 @@ import { mealMenuActions, mealSheetReducer, templateNameSuggestion } from "../li
 import type { MealMenuActionId, MealSheetStep } from "../lib/mealActions";
 import { placeAnchoredPanel } from "../lib/anchor";
 import type { PanelAnchor, PanelPlacement } from "../lib/anchor";
+import { subscribeViewport } from "../lib/safeArea";
 import { useBodyScrollLock } from "../hooks/useBodyScrollLock";
 import { useDialogFocus } from "../hooks/useDialogFocus";
 import { useModalHistory } from "../hooks/useModalHistory";
@@ -182,10 +183,10 @@ export function MealActionSheet({
     measure();
   }, [measure, step]);
 
-  useEffect(() => {
-    window.addEventListener("resize", measure);
-    return () => window.removeEventListener("resize", measure);
-  }, [measure]);
+  // Ölçüm TAZE kalmalı: iOS'ta adres çubuğu/klavye yalnızca `visualViewport`'u
+  // oynatır ve `resize` tetiklenmez — o durumda panel bir önceki görünüm
+  // alanına göre yerleşip ekranın dışına taşabiliyordu.
+  useEffect(() => subscribeViewport(measure), [measure]);
 
   /* Arka planı TAM kilitle (#5): doküman kilidi (`useBodyScrollLock`) html/body
      overflow'unu kapatır, ama tekerlek/dokunma ile altındaki kaydırma alanı yine

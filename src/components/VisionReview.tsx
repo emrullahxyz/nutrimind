@@ -397,7 +397,7 @@ export function VisionReviewScreen({
   }
 
   const footerCls =
-    "sticky bottom-0 left-0 right-0 -mx-4 -mb-4 mt-2 border-t border-line-faint bg-bar px-4 py-3 pb-[calc(0.75rem+env(safe-area-inset-bottom,0px))] sm:-mx-5 sm:-mb-5 sm:px-5 sm:py-3.5";
+    "sticky bottom-0 left-0 right-0 -mx-4 -mb-4 mt-2 border-t border-line-faint bg-bar px-4 py-3 pad-safe-b-sm sm:-mx-5 sm:-mb-5 sm:px-5 sm:py-3.5";
 
   if (mode === "food_label") {
     return (

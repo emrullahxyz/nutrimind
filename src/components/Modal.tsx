@@ -111,10 +111,16 @@ export function Modal({
         } ${closing ? "modal-out" : ""}`}
       >
         <div
-          className={`flex-none flex items-center justify-between gap-3 pad-safe-top ${
+          // ⚠️ Üst boşluk sınıfı KOŞULLU: bleed başlık yüzen bir hap (`py-3`,
+          // `mt-2`), normal başlık tam genişlikte bir şerit (`p-3.5`). İkisi de
+          // `--sat` kadar aşağı inmek ZORUNDA — eskiden burada `pad-safe-top`
+          // yazıyordu ve o sınıf HİÇBİR YERDE TANIMLI DEĞİLDİ (sessizce hiçbir
+          // şey yapmıyordu): iPhone'da status bar'ın altında kalan kapatma
+          // düğmesi tıklanamıyordu. Bkz. src/lib/safeArea.test.ts (kapı).
+          className={`flex-none flex items-center justify-between gap-3 ${
             theme === "glass" && bleed
-              ? "mx-2 mt-2 rounded-2xl border border-white/10 bg-black/50 px-3.5 py-3 backdrop-blur-xl sm:mx-3 sm:mt-3"
-              : "border-b border-line-faint bg-bar p-3.5 sm:p-4"
+              ? "pad-safe-t-sm mx-2 mt-2 rounded-2xl border border-white/10 bg-black/50 px-3.5 py-3 backdrop-blur-xl sm:mx-3 sm:mt-3"
+              : "pad-safe-t border-b border-line-faint bg-bar p-3.5 sm:p-4"
           }`}
         >
           <h3 className="modal-title text-base font-extrabold text-ink-primary">{title}</h3>
@@ -138,7 +144,7 @@ export function Modal({
           {children}
         </div>
         {footer && (
-          <div className="glass-footer flex-none border-t border-line-faint bg-bar px-4 py-3 sm:px-5 sm:py-3.5 pb-[calc(0.75rem+env(safe-area-inset-bottom,0px))]">
+          <div className="glass-footer pad-safe-b-sm flex-none border-t border-line-faint bg-bar px-4 py-3 sm:px-5 sm:py-3.5">
             {footer}
           </div>
         )}

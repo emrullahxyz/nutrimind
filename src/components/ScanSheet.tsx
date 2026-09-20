@@ -60,7 +60,7 @@ import {
   useCameraStream,
   visionModeFor,
 } from "../lib/camera";
-import type { ScanMode } from "../lib/camera";
+import type { CameraFacing, ScanMode } from "../lib/camera";
 import { todayISO } from "../lib/format";
 import type { AIParseItem, MealPayload, MealSource, VisionMode } from "../types";
 import { AiError, grantAiConsent, hasAiConsent, parseMealImage } from "../lib/ai";
@@ -68,6 +68,7 @@ import { useTranslation } from "react-i18next";
 import { captureVideoFrame, compressImageToBase64 } from "../lib/image";
 import { useBodyScrollLock } from "../hooks/useBodyScrollLock";
 import { useDialogFocus } from "../hooks/useDialogFocus";
+import { useDoubleTap } from "../hooks/useDoubleTap";
 import { markProgrammaticBack } from "../lib/backStack";
 
 /** Üç kayıt yolu var; hangisinin sürdüğünü ayrı ayrı bilmek gerekiyor ki doğru
@@ -251,7 +252,42 @@ export function ScanSheet({
     ready,
     error: cameraError,
     retry: retryCamera,
+    facing,
+    switchCamera,
   } = useCameraStream(scanning && canUseCamera && !offline);
+
+  // --- Ön/arka geçişi (çift dokunuş) ---------------------------------------
+  // Jest GÖRÜNMEZ: hangi kameraya geçildiği kısa süre gösterilmezse kullanıcı
+  // "olmadı" sanıp tekrar tekrar dokunur. Bildirim 1.6 sn sonra kaybolur.
+  const [flipNotice, setFlipNotice] = useState<CameraFacing | null>(null);
+  const [showFlipHint, setShowFlipHint] = useState(true);
+  const flipTimerRef = useRef<number | null>(null);
+
+  const handleSwitchCamera = () => {
+    const next: CameraFacing = facing === "environment" ? "user" : "environment";
+    switchCamera();
+    setFlipNotice(next);
+    if (flipTimerRef.current !== null) window.clearTimeout(flipTimerRef.current);
+    flipTimerRef.current = window.setTimeout(() => setFlipNotice(null), 1600);
+  };
+
+  // İpucu ve zamanlayıcı: sheet her açıldığında 4 sn gösterilir (jest
+  // keşfedilebilir olmadığı için ilk ipucu gerekli), sonra kendiliğinden gider.
+  useEffect(() => {
+    if (!scanning) return;
+    setShowFlipHint(true);
+    const id = window.setTimeout(() => setShowFlipHint(false), 4000);
+    return () => window.clearTimeout(id);
+  }, [scanning]);
+
+  useEffect(
+    () => () => {
+      if (flipTimerRef.current !== null) window.clearTimeout(flipTimerRef.current);
+    },
+    [],
+  );
+
+  const doubleTap = useDoubleTap(handleSwitchCamera);
 
   // Barkod taraması YALNIZCA barkod modunda ve akış hazırken çalışır. `blocked`
   // değişimi yalnızca bu aralığı yeniden kurar — kamerayı DEĞİL (telefon ışığı
@@ -730,7 +766,25 @@ export function ScanSheet({
                 ref={videoRef}
                 muted
                 playsInline
-                className="absolute inset-0 h-full w-full object-cover"
+                // Ön kamerada önizleme AYNALI (kullanıcı kendini aynada gördüğü
+                // gibi görsün). Çekilen kare aynalanmaz — etiket yazısı ve
+                // gönderilen görüntü gerçek yönünde kalmalı.
+                className={`absolute inset-0 h-full w-full object-cover ${
+                  facing === "user" ? "[transform:scaleX(-1)]" : ""
+                }`}
+              />
+
+              {/* VİZÖR YÜZEYİ — çift dokunuşun hedefi. Ayrı ve şeffaf bir katman
+                  olması ŞART: alt kontroller (deklanşör, mod hapları, galeri)
+                  bunun ÜSTÜNDE (z-10) durur, yani fotoğraf çekmek isteyen
+                  kullanıcı asla yanlışlıkla kamerayı değiştirmez. `touch-action:
+                  manipulation` iOS'ta çift dokunuşun sayfayı yakınlaştırmasını
+                  engeller (viewport'taki `user-scalable=no` iOS'ta yok sayılır). */}
+              <div
+                data-tap-key="viewfinder"
+                aria-hidden="true"
+                className="absolute inset-0 z-[5] touch-manipulation"
+                {...doubleTap}
               />
 
               {/* Asist çerçevesi. Dev `box-shadow` yayılımı çerçevenin DIŞINI
@@ -746,9 +800,25 @@ export function ScanSheet({
                 />
               )}
 
-              <p className="pointer-events-none absolute inset-x-0 top-3 mx-auto w-fit max-w-[86%] rounded-pill bg-black/60 px-3 py-1.5 text-center text-[11px] font-semibold text-white/90 backdrop-blur-sm">
+              {/* Mod ipucu da status bar'ın altına girmemeli (`top-3` → inset + 0.75rem). */}
+              <p
+                className={`pointer-events-none absolute inset-x-0 top-[calc(var(--sat)_+_0.75rem)] mx-auto w-fit max-w-[86%] rounded-pill bg-black/60 px-3 py-1.5 text-center text-[11px] font-semibold text-white/90 ${
+                  ready ? "" : "backdrop-blur-sm"
+                }`}
+              >
                 {t(MODE_HINT_KEY[scanMode])}
               </p>
+
+              {/* Çift dokunuş ipucu — kısa süre, sonra kendiliğinden kaybolur. */}
+              {showFlipHint && (
+                <p
+                  className={`pointer-events-none absolute inset-x-0 top-[calc(var(--sat)_+_3rem)] mx-auto w-fit max-w-[86%] rounded-pill bg-black/50 px-3 py-1 text-center text-[10px] font-semibold text-white/70 ${
+                    ready ? "" : "backdrop-blur-sm"
+                  }`}
+                >
+                  ⇄ {t("scan.hintFlip")}
+                </p>
+              )}
 
               {!ready && (
                 <p className="pointer-events-none absolute inset-0 flex items-center justify-center text-[11px] text-white/60">
@@ -785,10 +855,25 @@ export function ScanSheet({
           )}
 
           {/* --- Alt kontroller --- */}
-          <div className="absolute inset-x-0 bottom-0 z-10 flex flex-col gap-3 bg-gradient-to-t from-black via-black/85 to-transparent px-4 pb-[calc(0.75rem+env(safe-area-inset-bottom,0px))] pt-10">
+          <div className="absolute inset-x-0 bottom-0 z-10 flex flex-col gap-3 bg-gradient-to-t from-black via-black/85 to-transparent px-4 pad-safe-b-sm pt-10">
+            {flipNotice && (
+              <div className="mx-auto w-fit rounded-pill border border-white/15 bg-black/70 px-3 py-1.5 text-[11px] font-bold text-white backdrop-blur-sm">
+                ⇄ {flipNotice === "user" ? t("scan.frontCamera") : t("scan.backCamera")}
+              </div>
+            )}
+
             {statusBand}
 
-            <div className="mx-auto flex items-center gap-1 rounded-pill border border-white/10 bg-black/50 p-1 text-[11px] font-semibold text-white/70 backdrop-blur-md">
+            {/* CANLI VİDEO ÜSTÜNDE BLUR YOK. iOS'ta `backdrop-filter` canlı bir
+                `<video>` üzerinde her karede yeniden hesaplanır ve kaydırma/
+                deklanşör hissini bozan en pahalı katmandır; zemin zaten
+                `bg-black/50` olduğu için okunurluk korunur. Kamera hazır
+                DEĞİLKEN (hata/başlangıç) eski görünüm aynen kalır. */}
+            <div
+              className={`mx-auto flex items-center gap-1 rounded-pill border border-white/10 bg-black/50 p-1 text-[11px] font-semibold text-white/70 ${
+                ready ? "" : "backdrop-blur-md"
+              }`}
+            >
               {MODES.map((m) => (
                 <button
                   key={m.mode}
@@ -836,7 +921,9 @@ export function ScanSheet({
                 type="button"
                 onClick={() => fileInputRef.current?.click()}
                 disabled={offline}
-                className="justify-self-end rounded-pill border border-white/15 bg-black/40 px-3 py-2 text-[11px] font-semibold text-white/80 opacity-100 backdrop-blur-sm transition hover:text-white disabled:opacity-40"
+                className={`justify-self-end rounded-pill border border-white/15 bg-black/40 px-3 py-2 text-[11px] font-semibold text-white/80 opacity-100 transition hover:text-white disabled:opacity-40 ${
+                  ready ? "" : "backdrop-blur-sm"
+                }`}
               >
                 🖼️ {t("scan.gallery")}
               </button>
@@ -858,7 +945,7 @@ export function ScanSheet({
                 alt={t("scan.capturedFrameAlt")}
                 className="min-h-0 flex-1 object-contain"
               />
-              <div className="flex items-center justify-center gap-3 bg-gradient-to-t from-black via-black/90 to-transparent px-4 pb-[calc(1rem+env(safe-area-inset-bottom,0px))] pt-8">
+              <div className="pad-safe-b-md flex items-center justify-center gap-3 bg-gradient-to-t from-black via-black/90 to-transparent px-4 pt-8">
                 <button
                   type="button"
                   onClick={retakeCapture}

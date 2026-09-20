@@ -265,7 +265,8 @@ export function OnboardingModal({
       }`}
     >
       {/* --- Header: başlık (kırpılabilir) + sayaç + kapat ------------------ */}
-      <div className="flex items-start gap-3 px-4 pt-3.5 pb-3 sm:px-6 flex-none">
+      {/* `pad-safe-t`: sihirbazın kapatma düğmesi iPhone'da status bar'ın altında kalmasın. */}
+      <div className="pad-safe-t flex items-start gap-3 px-4 pb-3 sm:px-6 flex-none">
         <div
           aria-hidden
           className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-accent/30 bg-accent/20 text-sm font-bold text-accent"
@@ -319,7 +320,9 @@ export function OnboardingModal({
       </div>
 
       {/* --- Gövde: adım içeriği (yönlü geçiş), tek kaydırılan katman ------ */}
-      <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 pb-2 sm:px-6">
+      {/* `--kb`: sihirbaz adımlarında klavye açılınca (yaş/boy/kilo alanları)
+          odaklanılan alan klavyenin altında kalıyordu. */}
+      <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 pb-[calc(0.5rem_+_var(--kb))] sm:px-6">
         <div
           key={step}
           className={`mx-auto w-full max-w-xl space-y-5 ${

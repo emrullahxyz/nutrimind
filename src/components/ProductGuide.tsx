@@ -5,6 +5,7 @@ import { X } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { placeAnchoredPanel } from "../lib/anchor";
 import type { AnchorRect, PanelPlacement } from "../lib/anchor";
+import { subscribeViewport } from "../lib/safeArea";
 import { GUIDE_STEPS, GUIDE_STEP_COUNT } from "../lib/guide";
 import type { GuideStatus } from "../lib/guide";
 import { useBodyScrollLock } from "../hooks/useBodyScrollLock";
@@ -156,10 +157,10 @@ export function ProductGuide({ onFinish }: { onFinish: (status: GuideStatus) => 
     measure();
   }, [measure, step]);
 
-  useEffect(() => {
-    window.addEventListener("resize", measure);
-    return () => window.removeEventListener("resize", measure);
-  }, [measure]);
+  // iOS'ta `resize` tek başına yetmez (adres çubuğu/klavye yalnızca
+  // `visualViewport`'u oynatır) — kart aksi hâlde bayat görünüm alanına göre
+  // yerleşir.
+  useEffect(() => subscribeViewport(measure), [measure]);
 
   /* Arka planı TAM kilitle: `useBodyScrollLock` html/body overflow'unu kapatır,
      ama tekerlek/dokunma ile alttaki kaydırma alanı yine kımıldayabilir. React

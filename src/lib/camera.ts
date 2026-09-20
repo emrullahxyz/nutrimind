@@ -20,6 +20,12 @@ import { FOOD_BARCODE_FORMATS, barcodeDetectorCtor } from "./off";
 import type { BarcodeDetectorLike } from "./off";
 import type { VisionMode } from "../types";
 import i18n from "../i18n/i18n";
+import {
+  cameraDiag,
+  summarizeDevices,
+  summarizeSettings,
+  truncateNote,
+} from "./cameraDiag";
 
 /** Kamera karesi tarama aralığı. 400 ms göze anında görünüyor, CPU'yu yormuyor. */
 const SCAN_INTERVAL_MS = 400;
@@ -142,44 +148,200 @@ export interface CameraDeviceLike {
 }
 
 /**
- * Çok kameralı telefonlarda ANA arka kamerayı seçer.
+ * Kamera yönü. `environment` = arkaya bakan (yemek/etiket/barkod için doğru
+ * olan), `user` = öne bakan (kullanıcı çift dokunuşla geçebilir).
+ */
+export type CameraFacing = "environment" | "user";
+
+/** Cihaz etiketleri yalnızca İZİNDEN SONRA dolar; bu eşlemeler tarayıcının
+ *  verdiği DONANIM adı üzerinde çalışır, arayüz metni değil. */
+// i18n-exempt: cihaz ETİKETİ eşlemesi (tarayıcının verdiği donanım adı), arayüz metni değil
+const LABEL_FRONT_RE = /front|user|selfie|ön kamera/i;
+// i18n-exempt: cihaz ETİKETİ eşlemesi (yardımcı lens adları)
+const LABEL_BACK_RE = /back|rear|environment|arka/i;
+// i18n-exempt: cihaz ETİKETİ eşlemesi (yardımcı lens adları)
+const LABEL_AUX_RE =
+  /ultra|wide[-\s]?angle|telephoto|\btele\b|zoom|depth|macro|monochrome|infrared|\bir\b/i;
+
+/** `camera2 3, facing back` → 3; indeks yoksa Infinity (iOS, masaüstü). */
+function camera2Index(label: string): number {
+  const m = /camera2\s+(\d+)/i.exec(label);
+  return m ? Number(m[1]) : Number.POSITIVE_INFINITY;
+}
+
+/**
+ * Çok kameralı telefonlarda istenen yöndeki ANA kamerayı seçer.
  *
  * `facingMode: "environment"` yalnızca "arkaya bakan bir kamera" diyor; hangisi
  * olduğunu GARANTİ ETMİYOR. Cihaz ultra-geniş lensi verdiğinde iki şey birden
  * bozuluyor: ultra-geniş lensler genelde SABİT ODAKLI olduğu için yakın çekim
  * (besin etiketi) net çıkmıyor, ayrıca daha düşük çözünürlüklü oluyorlar.
  *
- * Eleme sırası: önce arkaya bakanlar, sonra yardımcı lensler (ultra-geniş,
- * telefoto, derinlik, makro) atılır. Kalanlar arasında Android'in
+ * Eleme sırası: önce istenen yöne bakanlar, sonra arka için yardımcı lensler
+ * (ultra-geniş, telefoto, derinlik, makro) atılır. Kalanlar arasında Android'in
  * "camera2 N, facing back" etiketindeki EN KÜÇÜK indeks seçilir — Camera2
  * API'sinde 0 numaralı arka kamera ana kameradır.
  */
-export function pickBackCameraDeviceId(devices: CameraDeviceLike[]): string | null {
+export function pickCameraDeviceId(
+  devices: CameraDeviceLike[],
+  facing: CameraFacing = "environment",
+): string | null {
   const inputs = devices.filter((d) => d.kind === "videoinput" && d.deviceId);
   if (inputs.length === 0) return null;
   // Etiketler yalnızca izin verildikten SONRA dolar. Boşken hangi lensin
   // hangisi olduğu bilinemez; yanlış kamerayı (ör. ön kamerayı) seçmektense
-  // hiç dokunmamak doğru — çağıran mevcut akışla devam eder.
+  // hiç dokunmamak doğru — çağıran KARARI kendi ölçümüyle verir (bkz.
+  // `resolveCameraPick`; eskiden buradaki boş etiket, ikinci isteği
+  // tamamen iptal ediyordu ve ön kamera öylece kalıyordu).
   if (inputs.every((d) => !d.label.trim())) return null;
 
-  // i18n-exempt: cihaz ETİKETİ eşlemesi (tarayıcının verdiği donanım adı), arayüz metni değil
-  const isFront = (l: string) => /front|user|selfie|ön kamera/i.test(l);
-  const isAux = (l: string) =>
-    /ultra|wide[-\s]?angle|telephoto|\btele\b|zoom|depth|macro|monochrome|infrared|\bir\b/i.test(l);
+  if (facing === "user") {
+    let front = inputs.filter((d) => LABEL_FRONT_RE.test(d.label));
+    if (front.length === 0) front = inputs.filter((d) => !LABEL_BACK_RE.test(d.label));
+    return (front.length > 0 ? front : inputs)[0].deviceId;
+  }
 
-  let back = inputs.filter((d) => /back|rear|environment|arka/i.test(d.label));
-  if (back.length === 0) back = inputs.filter((d) => !isFront(d.label));
+  let back = inputs.filter((d) => LABEL_BACK_RE.test(d.label));
+  if (back.length === 0) back = inputs.filter((d) => !LABEL_FRONT_RE.test(d.label));
   if (back.length === 0) back = inputs;
 
-  const main = back.filter((d) => !isAux(d.label));
+  const main = back.filter((d) => !LABEL_AUX_RE.test(d.label));
   const pool = main.length > 0 ? main : back;
 
-  const camera2Index = (l: string) => {
-    const m = /camera2\s+(\d+)/i.exec(l);
-    return m ? Number(m[1]) : Number.POSITIVE_INFINITY;
-  };
   // `sort` kararlı: indeks yoksa (iOS, masaüstü) sıralama bozulmaz, ilki seçilir.
   return [...pool].sort((a, b) => camera2Index(a.label) - camera2Index(b.label))[0].deviceId;
+}
+
+/** Geriye dönük ad: yalnızca arka kamera. Testler ve çağıranlar bunu kullanır. */
+export function pickBackCameraDeviceId(devices: CameraDeviceLike[]): string | null {
+  return pickCameraDeviceId(devices, "environment");
+}
+
+// --- Yön kararı ---------------------------------------------------------------
+
+export interface CameraSettingsLike {
+  deviceId?: string;
+  facingMode?: string;
+  width?: number;
+  height?: number;
+}
+
+export interface CameraPickInput {
+  facing: CameraFacing;
+  devices: CameraDeviceLike[] | null;
+  settings: CameraSettingsLike | null;
+}
+
+export type CameraDecisionKind = "keep" | "retry-device" | "retry-facing";
+
+export interface CameraDecision {
+  kind: CameraDecisionKind;
+  /** Yeniden istekte `deviceId: {exact}` olarak kullanılacak cihaz (varsa). */
+  deviceId: string | null;
+  reason: string;
+  /** Ölçülebilen gerçek yön; ölçülemiyorsa null. */
+  actualFacing: CameraFacing | null;
+}
+
+/**
+ * ELDEKİ AKIŞIN hangi yöne baktığını söyler — "ne istediğimiz" değil, "ne
+ * geldiği". İki kaynak sırayla denenir:
+ *   1. `getSettings().facingMode` — varsa OTORİTE (tarayıcı kendi söylüyor),
+ *   2. `getSettings().deviceId` + etiketli cihaz listesi — eşleştirme.
+ * İkisi de yoksa `null`: "bilmiyoruz". iOS bazı sürümlerde deviceId'yi
+ * vermiyor; bu yüzden bilinmezlik BİR HATA DEĞİL, ele alınması gereken bir
+ * durumdur (eski kod bunu "dokunma" diye yorumlayıp ön kamerada kalıyordu).
+ */
+export function measuredFacing(
+  settings: CameraSettingsLike | null | undefined,
+  devices: CameraDeviceLike[] | null | undefined,
+): CameraFacing | null {
+  const raw = settings?.facingMode;
+  if (raw === "environment" || raw === "user") return raw;
+
+  const id = settings?.deviceId;
+  if (!id || !devices) return null;
+  const hit = devices.find((d) => d.kind === "videoinput" && d.deviceId === id);
+  if (!hit || !hit.label.trim()) return null;
+  if (LABEL_FRONT_RE.test(hit.label)) return "user";
+  if (LABEL_BACK_RE.test(hit.label)) return "environment";
+  return null;
+}
+
+/**
+ * ÖLÇÜLMÜŞ ARİZA (iPhone, standalone): yemek/etiket taramasında ÖN kamera açıldı
+ * ve arkaya geçmenin hiçbir yolu yoktu. İki mekanizma birden mümkündü ve ikisi
+ * de burada kapatılır:
+ *   M1 — `facingMode: {ideal: "environment"}` YUMUŞAK bir kısıt; tarayıcı ilk
+ *        çağrıda yok sayıp varsayılanı (ön kamera) verebiliyor.
+ *   M2 — eski kod ana-lens geçişini `if (pick && current && …)` ile korumuştu:
+ *        `getSettings().deviceId` gelmeyen bir cihazda (iOS) bu kapı `false`
+ *        oluyor ve geçiş HİÇ denenmiyordu. Yön "bilinmiyor" diye hiç
+ *        dokunmamak, ön kamerada kalmak demekti.
+ *
+ * Karar kuralları:
+ *   • ölçülen yön istenenle AYNI → `keep` (gereksiz durdur/başlat yok),
+ *   • ölçülen yön FARKLI → hedef lens biliniyorsa ona geç (`retry-device`),
+ *     bilinmiyorsa sert yön isteği (`retry-facing`),
+ *   • ölçülemedi → hedef lens biliniyorsa ona geç, bilinmiyorsa sert yön isteği.
+ * Çağıran EN FAZLA bir kez yeniden dener (sınırsız döngü yok).
+ */
+export function resolveCameraPick({ facing, devices, settings }: CameraPickInput): CameraDecision {
+  const wanted = devices ? pickCameraDeviceId(devices, facing) : null;
+  const actual = measuredFacing(settings, devices);
+  const current = settings?.deviceId ?? null;
+
+  if (actual === facing) {
+    const known = wanted ?? current;
+    return { kind: "keep", deviceId: known, reason: "verified", actualFacing: actual };
+  }
+
+  if (actual !== null) {
+    // Yanlış yöndeyiz: önce HEDEF LENSE geçmeyi dene, lens bilinmiyorsa sert yön.
+    if (wanted && wanted !== current) {
+      return { kind: "retry-device", deviceId: wanted, reason: `wrong-facing:${actual}`, actualFacing: actual };
+    }
+    return { kind: "retry-facing", deviceId: null, reason: `wrong-facing:${actual}`, actualFacing: actual };
+  }
+
+  // Ölçülemedi — iOS'un imzası. Hedef lens biliniyorsa ona geç.
+  if (wanted && wanted !== current) {
+    return { kind: "retry-device", deviceId: wanted, reason: "unverified", actualFacing: null };
+  }
+  if (wanted && wanted === current) {
+    // İstediğimiz lens zaten açık; ölçemiyoruz ama yanlış olduğunu da bilmiyoruz.
+    return { kind: "keep", deviceId: wanted, reason: "unverified-but-picked", actualFacing: null };
+  }
+  return { kind: "retry-facing", deviceId: null, reason: "unverified-no-device", actualFacing: null };
+}
+
+/**
+ * Tanılama kaydı için kısıtın TEK SATIR özeti: "facingMode.ideal=environment",
+ * "facingMode.exact=user", "deviceId.exact=ios-back", "default".
+ * Rapor, arızanın hangi adımda olduğunu bu satırdan okur — tahmine yer bırakmaz.
+ */
+export function describeConstraints(constraints: MediaStreamConstraints | null | undefined): string {
+  const v = constraints?.video;
+  const dict = typeof v === "object" && v !== null ? (v as MediaTrackConstraints) : null;
+  if (!dict) return "default";
+
+  const params = (x: unknown): ConstrainDOMStringParameters | null =>
+    typeof x === "object" && x !== null ? (x as ConstrainDOMStringParameters) : null;
+
+  const mode = dict.facingMode;
+  if (mode !== undefined) {
+    const p = params(mode);
+    if (p?.exact) return `facingMode.exact=${String(p.exact)}`;
+    if (p?.ideal) return `facingMode.ideal=${String(p.ideal)}`;
+    return `facingMode=${String(mode)}`;
+  }
+
+  const id = dict.deviceId;
+  if (id !== undefined) {
+    const p = params(id);
+    return `deviceId.exact=${String(p?.exact ?? id)}`;
+  }
+  return "default";
 }
 
 export function cameraSupported(): boolean {
@@ -202,6 +364,17 @@ export interface UseCameraStreamResult {
    *  bir kez set edilince hiçbir yerde null'a dönmüyordu; tek bir başarısız deneme
    *  sheet kapanana kadar ekranda yapışık kalıyordu. */
   retry: () => void;
+  /** Şu an aktif olan yön. */
+  facing: CameraFacing;
+  /** Ön/arka geçişi. Kamera değiştirmek YENİ bir akış ister (mobilde iki kamerayı
+   *  aynı anda açmak reddediliyor), bu yüzden akış durdurulup yeniden kurulur. */
+  switchCamera: () => void;
+}
+
+export interface UseCameraStreamOptions {
+  /** Başlangıç yönü. Varsayılan `"environment"`: barkod/etiket/yemek çekimi
+   *  arkaya bakan kamerayı ister. */
+  facing?: CameraFacing;
 }
 
 /**
@@ -209,12 +382,25 @@ export interface UseCameraStreamResult {
  * (kapatma, mod değişimi, unmount) parçaları durdurur — açık kalan kamera gerçek
  * bir hatadır, telefonun ışığı yanık kalır.
  */
-export function useCameraStream(active: boolean): UseCameraStreamResult {
+export function useCameraStream(
+  active: boolean,
+  options: UseCameraStreamOptions = {},
+): UseCameraStreamResult {
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const [ready, setReady] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [attempt, setAttempt] = useState(0);
+  const initialFacing = options.facing ?? "environment";
+  const [facing, setFacing] = useState<CameraFacing>(initialFacing);
   const retry = useCallback(() => setAttempt((a) => a + 1), []);
+  /** Yön başına ÇÖZÜLMÜŞ lens: ilk açılışta bir kez "yanlış lens mi?" bedelini
+   *  ödüyoruz, sonraki açılışlar doğrudan doğru lensin `deviceId`'siyle başlar
+   *  (kamera her açılışta iki kez durdurulup başlatılmaz). Geçersiz kalırsa
+   *  istek hata verir ve girdi silinip akış sıfırdan çözülür. */
+  const resolvedRef = useRef<Partial<Record<CameraFacing, string>>>({});
+  const switchCamera = useCallback(() => {
+    setFacing((f) => (f === "environment" ? "user" : "environment"));
+  }, []);
   // Sayfa gizlenince async başlatma zinciri de abortsun: `stopped` gibi senkron
   // okunan bir bayrak — state olsa zincir yarıştan önce yeni değeri göremez.
   const hiddenRef = useRef(false);
@@ -240,61 +426,132 @@ export function useCameraStream(active: boolean): UseCameraStreamResult {
       if (videoRef.current) videoRef.current.srcObject = null;
     };
 
-    /** İki `getUserMedia` çağrısı da aynı çözünürlüğü ister. */
+    // --- Kısıtlar ---------------------------------------------------------
+    // ÇÖZÜNÜRLÜK İSTEMEK ŞART. İstenmediğinde tarayıcı düşük bir varsayılan
+    // seçiyordu (Android'de sıklıkla 640x480) ve bu İKİ şeyi birden bozuyordu:
+    //   1. Akış telefon ekranına büyütüldüğü için görüntü BULANIK,
+    //   2. çerçeveye kırpılan bölge o küçük kareden alındığı için AI'a giden
+    //      etiket okunamayacak kadar küçük gidiyordu ("bazen algılıyor bazen
+    //      algılamıyor" şikâyetinin sebebi).
+    // `ideal` desteklenmiyorsa HATA VERMEZ, tarayıcı en yakınını seçer.
     const RES = { width: { ideal: 2560 }, height: { ideal: 1440 } } as const;
+    const byFacing = (f: CameraFacing, strict = false): MediaStreamConstraints => ({
+      video: { facingMode: strict ? { exact: f } : { ideal: f }, ...RES },
+    });
+    const byDevice = (id: string): MediaStreamConstraints => ({
+      video: { deviceId: { exact: id }, ...RES },
+    });
+
+    if (stopped || hiddenRef.current) return;
+
+    const devicesNow = async (): Promise<CameraDeviceLike[] | null> => {
+      try {
+        return (await navigator.mediaDevices.enumerateDevices?.()) ?? null;
+      } catch {
+        return null; // cihaz listesi yok — karar "bilinmiyor" üzerinden verilir
+      }
+    };
+    const settingsOf = (s: MediaStream | null): CameraSettingsLike | null =>
+      (s?.getVideoTracks?.()[0]?.getSettings?.() as CameraSettingsLike | undefined) ?? null;
+
+    /** Kamerayı bırakır ve YENİ istekten önce kısa bir bekleme koyar: iOS akışı
+     *  eşzamanlı bırakmıyor, hemen gelen ikinci istek reddedilebiliyor
+     *  (`NotReadableError`) — "kamera bazen hiç açılmıyor" sınıfının kardeşi. */
+    const stopAndSettle = async (s: MediaStream | null) => {
+      if (!s) return;
+      s.getTracks().forEach((t) => t.stop());
+      await new Promise<void>((res) => window.setTimeout(res, 60));
+    };
 
     void (async () => {
       try {
-        stream = await navigator.mediaDevices.getUserMedia({
-          video: {
-            facingMode: { ideal: "environment" },
-            // ÇÖZÜNÜRLÜK İSTEMEK ŞART. İstenmediğinde tarayıcı düşük bir
-            // varsayılan seçiyor (Android'de sıklıkla 640x480) ve bu İKİ şeyi
-            // birden bozuyordu:
-            //   1. Akış telefon ekranına büyütüldüğü için görüntü BULANIK.
-            //   2. Çerçeveye kırpılan bölge o küçük kareden alındığı için AI'a
-            //      giden etiket okunamayacak kadar küçük gidiyor — "etiketi
-            //      bazen algılıyor bazen algılamıyor" şikâyetinin sebebi bu.
-            // `ideal` desteklenmiyorsa HATA VERMEZ, tarayıcı en yakınını seçer.
-            width: { ideal: 2560 },
-            height: { ideal: 1440 },
-          },
-        });
+        const cached = resolvedRef.current[facing];
+        let used = cached ? byDevice(cached) : byFacing(facing);
+        try {
+          stream = await navigator.mediaDevices.getUserMedia(used);
+        } catch (e) {
+          if (!cached) throw e;
+          // Önbellekteki lens artık yok/değişmiş: girdiyi at, sıfırdan çöz.
+          delete resolvedRef.current[facing];
+          used = byFacing(facing);
+          stream = await navigator.mediaDevices.getUserMedia(used);
+        }
         if (stopped || hiddenRef.current) {
           stream.getTracks().forEach((t) => t.stop());
+          stream = null;
           return;
         }
 
-        // ANA arka kameraya geç. Cihaz etiketleri ancak izin verildikten SONRA
-        // okunabildiği için bu ikinci adım: ilk akış izni alır, sonra doğru
-        // lensi seçip yeniden bağlanırız. `facingMode` tek başına ultra-geniş
-        // lensi verebiliyor (sabit odaklı → etiket yakın çekimde net çıkmıyor).
-        let wanted: string | null = null;
-        try {
-          const list = await navigator.mediaDevices.enumerateDevices?.();
-          const current = stream.getVideoTracks()[0]?.getSettings?.().deviceId;
-          const pick = list ? pickBackCameraDeviceId(list) : null;
-          if (pick && current && pick !== current) wanted = pick;
-        } catch {
-          /* enumerateDevices yok/başarısız — mevcut akışla devam edilir */
+        // İlk akış izni alır (etiketler ancak bundan sonra dolar), ardından
+        // "gerçekten doğru lens mi?" sorusu ÖLÇÜLEREK cevaplanır.
+        let devices = await devicesNow();
+        let settings = settingsOf(stream);
+        const decision = resolveCameraPick({ facing, devices, settings });
+        cameraDiag.record({
+          facing,
+          attempt: 1,
+          requested: describeConstraints(used),
+          result: decision.kind === "keep" ? "ok" : "retry",
+          got: summarizeSettings(settings),
+          devices: summarizeDevices(devices),
+          note: decision.reason,
+        });
+        if (decision.kind === "keep" && decision.deviceId) {
+          resolvedRef.current[facing] = decision.deviceId;
         }
 
-        if (wanted && !stopped && !hiddenRef.current) {
-          // Mobilde iki kamerayı aynı anda açmak reddedilebiliyor: önce eskiyi
-          // bırak. Yeni lens açılamazsa ilk kısıtlarla GERİ DÖN — aksi hâlde
-          // ölü bir akışla devam ederdik.
-          stream.getTracks().forEach((t) => t.stop());
+        if (decision.kind !== "keep" && !stopped && !hiddenRef.current) {
+          // SINIRLI: en fazla bir yeniden deneme. Yanlış lens biliniyorsa ona,
+          // bilinmiyorsa sert yön isteğine geçilir (ikisi de tek adım).
+          const next =
+            decision.kind === "retry-device" && decision.deviceId
+              ? byDevice(decision.deviceId)
+              : byFacing(facing, true);
+          const previous = stream;
           stream = null;
+          await stopAndSettle(previous);
+          if (stopped || hiddenRef.current) return;
           try {
-            stream = await navigator.mediaDevices.getUserMedia({
-              video: { deviceId: { exact: wanted }, ...RES },
+            stream = await navigator.mediaDevices.getUserMedia(next);
+          } catch (e) {
+            // `exact` bir cihazda karşılanamayabilir (tek kamera, masaüstü) —
+            // hata değil, geri çekilme: ilk (yumuşak) kısıtlarla devam.
+            cameraDiag.record({
+              facing,
+              attempt: 2,
+              requested: describeConstraints(next),
+              result: "failed",
+              got: "n/a",
+              devices: summarizeDevices(devices),
+              note: truncateNote(e),
             });
-          } catch {
-            stream = await navigator.mediaDevices.getUserMedia({
-              video: { facingMode: { ideal: "environment" }, ...RES },
-            });
+            stream = await navigator.mediaDevices.getUserMedia(byFacing(facing));
           }
+          if (stopped || hiddenRef.current) {
+            stream.getTracks().forEach((t) => t.stop());
+            stream = null;
+            return;
+          }
+          devices = await devicesNow();
+          settings = settingsOf(stream);
+          const settled = measuredFacing(settings, devices);
+          const finalPick = resolveCameraPick({ facing, devices, settings });
+          if (finalPick.deviceId && (settled === facing || finalPick.kind === "keep")) {
+            resolvedRef.current[facing] = finalPick.deviceId;
+          }
+          cameraDiag.record({
+            facing,
+            attempt: 2,
+            requested: describeConstraints(next),
+            // "Ok" demek için YÖN ÖLÇÜLMÜŞ olmalı; ölçülemeyen ama doğru lensle
+            // açılan akış `unverified` olarak kaydedilir (uydurma yok).
+            result: settled === facing ? "ok" : settled ? "failed" : "unverified",
+            got: summarizeSettings(settings),
+            devices: summarizeDevices(devices),
+            note: finalPick.reason,
+          });
         }
+
         const active = stream;
         if (stopped || hiddenRef.current || !active) {
           active?.getTracks().forEach((t) => t.stop());
@@ -368,7 +625,8 @@ export function useCameraStream(active: boolean): UseCameraStreamResult {
       release();
     };
     // `attempt` bilerek bağımlılıkta: "tekrar dene" tam olarak bu efekti yeniden kurar.
-  }, [active, attempt]);
+    // `facing` de öyle: çift dokunuş yönü değiştirir, akış yeniden kurulur.
+  }, [active, attempt, facing]);
 
   // Sayfa arka plana alınınca kamerayı durdur, geri gelince yeniden başlat.
   // Mobilde uygulama değiştirince kamera LED'inin yanık kalmasını önler.
@@ -395,7 +653,7 @@ export function useCameraStream(active: boolean): UseCameraStreamResult {
     return () => document.removeEventListener("visibilitychange", onVisibility);
   }, [active, retry]);
 
-  return { videoRef, ready, error, retry };
+  return { videoRef, ready, error, retry, facing, switchCamera };
 }
 
 // --- Barkod katmanı -----------------------------------------------------------

@@ -169,7 +169,8 @@ export function AliasForm({ initial, onClose }: { initial: Alias | null; onClose
       }`}
     >
       {/* Header Bar */}
-      <div className="flex items-center justify-between px-4 py-3.5 sm:px-6 border-b border-white/10 flex-none bg-app">
+      {/* `pad-safe-t`: iPhone'da başlık status bar'ın altında kalmasın (geri düğmesi). */}
+      <div className="pad-safe-t flex items-center justify-between px-4 py-3.5 sm:px-6 border-b border-white/10 flex-none bg-app">
         <button
           type="button"
           onClick={beginClose}
@@ -187,7 +188,9 @@ export function AliasForm({ initial, onClose }: { initial: Alias | null; onClose
       </div>
 
       {/* Main Form Body */}
-      <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-6">
+      {/* `pb-[calc(…var(--kb))]`: iOS klavyesi açılınca odaklanılan alan klavyenin
+          altında kalmasın (bkz. hooks/useKeyboardInset). */}
+      <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-6 pb-[calc(1rem_+_var(--kb))]">
         {/* OFF Search Card */}
         <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-4 text-white">
           <button

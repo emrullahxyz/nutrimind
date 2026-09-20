@@ -1,5 +1,13 @@
 import { describe, expect, it } from "vitest";
-import { cropRectFor, guideRectFor, pickBackCameraDeviceId, visionModeFor } from "./camera";
+import {
+  cropRectFor,
+  describeConstraints,
+  guideRectFor,
+  measuredFacing,
+  pickBackCameraDeviceId,
+  resolveCameraPick,
+  visionModeFor,
+} from "./camera";
 import type { CameraDeviceLike, ScanMode } from "./camera";
 
 // ============================================================================
@@ -81,6 +89,134 @@ describe("pickBackCameraDeviceId", () => {
 
   it("masaüstü: tek kamera olduğu gibi seçilir", () => {
     expect(pickBackCameraDeviceId([vid("web", "Integrated Camera")])).toBe("web");
+  });
+});
+
+// ============================================================================
+// ÖLÇÜLMÜŞ BUG (iPhone, standalone): "kamerayı açınca ÖN kamera açıldı ve arka
+// kameraya geçiş yapamadık". İki mekanizma birden mümkündü; ikisi de aşağıdaki
+// karar fonksiyonunda kapatılır:
+//   M1 — `facingMode: {ideal:"environment"}` yumuşak kısıt; ilk çağrıda
+//        yok sayılıp varsayılan (ön) kamera dönebilir.
+//   M2 — eski kod geçişi `if (pick && current && …)` ile koruyordu;
+//        `getSettings().deviceId` gelmeyen cihazda (iOS) bu kapı false oluyor ve
+//        doğru lense geçiş HİÇ denenmiyordu.
+// Aşağıda "cihaz ios gibi davranıyor" senaryosu: settings'te deviceId YOK,
+// etiketler izinden sonra dolu. Beklenen: ana arka kameraya geçilmesi.
+// ============================================================================
+const iosDevices: CameraDeviceLike[] = [
+  { deviceId: "ios-front", label: "Front Camera", kind: "videoinput" },
+  { deviceId: "ios-back", label: "Back Camera", kind: "videoinput" },
+  { deviceId: "ios-dual", label: "Back Dual Wide Camera", kind: "videoinput" },
+  { deviceId: "ios-ultra", label: "Back Ultra Wide Camera", kind: "videoinput" },
+];
+
+describe("measuredFacing — 'ne istedik' değil 'ne geldi'", () => {
+  it("facingMode söylenmişse otoritedir", () => {
+    expect(measuredFacing({ facingMode: "user" }, iosDevices)).toBe("user");
+    expect(measuredFacing({ facingMode: "environment" }, iosDevices)).toBe("environment");
+  });
+
+  it("deviceId etiketle eşleşiyorsa yön çıkarılır", () => {
+    expect(measuredFacing({ deviceId: "ios-front" }, iosDevices)).toBe("user");
+    expect(measuredFacing({ deviceId: "ios-back" }, iosDevices)).toBe("environment");
+  });
+
+  it("bilinmeyen/boş etiket 'bilmiyoruz' demektir (uydurmaz)", () => {
+    expect(measuredFacing({ deviceId: "yok" }, iosDevices)).toBeNull();
+    expect(measuredFacing({ deviceId: "a" }, [{ deviceId: "a", label: "", kind: "videoinput" }])).toBeNull();
+    expect(measuredFacing({ width: 1280, height: 720 }, iosDevices)).toBeNull();
+    expect(measuredFacing(null, iosDevices)).toBeNull();
+  });
+});
+
+describe("resolveCameraPick — yön kararı", () => {
+  it("M2: deviceId gelmese bile ANA arka kameraya geçilir (eski kod burada duruyordu)", () => {
+    const d = resolveCameraPick({
+      facing: "environment",
+      devices: iosDevices,
+      settings: { width: 1280, height: 720 },
+    });
+    expect(d.kind).toBe("retry-device");
+    expect(d.deviceId).toBe("ios-back"); // ultra-geniş DEĞİL
+    expect(d.reason).toBe("unverified");
+  });
+
+  it("M1: ön kamera geldiği ÖLÇÜLÜRSE hedef lense geçilir", () => {
+    const d = resolveCameraPick({
+      facing: "environment",
+      devices: iosDevices,
+      settings: { deviceId: "ios-front", facingMode: "user" },
+    });
+    expect(d.kind).toBe("retry-device");
+    expect(d.deviceId).toBe("ios-back");
+    expect(d.actualFacing).toBe("user");
+    expect(d.reason).toBe("wrong-facing:user");
+  });
+
+  it("zaten ana kameradaysa GEREKSİZ durdur/başlat yok", () => {
+    const d = resolveCameraPick({
+      facing: "environment",
+      devices: iosDevices,
+      settings: { deviceId: "ios-back", facingMode: "environment" },
+    });
+    expect(d.kind).toBe("keep");
+    expect(d.reason).toBe("verified");
+  });
+
+  it("ölçüm yok + hedef lens de bilinmiyorsa sert YÖN isteği (id uydurulmaz)", () => {
+    const d = resolveCameraPick({
+      facing: "environment",
+      devices: [
+        { deviceId: "a", label: "", kind: "videoinput" },
+        { deviceId: "b", label: "", kind: "videoinput" },
+      ],
+      settings: { width: 640, height: 480 },
+    });
+    expect(d.kind).toBe("retry-facing");
+    expect(d.deviceId).toBeNull();
+    expect(d.reason).toBe("unverified-no-device");
+  });
+
+  it("ön kamera isteniyorsa (çift dokunuş) ön lens seçilir", () => {
+    const d = resolveCameraPick({
+      facing: "user",
+      devices: iosDevices,
+      settings: { deviceId: "ios-back", facingMode: "environment" },
+    });
+    expect(d.kind).toBe("retry-device");
+    expect(d.deviceId).toBe("ios-front");
+  });
+
+  it("tek kameralı cihazda çıkmaza girmez: sert yön isteği (geri çekilme var)", () => {
+    const d = resolveCameraPick({
+      facing: "environment",
+      devices: [{ deviceId: "web", label: "Integrated Camera", kind: "videoinput" }],
+      settings: { deviceId: "web", facingMode: "user" },
+    });
+    expect(d.kind).toBe("retry-facing");
+  });
+
+  it("cihaz listesi hiç yoksa yön isteğiyle devam eder (çökmaz)", () => {
+    const d = resolveCameraPick({ facing: "environment", devices: null, settings: null });
+    expect(d.kind).toBe("retry-facing");
+    expect(d.actualFacing).toBeNull();
+  });
+});
+
+describe("describeConstraints — tanılama özeti", () => {
+  it("yumuşak/sert yön ve cihaz kısıtlarını ayırt eder", () => {
+    expect(describeConstraints({ video: { facingMode: { ideal: "environment" } } })).toBe(
+      "facingMode.ideal=environment",
+    );
+    expect(describeConstraints({ video: { facingMode: { exact: "user" } } })).toBe(
+      "facingMode.exact=user",
+    );
+    expect(describeConstraints({ video: { deviceId: { exact: "ios-back" } } })).toBe(
+      "deviceId.exact=ios-back",
+    );
+    expect(describeConstraints({ video: true })).toBe("default");
+    expect(describeConstraints(null)).toBe("default");
   });
 });
 

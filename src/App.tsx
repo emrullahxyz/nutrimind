@@ -36,9 +36,13 @@ import { ProductGuide } from "./components/ProductGuide";
 import { GUIDE_CONFIG_KEY, guideDonePayload, parseGuideState, shouldShowGuide } from "./lib/guide";
 import type { GuideStatus } from "./lib/guide";
 import { useTranslation } from "react-i18next";
+import { useKeyboardInset } from "./hooks/useKeyboardInset";
 
 function MainContent() {
   const { t } = useTranslation();
+  // iOS klavyesi: kapladığı yüksekliği `--kb` olarak yayınlar (form gövdeleri bu
+  // kadar alt boşluk ekler). Uygulama genelinde TEK çağrı noktası.
+  useKeyboardInset();
   const [tab, setTab] = useState<TabType>("daily");
   const [tabResetKey, setTabResetKey] = useState<Record<TabType, number>>({
     daily: 0,
@@ -468,7 +472,12 @@ function MainContent() {
 export function App() {
   return (
     <ThemeProvider>
-      <div className="mx-auto min-h-screen w-full max-w-md px-4 py-5 pad-safe sm:px-6 md:max-w-5xl md:px-10 md:py-8">
+      {/* Kök kabuğun ÜST dolgusu da inset'e bağlı: standalone iPhone'da status bar
+         içeriğin üstüne biner ve ana ekran başlığı (logo + seri rozeti) aksi
+         hâlde saatin altında kalıyordu. `md:` varyantı masaüstünde eski `py-8`
+         değerini korur (orada inset zaten 0'dır) — Tailwind'de `pt` sıralaması
+         `py`'den sonra geldiği için bu ikisi çakışmıyor. */}
+      <div className="mx-auto min-h-screen w-full max-w-md px-4 py-5 pad-safe pt-[calc(var(--sat)_+_1.25rem)] sm:px-6 md:max-w-5xl md:px-10 md:py-8 md:pt-[calc(var(--sat)_+_2rem)]">
         <ErrorBoundary>
           <AuthProvider>
             <AuthGate>

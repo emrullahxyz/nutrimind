@@ -13,6 +13,57 @@ export interface ChangeLogVersion {
 
 export const CHANGELOG: ChangeLogVersion[] = [
   {
+    version: "0.30.5",
+    date: "2026-09-20",
+    summary: {
+      tr: "iPhone'da tam ekran ekranların geri/kapat düğmeleri status bar'ın altında kalıyordu ve tıklanmıyordu; artık güvenli alan kadar aşağıda. Kamerada da arka lens açılıyor ve ekrana çift dokunarak ön/arka geçiş yapılabiliyor.",
+      en: "On iPhone the back/close buttons of full-screen views sat under the status bar and could not be tapped; they now respect the safe area. The camera opens the rear lens, and a double tap switches between cameras.",
+    },
+    items: [
+      {
+        type: "fixed",
+        tr: "iPhone'da (ana ekrana eklenmiş uygulamada) tam ekran ekranların başlıkları artık durum çubuğunun altında kalıyor: öğün formu, besin ekranı, tarif oluşturma, kurulum sihirbazı ve kameradaki kapatma düğmesi yeniden dokunulabilir.",
+        en: "On iPhone (added to the home screen) full-screen headers now clear the status bar: the meal form, nutrition sheet, recipe builder, setup wizard and the camera's close button are tappable again.",
+      },
+      {
+        type: "fixed",
+        tr: "Tarama ve etiket okuma artık arka kamerayla açılıyor. Arkaya geçemediğinde uygulama bunu kendiliğinden tekrar dener ve lensi seçer.",
+        en: "Scanning and label reading now open the rear camera. When it cannot get there, the app retries on its own and picks the lens.",
+      },
+      {
+        type: "new",
+        tr: "Kamerada ekrana çift dokunarak ön/arka kamera arasında geçebilirsin; hangi kameraya geçtiğin kısa süre ekranda görünür.",
+        en: "Double-tap the camera screen to switch between the front and rear camera; a short on-screen note tells you which one is active.",
+      },
+      {
+        type: "improved",
+        tr: "iPhone'da klavye açıldığında odaklandığın alan artık klavyenin arkasında kalmıyor; sayfa kaydırması da daha akıcı (aşağı çekip yenileme dinleyicisi yalnızca gerektiğinde devreye giriyor).",
+        en: "On iPhone the field you focus no longer hides behind the keyboard, and scrolling is smoother (the pull-to-refresh listener now engages only when needed).",
+      },
+      {
+        type: "new",
+        tr: "Geri Bildirim ekranına “Tanılama bilgilerini ekle” düğmesi geldi: yaşadığın bir sorunu bildirirken ekran ölçüsü, güvenli alan ve kamera ayarları gibi teknik bilgileri tek dokunuşla ekleyebilirsin. Yemek/hafıza verin gönderilmez ve göndermeden önce metni görebilirsin.",
+        en: "The feedback screen has an “Attach technical details” button: when reporting a problem you can add technical facts (screen size, safe-area values, camera settings) with one tap. Your meal/memory data is never included and you can review the text before sending.",
+      },
+    ],
+    dev: [
+      "Motivasyon: iOS'ta (standalone) tam ekran sheet başlıkları status bar bölgesinde kalıyordu — geri/kapat düğmeleri TIKLANMIYORDU. Kök neden bir sınıfın VARLIĞI değil YOKLUĞUYDU: Modal.tsx `pad-safe-top` kullanıyordu, sınıf hiçbir yerde tanımlı değildi (derlenmiş CSS'te 0 eşleşme).",
+      "src/index.css: `--sat/--sab/--sal/--sar` (env() tek kaynak) + `.pad-safe-t`, `.pad-safe-t-sm`, `.pad-safe-b`, `.pad-safe-b-sm`, `.pad-safe-b-md`; `--kb: 0px` (tanımsız değişkenle yazılan calc() padding'i TÜMDEN düşürürdü). Dev-only `html[data-emulate-ios=…]` blokları.",
+      "src/lib/safeArea.test.ts: KAPI — JSX'te kullanılan her `pad-safe*` sınıfı index.css'te tanımlı olmalı, ham `env(safe-area-inset-*)` yasak, viewport'a sabitlenen (`fixed inset-0` + `h-[100dvh]`) her yüzey alt sınıf taşımalı. `pad-safe-top` ölü adı bir daha geçemez. Yorumlar taranmaz (geçmişi anlatan not yasak değil).",
+      "src/lib/camera.ts: `pickCameraDeviceId(devices, facing)` (ön/arka genel), `measuredFacing(settings, devices)` (facingMode → otorite; yoksa deviceId↔etiket; ikisi de yoksa null = 'bilinmiyor'), `resolveCameraPick()` → keep/retry-device/retry-facing, `describeConstraints()`. `useCameraStream(active, {facing})` → `switchCamera()`; ilk açılışta çözülen lens `resolvedRef` ile önbelleklenir (sonraki açılışlar tek istek).",
+      "Kapatılan iki mekanizma: (M2) `if (pick && current && …)` kapısı kaldırıldı — deviceId gelmese bile ana lense geçilir; (M1) yön ölçülemezse `facingMode: {exact}` ile TEK (sınırlı) yeniden deneme, olmazsa yumuşak kısıta geri çekilme.",
+      "Kamera geçişi: vizörde çift dokunuş (`lib/doubleTap.ts` saf kapı + `hooks/useDoubleTap`, masaüstü için dblclick de bağlı ve çift ateşleme yutulur). Vizör AYRI bir z şeridi (z-[5]); alt kontroller z-10 ile üstünde kaldığı için deklanşöre dokunmak kamerayı DEĞİŞTİRMEZ. `touch-action: manipulation` iOS çift-dokunuş zoom'unu engeller.",
+      "Tanılama: `lib/cameraDiag.ts` (12 kayıtlık halka tampon, PII yok: kısıtlar + dönen track ayarları + cihaz etiketleri), `lib/deviceReport.ts` + `lib/perfProbe.ts` (longtask sayacı), `FeedbackForm` → 'Tanılama bilgilerini ekle' (mevcut geri bildirim kanalı; arkadaşın iPhone'unda Web Inspector olmadığı için tek kanıt yolu).",
+      "iOS klavye: `lib/keyboard.ts` (saf `keyboardInset`, MIN_KEYBOARD_PX=100 ile adres çubuğu gürültüsü elenir) + `hooks/useKeyboardInset` → `--kb`; MealForm/AliasForm/NutritionSheet/RecipeBuilder/OnboardingModal gövdeleri `pb-[calc(1rem_+_var(--kb))]`, odakta `scrollIntoView`.",
+      "Okuma takılması: `usePullToRefresh` non-passive `touchmove`'u artık yalnızca çekilebilir dokunuşta bağlar (sayfa kaydırma yolu JS'e bağımlı değil); karar `lib/pullToRefresh.ts`'te saf ve testli.",
+      "Perf: canlı `<video>` üstündeki 4 `backdrop-blur` katmanı (mod hapları, galeri, iki ipucu) yalnızca kamera HAZIR DEĞİLKEN uygulanıyor. Ölçüm iPhone'dan tanılama raporuyla gelecek (masaüstü GPU'su gösterge değil).",
+      "Ölçüm tazeliği: `subscribeViewport()` (visualViewport resize/scroll) — MealActionSheet ve ProductGuide yerleşimi iOS'ta bayat `innerHeight` ile yerleşiyordu.",
+      "index.html: `apple-mobile-web-app-title` + apple-touch-icon `sizes`.",
+      "Doğrulama: Preview'da `?emulate=island` → MealForm geri düğmesi 73→113 px (emülasyon kapalıyken 14→54, masaüstü değişmedi); tarama sheet'i kapatma X'i 73 px; çift dokunuş '⇄ Front camera'; `--kb: 300px` → gövde padding-bottom 316 px. Kapı: typecheck 0 · test 972/972 · check:i18n 3/3 OK · build ✓.",
+      "Taklit edilemeyenler (dürüstçe): gerçek inset değerleri, gerçek iOS WebKit davranışı, klavye, kamera donanımı — son kapı arkadaşın telefonu ve 6 maddelik teyit listesi (docs/superpowers/plans/2026-09-20-ios-hardening.md).",
+    ],
+  },
+  {
     version: "0.30.4",
     date: "2026-09-16",
     summary: {

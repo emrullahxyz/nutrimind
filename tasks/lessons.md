@@ -379,8 +379,49 @@ görünüyordu. İzole boş bir veritabanı + üretim derlemesiyle tarayıcıda 
    bu yüzden sayılır.
 3. Böyle bir sıra iddiası ancak ZAMAN ÇİZELGESİYLE kanıtlanır: iki overlay aynı karede mi, hangisi
    önce? Tek ekran görüntüsü ya da "kodda sıra doğru görünüyor" bunu göstermez — 7 ms'lik bir
-   pencere gözle görünmez.
+   pencere gözle görünmez.**Genel test:** "X kapanınca Y açılır" diyen bir kod, X'in kapanışı ile Y'nin açılışı arasında bir ağ isteği varsa sırayı kaybedebilir. Sıralama kararını yerel (senkron) duruma bağla; ve iki modal birbirini bekliyorsa iki yönlü bekçi yaz.
 
-**Genel test:** "X kapanınca Y açılır" diyen bir kod, X'in kapanışı ile Y'nin açılışı arasında bir
-ağ isteği varsa sırayı kaybedebilir. Sıralama kararını yerel (senkron) duruma bağla; ve iki modal
-birbirini bekliyorsa iki yönlü bekçi yaz.
+## L25 — Hata, bir sınıfın VARLIĞI değil YOKLUĞUYDU: kullanılan-ama-tanımsız CSS sınıfı
+
+**Olay (2026-09-20, iPhone/standalone):** Kullanıcı "tam ekran ekranların geri tuşu çok yukarda
+kalıyor ve tıklanmıyor" dedi. Kök neden bir CSS sınıfı değil, **olmayan** bir CSS sınıfıydı:
+`Modal.tsx` `pad-safe-top` kullanıyordu; `index.css`'te yalnızca `.pad-safe` vardı, derlenmiş CSS'te
+`pad-safe-top` **0 eşleşme**. Sınıf adı JSX'te durduğu için kod okunurken her şey doğru
+görünüyordu; tip denetimi, 886 test ve build sessizdi. `viewport-fit=cover` +
+`black-translucent` + `standalone` üçlüsünde iOS içeriği status bar'ın altına çizdiği için 14 px
+başlık dolgusu, 40 px'lik geri düğmesini tamamen status bar bölgesine (Dynamic Island modellerinde
+59 px) sokuyordu — dokunmayı sistem yiyor, yani düğme "çok yukarda" VE "çalışmıyor".
+İki yüzey daha aynı kök nedenden etkileniyordu ve ilk şikâyette görünmüyordu: `App` kök başlığı ve
+`ScanSheet`'in `bleed` modundaki **kapatma X'i** — yani çekim sonrası çıkış da kilitliydi.
+
+**Kural:** CSS'te "kullanılıyor ama tanımlı değil" sessiz bir hatadır ve okumakla yakalanmaz.
+Kapıya bağla: `src/lib/safeArea.test.ts` (a) JSX'te geçen her `pad-safe*` sınıfının `index.css`'te
+tanımlı olduğunu, (b) bileşenlerin ham `env(safe-area-inset-*)` yazmadığını (tek kaynak:
+değişkenler), (c) viewport'a sabitlenen (`fixed inset-0` + `h-[100dvh]`) her yüzeyin alt safe-area
+sınıfı taşıdığını doğrular. `min-h-[100dvh]` SAYILMAZ — kök kabuğun içinde kalan ekranlar inset'i
+kökten alır. Yorumlar taranmaz: bir hatanın NEDEN öldüğünü anlatan not yasaklanamaz.
+**Genel test:** bir sınıf adını JSX'te görüyorsan, CSS'te `\.${'$'}{ad}` aramasının 1 döndüğünü
+görmeden ona güvenme. Aynısı `data-*` seçicileri ve animasyon adları için de geçerli.
+
+## L26 — Taklit edilebilen ile edilemeyeni ayır; kalanını cihazdan İSTE
+
+**Olay (aynı tur):** "Preview'ı iPhone gibi taklit edemez miyiz?" sorusu haklıydı ama tam cevabı
+yok: masaüstü Preview'da `env(safe-area-inset-top)` 0'dır, cihaz listesi/etiketleri farklıdır ve
+panel composited değilken uygulamanın kamerası **kasten hiç açılmaz** (`document.hidden` koruması).
+Yapılabilenler: (1) inset'leri CSS değişkenine çevirip dev-only attribute ile zorlamak
+(`?emulate=island` → 59/34 px) — başlık dolgusu ve düğme konumu GERÇEKTEN ölçüldü (73→113 px;
+emülasyon kapalıyken 14→54, masaüstünde regresyon yok), (2) `navigator.mediaDevices`'i senaryoyla
+sarmak (`?camera=ios-first-front`: ilk çağrı ön kamerayı verir, `getSettings().deviceId` gelmez),
+(3) saf karar katmanını birim testte iOS senaryosuyla koşmak. Yapılamayanlar: gerçek inset, gerçek
+WebKit, klavye, kamera donanımı, gerçek FPS.
+
+**Kural:** Bir arızayı yalnızca cihazda üretebiliyorsan, cihazdan KANIT İSTE: uygulamanın kendi
+çıkardığı bir tanılama raporu (ekran ölçüsü + inset + kamera kayıtları + uzun görev sayacı) mevcut
+bir kanaldan (geri bildirim formu) gönderilsin. Rapordaki ekran ölçüsü + üst inset ikilisi iPhone
+model sınıfını neredeyse tek başına söyler (UA model vermez) — bu yüzden `guessDeviceClass` var.
+Ayrıca "düzelttim" cümlesi hangi koşulda ölçüldüğünü söylemek zorunda: taklitte mi, gerçek cihazda mı?
+
+**Not (aynı turda ölçüldü, L7'nin kardeşi):** Canlı düzenleme sırasında (HMR) kancası değişen bir
+modül, MOUNT edilmiş bir bileşeni güncellerse React `Should have a queue` hatası verir — bu
+uygulamanın hatası değil, sıcak güncelleme artefaktıdır; sayfa yenilendiğinde geçer. Böyle bir
+hata görüldüğünde önce tam yeniden yükleme yapıp tekrar üret, sonra yorum yaz.

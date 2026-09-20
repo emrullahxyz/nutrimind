@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import { useAuth } from "../lib/auth";
 import { FeedbackError, submitFeedback, type FeedbackCategory } from "../lib/feedbackApi";
 import { APP_VERSION } from "../lib/version";
+import { collectAndFormatDiagnostics, DIAGNOSTICS_MARKER } from "../lib/deviceReport";
 import { ErrorText, Label, fieldCls } from "./FormBits";
 
 /**
@@ -18,7 +19,7 @@ import { ErrorText, Label, fieldCls } from "./FormBits";
  * Ad GÖSTERİLİR ama DÜZENLENEMEZ: `user.name` yalnızca gönderimde eklenir.
  */
 export function FeedbackForm() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { user } = useAuth();
   const [category, setCategory] = useState<FeedbackCategory>("feature");
   const [message, setMessage] = useState("");
@@ -28,6 +29,20 @@ export function FeedbackForm() {
 
   const canSend = message.trim().length >= 10 && !busy;
   const displayName = user?.name?.trim() || null;
+  // Rapor metne EKLENİR ve kullanıcı onu textarea'da GÖRÜR — gizli gönderim
+  // yok. Aynı rapor iki kez eklenmesin diye işaretçiye bakılır (kamera
+  // kayıtları her açılışta çoğaldığı için ikinci ekleme gürültü olurdu).
+  const attached = message.includes(DIAGNOSTICS_MARKER);
+
+  /** iPhone'dan teknik kanıt toplamanın tek yolu: arkadaşın telefonunda
+   *  Web Inspector yok, bu yüzden gerçekler uygulamadan çıkarılıp mevcut geri
+   *  bildirim yolundan gönderilir. PII yok (bkz. `lib/deviceReport.ts`). */
+  function attachDiagnostics() {
+    if (attached) return;
+    const report = collectAndFormatDiagnostics(i18n.language ?? "en");
+    const next = `${message.trimEnd()}\n\n${report}`.trim();
+    setMessage(next.slice(0, 4000));
+  }
 
   async function handleSubmit() {
     if (!canSend) return;
@@ -114,9 +129,22 @@ export function FeedbackForm() {
           rows={4}
           className={`${fieldCls} resize-y leading-relaxed`}
         />
-        <div className="mt-1 px-1 text-right font-mono text-[10px] text-white/35">
-          {message.length}/4000
+        <div className="mt-1 flex items-center justify-between gap-2 px-1">
+          <button
+            type="button"
+            onClick={attachDiagnostics}
+            disabled={attached}
+            className="rounded-xl border border-white/10 bg-white/5 px-3 py-1.5 text-[11px] font-semibold text-white/70 transition hover:bg-white/10 disabled:opacity-50"
+          >
+            {attached ? t("feedbackForm.diagnosticsAttached") : t("feedbackForm.attachDiagnostics")}
+          </button>
+          <span className="font-mono text-[10px] text-white/35">{message.length}/4000</span>
         </div>
+        {attached && (
+          <p className="mt-2 px-1 text-[10px] leading-relaxed text-white/40">
+            {t("feedbackForm.diagnosticsHint")}
+          </p>
+        )}
       </div>
 
       {displayName && (

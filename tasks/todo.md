@@ -7,6 +7,12 @@ kullanılmıyor; CLAUDE.md de yalnızca AGENTS.md'ye köprüdür.)
 
 ## AÇIK İŞLER
 
+- [ ] **Arkadaşın iPhone teyidi (v0.30.5)** — deploy sonrası 6 madde: (1) tam ekran formun geri
+      düğmesi basılıyor mu, (2) taramada sağ üstteki kapatma X'i, (3) kamera ARKA lensle mi açılıyor,
+      (4) ekrana çift dokunma ön/arka geçiriyor mu, (5) klavye odaklanılan alanı kapatıyor mu,
+      (6) hangi iPhone (tanılama raporu model sınıfını söyler). Sorun çıkarsa: Ayarlar → Geri Bildirim
+      → "Tanılama bilgilerini ekle". Plan + ölçümler: `docs/superpowers/plans/2026-09-20-ios-hardening.md`.
+
 - [ ] **Kilo geçmişini toplu temizleme** — v0.30.1'de yanlış/eski ölçümler TEK TEK
       silinebiliyor (Ayarlar → Kilo & Vücut Geçmişi); "tümünü temizle" ya da "tüm geçmişi
       tarihle birlikte dışa aktar" istenirse eklenmeli (geri dönüşsüz olduğu için onay diyaloglu).
@@ -27,6 +33,37 @@ kullanılmıyor; CLAUDE.md de yalnızca AGENTS.md'ye köprüdür.)
 eşleşmesi. Odak tuzağı işi de tamamlandı (`useDialogFocus`, v0.30.0). İki superpowers planı
 (play-store Task 17-20/22/23 · offline Task 1-7) dosya bazında doğrulanıp arşive taşındı:
 `docs/archive/superpowers/`.
+
+---
+
+## v0.30.5 — iPhone (iOS) iki bug + stabilite (2026-09-20)
+
+Kullanıcı arkadaşının iPhone'unda (standalone) kurulum sonrası iki bug bildirdi; ikisi de düzeltildi,
+üstüne kullanıcının onayladığı "yüksek riskli iOS bulguları" paketi yapıldı.
+
+- [x] **Üst safe-area hiç uygulanmamıştı** — kök neden bir sınıfın YOKLUĞUYDU: `Modal.tsx`
+      `pad-safe-top` kullanıyordu, sınıf hiçbir yerde tanımlı değildi (derlenmiş CSS'te 0 eşleşme).
+      Tam ekran sheet'lerin geri/kapat düğmeleri status bar bölgesinde kalıyor, tıklanmıyordu.
+      Artık `--sat` değişkeni + `.pad-safe-t*` sınıfları; ölçüm (Preview, `?emulate=island`):
+      başlık 14 px → **73 px**, geri düğmesi 14→54 → **73→113**.
+      Aynı kök neden iki yüzeyde daha vardı ve ilk şikâyette görünmüyordu: App kök başlığı ve
+      tarama ekranının kapatma X'i.
+- [x] **Kapı testi** (`src/lib/safeArea.test.ts`) — kullanılan-ama-tanımsız sınıf sınıfı kapandı.
+      Bu test yazılı olsaydı bug ürüne hiç çıkmazdı (bkz. `tasks/lessons.md` L25).
+- [x] **Kamera ön lensle açılıyordu** — iki mekanizma kapatıldı: `if (pick && current && …)` kapısı
+      (deviceId gelmeyen cihazda geçişi hiç denemiyordu) + `ideal` yön kısıtına güvenmek. Saf karar
+      katmanı `resolveCameraPick` (iOS senaryolarıyla testli) + sınırlı yeniden deneme + çözülen lens
+      önbelleği.
+- [x] **Ön/arka geçişi: ekrana çift dokunma** (kullanıcı kararı) — vizör ayrı z katmanı, deklanşöre
+      dokunmak geçiş yapmaz; 1.6 sn bildirim + 4 sn ipucu; ön kamerada aynalı önizleme.
+- [x] **iOS klavye** — `--kb` + odakta `scrollIntoView`; Preview'da boru hattı ölçüldü (0 → 16 px,
+      300 px → 316 px).
+- [x] **Kaydırma takılması** — non-passive `touchmove` artık yalnızca çekilebilir dokunuşta bağlanıyor.
+- [x] **Perf** — canlı video üstündeki 4 blur katmanı kaldırıldı; ölçüm iPhone'dan gelecek.
+- [x] **PWA** — `apple-mobile-web-app-title` + ikon `sizes`.
+- [x] **Tanılama kanalı** — Geri Bildirim'e "Tanılama bilgilerini ekle" (kamera kayıtları + inset +
+      model sınıfı + long task); arkadaşın telefonunda Web Inspector olmadığı için tek kanıt yolu.
+- [x] Kapı: typecheck 0 · test **972/972** · check:i18n 3/3 · build ✓
 
 ---
 

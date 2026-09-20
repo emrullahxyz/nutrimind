@@ -866,9 +866,73 @@ body {
   transform-style: preserve-3d;
 }
 
-/* ---- iOS safe-area alt boşluğu (viewport-fit=cover index.html'de zaten var) ---- */
-.pad-safe {
-  padding-bottom: max(1.5rem, env(safe-area-inset-bottom));
+/* ============================================================================
+   iOS safe-area — TEK KAYNAK.
+
+   `viewport-fit=cover` (index.html) + `apple-mobile-web-app-status-bar-style:
+   black-translucent` kombinasyonunda iOS içeriği status bar'ın ALTINA çizer ve
+   `env(safe-area-inset-*)` kadar boşluk bırakılmasını bekler. Alt taraf zaten
+   yapılmıştı; üst taraf YAPILMAMIŞTI ve üstelik `Modal.tsx` bir zamanlar
+   `pad-safe-top` sınıfını KULLANIYOR ama o sınıf hiçbir yerde TANIMLI DEĞİLDİ —
+   sessizce hiçbir şey yapmıyordu. Sonuç: iPhone'da (standalone) tam ekran
+   sheet'lerin geri/kapat düğmeleri status bar bölgesinde kalıyor, dokunmaları
+   sistem yiyordu. Bu yüzden:
+     • sınıflar burada, dosyanın SONUNDA (eşit özgüllükteki `py-*` yardımcılarını
+       yalnızca padding-top için geçersiz kılar — mevcut `.pad-safe` deseni),
+     • inset değerleri DEĞİŞKENE çevrildi: bileşenler ham `env()` yazmıyor
+       (kapı: `src/lib/safeArea.test.ts` — kullanılan-ama-tanımsız sınıf bir daha
+       ürüne çıkmasın diye),
+     • değişken olması dev-only TAKLİDİ mümkün kılıyor: masaüstü Preview'da
+       `?emulate=island` ile iPhone inset'leriyle doğrulama yapılabiliyor.
+   ============================================================================ */
+:root {
+  --sat: env(safe-area-inset-top, 0px);
+  --sab: env(safe-area-inset-bottom, 0px);
+  --sal: env(safe-area-inset-left, 0px);
+  --sar: env(safe-area-inset-right, 0px);
+  /* iOS klavyesinin kapladığı yükseklik — `useKeyboardInset` ölçüp yazar.
+     BURADA 0px TANIMLI OLMAK ZORUNDA: tanımsız bir değişkenle yazılan
+     `calc(1rem + var(--kb))` "computed-value zamanında geçersiz" olur ve o
+     padding TÜMDEN düşer (fallback değil, initial değer kazanır) — masaüstünde
+     form gövdesinin alt boşluğu kendiliğinden kaybolurdu. */
+  --kb: 0px;
+}
+
+/* Üst boşluk = inset + satırın kendi dikey dolgusu (py-3.5 → 0.875rem,
+   py-3 → 0.75rem). Masaüstünde inset 0 olduğu için değer birebir eskisiyle
+   aynı kalır — yani bu sınıflar masaüstünde GÖRÜNMEZ. */
+.pad-safe-t {
+  padding-top: calc(var(--sat) + 0.875rem);
+}
+.pad-safe-t-sm {
+  padding-top: calc(var(--sat) + 0.75rem);
+}
+/* Alt boşluk: eskiden `1.5rem` tabanı vardı ama ev göstergesi 34 px olduğu için
+   `max()` zaten inset'i seçiyordu; davranış korunuyor. */
+.pad-safe,
+.pad-safe-b {
+  padding-bottom: max(1.5rem, var(--sab));
+}
+.pad-safe-b-sm {
+  padding-bottom: calc(0.75rem + var(--sab));
+}
+.pad-safe-b-md {
+  padding-bottom: calc(1rem + var(--sab));
+}
+
+/* DEV-ONLY taklit (`src/lib/iosEmulate.ts`). Üretim derlemesinde bu attribute
+   hiç yazılmaz; yazılsa bile değerler yalnızca masaüstünde anlamlıdır. */
+html[data-emulate-ios="notch"] {
+  --sat: 47px;
+  --sab: 34px;
+}
+html[data-emulate-ios="island"] {
+  --sat: 59px;
+  --sab: 34px;
+}
+html[data-emulate-ios="se"] {
+  --sat: 20px;
+  --sab: 0px;
 }
 
 /* ---- Skeleton shimmer — transform-driven, compositor'da çalışır ---- */
