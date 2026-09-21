@@ -7,6 +7,7 @@
 import type { AIParseItem, AIParseResult, Nutrition, VisionMode } from "../types";
 import { signalUnauthorizedFromApi } from "./api";
 import { isBrowserOffline } from "./netStatus";
+import { CLIENT_AI_TIMEOUT_MS, withDeadline } from "./aiDeadline";
 import i18n from "../i18n/i18n";
 
 /** Proxy'den dönen hata. `status` HTTP kodudur (0 = ağa hiç çıkılamadı),
@@ -114,17 +115,30 @@ async function aiPost<T>(path: string, body: unknown, signal?: AbortSignal): Pro
   // Savunma katmanı: UI zaten çevrimdışıda butonları kilitler (bkz. ScanSheet);
   // yine de doğrudan çağrıda boşuna istek açma — hemen anlaşılır hata ver.
   if (isBrowserOffline()) throw new AiError(0, aiErrorMessage(0));
+
+  // Zaman sınırı + kullanıcı iptali TEK sinyalde birleşir ama AYIRT EDİLİR:
+  // iptal sessizce yutulur (ScanSheet AbortError'ı "kullanıcı vazgeçti" sayar),
+  // süre aşımı ise kullanıcıya söylenir. Eskiden istemcide HİÇ sınır yoktu:
+  // ağ askıda kalırsa ekran sonsuza dek "Analiz ediliyor…" gösteriyordu.
+  const deadline = withDeadline(signal, CLIENT_AI_TIMEOUT_MS);
   let res: Response;
   try {
     res = await fetch(path, {
       method: "POST",
       headers: { "Content-Type": "application/json", Accept: "application/json" },
       body: JSON.stringify(body),
-      signal,
+      signal: deadline.signal,
     });
   } catch (e) {
-    if ((e as Error | undefined)?.name === "AbortError") throw e;
+    if ((e as Error | undefined)?.name === "AbortError") {
+      if (deadline.timedOut()) {
+        throw new AiError(504, aiErrorMessage(504, null, null, "ai_timeout"));
+      }
+      throw e; // kullanıcı iptal etti
+    }
     throw new AiError(0, aiErrorMessage(0));
+  } finally {
+    deadline.release();
   }
 
   // Oturum düştüyse bu bir "AI hatası" değil — `api.ts` ile AYNI sinyali

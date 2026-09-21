@@ -13,6 +13,50 @@ export interface ChangeLogVersion {
 
 export const CHANGELOG: ChangeLogVersion[] = [
   {
+    version: "0.30.6",
+    date: "2026-09-21",
+    summary: {
+      tr: "Kamera veya fotoğrafla yapay zekâ analizi artık bekletmiyor: en fazla ~25 saniye sürüyor ve hata aldığında mesaj gerçek sebebi söylüyor. Analiz sürerken geçen süreyi görürsün; hata olursa çektiğin kare kaybolmaz, “Tekrar dene” ile aynı fotoğraf yeniden gönderilir.",
+      en: "AI analysis from the camera or a photo no longer hangs: it takes at most ~25 seconds, and when it fails the message names the real cause. You can see the elapsed time while it runs, and if it fails your captured frame is kept — “Try again” resends the same photo.",
+    },
+    items: [
+      {
+        type: "fixed",
+        tr: "Etiket okurken veya yemek fotoğrafı analiz ederken “AI servisi zaman aşımına uğradı” hatası alıyordun ve sonuç hiç gelmiyordu. Sebep: analiz 60 saniyeyi aşabiliyordu, sunucu hâlâ çalışırken ekran hatayı gösteriyordu. Artık bekleyiş en fazla ~25 saniye ve bitince gerçek sonucu (ya da gerçek sebebi) görüyorsun.",
+        en: "Reading a label or analysing a food photo could fail with “the AI service timed out” while the result never arrived: analysis could take over 60 seconds, so the screen showed an error while the server was still working. It now stops at ~25 seconds and you get the real result (or the real reason).",
+      },
+      {
+        type: "improved",
+        tr: "Analiz hata verdiğinde hata metni gerçek sebebi söylüyor: yapay zekâ sağlayıcısı yoğunsa/yanıt vermiyorsa bunu, gerçekten süre dolduysa onu yazar. Eskiden hangi sebep olursa olsun “zaman aşımı” yazıyordu.",
+        en: "When analysis fails, the message now names the real cause: a busy/unresponsive AI provider is reported as such, and a genuine timeout is reported as a timeout. Previously every failure said “timed out”.",
+      },
+      {
+        type: "new",
+        tr: "Hata sonrası çektiğin kare saklanır: “Tekrar dene” düğmesi aynı fotoğrafı yeniden gönderir, etiketi baştan çekmen gerekmez. Analiz 6 saniyeyi geçince de geçen süre ekranda görünür.",
+        en: "After a failure the frame you captured is kept: the “Try again” button resends the same photo, so you do not have to shoot the label again. Once analysis passes 6 seconds, the elapsed time is shown on screen.",
+      },
+      {
+        type: "fixed",
+        tr: "Yapay zekâ sağlayıcılarından biri kullandığı modeli kaldırırsa ya da aniden yanıt vermezse uygulama artık orada takılıp kalmıyor: kullanılabilir başka bir modele kendiliğinden geçiyor ve çalışmayan sağlayıcıyı kısa süreliğine devre dışı bırakıyor.",
+        en: "If an AI provider retires the model it uses or suddenly stops responding, the app no longer gets stuck: it moves on to another available model by itself and temporarily stops using the failing provider.",
+      },
+    ],
+    dev: [
+      "Kök neden (2026-09-21 canlı olay, kanıtlı): görsel zinciri en kötü 15+15+15+40 = 85 sn sürebiliyordu; prod nginx vhost'unda `location ^~ /api/ { proxy_read_timeout 30s; }` sabit — Node tek seferde res.end() yazdığı için bu bir TOPLAM süre tavanıdır. Üç zincir de sunucu tarafında 67/68/71 sn sürdü, kullanıcı 30. saniyede nginx'in gövdesiz 504'ünü aldı ve istemci onu 'AI zaman aşımı' diye gösterdi; sunucu 37 sn daha boşu boşuna çalışıp kota yaktı.",
+      "İkinci kök neden: `runChain` yalnızca SON adımın sonucunu döndürüyordu → gerçek sebep Gemini'nin 503'ü iken kullanıcı 'zaman aşımı' okudu. Üçüncü: yedek zincirin tamamı ölüydü — NIM `meta/llama-3.1-8b-instruct` 410 Gone, nemotron-70b 404 'Not found for account', 11B vision 500, **90B vision 90 sn'de yanıt yok**; OpenCode `deepseek-v4-flash-free` 400 'Model is unavailable', fiyatlı modelleri 401 'No payment method'. Kayıtlarda hiç 429 yok (eski RATE_VISION maddesiyle ilgisiz).",
+      "server/ai.js: `AI_BUDGET_MS` (varsayılan 25000) + `MIN_STEP_MS` (2500) — her adımın zaman aşımı kalan bütçeyle kırpılır, kalan yetmezse adım HİÇ başlatılmaz (`skipped: budget`). `VENDOR_5XX_STREAK` (2): aynı sağlayıcının kademeleri art arda 5xx/zaman aşımı verirse kalan kademeler atlanır (429 sayılmaz — kota model başına). `callLLM` artık `buildUrl`/`buildBody(model)` alır ve model seviyesinde hatada (400/404/410) aiModels üzerinden TEK kez model değiştirip aynı istekte yeniden dener. Tek-sağlayıcı zorlama modları da aynı zincirden geçer (bütçe/kod/rapor tek yerde).",
+      "server/ai.js: `failureFrom(attempts)` — kod TÜM denemelerden seçilir (kova 429 → sağlayıcı hatası → zaman aşımı → erişilemezlik); yanıt gövdesine `attempts` eklenir (PII yok) ve `CODE_MESSAGES` ile İngilizce gövde metni verilir. `AI_LIMITS` dışa açıldı (değişmez kapısı için); index.js'e DOKUNULMADI.",
+      "server/aiHealth.js (yeni, izole): sağlayıcı adımı başına devre kesici — 3 ardışık zaman aşımı / 3 erişilemezlik / 5 sağlayıcı 5xx / tek 401-403-404-410 → 10 dk devre dışı; süre dolunca yarım açık tek deneme. Eşikler ve pencere env'den ÇAĞRI ANINDA okunur. Açılışta `[ai] {kind:\"breaker\"}` satırı.",
+      "server/aiModels.js (yeni, izole): ücretsiz model keşfi — sağlayıcı listesinden aday süzme (NIM'de guard/embed/rerank elenir, OpenCode'da `-free` önce), boyut/`flash` heuristiğiyle küçük-hızlı model öne (`\\b1b\\b` sınırı: yoksa '51b' içindeki '1b' eşleşiyordu), adayları tek-jetonluk/1×1 PNG yoklamayla doğrulama, 6 saat olumlu / 15 dk olumsuz önbellek. Ağ YALNIZCA model seviyesinde hata gelince açılır (sağlıklı akışta sıfır ek istek). `NUTRI_AI_AUTOMODEL=0` ile kapatılır.",
+      "server/aiLog.js: kayda `upstream` (sağlayıcının ham kodu) + `detail` (kırpık, sır maskeli gerekçe) eklendi; `status` artık BİZİM döndüğümüz kod. `recordChain()` istek başına tek satır özet yazar (başarıda da) — ring buffer'a ve sağlayıcı sayaçlarına girmez. `setHealth()` ile devre kesici durumu `/api/ai/status` gövdesine eklenir (index.js değişmedi).",
+      "src/lib/aiDeadline.ts (yeni): `withDeadline()` kullanıcı iptali ile süre aşımını tek sinyalde birleştirir ama AYIRT eder (`AbortSignal.any` bilinçli kullanılmadı — iOS Safari sürüm riski). 35 sn; süre aşımında `AiError(504, ai_timeout)` fırlatılır, iptal sessizce geçer. ScanSheet: 6 sn sonra saniye sayacı (`scan.analyzingSeconds`, 3 dilde) + hata sonrası aynı kareyle 'Tekrar dene' (`common.retry`).",
+      "Testler: `server/ai.test.js` pencere değişmezi (budget < apiWindow) + asılı fetch ile bütçe aşımı (1 adım, <2 sn, `skipped: budget`) + sağlayıcı 5xx kısa devresi + CANLI OLAY REGRESYONU (503+timeout → 502 `ai_provider_error`, 'zaman aşımı' DEĞİL) + devre kesici atlaması + model keşfi entegrasyonu; yeni `server/aiHealth.test.js` (6), `server/aiModels.test.js` (9), `src/lib/aiDeadline.test.ts` (6). `loadAi` artık aiLog/aiHealth/aiModels durumunu da açıkça sıfırlar (modül yeniden yüklemesine güvenmek bir tur testi yanılttı: aynı test tek başına 504, dosyada 502 veriyordu).",
+      "GERÇEK sağlayıcılarla yerel ölçüm (bilerek bozuk GEMINI_MODEL, tek /api/ai/parse dizisi): 21.2 sn (tier1 404 → tier2 zaman aşımı → tier3 200) · 8.0 sn · 16.1 sn · 23.6 sn (tier3 zaman aşımı + NIM gerçek **410 Gone** + keşif denemesi 8.5 sn + opencode `skipped: budget` → 502 `ai_provider_error`, 'zaman aşımı' DEĞİL) · son olarak **1.8 sn** — devre kesici tier1/tier2'yi devre dışı bıraktığı için bekleme 21 sn'den 1.8 sn'ye indi. Bütçe hiç aşılmadı (en kötü 23.6 sn < 25 sn).",
+      "Kapı: typecheck 0 · test 1006/1006 · check:i18n 3/3 (PARITY/KEYS/HARDCODED OK) · build ✓. PROD'A ALINMADI: sunucu dosyaları scp + restart ve nginx `proxy_read_timeout 30s → 60s` ayrı onay bekliyor (bkz. tasks/todo.md AÇIK İŞLER, docs/operations/ai.md).",
+      "Ders: tasks/lessons.md **L27** — dış katmanın zaman aşımı iç zincirden kısa olamaz; hata mesajı son adımın değil gerçek sebebin olmalı.",
+    ],
+  },
+  {
     version: "0.30.5",
     date: "2026-09-20",
     summary: {

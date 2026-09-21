@@ -510,6 +510,7 @@
     "autoReading1": "automatycznie",
     "autoReading2": "odczytywany",
     "analyzing": "Analiza…",
+    "analyzingSeconds": "{{seconds}} s",
     "readingLabel": "Odczyt etykiety",
     "recognizingFood": "Rozpoznawanie jedzenia",
     "noFoodExtracted": "Nie udało się wyodrębnić produktu z obrazu. Spróbuj wyraźniejszego/bliższego zdjęcia.",

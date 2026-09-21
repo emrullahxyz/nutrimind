@@ -510,6 +510,7 @@
     "autoReading1": "reading",
     "autoReading2": "automatically",
     "analyzing": "Analyzing…",
+    "analyzingSeconds": "{{seconds}}s",
     "readingLabel": "Reading label",
     "recognizingFood": "Recognizing food",
     "noFoodExtracted": "Could not extract a food from the image. Try a clearer/closer photo.",

@@ -25,8 +25,17 @@ kullanılmıyor; CLAUDE.md de yalnızca AGENTS.md'ye köprüdür.)
       Çıkış Yap (onay diyaloglu, kırmızı). Kayıt 2026-09-15'te güncellendi.
 - [x] ~~**Uygulamada parola değiştirme ekranı yok**~~ — VAR: Ayarlar → Hesap & Profil →
       Parola Değiştir. Kayıt 2026-09-15'te güncellendi.
-- [ ] **Prod `.env`: `NUTRI_AI_RATE_VISION`** (varsayılan 5/dk, `server/ai.js`) — birkaç denemeden
-      sonra vision rate limit'e takılıyor; kod değişikliği gerekmiyor, tek satır env.
+- [ ] **AI düzeltmesini prod'a alma (v0.30.6)** — dosyalar: `server/ai.js`, `aiLog.js`,
+      yeni `aiModels.js`, `aiHealth.js` (scp + `.bak` yedeği + `systemctl restart nutri-api`),
+      ön yüz `pnpm run deploy`, **nginx `proxy_read_timeout 30s → 60s`** (`app.conf`
+      yedeklenip reload; sunucu bütçesi 25 sn olduğu için bu yalnızca emniyet ağıdır).
+      Doğrulama: `journalctl -u nutri-api | grep '\[ai\]'` → yeni `kind:"chain"` satırlarında
+      `totalMs < 25000`. Runbook: `docs/operations/ai.md`.
+- [ ] **NUTRI_AI_RATE_VISION** _(premis güncellendi 2026-09-21)_ — eski not "birkaç denemeden sonra
+      vision rate limit'e takılıyor" diyordu; kodda varsayılan artık 15/dk ve 2026-09-21 olayının
+      günlüklerinde **tek bir 429 yok** (olayın sebebi sağlayıcı 503'ü + nginx penceresiydi).
+      Bu madde artık bir hız sınırı şikâyeti DEĞİL: yeni bir 429 görülürse `/api/ai/status`
+      kova doluluğuna bakıp gerçekten bizim kovamız mı diye doğrula, kör env değiştirme.
 
 **Bu taramada kapatılanlar (2026-09-13):** a11y kalemlerinin ikisi de doğrulandı ve kapandı —
 `OnboardingModal.tsx:448` `w-20 sm:w-24` (320 px taşması) ve `FormBits.tsx:17,51,88` `useId`+`htmlFor`
@@ -35,6 +44,44 @@ eşleşmesi. Odak tuzağı işi de tamamlandı (`useDialogFocus`, v0.30.0). İki
 `docs/archive/superpowers/`.
 
 ---
+
+## v0.30.6 — Kamera/etiket AI'ı "zaman aşımına uğradı" (2026-09-21)
+
+Kullanıcı kamerayla etiket okuturken zaman aşımı hatası aldı. **Kök neden kanıtla bulundu**
+(journalctl `[ai]` kayıtları + prod nginx conf + sağlayıcı yoklamaları); ayrıntı ve karar ağacı:
+`docs/operations/ai.md` §6, ders: `tasks/lessons.md` **L27**.
+
+- [x] **Teşhis (yalnızca okuma)** — üç zincir de sunucu tarafında **67/68/71 sn** sürdü; nginx
+      `/api/` penceresi **30 sn** olduğu için kullanıcı bizim yanıtımızı hiç görmedi, nginx'in
+      gövdesiz 504'ünü "AI zaman aşımı" diye okudu. Tetikleyici: Gemini'nin `503`'ü (tier1+tier2)
+      ve tier3'ün 15 sn'de yanıtsız kalması. Hata mesajı `runChain` yalnızca **son adımı**
+      döndürdüğü için yanlış sebebi gösterdi. Yedek zincirin tamamı ölüydü (NIM 410 Gone /
+      404 yetki / 90B vision 90 sn yanıtsız; OpenCode `-free` 400 "Model is unavailable",
+      fiyatlıları 401 "No payment method"). Kayıtlarda **hiç 429 yok**.
+- [x] **`server/ai.js`: tek toplam bütçe** (`NUTRI_AI_BUDGET_MS`, 25 sn) — her adımın zaman
+      aşımı kalanla kırpılır, kalan `MIN_STEP_MS` altındaysa adım hiç başlatılmaz. 85 sn → ≤25 sn.
+- [x] **`server/ai.js`: dürüst hata** — `attempts` toplanır, kod TÜM denemelerden seçilir
+      (sağlayıcı hatası > zaman aşımı > erişilemezlik); gövdeye `attempts` eklenir.
+- [x] **`server/ai.js`: sağlayıcı 5xx kısa devresi** — aynı sağlayıcının 2. kademesi art arda
+      5xx/zaman aşımı verirse kalan kademeler atlanır (olay günü 15 sn kazandırırdı). 429 sayılmaz.
+- [x] **`server/aiHealth.js` (yeni)** — devre kesici: 3 ardışık zaman aşımı veya tek 401/403/404/410
+      → adım 10 dk hiç denenmez (ölü NIM vision'ın her istekte 40 sn yakması böyle biter).
+      Durum `/api/ai/status`'ta `health` altında görünür.
+- [x] **`server/aiModels.js` (yeni)** — ücretsiz model OTOMATİK keşfi: model seviyesinde hata
+      gelince sağlayıcının listesi çekilir (OpenCode'da `-free` önce), adaylar 1×1 PNG / tek
+      jetonluk istekle YOKLANIR (liste üyeliği yetmez: `deepseek-v4-flash-free` listede durup
+      400 dönüyordu), çalışan 6 saat önbelleğe alınır ve **aynı istekte** denenir.
+- [x] **`server/aiLog.js`** — `upstream` (sağlayıcının ham kodu) + `detail` (gerekçe, kırpık +
+      sır maskeli) + istek başına tek satır `kind:"chain"` özeti (başarıda da; `totalMs` burada).
+- [x] **İstemci** — `src/lib/aiDeadline.ts` (35 sn sınır; iptal ile süre aşımı AYIRT EDİLİR,
+      aksi hâlde süre aşımı sessizce "kullanıcı iptal etti" sayılırdı), `ScanSheet`'te 6 sn'den
+      sonra saniye sayacı + hata sonrası **aynı kareyle “Tekrar dene”** (yeni kare çekmek yok).
+- [x] **Testler** — pencere değişmezi (bütçe < nginx penceresi < istemci sınırı), asılı fetch'le
+      bütçe aşımı, sağlayıcı 5xx kısa devresi, **canlı olay regresyonu** (503+timeout →
+      "sağlayıcı hatası", zaman aşımı DEĞİL), devre kesici, model keşfi; `aiHealth`/`aiModels`
+      birim testleri. Kapı: typecheck 0 · test **1006/1006** · check:i18n 3/3 · build ✓
+      _(build ve deploy ayrı adım)_.
+- [ ] **Prod'a alma** — yukarıdaki AÇIK İŞLER maddesi.
 
 ## v0.30.5 — iPhone (iOS) iki bug + stabilite (2026-09-20)
 

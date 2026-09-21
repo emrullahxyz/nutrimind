@@ -21,6 +21,21 @@ const ENV_KEYS = [
   "NUTRI_AI_RATE_OPENCODE",
   "NUTRI_AI_TIMEOUT_MS",
   "NUTRI_AI_NIM_TIMEOUT_MS",
+  // 2026-09-21: bütçe/devre kesici/model keşfi anahtarları da testler arasında
+  // SIFIRLANIR (yoksa bir testin bıraktığı durum diğerini sessizce etkiler).
+  "NUTRI_AI_API_WINDOW_MS",
+  "NUTRI_AI_BUDGET_MS",
+  "NUTRI_AI_MIN_STEP_MS",
+  "NUTRI_AI_VENDOR_5XX_STREAK",
+  "NUTRI_AI_BREAKER_MS",
+  "NUTRI_AI_BREAKER_TIMEOUTS",
+  "NUTRI_AI_BREAKER_PROVIDER_ERRORS",
+  "NUTRI_AI_AUTOMODEL",
+  "NUTRI_AI_MODEL_TTL_MS",
+  "NUTRI_AI_MODEL_NEGATIVE_TTL_MS",
+  "NUTRI_AI_DISCOVER_BUDGET_MS",
+  "NUTRI_AI_PROBE_TIMEOUT_MS",
+  "NUTRI_AI_MAX_PROBES",
 ];
 
 const envBackup = {};
@@ -47,7 +62,16 @@ async function loadAi(env = {}) {
   }
   Object.assign(process.env, env);
   const mod = await import("./ai.js");
-  return mod.default ?? mod;
+  const ai = mod.default ?? mod;
+  // DURUM SIFIRLAMA (2026-09-21): ai.js'e `require` ile bağlanan aiLog/aiHealth/
+  // aiModels modülleri vi.resetModules() ile GARANTİ yeniden çalışmaz — devre
+  // kesici "açık" ya da model önbelleği dolu kalırsa sonraki test sessizce
+  // farklı sonuç verir (bu tam olarak bir kez yaşandı: bir test 502 alırken
+  // tek başına 504 veriyordu). Bu yüzden her yüklemede durum açıkça temizlenir.
+  ai.aiLog?.reset?.();
+  ai.aiHealth?.reset?.();
+  ai.aiModels?.reset?.();
+  return ai;
 }
 
 function makeGeminiOkResponse(
@@ -250,10 +274,12 @@ describe("AI fallback zinciri (server/ai.js)", () => {
     expect(mockFetch.mock.calls[0][0]).toContain("gemini-flash-latest");
   });
 
-  it("parseMealImage için: tüm Gemini kademeleri başarısız olursa NIM Vision'a düştüğünü, ve bu çağrıda imageBase64'ün OpenAI image_url (data URI) şeklinde gönderildiğini doğrula", async () => {
+  it("parseMealImage için: Gemini kademeleri 5xx verirse NIM Vision'a düştüğünü, ve bu çağrıda imageBase64'ün OpenAI image_url (data URI) şeklinde gönderildiğini doğrula", async () => {
+    // DİKKAT: yalnızca İKİ Gemini kademesi denenir. 2026-09-21 dersi: aynı
+    // sağlayıcının art arda gelen 5xx'i sağlayıcı geneli arızadır, kalan
+    // kademeler atlanır (server/ai.js VENDOR_5XX_STREAK).
     const mockFetch = vi
       .fn()
-      .mockResolvedValueOnce(makeErrorResponse(502))
       .mockResolvedValueOnce(makeErrorResponse(502))
       .mockResolvedValueOnce(makeErrorResponse(502))
       .mockResolvedValueOnce(makeNimOkResponse());
@@ -274,10 +300,10 @@ describe("AI fallback zinciri (server/ai.js)", () => {
     });
 
     expect(res.status).toBe(200);
-    expect(mockFetch).toHaveBeenCalledTimes(4);
-    expect(mockFetch.mock.calls[3][0]).toBe("https://integrate.api.nvidia.com/v1/chat/completions");
+    expect(mockFetch).toHaveBeenCalledTimes(3);
+    expect(mockFetch.mock.calls[2][0]).toBe("https://integrate.api.nvidia.com/v1/chat/completions");
 
-    const nimBody = JSON.parse(mockFetch.mock.calls[3][1].body);
+    const nimBody = JSON.parse(mockFetch.mock.calls[2][1].body);
     expect(nimBody.model).toBe("meta/llama-3.2-90b-vision-instruct");
     const userMessage = nimBody.messages[0];
     expect(Array.isArray(userMessage.content)).toBe(true);
@@ -549,7 +575,9 @@ describe("AI gözlem katmanı (server/aiLog.js kayıtları)", () => {
     expect(e.retryAfter).toBeGreaterThanOrEqual(1);
     expect(e.provider).toBe("gemini-tier1");
 
-    expect(logSpy).toHaveBeenCalledTimes(1);
+    // İKİ satır: adım kaydı + zincir özeti (2026-09-21: istek başına tek satır
+    // "chain" özeti üretimde toplam süreyi görebilmenin tek yolu).
+    expect(logSpy).toHaveBeenCalledTimes(2);
     const line = logSpy.mock.calls[0][0];
     expect(line.startsWith("[ai] ")).toBe(true);
     expect(JSON.parse(line.slice("[ai] ".length))).toMatchObject({
@@ -557,9 +585,15 @@ describe("AI gözlem katmanı (server/aiLog.js kayıtları)", () => {
       status: 429,
       code: "ai_rate_limit",
     });
+    expect(JSON.parse(logSpy.mock.calls[1][0].slice("[ai] ".length))).toMatchObject({
+      kind: "chain",
+      endpoint: "parse",
+      status: 429,
+      code: "ai_rate_limit",
+    });
   });
 
-  it("zincir tükendiğinde (hepsi 502) beş adım da kronolojik kaydedilir; son adım opencode olur", async () => {
+  it("zincir tükendiğinde denenen adımlar kronolojik kaydedilir; sağlayıcı geneli 5xx'te kalan kademe atlanır", async () => {
     const mockFetch = vi
       .fn()
       .mockResolvedValue(makeErrorResponse(502));
@@ -575,20 +609,27 @@ describe("AI gözlem katmanı (server/aiLog.js kayıtları)", () => {
 
     const res = await parseMealText({ text: "1 elma", aliases: [] });
     expect(res.status).toBe(502);
-    expect(mockFetch).toHaveBeenCalledTimes(5);
-
-    const snap = aiLog.snapshot();
-    // snapshot en yenisi önce verir → kronolojik sıra için reverse.
-    const providers = snap.entries.map((e) => e.provider).reverse();
-    expect(providers).toEqual([
+    expect(res.body.code).toBe("ai_provider_error");
+    // tier3 DENENMEZ: aynı sağlayıcının iki kademesi art arda 5xx verdi.
+    expect(mockFetch).toHaveBeenCalledTimes(4);
+    // Denemeler yanıt gövdesinde de görünür (telefonda tek ekran görüntüsüyle teşhis).
+    expect(res.body.attempts.map((a) => a.provider)).toEqual([
       "gemini-tier1",
       "gemini-tier2",
       "gemini-tier3",
       "nim",
       "opencode",
     ]);
+    expect(res.body.attempts[2].skipped).toBe("vendor-5xx");
+
+    const snap = aiLog.snapshot();
+    // snapshot en yenisi önce verir → kronolojik sıra için reverse. AtSanan adım
+    // kayıt BIRAKMAZ (hiç çağrılmadı).
+    const providers = snap.entries.map((e) => e.provider).reverse();
+    expect(providers).toEqual(["gemini-tier1", "gemini-tier2", "nim", "opencode"]);
     for (const e of snap.entries) {
-      expect(e.status).toBe(502); // upstream kodu kayıtta aynen saklanır
+      expect(e.status).toBe(502); // BİZİM döndüğümüz kod
+      expect(e.upstream).toBe(502); // sağlayıcının ham kodu
       expect(e.code).toBe("ai_provider_error");
     }
     const by = Object.fromEntries(snap.providers.map((p) => [p.provider, p]));
@@ -598,9 +639,8 @@ describe("AI gözlem katmanı (server/aiLog.js kayıtları)", () => {
   it("vision akışı kayıtları 'vision' endpoint'i taşır; düşüş nim-vision'a başarıyla gider", async () => {
     const mockFetch = vi
       .fn()
-      .mockResolvedValueOnce(makeErrorResponse(502))
-      .mockResolvedValueOnce(makeErrorResponse(502))
-      .mockResolvedValueOnce(makeErrorResponse(502))
+      .mockResolvedValueOnce(makeErrorResponse(503))
+      .mockResolvedValueOnce(makeErrorResponse(503))
       .mockResolvedValueOnce(makeNimOkResponse());
     vi.stubGlobal("fetch", mockFetch);
 
@@ -620,12 +660,14 @@ describe("AI gözlem katmanı (server/aiLog.js kayıtları)", () => {
     expect(res.status).toBe(200);
 
     const snap = aiLog.snapshot();
-    expect(snap.entries).toHaveLength(4);
+    expect(snap.entries).toHaveLength(3);
     expect(snap.entries.every((e) => e.endpoint === "vision")).toBe(true);
     // en yeni (nim-vision) başarılı:
     expect(snap.entries[0]).toMatchObject({ provider: "nim-vision", status: 200 });
+    // `upstream`: sağlayıcının HAM kodu (Gemini 503) bizim 502'mizle karışmasın.
+    expect(snap.entries[1]).toMatchObject({ provider: "gemini-tier2", status: 502, upstream: 503 });
     const providers = snap.entries.map((e) => e.provider).reverse();
-    expect(providers).toEqual(["gemini-tier1", "gemini-tier2", "gemini-tier3", "nim-vision"]);
+    expect(providers).toEqual(["gemini-tier1", "gemini-tier2", "nim-vision"]);
   });
 
   it("snapshot kova doluluklarını verir; tier2/tier3'ün metin+vision paylaşımlı olduğu adlarından okunur", async () => {
@@ -648,5 +690,196 @@ describe("AI gözlem katmanı (server/aiLog.js kayıtları)", () => {
       expect(b.tokens).toBeLessThanOrEqual(b.cap);
       expect(b.fill).toBeLessThanOrEqual(1);
     }
+  });
+});
+
+describe("zaman penceresi ve bütçe (2026-09-21 canlı olay)", () => {
+  it("DEĞİŞMEZ: varsayılan toplam bütçe nginx'in /api/ penceresinden kısa olmalı", async () => {
+    // nginx: `location ^~ /api/ { proxy_read_timeout 30s; }` (prod app.conf).
+    // Bu değişmez yazılı olsaydı olay günü kullanıcı "zaman aşımı" mesajı alırken
+    // sunucu hâlâ 37 sn çalışmaya devam etmezdi.
+    const { AI_LIMITS } = await loadAi({});
+    expect(AI_LIMITS.apiWindowMs).toBe(30000);
+    expect(AI_LIMITS.budgetMs).toBeLessThan(AI_LIMITS.apiWindowMs);
+    expect(AI_LIMITS.minStepMs).toBeGreaterThan(0);
+    expect(AI_LIMITS.minStepMs).toBeLessThan(AI_LIMITS.budgetMs);
+  });
+
+  it("asılı kalan sağlayıcıda zincir bütçeyi AŞMAZ; kalan adımlar hiç başlatılmaz", async () => {
+    // fetch, gerçek akıştaki gibi AbortSignal'e uyar (zaman aşımı → reddeder).
+    const hangingFetch = vi.fn(
+      (_url, init) =>
+        new Promise((_resolve, reject) => {
+          init?.signal?.addEventListener("abort", () =>
+            reject(Object.assign(new Error("timeout"), { name: "TimeoutError" })),
+          );
+        }),
+    );
+    vi.stubGlobal("fetch", hangingFetch);
+
+    const { parseMealImage } = await loadAi({
+      NUTRIMIND_LLM_PROVIDER: "auto",
+      GEMINI_API_KEY: "test_gemini_key",
+      NVIDIA_NIM_API_KEY: "test_nim_key",
+      NUTRI_AI_BUDGET_MS: "400",
+      NUTRI_AI_MIN_STEP_MS: "50",
+    });
+
+    const started = Date.now();
+    const res = await parseMealImage({
+      imageBase64: "x",
+      mimeType: "image/jpeg",
+      mode: "food_label",
+      aliases: [],
+    });
+    const elapsed = Date.now() - started;
+
+    expect(res.status).toBe(504);
+    expect(res.body.code).toBe("ai_timeout");
+    expect(elapsed).toBeLessThan(2000); // 85 sn'lik eski davranışın yerine bütçe
+    expect(hangingFetch).toHaveBeenCalledTimes(1);
+    expect(res.body.attempts[0]).toMatchObject({ provider: "gemini-tier1", code: "ai_timeout" });
+    for (const a of res.body.attempts.slice(1)) expect(a.skipped).toBe("budget");
+  });
+
+  it("bütçe ilk adıma bile yetmiyorsa hiç ağ açılmaz, dürüst bir zaman aşımı döner", async () => {
+    const fetchSpy = vi.fn();
+    vi.stubGlobal("fetch", fetchSpy);
+    const { parseMealText } = await loadAi({
+      NUTRIMIND_LLM_PROVIDER: "auto",
+      GEMINI_API_KEY: "test_gemini_key",
+      NUTRI_AI_BUDGET_MS: "100", // MIN_STEP_MS (2500) altında
+    });
+
+    const res = await parseMealText({ text: "1 elma", aliases: [] });
+    expect(res.status).toBe(504);
+    expect(res.body.code).toBe("ai_timeout");
+    expect(fetchSpy).not.toHaveBeenCalled();
+    expect(res.body.attempts.every((a) => a.skipped === "budget")).toBe(true);
+  });
+
+  it("CANLI OLAY REGRESYONU: Gemini 503'leri + yedek zaman aşımı → 'zaman aşımı' DEĞİL 'sağlayıcı hatası'", async () => {
+    // Olay günü zincir [503, 503, tier3 timeout, nim timeout] şeklindeydi ve
+    // son adımın 504'ü kullanıcıya gösterildi. Artık sebep tüm denemelerden
+    // seçilir; ayrıca tier3 5xx kısa devresiyle hiç denenmez.
+    const mockFetch = vi
+      .fn()
+      .mockResolvedValueOnce(makeErrorResponse(503))
+      .mockResolvedValueOnce(makeErrorResponse(503))
+      .mockRejectedValue(Object.assign(new Error("timeout"), { name: "TimeoutError" }));
+    vi.stubGlobal("fetch", mockFetch);
+
+    const { parseMealImage } = await loadAi({
+      NUTRIMIND_LLM_PROVIDER: "auto",
+      GEMINI_API_KEY: "test_gemini_key",
+      NVIDIA_NIM_API_KEY: "test_nim_key",
+    });
+
+    const res = await parseMealImage({
+      imageBase64: "x",
+      mimeType: "image/jpeg",
+      mode: "food_label",
+      aliases: [],
+    });
+
+    expect(res.status).toBe(502);
+    expect(res.body.code).toBe("ai_provider_error");
+    expect(mockFetch).toHaveBeenCalledTimes(3); // tier3 atlanır
+    expect(res.body.attempts[2]).toMatchObject({
+      provider: "gemini-tier3",
+      skipped: "vendor-5xx",
+    });
+    expect(res.body.attempts[3]).toMatchObject({ provider: "nim-vision", code: "ai_timeout" });
+  });
+
+  it("üç ardışık zaman aşımından sonra adım devre dışı kalır: sonraki istek onu hiç denemez", async () => {
+    const timeoutFetch = vi
+      .fn()
+      .mockRejectedValue(Object.assign(new Error("timeout"), { name: "TimeoutError" }));
+    vi.stubGlobal("fetch", timeoutFetch);
+
+    const { parseMealText, aiHealth } = await loadAi({
+      NUTRIMIND_LLM_PROVIDER: "auto",
+      GEMINI_API_KEY: "test_gemini_key",
+      NVIDIA_NIM_API_KEY: "test_nim_key",
+    });
+    aiHealth.reset();
+
+    for (let i = 0; i < 3; i += 1) await parseMealText({ text: "1 elma", aliases: [] });
+    expect(aiHealth.isOpen("gemini-tier1").open).toBe(true);
+
+    timeoutFetch.mockClear();
+    const res = await parseMealText({ text: "1 elma", aliases: [] });
+    expect(res.status).toBe(504);
+    expect(res.body.attempts[0]).toMatchObject({ provider: "gemini-tier1", skipped: "breaker" });
+    // Devre dışı adıma AĞA HİÇ ÇIKILMADI: 40 sn'lik ölü bekleme böyle önlenir.
+    expect(timeoutFetch.mock.calls.some(([url]) => String(url).includes("gemini-flash-latest"))).toBe(
+      false,
+    );
+  });
+});
+
+describe("ölü model adı kendiliğinden onarılır (server/aiModels.js entegrasyonu)", () => {
+  /** Sahte fetch: liste çağrısını ve sohbet çağrılarını sırasıyla ayırt eder. */
+  function modelAwareFetch(chatHandler) {
+    const calls = [];
+    const mockFetch = vi.fn(async (url, init) => {
+      const u = String(url);
+      const body = init?.body ? JSON.parse(init.body) : null;
+      calls.push({ url: u, body });
+      if (u.endsWith("/models")) {
+        return {
+          ok: true,
+          status: 200,
+          text: async () => JSON.stringify({ data: [{ id: "meta/llama3-chatqa-1.5-70b" }] }),
+        };
+      }
+      return chatHandler(body, calls.filter((c) => !c.url.endsWith("/models")).length);
+    });
+    vi.stubGlobal("fetch", mockFetch);
+    return { mockFetch, calls };
+  }
+
+  it("NIM 410 dönerse listeden yeni model bulunur, yoklanır ve AYNI istekte denenir", async () => {
+    const { calls } = modelAwareFetch((body, chatIndex) =>
+      // 1) ölü model → 410  2) yoklama → 200  3) yeni modelle gerçek istek → 200
+      chatIndex === 1 ? makeErrorResponse(410) : makeNimOkResponse(),
+    );
+
+    const { parseMealText } = await loadAi({
+      NUTRIMIND_LLM_PROVIDER: "auto",
+      GEMINI_API_KEY: "",
+      NVIDIA_NIM_API_KEY: "test_nim_key",
+      OPENCODE_API_KEY: "",
+    });
+
+    const res = await parseMealText({ text: "1 elma", aliases: [] });
+    expect(res.status).toBe(200);
+    expect(res.body.items[0].name).toBe("Elma");
+
+    const chatCalls = calls.filter((c) => !c.url.endsWith("/models"));
+    expect(chatCalls[0].body.model).toBe("meta/llama-3.1-8b-instruct"); // yapılandırılmış (ölü)
+    expect(chatCalls[1].body.model).toBe("meta/llama3-chatqa-1.5-70b"); // liste yoklaması
+    expect(chatCalls[1].body.max_tokens).toBe(1);
+    expect(chatCalls[2].body.model).toBe("meta/llama3-chatqa-1.5-70b"); // gerçek istek
+    expect(calls.some((c) => c.url.endsWith("/models"))).toBe(true);
+  });
+
+  it("NUTRI_AI_AUTOMODEL=0 iken keşif yapılmaz: ölü modelle ısrar edilir, hata dürüst raporlanır", async () => {
+    const mockFetch = vi.fn().mockResolvedValue(makeErrorResponse(410));
+    vi.stubGlobal("fetch", mockFetch);
+
+    const { parseMealText } = await loadAi({
+      NUTRIMIND_LLM_PROVIDER: "auto",
+      GEMINI_API_KEY: "",
+      NVIDIA_NIM_API_KEY: "test_nim_key",
+      OPENCODE_API_KEY: "",
+      NUTRI_AI_AUTOMODEL: "0",
+    });
+
+    const res = await parseMealText({ text: "1 elma", aliases: [] });
+    expect(res.status).toBe(502);
+    expect(res.body.code).toBe("ai_provider_error");
+    expect(mockFetch).toHaveBeenCalledTimes(1);
   });
 });

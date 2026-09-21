@@ -8,21 +8,35 @@
 // (kova reddi dahil) sonucunu kaydeder ki bir dahaki olayda "hangi dakikada,
 // hangi kademede tıkandı" kanıtlı olsun.
 //
+// 2026-09-21 GELİŞTİRMESİ (canlı olay dersi): kayıt yalnızca sağlayıcının
+// DURUM KODUNU tutuyordu, GEREKÇESİNİ atıyordu. Olay günü günlükte `503`
+// görünüyordu ama "model emekliye ayrıldı (410 Gone)" / "bu hesap için yetki
+// yok (404)" / "Model is unavailable (400)" ayrımı ancak elle curl atılarak
+// bulunabildi. Artık:
+//   - `status`  : BİZİM istemciye dönecek kodumuz (502/504/429/200)
+//   - `upstream`: sağlayıcının ham HTTP kodu (503, 410, 404 …)
+//   - `detail`  : sağlayıcının gerekçe metni (kırpılır + sırlar maskelenir)
+// Ayrıca istek başına TEK satır "chain" özeti (başarıda da) yazılır: üretimde
+// "zincir hâlâ nginx penceresini aşıyor mu" sorusunun cevabı budur.
+//
 // Depolama: BELLEK İÇİ ring buffer (son ~200 kayıt) — veritabanı YOK, dosya
 // YOK. Süreç yeniden başlarsa geçmiş gider; amaç kalıcı denetim değil,
 // teşhistir. Ek olarak başarısızlıkta TEK SATIR JSON stdout'a yazılır:
 //   journalctl -u nutri-api | grep '\[ai\]'
 //
 // PII KURALI: prompt metni, görsel, kullanıcı kimliği ASLA kaydedilmez —
-// yalnızca teknik alanlar (uç, sağlayıcı, model, durum kodu, gecikme).
+// yalnızca teknik alanlar (uç, sağlayıcı, model, durum kodu, gecikme, sağlayıcı
+// hata metni). `detail` içindeki anahtar benzeri diziler maskelenir.
 //
-// Bağımlılık yönü: ai.js → aiLog (tek yön; aiLog ai.js'i require etmez, kova
-// değerleri setBuckets() ile bildirilir — döngüsel import yok).
+// Bağımlılık yönü: ai.js → aiLog (tek yön; aiLog ai.js'i require etmez, kova ve
+// devre kesici durumu setBuckets()/setHealth() ile bildirilir → döngüsel import yok).
 // ============================================================================
 
 "use strict";
 
 const MAX_ENTRIES = 200;
+/** Sağlayıcı gerekçesi bu uzunlukta kırpılır: teşhise yeter, günlüğü şişirmez. */
+const DETAIL_MAX = 160;
 
 /** Ring buffer — en yeni kayıt SONDA. */
 const entries = [];
@@ -34,6 +48,9 @@ const stats = new Map();
  *  güncel jeton sayısını verir (ai.js'teki peekTokens'a köprü). */
 const buckets = [];
 
+/** ai.js devre kesici durumu (server/aiHealth.js snapshot'ı). */
+let health = [];
+
 function bump(provider, ok) {
   let s = stats.get(provider);
   if (!s) {
@@ -43,6 +60,28 @@ function bump(provider, ok) {
   s.calls += 1;
   if (ok) s.ok += 1;
   else s.errors += 1;
+}
+
+/** Sağlayıcı hata metnini günlüğe yazılabilir hâle getirir: tek satır, kırpık,
+ *  anahtar benzeri diziler maskeli. Girdi metni ASLA dışarı sızmaz — bu
+ *  fonksiyonun çıktısı günlüğe gider. */
+function scrubDetail(raw) {
+  try {
+    if (typeof raw !== "string") return null;
+    let s = raw.replace(/\s+/g, " ").trim();
+    if (!s) return null;
+    // Bilinen sır önekleri + uzun anahtar benzeri diziler (hesap/kimlik id'leri
+    // de bu sınıfa girer — NIM'in "Not found for account '…'" yanıtı gibi).
+    s = s
+      .replace(/\bAIza[\w-]{10,}/g, "«redacted»")
+      .replace(/\bsk-[\w-]{10,}/g, "«redacted»")
+      .replace(/\bsk-or-[\w-]{10,}/g, "«redacted»")
+      .replace(/\b[A-Za-z0-9_-]{32,}\b/g, "«redacted»");
+    if (s.length > DETAIL_MAX) s = `${s.slice(0, DETAIL_MAX)}…`;
+    return s;
+  } catch {
+    return null;
+  }
 }
 
 /** Bir AI adımının sonucunu kaydeder. ASLA throw etmez. */
@@ -63,6 +102,12 @@ function record(e) {
           : null,
       retryAfter:
         typeof e.retryAfter === "number" && Number.isFinite(e.retryAfter) ? e.retryAfter : null,
+      // Sağlayıcının HAM kodu (bizim çevirimizden önce). 2026-09-21 dersi:
+      // `status` ile karıştırılınca "biz mi 503 döndük, Gemini mi?" sorusu
+      // günlükten cevaplanamıyordu.
+      upstream:
+        typeof e.upstream === "number" && Number.isFinite(e.upstream) ? e.upstream : null,
+      detail: scrubDetail(e.detail),
     };
     entries.push(entry);
     if (entries.length > MAX_ENTRIES) entries.splice(0, entries.length - MAX_ENTRIES);
@@ -77,6 +122,36 @@ function record(e) {
   }
 }
 
+/** İstek başına TEK satır zincir özeti. Ring buffer'a GİRMEZ (sağlayıcı
+ *  sayaçlarını kirletmesin) — yalnızca stdout. Başarıda da yazılır, çünkü
+ *  cevaplanması gereken soru "toplam süre nginx penceresinin altında mı". */
+function recordChain(e) {
+  try {
+    if (!e || typeof e !== "object") return;
+    const line = {
+      ts: new Date().toISOString(),
+      kind: "chain",
+      endpoint: typeof e.endpoint === "string" ? e.endpoint : "unknown",
+      status: typeof e.status === "number" && Number.isFinite(e.status) ? e.status : 0,
+      totalMs: typeof e.totalMs === "number" && Number.isFinite(e.totalMs) ? Math.round(e.totalMs) : null,
+      code: typeof e.code === "string" ? e.code : null,
+      attempts: Array.isArray(e.attempts)
+        ? e.attempts.slice(0, 8).map((a) => ({
+            provider: a?.provider ?? "unknown",
+            status: a?.status ?? null,
+            upstream: a?.upstream ?? null,
+            code: a?.code ?? null,
+            latencyMs: a?.latencyMs ?? null,
+            ...(a?.skipped ? { skipped: a.skipped } : {}),
+          }))
+        : [],
+    };
+    console.log(`[ai] ${JSON.stringify(line)}`);
+  } catch {
+    // noop
+  }
+}
+
 /** ai.js, kendi kovalarını buraya bildirir (ad + kapasite + güncel doluluk okuma işlevi). */
 function setBuckets(list) {
   try {
@@ -87,8 +162,17 @@ function setBuckets(list) {
   }
 }
 
+/** ai.js, devre kesici durumunu buraya bildirir (server/aiHealth.js → snapshot). */
+function setHealth(list) {
+  try {
+    health = Array.isArray(list) ? list.filter((h) => h && typeof h === "object") : [];
+  } catch {
+    health = [];
+  }
+}
+
 /** GET /api/ai/status gövdesi. Sahibin teşhis ucu: son kayıtlar (en yeni önce),
- *  sağlayıcı sayaçları, kova dolulukları. */
+ *  sağlayıcı sayaçları, kova dolulukları, devre kesici durumları. */
 function snapshot() {
   try {
     return {
@@ -105,6 +189,7 @@ function snapshot() {
           return { name: b.name, tokens: 0, cap: b.cap ?? 0, fill: 0 };
         }
       }),
+      health: health.slice(),
     };
   } catch {
     return { ok: false, error: "snapshot failed" };
@@ -115,6 +200,16 @@ function snapshot() {
 function reset() {
   entries.length = 0;
   stats.clear();
+  health = [];
 }
 
-module.exports = { record, setBuckets, snapshot, reset };
+module.exports = {
+  record,
+  recordChain,
+  setBuckets,
+  setHealth,
+  snapshot,
+  reset,
+  scrubDetail,
+  DETAIL_MAX,
+};

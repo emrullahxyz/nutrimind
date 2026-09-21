@@ -425,3 +425,44 @@ Ayrıca "düzelttim" cümlesi hangi koşulda ölçüldüğünü söylemek zorund
 modül, MOUNT edilmiş bir bileşeni güncellerse React `Should have a queue` hatası verir — bu
 uygulamanın hatası değil, sıcak güncelleme artefaktıdır; sayfa yenilendiğinde geçer. Böyle bir
 hata görüldüğünde önce tam yeniden yükleme yapıp tekrar üret, sonra yorum yaz.
+
+## L27 — Dış katmanın zaman aşımı, iç zincirinden KISA olamaz
+
+**Olay (2026-09-21, canlı):** Kullanıcı kamerayla etiket okuturken "AI servisi zaman aşımına
+uğradı. Biraz sonra tekrar dene." mesajı aldı ve üç kez tekrar denedi. Mesaj bizim
+`ai_timeout` metnimizin BİREBİR aynısıydı, bu yüzden ilk hipotez "sağlayıcı yavaş" oldu.
+Gerçek sebep katmanlıydı ve mesajı veren kişi biz DEĞİLDİK:
+
+- Bizim görsel zincirimiz en kötü **15+15+15+40 = 85 sn** sürebiliyordu (3 Gemini kademesi + NIM).
+- Prod nginx vhost'unda `location ^~ /api/ { proxy_read_timeout 30s; }` **sabit**. Node
+  sunucumuz yanıtı tek seferde `res.end()` ile yazdığı için bu pencere toplam süre tavanıdır:
+  30 sn boyunca hiçbir bayt akmaz, nginx kendi gövdesiz **504'ünü** döner, istemci JSON
+  okuyamayınca `status === 504` dalına düşer ve AYNI cümleyi gösterir.
+- Journal kanıtı: üç zincir de sunucu tarafında **67/68/71 sn** sürdü; kullanıcı 30. saniyede
+  hata gördü. Sunucu 30 sn sonra 37 sn daha çalışıp kotayı yaktı, yanıtı çoktan kapanmış
+  sokete yazdı.
+- Üstüne `runChain` **son adımın** hatasını döndürüyordu: gerçek sebep Gemini'nin `503`'ü iken
+  kullanıcı "zaman aşımı" okudu. Yedek zincirin tamamı da ölüydü (NIM metin 410 Gone, NIM
+  nemotron 404 yetki, NIM 90B vision 90 sn'de yanıt yok, OpenCode `-free` model 400, fiyatlı
+  modeller 401 "No payment method") — yani `available: !!API_KEY` kontrolü "çalışıyor" sanılan
+  ama hiçbir şansı olmayan adımlar üretiyordu.
+
+**Kurallar.**
+1. **Zaman penceresi bir DEĞİŞMEZDİR:** `iç zincir bütçesi < dış katman (nginx) penceresi`.
+   Uygulama kendi sınırını bilmeli ve ona uymalı; dış katmanı "yeterince büyük" varsaymak
+   yasak. Değişmez yoruma değil **teste** yazılır (`server/ai.test.js` pencere değişmezi +
+   asılı fetch'le bütçe aşımı testi).
+2. **Bir katman kendi zaman aşımını uydurmadan önce altındaki katmanın penceresini ölç:**
+   `nginx -T | grep -A2 'location ^~ /api/'` tek komutluk bir kontroldü ve 30 sn'yi oradan
+   okuyabilirdim.
+3. **Hata mesajı SON adımın değil, gerçek sebebin olmalı.** Zincir yalnızca son sonucu
+   döndürürse ölü yedekler kullanıcıya yanlış teşhis gösterir; tüm denemeler toplanıp
+   önceliklendirilir (sağlayıcı hatası > zaman aşımı) ve yanıt gövdesine `attempts` konur.
+4. **`status` ile `upstream` ayrı alanlardır:** günlükte "503" görmek "biz 503 döndük" demek
+   değildir. Ayrılmayınca teşhis el yordamına (elle curl) düşer.
+5. `available: !!API_KEY` **sağlık kontrolü değildir**: sağlayıcı listesindeki ölü modeli ancak
+   canlı yoklama ayırt eder; art arda düşen adım devre kesiciyle susturulur.
+
+**Uygulama kapısı:** bu turda yalnızca okuma yapıldı (journalctl + md5 + sağlayıcı yoklamaları) ve
+önce kök neden kanıtlandı, sonra kod değişti — varsayımla düzeltmeye gidilse "timeout süresini
+uzatmak" gibi TERS yönde bir değişiklik yapılırdı (aslında pencere zaten dar).

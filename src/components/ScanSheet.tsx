@@ -203,6 +203,18 @@ export function ScanSheet({
   const [scanMode, setScanMode] = useState<ScanMode>("scan_food");
 
   const [analyzing, setAnalyzing] = useState(false);
+  /** Analiz sırasında geçen saniye. 2026-09-21 olayında zincir 67 sn sürdü ve
+   *  kullanıcı o süre boyunca yalnızca dönen bir çember gördü — ilerleme
+   *  göstergesi olmadığı için "dondu" sanıp iptal etti/tekrar denedi (üst üste
+   *  binen üç zincir). Sayaç en azından bekleyişin sürdüğünü kanıtlar. */
+  const [analyzeSeconds, setAnalyzeSeconds] = useState(0);
+  /** Son başarısız görsel denemesinin karesi: "Tekrar dene" bunu YENİDEN
+   *  gönderir (kullanıcı aynı etiketi yeniden çekmek zorunda kalmaz). */
+  const [visionRetry, setVisionRetry] = useState<{
+    base64: string;
+    mimeType: string;
+    mode: VisionMode;
+  } | null>(null);
   /** Deklanşörle çekilen kare, AI'a gitmeden ÖNCE burada bekler. Telefon tam
    *  basılırken oynarsa (fiziksel titreşim) kullanıcı bunu AI'ın yanıtını
    *  bekleyip kotayı harcamadan fark edip tekrar çeksin diye — bkz. systematic
@@ -246,6 +258,19 @@ export function ScanSheet({
   );
 
   const scanning = food === null && visionItems === null;
+
+  // Saniye sayacı: analiz başladığında 0'dan başlar, bitince sıfırlanır.
+  useEffect(() => {
+    if (!analyzing) {
+      setAnalyzeSeconds(0);
+      return;
+    }
+    const startedAt = Date.now();
+    const id = window.setInterval(() => {
+      setAnalyzeSeconds(Math.floor((Date.now() - startedAt) / 1000));
+    }, 1000);
+    return () => window.clearInterval(id);
+  }, [analyzing]);
 
   const {
     videoRef,
@@ -377,6 +402,7 @@ export function ScanSheet({
     abortRef.current = ctrl;
     setAnalyzing(true);
     setStatus({ kind: "idle" });
+    setVisionRetry(null);
     pendingVisionRef.current = { base64, mimeType, mode };
     try {
       const result = await parseMealImage(base64, mimeType, mode, ctrl.signal);
@@ -400,11 +426,13 @@ export function ScanSheet({
         setAiConsentOpen(true);
         return;
       }
-      // `AiError.message` zaten kullanıcıya gösterilebilir Türkçe metin.
+      // `AiError.message` zaten kullanıcıya gösterilebilir, aktif dilde metin.
       setStatus({
         kind: "error",
         message: e instanceof AiError ? e.message : String((e as Error)?.message ?? e),
       });
+      // Kare elimizde: bir daha denemek için yeniden çekmeye gerek yok.
+      setVisionRetry({ base64, mimeType, mode });
     } finally {
       setAnalyzing(false);
       abortRef.current = null;
@@ -716,9 +744,22 @@ export function ScanSheet({
         {t("offSearch.searching")}
       </p>
     ) : status.kind === "error" ? (
-      <p className="rounded-chip bg-danger/20 px-3 py-2 text-center text-[11px] text-danger backdrop-blur-sm">
-        {status.message}
-      </p>
+      <div className="flex flex-col items-center gap-2 rounded-chip bg-danger/20 px-3 py-2 text-center text-[11px] text-danger backdrop-blur-sm">
+        <p>{status.message}</p>
+        {visionRetry && (
+          <button
+            type="button"
+            onClick={() => {
+              const again = visionRetry;
+              setVisionRetry(null);
+              void runVision(again.base64, again.mimeType, again.mode);
+            }}
+            className="rounded-pill border border-danger/50 px-3 py-1.5 text-[11px] font-bold text-danger transition hover:bg-danger/20"
+          >
+            ↺ {t("common.retry")}
+          </button>
+        )}
+      </div>
     ) : blocked ? (
       <p className="rounded-chip bg-warn/20 px-3 py-2 text-center text-[11px] text-warn backdrop-blur-sm">
         {t("scan.cooldown", { seconds: cooldownLeft })}
@@ -971,6 +1012,9 @@ export function ScanSheet({
               <p className="text-sm font-extrabold text-ink-primary">{t("scan.analyzing")}</p>
               <p className="text-[11px] text-ink-tertiary">
                 {scanMode === "food_label" ? t("scan.readingLabel") : t("scan.recognizingFood")}
+                {/* 6 sn'den sonra sayaç: "dondu mu, çalışıyor mu" sorusunu
+                    kullanıcıya sorma — ekran cevaplasın. */}
+                {analyzeSeconds >= 6 && ` · ${t("scan.analyzingSeconds", { seconds: analyzeSeconds })}`}
               </p>
               <button
                 type="button"

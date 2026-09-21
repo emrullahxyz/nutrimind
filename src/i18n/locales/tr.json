@@ -510,6 +510,7 @@
     "autoReading1": "otomatik",
     "autoReading2": "okunuyor",
     "analyzing": "Analiz ediliyor…",
+    "analyzingSeconds": "{{seconds}} sn",
     "readingLabel": "Etiket okunuyor",
     "recognizingFood": "Yemek tanınıyor",
     "noFoodExtracted": "Görselden bir besin çıkarılamadı. Daha net/yakın bir fotoğraf dene.",

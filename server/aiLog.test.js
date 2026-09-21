@@ -2,7 +2,16 @@
 // satırı, PII güvencesi. Modül süreç-içi durumu tuttuğu için her test
 // reset() ile temiz başlar (bkz. modül dokümantasyonu — bellek-içi, dosya yok).
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { record, setBuckets, snapshot, reset } from "./aiLog.js";
+import {
+  record,
+  recordChain,
+  setBuckets,
+  setHealth,
+  snapshot,
+  reset,
+  scrubDetail,
+  DETAIL_MAX,
+} from "./aiLog.js";
 
 beforeEach(() => {
   reset();
@@ -57,7 +66,18 @@ describe("aiLog ring buffer", () => {
     });
     const e = snapshot().entries[0];
     expect(Object.keys(e).sort()).toEqual(
-      ["code", "endpoint", "latencyMs", "model", "provider", "retryAfter", "status", "ts"].sort(),
+      [
+        "code",
+        "detail",
+        "endpoint",
+        "latencyMs",
+        "model",
+        "provider",
+        "retryAfter",
+        "status",
+        "ts",
+        "upstream",
+      ].sort(),
     );
     // ts ISO formatında: prompt/görsel yok, yalnızca zaman damgası.
     expect(() => new Date(e.ts).toISOString()).not.toThrow();
@@ -132,5 +152,93 @@ describe("aiLog kova anlık görüntüsü", () => {
     expect(() => setBuckets(null)).not.toThrow();
     expect(() => setBuckets("x")).not.toThrow();
     expect(snapshot().buckets).toEqual([]);
+  });
+});
+
+describe("aiLog sağlayıcı gerekçesi (detail) — 2026-09-21 olay dersi", () => {
+  it("sağlayıcının ham kodu `upstream`'te, bizim kodumuz `status`ta saklanır", () => {
+    // Olay günü günlükte `status: 503` görünüyordu ama bizim döndüğümüz 502'ydi;
+    // "biz mi 503 döndük, Gemini mi?" sorusu günlükten cevaplanamıyordu.
+    record({
+      endpoint: "vision",
+      provider: "gemini-tier1",
+      status: 502,
+      upstream: 503,
+      code: "ai_provider_error",
+      detail: "The model is overloaded",
+    });
+    const e = snapshot().entries[0];
+    expect(e.status).toBe(502);
+    expect(e.upstream).toBe(503);
+    expect(e.detail).toBe("The model is overloaded");
+  });
+
+  it("detail kırpılır, tek satıra indirilir ve sır benzeri diziler maskelenir", () => {
+    const masked = scrubDetail(
+      `Not found for account '4aiWy3hHMa5uwZekMpzg3o6d5EgzO7hwdW1O51MkSiU' key AIzaSyD-1234567890abcdef\n\nsecond line`,
+    );
+    expect(masked).not.toContain("4aiWy3hHMa5uwZekMpzg3o6d5EgzO7hwdW1O51MkSiU");
+    expect(masked).not.toContain("AIzaSyD-1234567890abcdef");
+    expect(masked).toContain("«redacted»");
+    expect(masked).toContain("Not found for account");
+    expect(masked).not.toContain("\n");
+
+    // Uzun gerekçe: kelimelerle (maskeye takılmayan) bir metin kısaltılmalı.
+    const long = scrubDetail("hata ayrintisi ".repeat(40));
+    expect(long.length).toBeLessThanOrEqual(DETAIL_MAX + 1);
+    expect(long.endsWith("…")).toBe(true);
+
+    expect(scrubDetail(undefined)).toBeNull();
+    expect(scrubDetail("   ")).toBeNull();
+  });
+});
+
+describe("aiLog zincir özeti (recordChain)", () => {
+  it("başarıda da tek satır yazılır ama ring buffer'a ve sayaçlara GİRMEZ", () => {
+    const logSpy = vi.spyOn(console, "log").mockImplementation(() => {});
+
+    recordChain({
+      endpoint: "vision",
+      status: 200,
+      totalMs: 4321,
+      code: null,
+      attempts: [
+        { provider: "gemini-tier1", status: 200, upstream: 200, code: null, latencyMs: 4300 },
+        { provider: "gemini-tier2", skipped: "budget", status: null },
+      ],
+    });
+
+    expect(logSpy).toHaveBeenCalledTimes(1);
+    const line = JSON.parse(logSpy.mock.calls[0][0].slice("[ai] ".length));
+    expect(line).toMatchObject({ kind: "chain", endpoint: "vision", status: 200, totalMs: 4321 });
+    expect(line.attempts[1]).toMatchObject({ provider: "gemini-tier2", skipped: "budget" });
+
+    const snap = snapshot();
+    expect(snap.entries).toHaveLength(0);
+    expect(snap.providers).toEqual([]);
+  });
+
+  it("bozuk girdilerde asla throw etmez", () => {
+    const logSpy = vi.spyOn(console, "log").mockImplementation(() => {});
+    expect(() => recordChain(null)).not.toThrow();
+    expect(() => recordChain({ attempts: "dizi değil" })).not.toThrow();
+    expect(logSpy).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("aiLog devre kesici durumu", () => {
+  it("setHealth ile bildirilen durum snapshot'ta görünür; reset temizler", () => {
+    setHealth([{ provider: "nim-vision", state: "open", failures: 3, retryInMs: 600000 }]);
+    expect(snapshot().health).toEqual([
+      { provider: "nim-vision", state: "open", failures: 3, retryInMs: 600000 },
+    ]);
+
+    reset();
+    expect(snapshot().health).toEqual([]);
+  });
+
+  it("dizi olmayan setHealth sessizce yok sayılır", () => {
+    setHealth("x");
+    expect(snapshot().health).toEqual([]);
   });
 });
