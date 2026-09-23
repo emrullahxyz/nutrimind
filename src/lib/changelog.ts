@@ -13,6 +13,26 @@ export interface ChangeLogVersion {
 
 export const CHANGELOG: ChangeLogVersion[] = [
   {
+    version: "0.30.7",
+    date: "2026-09-23",
+    summary: {
+      tr: "İç geliştirme sürümü: test altyapısının izolasyonu düzeltildi; uygulama davranışında değişiklik yok.",
+      en: "Internal maintenance release: fixed test-suite isolation; no change to app behaviour.",
+    },
+    items: [
+      {
+        type: "fixed",
+        tr: "Uygulamanın arkasındaki sağlamlık düzeltmeleri (kullanıcıya görünen davranışta değişiklik yok).",
+        en: "Reliability fixes under the hood (no visible change for you).",
+      },
+    ],
+    dev: [
+      "`pnpm test` geliştirici makinesinde 1004/1006 düşüyordu: `server/ai.js` içindeki `loadDotEnvOnce()` test ortamında da repo kökündeki `.env`'i okuyup `loadAi()`'ın sıfırladığı anahtarları (ör. `NVIDIA_NIM_MODEL`) geri dolduruyordu; `ai.test.js` model adı beklentisi `.env`'deki değerle çakışıyordu. CI'da `.env` olmadığı için aynı testler yeşil kalıyordu (works-on-my-machine).",
+      "Düzeltme: `loadDotEnvOnce()` `VITEST` ya da `NODE_ENV=test` varsa hiç çalışmıyor. Dev ve prod davranışı aynı (oralarda `VITEST` yok). `server/index.js`'e dokunulmadı (donmuş kural).",
+      "Denetim bulgusu #1 (2026-09-23, agy Opus 4.6 çapraz onaylı). Kapı: typecheck 0 · test 1006/1006 · check:i18n 3/3 · build ✓.",
+    ],
+  },
+  {
     version: "0.30.6",
     date: "2026-09-21",
     summary: {

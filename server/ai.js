@@ -60,7 +60,15 @@ const aiModels = require("./aiModels.js");
 //   - Prod (systemd, /home/emrullah/nutri-api): `index.js`/`ai.js` ALT KLASÖRSÜZ,
 //     düz duruyor — `.env` bu dosyayla AYNI dizinde.
 // İlk bulunan aday kullanılır.
+//
+// TEST ORTAMI MUAFİYETİ: Vitest her test koşturumda `VITEST=true` set eder.
+// .env yükleyicisi testte de çalışırsa, testin `beforeEach`'te sildiği anahtarlar
+// (ör. `NVIDIA_NIM_MODEL`) dosyadan geri dolar ve izolasyon kırılır — geliştirici
+// makinesinde `.env` varsa testler kırmızı, CI'da yeşil (ai.test.js'in
+// `loadAi()` sıfırlaması bunu kapatamaz, çünkü modül yeniden yüklenince bu
+// fonksiyon dosyayı yeniden okur). Dev/ortamı etkilemez: orada `VITEST` yoktur.
 function loadDotEnvOnce() {
+  if (process.env.VITEST || process.env.NODE_ENV === "test") return;
   const candidates = [path.join(__dirname, ".env"), path.join(__dirname, "..", ".env")];
   let raw;
   for (const envPath of candidates) {
