@@ -10,6 +10,10 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 const ENV_KEYS = [
   "NVIDIA_NIM_API_KEY",
   "OPENCODE_API_KEY",
+  "OPENROUTER_API_KEY",
+  "OLLAMA_CLOUDE_API_KEY",
+  "CLAUDEFLARE_API_KEY",
+  "CLAUDEFLARE_ACCOUNT_ID",
   "NUTRI_AI_AUTOMODEL",
   "NUTRI_AI_MODEL_TTL_MS",
   "NUTRI_AI_MODEL_NEGATIVE_TTL_MS",
@@ -41,7 +45,14 @@ async function loadModels(env = {}) {
   return mod.default ?? mod;
 }
 
-const keys = { NVIDIA_NIM_API_KEY: "test_nim_key", OPENCODE_API_KEY: "test_opencode_key" };
+const keys = {
+  NVIDIA_NIM_API_KEY: "test_nim_key",
+  OPENCODE_API_KEY: "test_opencode_key",
+  OPENROUTER_API_KEY: "test_openrouter_key",
+  OLLAMA_CLOUDE_API_KEY: "test_ollama_key",
+  CLAUDEFLARE_API_KEY: "test_cf_key",
+  CLAUDEFLARE_ACCOUNT_ID: "acct-123",
+};
 
 /** Model listesi yanıtı (OpenAI uyumlu gövde). */
 function listResponse(ids) {
@@ -236,5 +247,105 @@ describe("aiModels model keşfi", () => {
 
     m.reset();
     expect(m.snapshot().entries).toEqual([]);
+  });
+
+  it("setDiscovered: arka plan taraması modeli cache'e yazar, ağ olmadan getModel döner", async () => {
+    const fetchSpy = vi.fn();
+    vi.stubGlobal("fetch", fetchSpy);
+    const m = await loadModels(keys);
+
+    expect(m.getModel("openrouter", "text", "openrouter/free").source).toBe("env");
+
+    m.setDiscovered("openrouter", "text", "cohere/north-mini-code:free");
+    expect(m.getModel("openrouter", "text", "openrouter/free")).toEqual({
+      model: "cohere/north-mini-code:free",
+      source: "cached",
+    });
+    expect(fetchSpy).not.toHaveBeenCalled();
+    expect(() => m.setDiscovered("yok", "text", "useless")).not.toThrow();
+  });
+
+  it("openrouter pick: `:free` sonekli/adları ücretli olmayanların önüne alır; vision adayı yoksa boş döner", async () => {
+    const mockFetch = vi.fn(async (url, init) => {
+      if (String(url).endsWith("/models")) {
+        return listResponse([
+          "openai/gpt-4o-mini",
+          "openrouter/free",
+          "cohere/north-mini-code:free",
+          "anthropic/claude-opus-5",
+        ]);
+      }
+      return okResponse();
+    });
+    vi.stubGlobal("fetch", mockFetch);
+    const m = await loadModels(keys);
+
+    const found = await m.refreshOnFailure("openrouter", "text", { budgetMs: 8000 });
+    // score(): `north-mini` → 0, yani `openrouter/free`'den (score 2) ÖNCE denenir.
+    expect(found.model).toBe("cohere/north-mini-code:free");
+    expect(found.model).not.toBe("openai/gpt-4o-mini"); // ücretli hiç aday değil
+    expect(found.probed).toEqual([
+      "cohere/north-mini-code:free",
+      "openrouter/free",
+    ]);
+
+    // Metin adayında vision filtresi `:free`+vision yok → aday çıkmaz.
+    const vision = await m.refreshOnFailure("openrouter", "vision", { budgetMs: 8000 });
+    expect(vision.reason).toBe("no-candidates");
+  });
+
+  it("ollama (native): pick yalnızca plan-dahili küme adlarını süzer; /api/chat native body kullanır", async () => {
+    const mockFetch = vi.fn(async (url, init) => {
+      if (String(url).endsWith("/api/tags")) {
+        return listResponse([
+          "gemma4:31b",
+          "gpt-oss:120b",
+          "deepseek-v4.1-flash",
+          "kimi-k2.6",
+          "nemotron-3-ultra",
+          "llama3.2",
+        ]);
+      }
+      const body = JSON.parse(init.body);
+      expect(url).toBe("https://ollama.com/api/chat");
+      expect(body).toMatchObject({ model: "gemma4:31b", stream: false });
+      return okResponse();
+    });
+    vi.stubGlobal("fetch", mockFetch);
+    const m = await loadModels({ ...keys, OLLAMA_CLOUDE_API_KEY: "ollama_key" });
+
+    const found = await m.refreshOnFailure("ollama", "text", { budgetMs: 8000 });
+    expect(found.model).toBe("gemma4:31b"); // score=1 (31b) → deepseek/kimi dışlanır
+    expect(found.probed).not.toContain("deepseek-v4.1-flash");
+    expect(found.probed).not.toContain("kimi-k2.6");
+  });
+
+  it("cloudflare: hesap-id yoksa listeleme/keşif devre dışı kalır (deneysel, güvenli enayi)", async () => {
+    const mockFetch = vi.fn(async (url) => {
+      if (String(url).includes("/models/search")) {
+        return {
+          ok: true,
+          status: 200,
+          text: async () =>
+            JSON.stringify({
+              result: [{ id: "@cf/google/gemma-2b-it-lora" }, { id: "@cf/meta/llama-3.2-3b-instruct" }],
+            }),
+        };
+      }
+      return okResponse();
+    });
+    vi.stubGlobal("fetch", mockFetch);
+    // hesap-id yok: listUrl fonksiyonu çözülemez → [ ]
+    const m = await loadModels({ CLAUDEFLARE_API_KEY: "cf_key" });
+    const found = await m.refreshOnFailure("cloudflare", "text", { budgetMs: 8000, status: 400 });
+    expect(found.model).toBeNull();
+
+    // hesap-id VAR: adres çözülür, pick ücretsiz LoRA'yı bulur
+    const m2 = await loadModels({
+      CLAUDEFLARE_API_KEY: "cf_key",
+      CLAUDEFLARE_ACCOUNT_ID: "acct-1",
+    });
+    const found2 = await m2.refreshOnFailure("cloudflare", "text", { budgetMs: 8000, status: 400 });
+    expect(found2.model).toBe("@cf/google/gemma-2b-it-lora");
   });
 });

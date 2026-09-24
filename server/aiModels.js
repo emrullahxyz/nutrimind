@@ -72,6 +72,47 @@ const PROVIDERS = {
         .sort((a, b) => score(a) - score(b) || a.localeCompare(b));
     },
   },
+  openrouter: {
+    listUrl: "https://openrouter.ai/api/v1/models",
+    chatUrl: "https://openrouter.ai/api/v1/chat/completions",
+    key: () => process.env.OPENROUTER_API_KEY || "",
+    /** OpenRouter free modelleri `:free` soneki ya da `openrouter/free` yönlendiricisidir.
+     *  Ücretsiz önce; günlük 50 istek limiti (kredi yoksa) → kova/429 üstten zaten handle edilir. */
+    pick: (ids, mode) =>
+      ids
+        .filter((id) => /:free-?:?\d*$/.test(id) || id === "openrouter/free")
+        .filter((id) => (mode === "vision" ? /vision/i.test(id) : !/vision/i.test(id)))
+        .sort((a, b) => score(a) - score(b) || a.localeCompare(b)),
+  },
+  ollama: {
+    listUrl: "https://ollama.com/api/tags",
+    chatUrl: "https://ollama.com/api/chat",
+    key: () => process.env.OLLAMA_CLOUDE_API_KEY || "",
+    /** Ollama Cloud native `/api/chat` kullanır (OpenAI-uyumsuz).
+     *  2026-09-24 canlı yoklamada plan-dahili (ücretsiz sayılan) küme:
+     *  gemma4:31b, gpt-oss:120b/20b, nemotron-3-{ultra,super,nano:30b}. */
+    native: true,
+    pick: (ids, mode) =>
+      ids
+        .filter((id) => /gemma4|gpt-oss|nemotron-3/i.test(id))
+        .filter((id) => (mode === "vision" ? /vision|llava/i.test(id) : true))
+        .sort((a, b) => score(a) - score(b) || a.localeCompare(b)),
+  },
+  cloudflare: {
+    listUrl: (acct) =>
+      `https://api.cloudflare.com/client/v4/accounts/${acct}/ai/models/search`,
+    chatUrl: (acct) =>
+      `https://api.cloudflare.com/client/v4/accounts/${acct}/ai/v1/chat/completions`,
+    key: () => process.env.CLAUDEFLARE_API_KEY || "",
+    accountId: () => process.env.CLAUDEFLARE_ACCOUNT_ID || "",
+    /** Cloudflare Workers AI — ücretsiz LoRA'lar (gemma-2b, mistral-7b).
+     *  Deneysel: tek tutarlı JSON üreten `@cf/google/gemma-2b-it-lora`. */
+    pick: (ids, mode) =>
+      ids
+        .filter((id) => /gemma-2b-it-lora|mistral-7b-instruct-v0.2-lora/i.test(id))
+        .filter((id) => (mode === "vision" ? /vision/i.test(id) : !/vision/i.test(id)))
+        .sort((a, b) => score(a) - score(b) || a.localeCompare(b)),
+  },
 };
 
 /** Küçük/hızlı modeller öne: yedek adım saniyelerle ölçülür (bkz. bütçe).
@@ -110,6 +151,18 @@ function headersFor(provider) {
   return key ? { "Content-Type": "application/json", Authorization: `Bearer ${key}` } : null;
 }
 
+/** Cloudflare gibi hesap-id gerektiren endpoinlerin URL'sini çözer.
+ *  `listUrl`/`chatUrl` string ya da `(acct) => string` olabilir; hesap id
+ *  yoksa boş döner (adım sessizce devre dışı kalır — deneysel sağlayıcı). */
+function resolveUrl(cfg, field) {
+  const v = cfg?.[field];
+  if (typeof v === "function") {
+    const acct = cfg.accountId?.() || "";
+    return acct ? v(acct) : "";
+  }
+  return v || "";
+}
+
 async function fetchJson(url, init, timeoutMs) {
   try {
     const r = await fetch(url, { ...init, signal: AbortSignal.timeout(timeoutMs) });
@@ -129,9 +182,11 @@ async function fetchJson(url, init, timeoutMs) {
 async function listModelIds(provider, timeoutMs) {
   const cfg = PROVIDERS[provider];
   const headers = cfg && headersFor(provider);
-  if (!cfg || !headers) return [];
-  const json = await fetchJson(cfg.listUrl, { method: "GET", headers }, timeoutMs);
-  const data = Array.isArray(json?.data) ? json.data : [];
+  const url = cfg && resolveUrl(cfg, "listUrl");
+  if (!cfg || !headers || !url) return [];
+  const json = await fetchJson(url, { method: "GET", headers }, timeoutMs);
+  // Cloudflare `/ai/models/search` → `result[]`; OpenAI-uyumlu → `data[]`.
+  const data = Array.isArray(json?.data) ? json.data : Array.isArray(json?.result) ? json.result : [];
   return data.map((m) => (typeof m?.id === "string" ? m.id : "")).filter(Boolean);
 }
 
@@ -140,10 +195,13 @@ async function probe(provider, model, mode, timeoutMs) {
   const cfg = PROVIDERS[provider];
   if (!cfg) return false;
   const headers = headersFor(provider);
-  if (!headers) return false;
+  const url = resolveUrl(cfg, "chatUrl");
+  if (!headers || !url) return false;
 
-  const body =
-    mode === "vision"
+  // Ollama Cloud native `/api/chat`; diğerleri OpenAI-uyumlu `/chat/completions`.
+  const body = cfg.native
+    ? { model, messages: [{ role: "user", content: "ok" }], stream: false }
+    : mode === "vision"
       ? {
           model,
           max_tokens: 1,
@@ -160,7 +218,7 @@ async function probe(provider, model, mode, timeoutMs) {
       : { model, max_tokens: 1, messages: [{ role: "user", content: "ok" }] };
 
   const json = await fetchJson(
-    cfg.chatUrl,
+    url,
     { method: "POST", headers, body: JSON.stringify(body) },
     timeoutMs,
   );
@@ -276,4 +334,16 @@ function reset() {
   cache.clear();
 }
 
-module.exports = { getModel, refreshOnFailure, invalidate, snapshot, reset };
+/** Arka plan taraması (aiDiscovery) sonucu bulunan modeli cache'e yazar.
+ *  `refreshOnFailure` yalnızca bir model hata verdiğinde keşfi tetikler;
+ *  periyodik tarama bu bekle-me gerektirmeden olumlu bulguyu otomatik seçer. */
+function setDiscovered(provider, mode, model) {
+  try {
+    if (!model) return;
+    cache.set(cacheKey(provider, mode), { model, at: Date.now(), negative: false });
+  } catch {
+    // noop
+  }
+}
+
+module.exports = { getModel, refreshOnFailure, invalidate, snapshot, reset, setDiscovered };
