@@ -1343,4 +1343,12 @@ async function parseMealImage({ imageBase64, mimeType, mode, aliases, lang }) {
 // parseMealText/parseMealImage kullanır; bu fazladan dışa aktarım onu etkilemez.
 const AI_LIMITS = { budgetMs: AI_BUDGET_MS, apiWindowMs: API_WINDOW_MS, minStepMs: MIN_STEP_MS };
 
+// Periyodik free-model taraması (server/aiDiscovery.js): test dışında ve
+// AUTOMODEL kapalı değilse başlat. Süreç içi setInterval ile yaşar; açılışta
+// ilk tur atar. `NODE_ENV=test` muafiyeti AiLogic.test izolasyonunu korur.
+if (process.env.NODE_ENV !== "test" && process.env.NUTRI_AI_AUTOMODEL !== "0") {
+  const discovery = require("./aiDiscovery.js");
+  discovery.startDiscovery(Number(process.env.NUTRI_AI_DISCOVER_INTERVAL_MS));
+}
+
 module.exports = { parseMealText, parseMealImage, aiLog, aiHealth, aiModels, AI_LIMITS };
