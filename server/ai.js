@@ -108,8 +108,8 @@ const OPENCODE_API_KEY = process.env.OPENCODE_API_KEY || "";
 const OPENCODE_MODEL = process.env.OPENCODE_MODEL || "space-bunny-free";
 const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY || "";
 const OPENROUTER_MODEL = process.env.OPENROUTER_MODEL || "openrouter/free";
-const OLLAMA_CLOUDE_API_KEY = process.env.OLLAMA_CLOUDE_API_KEY || "";
-const OLLAMA_CLOUDE_MODEL = process.env.OLLAMA_CLOUDE_MODEL || "gemma4:31b";
+const OLLAMA_CLOUD_API_KEY = process.env.OLLAMA_CLOUD_API_KEY || "";
+const OLLAMA_CLOUD_MODEL = process.env.OLLAMA_CLOUD_MODEL || "gemma4:31b";
 const CLAUDEFLARE_API_KEY = process.env.CLAUDEFLARE_API_KEY || "";
 const CLAUDEFLARE_ACCOUNT_ID = process.env.CLAUDEFLARE_ACCOUNT_ID || "";
 const CLAUDEFLARE_MODEL = process.env.CLAUDEFLARE_MODEL || "@cf/google/gemma-2b-it-lora";
@@ -816,7 +816,7 @@ function ollamaCloudFetch(prompt, opts) {
     buildUrl: () => "https://ollama.com/api/chat",
     headers: {
       "Content-Type": "application/json",
-      Authorization: `Bearer ${OLLAMA_CLOUDE_API_KEY}`,
+      Authorization: `Bearer ${OLLAMA_CLOUD_API_KEY}`,
     },
     buildBody: (model) => ({
       model,
@@ -1004,13 +1004,11 @@ async function runChain(steps, endpoint) {
       continue;
     }
 
-    const health = aiHealth.isOpen(step.provider);
-    if (health.open) {
-      aiHealth.markSkipped(step.provider);
-      attempts.push({ provider: step.provider, skipped: "breaker", status: null, code: null, upstream: null, latencyMs: null });
-      continue;
-    }
-
+    // 2026-10-? devre kesici KALDIRILDI (kullanıcı isteği): artık hiçbir adım
+    // `skipped:"breaker"` ile atlanmaz — her istek tüm sağlayıcıları sırayla
+    // dener. Geçmiş sağlık durumu teşhis için aiHealth.snapshot()'ta kalır ama
+    // `isOpen` kararı runChain'i etkilemez. Bütçe (AI_BUDGET_MS) bozuk
+    // sağlayıcıda süreyi hâlâ sınırlar.
     if (deadlineAt - Date.now() < MIN_STEP_MS) {
       attempts.push({ provider: step.provider, skipped: "budget", status: null, code: null, upstream: null, latencyMs: null });
       continue;
@@ -1050,7 +1048,7 @@ function textChainSteps(prompt, lang) {
   // hata verince çalışır (server/aiModels.js) — sağlıklı akışta ek ağ isteği yok.
   const openrouterModel = aiModels.getModel("openrouter", "text", OPENROUTER_MODEL).model;
   const opencodeModel = aiModels.getModel("opencode", "text", OPENCODE_MODEL).model;
-  const ollamaModel = aiModels.getModel("ollama", "text", OLLAMA_CLOUDE_MODEL).model;
+  const ollamaModel = aiModels.getModel("ollama", "text", OLLAMA_CLOUD_MODEL).model;
   const cfModel = aiModels.getModel("cloudflare", "text", CLAUDEFLARE_MODEL).model;
   const cfEnabled = !!CLAUDEFLARE_API_KEY && !!CLAUDEFLARE_ACCOUNT_ID;
   // Sıralama kuralı (plan): önce plan-dahili/ücretsiz metin modelleri
@@ -1091,7 +1089,7 @@ function textChainSteps(prompt, lang) {
     {
       provider: "ollama",
       vendor: "ollama",
-      available: !!OLLAMA_CLOUDE_API_KEY,
+      available: !!OLLAMA_CLOUD_API_KEY,
       run: (deadlineAt) =>
         ollamaCloudFetch(jsonPrompt, {
           model: ollamaModel,

@@ -10,8 +10,8 @@ const ENV_KEYS = [
   "OPENROUTER_MODEL",
   "OPENCODE_API_KEY",
   "OPENCODE_MODEL",
-  "OLLAMA_CLOUDE_API_KEY",
-  "OLLAMA_CLOUDE_MODEL",
+  "OLLAMA_CLOUD_API_KEY",
+  "OLLAMA_CLOUD_MODEL",
   "CLAUDEFLARE_API_KEY",
   "CLAUDEFLARE_ACCOUNT_ID",
   "CLAUDEFLARE_MODEL",
@@ -213,7 +213,7 @@ describe("AI fallback zinciri (server/ai.js)", () => {
       GEMINI_API_KEY: "test_gemini_key",
       OPENROUTER_API_KEY: "test_openrouter_key",
       OPENCODE_API_KEY: "test_opencode_key",
-      OLLAMA_CLOUDE_API_KEY: "test_ollama_key",
+      OLLAMA_CLOUD_API_KEY: "test_ollama_key",
       CLAUDEFLARE_API_KEY: "test_cf_key",
       CLAUDEFLARE_ACCOUNT_ID: "acct-1",
     });
@@ -254,7 +254,7 @@ describe("AI fallback zinciri (server/ai.js)", () => {
       GEMINI_API_KEY: "",
       OPENROUTER_API_KEY: "",
       OPENCODE_API_KEY: "",
-      OLLAMA_CLOUDE_API_KEY: "",
+      OLLAMA_CLOUD_API_KEY: "",
       CLAUDEFLARE_API_KEY: "",
     });
 
@@ -313,7 +313,7 @@ describe("AI fallback zinciri (server/ai.js)", () => {
       GEMINI_API_KEY: "test_gemini_key",
       OPENROUTER_API_KEY: "test_openrouter_key",
       OPENCODE_API_KEY: "test_opencode_key",
-      OLLAMA_CLOUDE_API_KEY: "test_ollama_key",
+      OLLAMA_CLOUD_API_KEY: "test_ollama_key",
     });
 
     const res = await parseMealImage({
@@ -629,7 +629,7 @@ describe("AI gözlem katmanı (server/aiLog.js kayıtları)", () => {
       GEMINI_API_KEY: "test_gemini_key",
       OPENROUTER_API_KEY: "test_openrouter_key",
       OPENCODE_API_KEY: "test_opencode_key",
-      OLLAMA_CLOUDE_API_KEY: "test_ollama_key",
+      OLLAMA_CLOUD_API_KEY: "test_ollama_key",
       CLAUDEFLARE_API_KEY: "test_cf_key",
       CLAUDEFLARE_ACCOUNT_ID: "acct-1",
     });
@@ -825,7 +825,11 @@ describe("zaman penceresi ve bütçe (2026-09-21 canlı olay)", () => {
     });
   });
 
-  it("üç ardışık zaman aşımından sonra adım devre dışı kalır: sonraki istek onu hiç denemez", async () => {
+  it("DEVRE KESİCİ KALDIRILDI: art arda zaman aşımlarından sonra adım YİNE denenir (skipped:breaker yok)", async () => {
+    // 2026-… kullanıcı isteği: devre kesici runChain'den çıkarıldı. Artık bir
+    // sağlayıcı art arda timeout verse bile sonraki istek onu YİNE dener —
+    // bütçe (AI_BUDGET_MS) hâlâ süreyi sınırlar, ama adım asla `breaker` ile
+    // atlanmaz.
     const timeoutFetch = vi
       .fn()
       .mockRejectedValue(Object.assign(new Error("timeout"), { name: "TimeoutError" }));
@@ -838,16 +842,19 @@ describe("zaman penceresi ve bütçe (2026-09-21 canlı olay)", () => {
     aiHealth.reset();
 
     for (let i = 0; i < 3; i += 1) await parseMealText({ text: "1 elma", aliases: [] });
-    expect(aiHealth.isOpen("gemini-tier1").open).toBe(true);
 
     timeoutFetch.mockClear();
     const res = await parseMealText({ text: "1 elma", aliases: [] });
     expect(res.status).toBe(504);
-    expect(res.body.attempts[0]).toMatchObject({ provider: "gemini-tier1", skipped: "breaker" });
-    // Devre dışı adıma AĞA HİÇ ÇIKILMADI: 40 sn'lik ölü bekleme böyle önlenir.
+    // 4. istek yine gemini-tier1'i DENEDI (atlanmadı):
+    expect(res.body.attempts[0]).toMatchObject({ provider: "gemini-tier1", code: "ai_timeout" });
+    expect(res.body.attempts[0].skipped).toBeUndefined();
+    // Zaman aşımı adımı yine çağrıldı:
     expect(timeoutFetch.mock.calls.some(([url]) => String(url).includes("gemini-flash-latest"))).toBe(
-      false,
+      true,
     );
+    // aiHealth snapshot hâlâ kayıt tutar (teşhis) ama runChain kararını etkilemez.
+    expect(aiHealth.snapshot()).toBeDefined();
   });
 });
 
@@ -883,7 +890,7 @@ describe("ölü model adı kendiliğinden onarılır (server/aiModels.js entegra
       GEMINI_API_KEY: "",
       OPENROUTER_API_KEY: "test_openrouter_key",
       OPENCODE_API_KEY: "",
-      OLLAMA_CLOUDE_API_KEY: "",
+      OLLAMA_CLOUD_API_KEY: "",
     });
 
     const res = await parseMealText({ text: "1 elma", aliases: [] });
@@ -907,7 +914,7 @@ describe("ölü model adı kendiliğinden onarılır (server/aiModels.js entegra
       GEMINI_API_KEY: "",
       OPENROUTER_API_KEY: "test_openrouter_key",
       OPENCODE_API_KEY: "",
-      OLLAMA_CLOUDE_API_KEY: "",
+      OLLAMA_CLOUD_API_KEY: "",
       NUTRI_AI_AUTOMODEL: "0",
     });
 

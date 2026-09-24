@@ -82,7 +82,7 @@ curl -s "https://generativelanguage.googleapis.com/v1beta/models?key=$GEMINI_API
 curl -s https://openrouter.ai/api/v1/models | grep -o ':free[^"]*' | head -20
 
 # Ollama Cloud (native): plan-dahili model adları
-curl -s -H "Authorization: Bearer $OLLAMA_CLOUDE_API_KEY" https://ollama.com/api/tags
+curl -s -H "Authorization: Bearer $OLLAMA_CLOUD_API_KEY" https://ollama.com/api/tags
 
 # OpenCode Zen: ücretsizler `-free` sonekiyle; LİSTEDE OLMAK YETMEZ (400 "Model is unavailable")
 curl -s -H "Authorization: Bearer $OPENCODE_API_KEY" https://opencode.ai/zen/v1/models

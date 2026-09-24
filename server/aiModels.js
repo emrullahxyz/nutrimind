@@ -87,7 +87,7 @@ const PROVIDERS = {
   ollama: {
     listUrl: "https://ollama.com/api/tags",
     chatUrl: "https://ollama.com/api/chat",
-    key: () => process.env.OLLAMA_CLOUDE_API_KEY || "",
+    key: () => process.env.OLLAMA_CLOUD_API_KEY || "",
     /** Ollama Cloud native `/api/chat` kullanır (OpenAI-uyumsuz).
      *  2026-09-24 canlı yoklamada plan-dahili (ücretsiz sayılan) küme:
      *  gemma4:31b, gpt-oss:120b/20b, nemotron-3-{ultra,super,nano:30b}. */

@@ -11,7 +11,7 @@ const ENV_KEYS = [
   "NVIDIA_NIM_API_KEY",
   "OPENCODE_API_KEY",
   "OPENROUTER_API_KEY",
-  "OLLAMA_CLOUDE_API_KEY",
+  "OLLAMA_CLOUD_API_KEY",
   "CLAUDEFLARE_API_KEY",
   "CLAUDEFLARE_ACCOUNT_ID",
   "NUTRI_AI_AUTOMODEL",
@@ -49,7 +49,7 @@ const keys = {
   NVIDIA_NIM_API_KEY: "test_nim_key",
   OPENCODE_API_KEY: "test_opencode_key",
   OPENROUTER_API_KEY: "test_openrouter_key",
-  OLLAMA_CLOUDE_API_KEY: "test_ollama_key",
+  OLLAMA_CLOUD_API_KEY: "test_ollama_key",
   CLAUDEFLARE_API_KEY: "test_cf_key",
   CLAUDEFLARE_ACCOUNT_ID: "acct-123",
 };
@@ -312,7 +312,7 @@ describe("aiModels model keşfi", () => {
       return okResponse();
     });
     vi.stubGlobal("fetch", mockFetch);
-    const m = await loadModels({ ...keys, OLLAMA_CLOUDE_API_KEY: "ollama_key" });
+    const m = await loadModels({ ...keys, OLLAMA_CLOUD_API_KEY: "ollama_key" });
 
     const found = await m.refreshOnFailure("ollama", "text", { budgetMs: 8000 });
     expect(found.model).toBe("gemma4:31b"); // score=1 (31b) → deepseek/kimi dışlanır

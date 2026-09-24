@@ -3,7 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 const ENV_KEYS = [
   "OPENROUTER_API_KEY",
   "OPENCODE_API_KEY",
-  "OLLAMA_CLOUDE_API_KEY",
+  "OLLAMA_CLOUD_API_KEY",
   "CLAUDEFLARE_API_KEY",
   "CLAUDEFLARE_ACCOUNT_ID",
   "NUTRI_AI_AUTOMODEL",
@@ -52,7 +52,7 @@ function chatOkResponse() {
 const keys = {
   OPENROUTER_API_KEY: "or_key",
   OPENCODE_API_KEY: "oc_key",
-  OLLAMA_CLOUDE_API_KEY: "ol_key",
+  OLLAMA_CLOUD_API_KEY: "ol_key",
   CLAUDEFLARE_API_KEY: "cf_key",
   CLAUDEFLARE_ACCOUNT_ID: "acct-1",
 };
