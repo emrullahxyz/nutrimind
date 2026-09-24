@@ -346,4 +346,13 @@ function setDiscovered(provider, mode, model) {
   }
 }
 
-module.exports = { getModel, refreshOnFailure, invalidate, snapshot, reset, setDiscovered };
+module.exports = {
+  getModel,
+  refreshOnFailure,
+  invalidate,
+  snapshot,
+  reset,
+  setDiscovered,
+  PROVIDERS,
+  listModelIds,
+};
