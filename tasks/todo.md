@@ -7,6 +7,26 @@ kullanılmıyor; CLAUDE.md de yalnızca AGENTS.md'ye köprüdür.)
 
 ## AÇIK İŞLER
 
+- [ ] **v0.30.8 gerçek cihaz doğrulaması — SU + BARKOD** (kullanıcı geri bildirimi 21 Eyl 2026,
+      aynı hesapla iki madde; ikisi de v0.30.8'de kodlandı, dağıtım bekliyor). Plan:
+      `docs/superpowers/plans/2026-09-24-su-takibi-ve-barkod-v0308.md`.
+      (1) **Su takibi** — istek: "ne kadar su içtiğimi görebilmek isterdim". Bugün ekranında kart
+      artık VAR (varsayılan açık); Ayarlar → Su Takibi'nden kapatılabilir. Doğrulanacak: +200/+330/+500
+      dokunuşları, özel ml girişi, geri alma, hedefa ulaşma, geçmiş güne ekleme, iki tema.
+      (2) **Barkod tarayıcı** — "Barcode scanner isn't working". İki kök neden kapatıldı: ilk okuma
+      başarısız olunca tarayıcının kalıcı ölmesi (tek atışlık `useBarcodeDetection`) ve iOS'ta
+      `BarcodeDetector` yokluğunda sessiz no-op (artık ZXing wasm yedeği var).
+      **Kanıt bekleyen adım:** bildiren kullanıcıdan uygulama içi Geri Bildirim → "Tanılama
+      bilgilerini ekle" ile yeni bir mesaj iste; raporun `barcode` satırı (`family=… attempts=…
+      hits=… last=…`) hangi cihazda ne olduğunu tek bakışta söyler. Android'de yerli yolun
+      bozulmadığı, iPhone'da taramanın artık çalıştığı cihazda teyit edilmeli.
+
+- [ ] **v0.30.8 dağıtımı (R4)** — yalnızca ÖN YÜZ: `pnpm run deploy`. Sunucu dosyası, systemd,
+      nginx ve DB DEĞİŞMİYOR (bu sürümde `server/**` dokunulmadı). Dağıtım sonrası doğrulama:
+      canlı `index.html` `no-cache`, yeni `assets/*.wasm` (≈1,1 MB) **200 + immutable**, üretim
+      yanıt başlıklarında wasm'ı engelleyen CSP olmadığı, `?barcodes=none`'ın üretimde etkisiz
+      olduğu (yalnızca DEV kapısı).
+
 - [ ] **Arkadaşın iPhone teyidi (v0.30.5)** — deploy sonrası 6 madde: (1) tam ekran formun geri
       düğmesi basılıyor mu, (2) taramada sağ üstteki kapatma X'i, (3) kamera ARKA lensle mi açılıyor,
       (4) ekrana çift dokunma ön/arka geçiriyor mu, (5) klavye odaklanılan alanı kapatıyor mu,

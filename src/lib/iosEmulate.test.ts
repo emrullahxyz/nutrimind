@@ -1,5 +1,10 @@
-import { describe, expect, it } from "vitest";
-import { applyEmulateAttributes, parseEmulateParam } from "./iosEmulate";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import {
+  applyBarcodeEmulation,
+  applyEmulateAttributes,
+  parseBarcodeParam,
+  parseEmulateParam,
+} from "./iosEmulate";
 import { cameraScenarioFor, parseCameraScenarioParam, SCENARIOS } from "./iosFakeMedia";
 
 // Dev-only taklit altyapısı. Saf kısımları burada; DOM/browser kısımları
@@ -38,6 +43,35 @@ describe("applyEmulateAttributes", () => {
     applyEmulateAttributes(el, "off");
     expect(el.dataset.emulateIos).toBeUndefined();
     expect(el.dataset.emulateStandalone).toBeUndefined();
+  });
+});
+
+// v0.30.8: barkod düzeltmesinin ASIL yolu (yerli dedektör yokken wasm yedeği)
+// masaüstü Chrome'da kendiliğinden çalışmaz — Chrome'un yerli dedektörü vardır.
+// `?barcodes=none` iPhone koşulunu üretir.
+describe("barkod yeteneği taklidi", () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it("yalnızca 'none' kabul edilir, bilinmeyen değer sessizce yok sayılır", () => {
+    expect(parseBarcodeParam("?barcodes=none")).toBe("none");
+    expect(parseBarcodeParam("?barcodes=NONE&x=1")).toBe("none");
+    expect(parseBarcodeParam("?barcodes=native")).toBeNull();
+    expect(parseBarcodeParam("")).toBeNull();
+  });
+
+  it("yazarken yerli dedektörü siler, null iken dokunmaz", () => {
+    vi.stubGlobal("BarcodeDetector", function BarcodeDetector() {});
+    applyBarcodeEmulation("none");
+    const g = globalThis as unknown as { BarcodeDetector?: unknown };
+    expect(g.BarcodeDetector).toBeUndefined();
+
+    vi.stubGlobal("BarcodeDetector", function BarcodeDetector() {});
+    applyBarcodeEmulation(null);
+    expect(typeof (globalThis as unknown as { BarcodeDetector?: unknown }).BarcodeDetector).toBe(
+      "function",
+    );
   });
 });
 

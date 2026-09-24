@@ -241,6 +241,15 @@ function MainContent() {
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
+  /** Ayarlar sekmesini AÇ ve doğrudan bir alt-görünüme in (ör. su kartının
+   *  dişlisi). `SettingsSheet` hedef sekmede MOUNT olurken `initialSubView`'ı
+   *  okuyup kendi geçmiş girdisini pushlar — yani burada ek bir geçmiş işi
+   *  yapmak çift girdi üretirdi. */
+  const openSettingsSubview = (subView: "water" | "supplements") => {
+    setSettingsTarget(subView);
+    handleTabChange("settings");
+  };
+
   const tabRef = useRef(tab);
   tabRef.current = tab;
 
@@ -381,6 +390,12 @@ function MainContent() {
             onResetTriggerScan={() => setTriggerScan(false)}
             triggerExercise={triggerExercise}
             onResetTriggerExercise={() => setTriggerExercise(false)}
+            /* Kart içindeki dişli simgeleri Ayarlar alt-görünümünü hedefler.
+               `onOpenSupplementSettings` DAHA ÖNCE hiç bağlanmamıştı (prop
+               zinciri vardı ama App geçmiyordu), yani takviye kartının dişlisi
+               pratikte görünmüyordu; ikisi birlikte bağlandı. */
+            onOpenSupplementSettings={() => openSettingsSubview("supplements")}
+            onOpenWaterSettings={() => openSettingsSubview("water")}
             resetKey={tabResetKey.daily}
           />
         ) : tab === "history" ? (

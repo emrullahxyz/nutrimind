@@ -65,7 +65,15 @@
     "eatenSodium": "Zjedzony sód"
   },
   "day": {
-    "weekdaysShort": ["pon", "wt", "śr", "czw", "pt", "sob", "nd"],
+    "weekdaysShort": [
+      "pon",
+      "wt",
+      "śr",
+      "czw",
+      "pt",
+      "sob",
+      "nd"
+    ],
     "streak": "Seria dni",
     "mergeDialogTitle": "Połącz {{count}} posiłki",
     "mergeSave": "Połącz",
@@ -221,8 +229,9 @@
     "errorTooMany": "Zbyt wiele prób. Spróbuj ponownie za chwilę.",
     "errorTooManyRetry": "Zbyt wiele prób. Spróbuj ponownie za {{seconds}} s.",
     "errorBadResponse": "Serwer zwrócił nieoczekiwaną odpowiedź.",
-    "errorHttp": "Żądanie nie powiodło się (HTTP {{status}}).",      "emailPlaceholder": "imie@example.com",
-      "namePlaceholder": "Twoje imię",
+    "errorHttp": "Żądanie nie powiodło się (HTTP {{status}}).",
+    "emailPlaceholder": "imie@example.com",
+    "namePlaceholder": "Twoje imię",
     "ruleEmailRequired": "Adres e-mail jest wymagany.",
     "ruleEmailTooLong": "Adres e-mail jest zbyt długi.",
     "ruleEmailInvalid": "Podaj prawidłowy adres e-mail.",
@@ -386,7 +395,10 @@
     "allowlistRemove": "Usuń {{email}} z listy",
     "inboxTitle": "Skrzynka opinii",
     "inboxSubtitle": "Wiadomości i prośby użytkowników",
-    "subviewFeedbackInbox": "Skrzynka opinii"
+    "subviewFeedbackInbox": "Skrzynka opinii",
+    "subviewWater": "Śledzenie wody",
+    "waterTitle": "Śledzenie wody",
+    "waterSubtitle": "Dzienny cel, szybkie dodawanie i cofanie"
   },
   "changelog": {
     "title": "Co nowego?",
@@ -453,8 +465,9 @@
       "network": "Brak połączenia z serwerem — sprawdź sieć.",
       "rateLimit": "Zbyt wiele żądań. Spróbuj ponownie za chwilę.",
       "rateLimitSeconds": "Zbyt wiele żądań. Spróbuj ponownie za {{seconds}} s.",
-      "badResponse": "Usługa AI nie odpowiada prawidłowo. Spróbuj ponownie za chwilę.",        "disabled": "Funkcje AI są wyłączone w tym środowisku.",
-        "badRequest": "Nie udało się zrozumieć żądania.",
+      "badResponse": "Usługa AI nie odpowiada prawidłowo. Spróbuj ponownie za chwilę.",
+      "disabled": "Funkcje AI są wyłączone w tym środowisku.",
+      "badRequest": "Nie udało się zrozumieć żądania.",
       "timeout": "Przekroczono czas oczekiwania usługi AI. Spróbuj ponownie za chwilę.",
       "http": "Żądanie AI nie powiodło się (HTTP {{status}})."
     }
@@ -519,7 +532,11 @@
     "allItemsRemoved": "Wszystkie pozycje usunięte — zeskanuj ponownie.",
     "retake": "Ponów",
     "savedButNotAdded": "Zapisano w pamięci żywieniowej, ale nie udało się dodać do dzisiaj: {{error}}. Możesz dodać ręcznie z pamięci.",
-    "useShot": "Użyj"
+    "useShot": "Użyj",
+    "amountLabel": "Ilość",
+    "hintBarcodeManual": "Wpisz kod kreskowy ręcznie poniżej — to urządzenie nie ma czytnika",
+    "barcodePreparing": "Przygotowywanie czytnika…",
+    "barcodeUnsupported": "Brak automatycznego odczytu"
   },
   "exercise": {
     "title": "Dziennik ćwiczeń i aktywności",
@@ -1034,5 +1051,35 @@
     "sugar": "C",
     "satFat": "Tn",
     "sodium": "Na"
+  },
+  "water": {
+    "title": "Woda",
+    "unitLiters": "L",
+    "progressAria": "Dzienny cel wody: {{percent}}%",
+    "goalReached": "Cel osiągnięty.",
+    "emptyToday": "Dziś nie zapisano jeszcze wody.",
+    "remaining": "Zostało {{amount}} ml",
+    "addAmount": "Dodaj {{amount}} ml",
+    "customLabel": "Własna ilość (ml)",
+    "customPlaceholder": "np. {{amount}}",
+    "undo": "Cofnij ostatni wpis",
+    "lastEntry": "Ostatnio: {{amount}} ml",
+    "noEntryYet": "Brak wpisów",
+    "done": "Gotowe",
+    "limitReached": "Osiągnięto dzienny limit ({{max}} ml).",
+    "invalidAmount": "Wpisz wartość od 10 do 2000 ml.",
+    "manage": "Ustawienia wody",
+    "targetLabel": "Dzienny cel (ml)",
+    "targetHint": "Obecny cel: {{current}}",
+    "targetRange": "Cel musi wynosić od 500 do 6000 ml.",
+    "saved": "Zapisano",
+    "suggestTitle": "Propozycja na podstawie wagi",
+    "suggestNoWeight": "Dodaj wagę (Ustawienia → Waga i ciało), aby zobaczyć propozycję.",
+    "suggestBody": "{{perKg}} ml na kg daje {{amount}}.",
+    "applySuggestion": "Zastosuj propozycję",
+    "visibilityTitle": "Pokaż na ekranie Dziś",
+    "visibilityBody": "Wyłączenie ukrywa kartę; zapisana woda zostaje.",
+    "averageLabel": "Śr. z ostatnich 7 dni z wpisem",
+    "averageNone": "Brak wpisów"
   }
 }

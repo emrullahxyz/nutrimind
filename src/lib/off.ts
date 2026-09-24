@@ -357,10 +357,13 @@ export function missingLabels(food: OffFood, t: TFunction): string[] {
 
 // --- Barkod tarayıcı yetenek testi ------------------------------------------
 //
-// Native `BarcodeDetector` Android/Chrome'da var, iOS Safari'de YOK. Yeni
-// bağımlılık eklenmiyor (karar Faz 4 brifinginde): desteklenmeyen tarayıcıda
-// kamera düğmesi GİZLENİR, elle barkod yazma alanı HER ZAMAN açık kalır — yani
-// özellik hiçbir cihazda tamamen ölmüyor.
+// Native `BarcodeDetector` Android/Chrome'da var, iOS Safari'de YOK.
+//
+// v0.30.8: yetenek SORUSU artık bu dosyada değil, `barcode.ts`'te yaşıyor
+// (yerli → doğrudan kullan; yoksa ZXing wasm yedeği). Burada yalnızca YERLİ
+// kurucuyu yoklayan ilkel kalır; eski `cameraScanSupported()` ("BarcodeDetector
+// yoksa taranamaz") KALDIRILDI, çünkü iOS'ta artık bu doğru değil ve onu
+// kullanan arayüz kamera düğmesini gereksiz yere gizliyordu.
 
 export interface DetectedBarcode {
   rawValue: string;
@@ -378,25 +381,9 @@ export interface BarcodeDetectorCtor {
  *  Chrome'da hata fırlattığı için `getSupportedFormats()` ile kesiştiriliyor. */
 export const FOOD_BARCODE_FORMATS = ["ean_13", "ean_8", "upc_a", "upc_e"] as const;
 
-/** Tarayıcıdaki `BarcodeDetector` kurucusu — yoksa null. */
+/** Tarayıcının YERLİ `BarcodeDetector` kurucusu — yoksa null.
+ *  Yedeğin (wasm) yüklenmesi `barcode.ts`'in işidir; burası yalnızca yoklar. */
 export function barcodeDetectorCtor(): BarcodeDetectorCtor | null {
   const g = globalThis as unknown as { BarcodeDetector?: BarcodeDetectorCtor };
   return typeof g.BarcodeDetector === "function" ? g.BarcodeDetector : null;
-}
-
-/**
- * Kamerayla tarama bu tarayıcıda mümkün mü? ÜÇ koşul da şart:
- *   1. `BarcodeDetector` var (iOS Safari'de yok),
- *   2. `getUserMedia` var,
- *   3. güvenli bağlam (HTTPS ya da localhost) — değilse `getUserMedia` zaten
- *      reddeder, düğmeyi göstermek boş umut olur.
- */
-export function cameraScanSupported(): boolean {
-  if (!barcodeDetectorCtor()) return false;
-  const g = globalThis as unknown as {
-    navigator?: { mediaDevices?: { getUserMedia?: unknown } };
-    isSecureContext?: boolean;
-  };
-  if (typeof g.navigator?.mediaDevices?.getUserMedia !== "function") return false;
-  return g.isSecureContext === true;
 }

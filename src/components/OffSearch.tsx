@@ -4,7 +4,9 @@
 // Üç giriş yolu var ve üçü de aynı `onPick(food)` ile bitiyor:
 //   1. Metinle arama (Polonya kataloğu, gecikmeli/debounce),
 //   2. Elle barkod yazma — HER tarayıcıda çalışır,
-//   3. Kamerayla barkod tarama — yalnızca native `BarcodeDetector` varsa.
+//   3. Kamerayla barkod tarama — yerli `BarcodeDetector` varsa doğrudan, yoksa
+//      ZXing wasm yedeğiyle (v0.30.8). Eski hâli yalnızca yerli dedektöre
+//      bakıyordu ve iOS'ta düğmeyi tamamen gizliyordu.
 //
 // HIZ SINIRI BU DOSYANIN TASARIMINI BELİRLİYOR. OFF arama için dakikada 10
 // istek veriyor ve sınır IP başına; aşılırsa sunucunun IP'si banlanabiliyor.
@@ -19,6 +21,7 @@ import { useData } from "../lib/data";
 import { fetchOffProduct, isValidBarcode, missingLabels, searchOff } from "../lib/off";
 import type { OffFood } from "../lib/off";
 import { useOffCooldown, useOffScanner } from "../lib/offScanner";
+import { barcodeDiag } from "../lib/barcodeDiag";
 import { formatKcal, formatNumber } from "../lib/format";
 import { fieldCls } from "./FormBits";
 
@@ -97,10 +100,12 @@ export function OffSearch({ onPick }: { onPick: (food: OffFood) => void }) {
         if (!food) {
           // "Bulunamadı" bir arıza değil: OFF topluluk veritabanı, ürün henüz
           // eklenmemiş olabilir. Elle giriş yolu hâlâ açık.
+          barcodeDiag.record("lookup", `not-found:${code}`);
           setStatus({ kind: "error", message: t("offSearch.barcodeNotFoundManual", { code }) });
           setFoods([]);
           return;
         }
+        barcodeDiag.record("lookup", `found:${code}`);
         setFoods([food]);
         setStatus({ kind: "idle" });
       } catch (e) {
@@ -111,7 +116,7 @@ export function OffSearch({ onPick }: { onPick: (food: OffFood) => void }) {
   );
 
   // --- Kamera: OffSearch + ScanSheet'in PAYLAŞTIĞI hook ----------------------
-  const { scanning, setScanning, videoRef, canScan, cameraError } = useOffScanner({
+  const { scanning, setScanning, videoRef, canScan, cameraError, barcodeStatus } = useOffScanner({
     blocked: blocked || offline,
     onDetected: (value) => {
       setBarcode(value);
@@ -163,7 +168,15 @@ export function OffSearch({ onPick }: { onPick: (food: OffFood) => void }) {
           {/* muted + playsInline: mobil tarayıcılar sessiz olmayan videoyu
               kendiliğinden oynatmaz. */}
           <video ref={videoRef} muted playsInline className="h-44 w-full object-cover" />
-          <p className="px-2 py-1.5 text-[11px] text-ink-tertiary">{t("offSearch.cameraHint")}</p>
+          {/* Durum dürüst olmalı: yedek çözücü iniyorsa "hazırlanıyor", hiçbir
+              yol yoksa "elle gir" — sonsuz "taranıyor" göstermek yanıltıcı. */}
+          <p className="px-2 py-1.5 text-[11px] text-ink-tertiary">
+            {barcodeStatus === "preparing"
+              ? t("scan.barcodePreparing")
+              : barcodeStatus === "unsupported"
+                ? t("scan.barcodeUnsupported")
+                : t("offSearch.cameraHint")}
+          </p>
         </div>
       )}
 

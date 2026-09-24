@@ -13,6 +13,56 @@ export interface ChangeLogVersion {
 
 export const CHANGELOG: ChangeLogVersion[] = [
   {
+    version: "0.30.8",
+    date: "2026-09-24",
+    summary: {
+      tr: "Su takibi geldi: günlük hedefini görür, tek dokunuşla su eklersin. Barkod taraması da düzeltildi — okuma artık takılmıyor ve iPhone'da da çalışıyor.",
+      en: "Water tracking is here: see your daily target and log water with one tap. Barcode scanning is fixed too — it no longer gets stuck, and it works on iPhone.",
+    },
+    items: [
+      {
+        type: "new",
+        tr: "Su takibi: Bugün ekranında günlük hedefin ve ilerlemen (ör. 1,25 / 2,0 L). +200 / +330 / +500 ml düğmeleriyle tek dokunuşta ekle, istersen ml'yi elle yaz, yanlış girdiysen son ekleneni geri al.",
+        en: "Water tracking: your daily target and progress on the Today screen (e.g. 1.25 / 2.0 L). Add with one tap via +200 / +330 / +500 ml, type an exact amount, or undo the last entry if you tapped wrong.",
+      },
+      {
+        type: "new",
+        tr: "Ayarlar → Su Takibi: hedefini (ml) değiştir, kilona göre öneri al (35 ml/kg), kartı Bugün ekranından kaldır ya da geri getir. Son 7 kayıtlı günün ortalaması da orada.",
+        en: "Settings → Water Tracking: change your target (ml), get a suggestion from your weight (35 ml/kg), and show or hide the card on the Today screen. The average of your last 7 logged days is there too.",
+      },
+      {
+        type: "fixed",
+        tr: "Barkod tarayıcı ilk okumadan sonra kilitleniyordu: bir ürün bulunamazsa bir daha hiçbir barkod okunmuyordu. Artık farklı bir ürünü anında okur; aynı ürünün tekrar tekrar sorulmasını da engeller.",
+        en: "The barcode scanner locked up after the first read: if a product was not found, no further barcode could be scanned. It now reads a different product instantly and simply avoids re-asking for the same one.",
+      },
+      {
+        type: "fixed",
+        tr: "iPhone'da barkod taraması hiç çalışmıyordu (tarayıcı okuma özelliğini desteklemiyor) ama ekran yine de “otomatik okunuyor” diyordu. Artık iPhone'da da gerçekten okuyor; okuma mümkün değilse bunu açıkça söyleyip barkodu elle girme yolunu öne çıkarır.",
+        en: "Barcode scanning never worked on iPhone (the browser has no on-device reader) yet the screen still claimed \"reading automatically\". It now really scans on iPhone too, and if scanning is impossible it says so plainly and points you to manual entry.",
+      },
+      {
+        type: "improved",
+        tr: "Barkod ararken hata olursa “Tekrar dene” düğmesi aynı barkodu yeniden sorar; ürünü baştan taramak gerekmez.",
+        en: "If a barcode lookup fails, a \"Try again\" button re-asks for the same barcode — no need to scan the product again.",
+      },
+    ],
+    dev: [
+      "Su takibi: `config.water` = { targetMl, enabled, log: Record<date, number[]> }. Ölçüler DİZİ olarak saklanır çünkü 'son ekleneni geri al' kayıpsız olmalı; toplam türetilir. Backend DEĞİŞMEDİ (water ayrılmış anahtar değil, PUT /api/config/water hazır).",
+      "`src/lib/water.ts` saf + testli (parse/add/remove/total/öneri/sınırlar/görünürlük kuralı); `--water`/`--water-ink` token'ları iki temada eklendi (velvet byte-identity korunur).",
+      "BARKOD — iki kök neden: (1) `useBarcodeDetection` ilk okumada interval'i KALICI kapatıyordu ve efektin bağımlılığı (`active`) değişmediği için bir daha kurulmuyordu → ilk okuma 'bulunamadı' ile biterse tarayıcı ölü kalıyordu. (2) `BarcodeDetector` yokken (iOS Safari) hook sessiz no-op'tu ama UI 'otomatik okunuyor' diyordu ve ipucu 'otomatik okunur' yazıyordu.",
+      "Çözüm: `barcodeScan.ts` (saf: `shouldAcceptDetection` + `scanOnce` + `scanFrameSize`) ile tarama SÜREKLİ hâle geldi — aynı kod REPEAT_SUPPRESS_MS=10 sn yutulur (OFF kotası), FARKLI kod anında geçer. `useBarcodeDetection` artık `{status}` döner: off | preparing | scanning | unsupported.",
+      "iOS çözücüsü: `barcode-detector` 3.2.2 (ponyfill) + aynı sürüm `zxing-wasm` 3.1.3. Paket TEMBEL dinamik import ile yalnızca barkod modunda iner (ana paket değişmez); yerli dedektör varsa (Android/Chrome) hiç indirilmez.",
+      "wasm CDN'DEN GELMEZ: `prepareZXingModule({ overrides: { locateFile } })` ile `zxing_reader.wasm` kendi origin'imizden (`/assets/*`, nginx immutable + SW önbelleği) servis edilir; test bunu kilitler (`barcode.test.ts` → 'jsdelivr|unpkg' içermemeli).",
+      "Yedek yolda kare 960 px'e küçültülmüş tuvale çizilir (2560x1440'ı her 500 ms'de wasm'a vermek eski telefonlarda ısınma/pil kaybı) ve uçuşta-decode koruması vardır.",
+      "`cameraScanSupported()` KALDIRILDI (anlamı artık yanlıştı: iOS'ta taranabilir). Yerine `barcode.ts` (yetenek) + `camera.ts#cameraSupported` (kamera) ayrımı; OffSearch kamera düğmesi artık yalnızca kamerayı sorar.",
+      "Tanılama: `barcodeDiag.ts` + `deviceReport` satırı (`barcode family=… attempts=… hits=… last=…`) — bir sonraki 'barkod çalışmıyor' geri bildirimi tahminle değil kayıtla çözülecek.",
+      "Dev bayrağı: `?barcodes=none` yerli dedektörü siler (iPhone koşulu) — wasm yolu masaüstünde uçtan uca ölçülebilsin. Yalnızca DEV.",
+      "Ek i18n düzeltmesi: `ScanSheet`'te `NumField label=\"Miktar\"` sabit Türkçe basıyordu ve `check:i18n` TR_WORDS listesi bunu kaçırıyordu; `scan.amountLabel` üç dile eklendi + 'Miktar' listeye girdi.",
+      "Ek bağlantı düzeltmesi: `onOpenSupplementSettings` prop zinciri vardı ama App hiç geçmiyordu (takviye kartının dişlisi pratikte görünmüyordu); su ile birlikte ikisi de Ayarlar alt-görünümüne bağlandı.",
+      "Kapı: typecheck 0 · test 1006+ · check:i18n 3/3 · build ✓. Ana paket boyutu değişmedi (yeni kod tembel chunk + wasm varlığı).",
+    ],
+  },
+  {
     version: "0.30.7",
     date: "2026-09-23",
     summary: {

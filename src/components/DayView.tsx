@@ -15,6 +15,7 @@ import {
 import { Modal } from "./Modal";
 import { ScanSheet } from "./ScanSheet";
 import { SupplementCard } from "./SupplementCard";
+import { WaterCard } from "./WaterCard";
 import { WeightCard } from "./WeightCard";
 import { MealRow } from "./MealRow";
 import { MealActionSheet } from "./MealActionSheet";
@@ -141,6 +142,7 @@ export function DayView({
   showWeightCard = true,
   showTemplates = true,
   onOpenSupplementSettings,
+  onOpenWaterSettings,
   resetKey = 0,
 }: {
   date: string;
@@ -156,6 +158,8 @@ export function DayView({
   triggerExercise?: boolean;
   onResetTriggerExercise?: () => void;
   onOpenSupplementSettings?: () => void;
+  /** Su kartının dişli simgesi — takviyeyle AYNI yol (Ayarlar alt-görünümü). */
+  onOpenWaterSettings?: () => void;
   showWeightCard?: boolean;
   /** Şablon çipleri: yalnızca Bugün'de gösterilir (Geçmiş gün detayında değil).
    *  `enableScan`den AYRI — o bayrak tarama giriş noktası içindi ve Bugün'de
@@ -418,6 +422,9 @@ export function DayView({
         onOpenExercise={() => setShowExerciseModal(true)}
       />
 
+      {/* Su kartı takviyenin ÜSTÜNDE: kullanıcı geri bildirimi "göremiyorum"du,
+          yani keşfedilebilirlik kartın konumuna bağlı. */}
+      <WaterCard date={date} onOpenSettings={onOpenWaterSettings} />
       <SupplementCard date={date} onOpenSettings={onOpenSupplementSettings} />
       {showWeightCard && <WeightCard date={date} />}
 

@@ -65,7 +65,15 @@
     "eatenSodium": "Tüketilen Sodyum"
   },
   "day": {
-    "weekdaysShort": ["Pzt", "Sal", "Çar", "Per", "Cum", "Cmt", "Paz"],
+    "weekdaysShort": [
+      "Pzt",
+      "Sal",
+      "Çar",
+      "Per",
+      "Cum",
+      "Cmt",
+      "Paz"
+    ],
     "streak": "Gün serisi",
     "mergeDialogTitle": "{{count}} Öğünü Birleştir",
     "mergeSave": "Birleştir",
@@ -221,8 +229,9 @@
     "errorTooMany": "Çok fazla deneme. Biraz sonra tekrar dene.",
     "errorTooManyRetry": "Çok fazla deneme. {{seconds}} sn sonra tekrar dene.",
     "errorBadResponse": "Sunucu beklenmeyen bir yanıt döndürdü.",
-    "errorHttp": "İstek başarısız (HTTP {{status}}).",      "emailPlaceholder": "ornek@eposta.com",
-      "namePlaceholder": "Adın",
+    "errorHttp": "İstek başarısız (HTTP {{status}}).",
+    "emailPlaceholder": "ornek@eposta.com",
+    "namePlaceholder": "Adın",
     "ruleEmailRequired": "E-posta gerekli.",
     "ruleEmailTooLong": "E-posta çok uzun.",
     "ruleEmailInvalid": "Geçerli bir e-posta adresi yaz.",
@@ -386,7 +395,10 @@
     "allowlistRemove": "{{email}} listesinden çıkar",
     "inboxTitle": "Geri Bildirimler",
     "inboxSubtitle": "Kullanıcı mesaj ve istekleri",
-    "subviewFeedbackInbox": "Geri Bildirimler"
+    "subviewFeedbackInbox": "Geri Bildirimler",
+    "subviewWater": "Su Takibi",
+    "waterTitle": "Su Takibi",
+    "waterSubtitle": "Günlük hedef, hızlı ekleme ve geri alma"
   },
   "changelog": {
     "title": "Ne Var Yeni?",
@@ -453,8 +465,9 @@
       "network": "Sunucuya ulaşılamadı — bağlantını kontrol et.",
       "rateLimit": "Çok hızlı istek yapıldı. Biraz sonra tekrar dene.",
       "rateLimitSeconds": "Çok hızlı istek yapıldı. {{seconds}} sn sonra tekrar dene.",
-      "badResponse": "AI servisi şu an düzgün yanıt vermiyor. Biraz sonra tekrar dene.",        "disabled": "AI özelliği bu ortamda kapalı.",
-        "badRequest": "İstek anlaşılamadı.",
+      "badResponse": "AI servisi şu an düzgün yanıt vermiyor. Biraz sonra tekrar dene.",
+      "disabled": "AI özelliği bu ortamda kapalı.",
+      "badRequest": "İstek anlaşılamadı.",
       "timeout": "AI servisi zaman aşımına uğradı. Biraz sonra tekrar dene.",
       "http": "AI isteği başarısız (HTTP {{status}})."
     }
@@ -519,7 +532,11 @@
     "allItemsRemoved": "Tüm kalemler kaldırıldı — eklemek için yeniden çek.",
     "retake": "Yeniden çek",
     "savedButNotAdded": "Besin hafızaya kaydedildi, ancak bugüne eklenemedi: {{error}}. Hafızadan elle ekleyebilirsin.",
-    "useShot": "Kullan"
+    "useShot": "Kullan",
+    "amountLabel": "Miktar",
+    "hintBarcodeManual": "Barkodu aşağıdan elle gir — bu cihazda otomatik okuyucu yok",
+    "barcodePreparing": "Okuyucu hazırlanıyor…",
+    "barcodeUnsupported": "Otomatik okuma yok"
   },
   "exercise": {
     "title": "Egzersiz & Aktivite Günlüğü",
@@ -1034,5 +1051,35 @@
     "sugar": "Ş",
     "satFat": "DY",
     "sodium": "Na"
+  },
+  "water": {
+    "title": "Su",
+    "unitLiters": "L",
+    "progressAria": "Günlük su hedefi: %{{percent}}",
+    "goalReached": "Hedefe ulaştın.",
+    "emptyToday": "Bugün henüz su girilmedi.",
+    "remaining": "{{amount}} ml kaldı",
+    "addAmount": "{{amount}} ml ekle",
+    "customLabel": "Özel miktar (ml)",
+    "customPlaceholder": "örn. {{amount}}",
+    "undo": "Son ekleneni geri al",
+    "lastEntry": "Son: {{amount}} ml",
+    "noEntryYet": "Henüz kayıt yok",
+    "done": "Tamam",
+    "limitReached": "Günlük üst sınıra ulaşıldı ({{max}} ml).",
+    "invalidAmount": "10–2000 ml arası bir değer gir.",
+    "manage": "Su ayarları",
+    "targetLabel": "Günlük hedef (ml)",
+    "targetHint": "Şu anki hedef: {{current}}",
+    "targetRange": "Hedef 500–6000 ml arasında olmalı.",
+    "saved": "Kaydedildi",
+    "suggestTitle": "Kilona göre öneri",
+    "suggestNoWeight": "Öneri için kilo bilgisi gerekli (Ayarlar → Kilo & Vücut Takibi).",
+    "suggestBody": "{{perKg}} ml/kg → {{amount}}",
+    "applySuggestion": "Öneriyi uygula",
+    "visibilityTitle": "Bugün ekranında göster",
+    "visibilityBody": "Kapatırsan kart Bugün ekranından kalkar; girdiğin su kayıtları silinmez.",
+    "averageLabel": "Son 7 kayıtlı gün ort.",
+    "averageNone": "Henüz kayıt yok"
   }
 }

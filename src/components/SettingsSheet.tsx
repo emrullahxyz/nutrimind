@@ -23,6 +23,7 @@ import {
   Globe,
   History,
   Compass,
+  Droplets,
 } from "lucide-react";
 import { Modal } from "./Modal";
 import { APP_VERSION } from "../lib/version";
@@ -31,6 +32,7 @@ import { GoalsForm } from "./GoalsForm";
 import { ExportModal } from "./ExportModal";
 import { ReportView } from "./ReportView";
 import { SupplementSettings } from "./SupplementSettings";
+import { WaterSettings } from "./WaterSettings";
 import { WeightSettings } from "./WeightSettings";
 import { useData } from "../lib/data";
 import { formatNumber, todayISO } from "../lib/format";
@@ -65,6 +67,7 @@ type SubView =
   | null
   | "goals"
   | "supplements"
+  | "water"
   | "data"
   | "report"
   | "profile"
@@ -524,6 +527,16 @@ export function SettingsSheet({
               subtitle={t("settings.supplementsSubtitle")}
               onClick={() => openSubView("supplements")}
             />
+            {/* Su, takviyenin HEMEN ardında: ikisi de "makro olmayan günlük
+                sayaç" ve kart ekranında da yan yana duruyorlar. */}
+            <MenuItem
+              icon={Droplets}
+              iconBg="bg-sky-500/15"
+              iconColor="text-sky-400"
+              title={t("settings.waterTitle")}
+              subtitle={t("settings.waterSubtitle")}
+              onClick={() => openSubView("water")}
+            />
           </SectionGroup>
 
           {/* WIDGET'LAR & RAPORLAR */}
@@ -677,6 +690,7 @@ export function SettingsSheet({
             <h3 className="text-sm font-bold text-white/90">
               {subView === "goals" && t("settings.subviewGoals")}
               {subView === "supplements" && t("settings.subviewSupplements")}
+              {subView === "water" && t("settings.subviewWater")}
               {subView === "data" && t("settings.subviewData")}
               {subView === "report" && t("settings.subviewReport")}
               {subView === "profile" && t("settings.subviewProfile")}
@@ -698,6 +712,9 @@ export function SettingsSheet({
 
           {/* 2. TAKVİYELER */}
           {subView === "supplements" && <SupplementSettings />}
+
+          {/* 2b. SU TAKİBİ */}
+          {subView === "water" && <WaterSettings />}
 
           {/* 3. VERİ YEDEKLEME & YÜKLEME + HESAP VERİLERİ (KVKK/GDPR) */}
           {subView === "data" && (

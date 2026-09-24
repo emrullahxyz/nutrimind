@@ -8,10 +8,13 @@
 // yaz hem (istenirse) bugüne işle.
 //
 // FAZ A'DA DÜZELTİLEN ÜÇ ŞEY:
-//   1. Kamera, barkod dedektörüne kilitliydi (`cameraScanSupported` önce
+//   1. Kamera, barkod dedektörüne kilitliydi (eski `cameraScanSupported` önce
 //      `BarcodeDetector` arıyordu). Dedektörü olmayan cihazlarda yemek fotoğrafı
 //      ve etiket okuma için kamera HİÇ açılmıyordu. Artık `useCameraStream`
 //      (kamera) ile `useBarcodeDetection` (barkod) ayrı — bkz. ../lib/camera.
+//      (v0.30.8) Barkodda ikinci bir sessiz başarısızlık kapatıldı: okuma
+//      sonrası tarayıcı ölmüyor ve yetenek yoksa arayüz bunu AÇIKÇA söylüyor
+//      (`barcodeStatus`) — yerli dedektör yoksa ZXing wasm yedeği devreye girer.
 //   2. "Food Label" düğmesi `fileInputRef.click()` çağırıyordu, yani canlı etiket
 //      okuma diye bir şey yoktu; galeri açılıyordu. Artık canlı bir kamera modu.
 //   3. Canlı kameradan AI'a giden yol hiç yoktu — yalnızca galeriden seçilen
@@ -50,6 +53,7 @@ import {
 import { MACROS } from "../lib/nutrients";
 import { defaultScanGrams, seedTrigger } from "../lib/scan";
 import { OFF_SERVING_G, fetchOffProduct, isValidBarcode, missingLabels } from "../lib/off";
+import { barcodeDiag } from "../lib/barcodeDiag";
 import type { OffFood } from "../lib/off";
 import { useOffCooldown } from "../lib/offScanner";
 import {
@@ -201,6 +205,10 @@ export function ScanSheet({
   const { status, setStatus, cooldownLeft, blocked, applyError } = useOffCooldown();
 
   const [scanMode, setScanMode] = useState<ScanMode>("scan_food");
+  /** Barkod aramasi başarısız olduğunda "Tekrar dene" için son kod. Tarama
+   *  hattına DOKUNMAZ: doğrudan `lookupBarcode` çağrılır, yani bastırma
+   *  penceresine takılmaz. */
+  const [barcodeRetry, setBarcodeRetry] = useState<string | null>(null);
 
   const [analyzing, setAnalyzing] = useState(false);
   /** Analiz sırasında geçen saniye. 2026-09-21 olayında zincir 67 sn sürdü ve
@@ -317,7 +325,7 @@ export function ScanSheet({
   // Barkod taraması YALNIZCA barkod modunda ve akış hazırken çalışır. `blocked`
   // değişimi yalnızca bu aralığı yeniden kurar — kamerayı DEĞİL (telefon ışığı
   // sönüp yeniden yanmasın).
-  useBarcodeDetection({
+  const { status: barcodeStatus } = useBarcodeDetection({
     videoRef,
     active: scanning && scanMode === "barcode" && ready && !blocked && !offline,
     onDetected: (value) => {
@@ -369,19 +377,29 @@ export function ScanSheet({
     const code = raw.trim();
     if (!isValidBarcode(code)) {
       setStatus({ kind: "error", message: t("scan.barcodeInvalid") });
+      barcodeDiag.record("lookup", "invalid");
       return;
     }
     setStatus({ kind: "loading" });
+    setBarcodeRetry(null);
     try {
       const found = await fetchOffProduct(code);
       if (!found) {
+        // "Bulunamadı" bir arıza değil (OFF topluluk kataloğu) — ama kullanıcı
+        // yanlış okunmuş olabilecek bir kodu elle düzeltebilir ya da yeniden
+        // deneyebilir; ikisini de sunuyoruz.
+        barcodeDiag.record("lookup", `not-found:${code}`);
         setStatus({ kind: "error", message: t("scan.barcodeNotFound", { code }) });
+        setBarcodeRetry(code);
         return;
       }
+      barcodeDiag.record("lookup", `found:${code}`);
       setStatus({ kind: "idle" });
       selectFood(found);
     } catch (e) {
+      barcodeDiag.record("lookup", `error:${(e as Error)?.name ?? "Error"}`);
       applyError(e);
+      setBarcodeRetry(code);
     }
   }
 
@@ -759,6 +777,17 @@ export function ScanSheet({
             ↺ {t("common.retry")}
           </button>
         )}
+        {/* Barkod yolu kendi "Tekrar dene"sini alır: aynı kodu yeniden sorar,
+            taramaya hiç dokunmaz (bastırma penceresi devreye girmez). */}
+        {!visionRetry && barcodeRetry && (
+          <button
+            type="button"
+            onClick={() => void lookupBarcode(barcodeRetry)}
+            className="rounded-pill border border-danger/50 px-3 py-1.5 text-[11px] font-bold text-danger transition hover:bg-danger/20"
+          >
+            ↺ {t("common.retry")}
+          </button>
+        )}
       </div>
     ) : blocked ? (
       <p className="rounded-chip bg-warn/20 px-3 py-2 text-center text-[11px] text-warn backdrop-blur-sm">
@@ -847,7 +876,12 @@ export function ScanSheet({
                   ready ? "" : "backdrop-blur-sm"
                 }`}
               >
-                {t(MODE_HINT_KEY[scanMode])}
+                {/* Barkod ipucu YETENEĞE göre değişir: otomatik okuma yoksa
+                    "otomatik okunur" demek yalan olurdu (iOS'ta eski
+                    davranışın en görünür kusuru buydu). */}
+                {scanMode === "barcode" && barcodeStatus === "unsupported"
+                  ? t("scan.hintBarcodeManual")
+                  : t(MODE_HINT_KEY[scanMode])}
               </p>
 
               {/* Çift dokunuş ipucu — kısa süre, sonra kendiliğinden kaybolur. */}
@@ -938,11 +972,25 @@ export function ScanSheet({
                   geçince zaten otomatik açılıyor, ayrı bir toggle gerekmiyor. */}
               <div className="justify-self-center col-start-2">
                 {scanMode === "barcode" ? (
-                  <span className="flex h-[68px] w-[68px] items-center justify-center rounded-full border-2 border-dashed border-accent/50 text-center text-[10px] font-semibold leading-tight text-white/70 animate-pulse">
-                    {t("scan.autoReading1")}
-                    <br />
-                    {t("scan.autoReading2")}
-                  </span>
+                  /* Gösterge GERÇEK duruma bağlı. Eskiden koşulsuz "otomatik
+                     okunuyor" diye nabız atıyordu — dedektörü olmayan cihazda
+                     sonsuza kadar yalan söylüyordu. */
+                  barcodeStatus === "unsupported" ? (
+                    <span className="flex h-[68px] w-[68px] items-center justify-center rounded-full border-2 border-dashed border-warn/60 px-1 text-center text-[10px] font-semibold leading-tight text-warn">
+                      {t("scan.barcodeUnsupported")}
+                    </span>
+                  ) : barcodeStatus === "preparing" ? (
+                    <span className="flex h-[68px] w-[68px] items-center justify-center rounded-full border-2 border-dashed border-accent/50 px-1 text-center text-[10px] font-semibold leading-tight text-white/70">
+                      <span className="mr-1 h-3 w-3 animate-spin rounded-full border border-white/20 border-t-white" />
+                      {t("scan.barcodePreparing")}
+                    </span>
+                  ) : (
+                    <span className="flex h-[68px] w-[68px] animate-pulse items-center justify-center rounded-full border-2 border-dashed border-accent/50 text-center text-[10px] font-semibold leading-tight text-white/70">
+                      {t("scan.autoReading1")}
+                      <br />
+                      {t("scan.autoReading2")}
+                    </span>
+                  )
                 ) : (
                   <button
                     type="button"
@@ -1098,7 +1146,7 @@ export function ScanSheet({
 
           <div className="flex items-end gap-2">
             <div className="flex-1">
-              <NumField label="Miktar" value={grams} onChange={setGrams} />
+              <NumField label={t("scan.amountLabel")} value={grams} onChange={setGrams} />
             </div>
             <div className="w-24 flex-none">
               <label className="block">

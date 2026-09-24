@@ -15,8 +15,13 @@
 // ============================================================================
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { Dispatch, MutableRefObject, SetStateAction } from "react";
-import { OffError, cameraScanSupported } from "./off";
-import { useBarcodeDetection, useCameraStream } from "./camera";
+import { OffError } from "./off";
+import {
+  cameraSupported,
+  useBarcodeDetection,
+  useCameraStream,
+} from "./camera";
+import type { BarcodeDetectorStatus } from "./camera";
 
 // --- Kota (429) geri sayımı --------------------------------------------------
 
@@ -83,8 +88,12 @@ export interface UseOffScannerResult {
   scanning: boolean;
   setScanning: (v: boolean | ((prev: boolean) => boolean)) => void;
   videoRef: MutableRefObject<HTMLVideoElement | null>;
-  /** Bu tarayıcıda kamera gerçekten çalışır mı — oturum başına bir kez ölçülür. */
+  /** Bu tarayıcıda kamera gerçekten çalışır mı — oturum başına bir kez ölçülür.
+   *  v0.30.8: artık `BarcodeDetector` ŞARTI YOK; iOS'ta wasm yedeği okur, o
+   *  yüzden düğmeyi gizlemek yanlış olurdu. */
   canScan: boolean;
+  /** Barkod katmanının durumu — arayüz "hazırlanıyor/çalışmıyor" diyebilsin. */
+  barcodeStatus: BarcodeDetectorStatus;
   /** Kamera açılamadıysa (izin reddi, cihaz yok…) son hata mesajı; yoksa null. */
   cameraError: string | null;
 }
@@ -98,15 +107,17 @@ export interface UseOffScannerResult {
  * fotoğrafı/etiket okuma için de HİÇ açılamıyordu. Buradaki dışa dönük API
  * bilerek aynı bırakıldı — `OffSearch` değişmedi.
  *
- * `canScan` hâlâ `cameraScanSupported()` (yani BarcodeDetector şartı DAHİL),
- * çünkü bu akışın tek işi barkod okumak: dedektör yoksa düğmeyi göstermek boş
- * umut olurdu. Yemek/etiket çekimi bu kapıyı kullanmaz (`cameraSupported`).
+ * `canScan` v0.30.8'den itibaren yalnızca KAMERAYI sorar (`cameraSupported`).
+ * Eski hâli `BarcodeDetector` şartını da arıyordu ve iOS'ta düğmeyi tamamen
+ * gizliyordu — oysa artık wasm yedeği okuduğu için özellik o cihazlarda
+ * kullanılabilir. Barkodun GERÇEKTEN çalışıp çalışmadığı `barcodeStatus` ile
+ * anlatılır (`preparing` / `scanning` / `unsupported`).
  */
 export function useOffScanner({ onDetected, blocked }: UseOffScannerOptions): UseOffScannerResult {
   const [scanning, setScanning] = useState(false);
-  // Kamera düğmesi yalnızca gerçekten çalışacaksa görünür. Tek seferlik
+  // Kamera düğmesi yalnızca gerçekten açılabilecekse görünür. Tek seferlik
   // ölçülüyor: yetenek oturum içinde değişmez.
-  const [canScan] = useState(cameraScanSupported);
+  const [canScan] = useState(cameraSupported);
 
   const { videoRef, error } = useCameraStream(scanning);
 
@@ -117,7 +128,7 @@ export function useOffScanner({ onDetected, blocked }: UseOffScannerOptions): Us
     blockedRef.current = blocked;
   }, [blocked]);
 
-  useBarcodeDetection({
+  const { status: barcodeStatus } = useBarcodeDetection({
     videoRef,
     active: scanning,
     onDetected: (value) => {
@@ -134,5 +145,5 @@ export function useOffScanner({ onDetected, blocked }: UseOffScannerOptions): Us
     if (error) setScanning(false);
   }, [error]);
 
-  return { scanning, setScanning, videoRef, canScan, cameraError: error };
+  return { scanning, setScanning, videoRef, canScan, cameraError: error, barcodeStatus };
 }

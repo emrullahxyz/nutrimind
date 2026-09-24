@@ -12,6 +12,8 @@
 // yan etkisi yoktur (`import.meta.env.DEV` kapısı iosEmulate.ts'te).
 // ============================================================================
 
+import { ean13Modules } from "./ean13";
+
 export type CameraScenarioId = "off" | "ios-first-front" | "ios-no-deviceid" | "android-good";
 
 interface FakeDevice {
@@ -95,12 +97,66 @@ interface FakeState {
 
 let state: FakeState | null = null;
 
+// --- Barkod deseni (v0.30.8) -------------------------------------------------
+//
+// NEDEN: barkod düzeltmesinin asıl iddiası "yerli `BarcodeDetector` yokken wasm
+// yedeği okur". Bunu ölçmenin tek yolu kameranın GERÇEKTEN okunabilir bir barkod
+// görmesidir; sahte akışın yalnızca etiket yazması bu iddiayı ölçülemez bırakırdı.
+// Desen `ean13.ts`'teki (birim testli) kodlayıcıdan üretilir.
+
+/** Ölçümde kullanılan gerçek ürün kodu: Piątnica Skyr Naturalny (OFF'ta var).
+ *  Sabit olması ölçümü yeniden üretilebilir kılar. */
+export const FAKE_BARCODE = "5900531004544";
+
+let barcodePattern = false;
+
+/** DEV: sahte akışa barkod çizilsin mi? `iosEmulate`'teki `?barcodes=pattern` açar. */
+export function setFakeBarcodePattern(on: boolean): void {
+  barcodePattern = on;
+}
+
+/**
+ * Kareyi ortasına EAN-13 çizer. Modül genişliği 1 pikselin altına düşerse hiçbir
+ * çözücü okuyamaz — bu yüzden barkod karenin %72'sini kaplar ve sessiz bölge
+ * (quiet zone) standarttaki 9 modülün üstünde bırakılır.
+ */
+function drawBarcode(ctx: CanvasRenderingContext2D, canvas: HTMLCanvasElement): void {
+  const modules = ean13Modules(FAKE_BARCODE);
+  if (!modules) return;
+  const quiet = 12;
+  const width = canvas.width * 0.72;
+  const moduleW = width / (modules.length + quiet * 2);
+  const height = Math.min(canvas.height * 0.42, moduleW * 80);
+  const x0 = (canvas.width - width) / 2;
+  const y0 = (canvas.height - height) / 2;
+
+  // Barkod BEYAZ zemin ister: koyu kare üzerine çizilen çizgiler okunmaz.
+  ctx.fillStyle = "#ffffff";
+  ctx.fillRect(x0, y0, width, height);
+  ctx.fillStyle = "#000000";
+  for (let i = 0; i < modules.length; i++) {
+    if (!modules[i]) continue;
+    ctx.fillRect(x0 + (quiet + i) * moduleW, y0, Math.ceil(moduleW), height);
+  }
+}
+
 function draw(canvas: HTMLCanvasElement, label: string, tick: number): void {
   const ctx = canvas.getContext("2d");
   if (!ctx) return;
   const isFront = /front/i.test(label);
   ctx.fillStyle = isFront ? "#2b1d2a" : "#101a16";
   ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  if (barcodePattern) {
+    drawBarcode(ctx, canvas);
+    // Etiket ve sayaç barkodun DIŞINDA kalsın (çizgilerin üstüne yazı binmesin).
+    ctx.fillStyle = "#9aa0a6";
+    ctx.font = "28px monospace";
+    ctx.textAlign = "center";
+    ctx.fillText(`${label} · fake barcode ${FAKE_BARCODE} · ${tick}`, canvas.width / 2, canvas.height - 24);
+    return;
+  }
+
   ctx.fillStyle = "#ffffff";
   ctx.font = "bold 64px sans-serif";
   ctx.textAlign = "center";
@@ -202,9 +258,15 @@ function pickDevice(sc: Scenario, mode: FakeState, constraints: MediaStreamConst
  * geri alınır — üst üste kurulum (HMR, hızlı ardışık çağrı) gerçek API'yi
  * kalıcı olarak gölgelememeli.
  */
-export function installFakeMediaDevices(mode: string, search?: string): CameraScenarioId {
+export function installFakeMediaDevices(
+  mode: string | null,
+  search?: string,
+  /** Barkod ölçümünde iOS'un yön tuhaflıkları istenmez: "iyi davranan cihaz"
+   *  zorlanır, böylece ölçülen şey barkod yolu olur (kamera seçimi değil). */
+  scenarioOverride?: Exclude<CameraScenarioId, "off">,
+): CameraScenarioId {
   if (typeof navigator === "undefined" || !navigator.mediaDevices) return "off";
-  const id = cameraScenarioFor(mode, search ?? (typeof window === "undefined" ? "" : window.location.search));
+  const id = scenarioOverride ?? cameraScenarioFor(mode, search ?? (typeof window === "undefined" ? "" : window.location.search));
   uninstallFakeMediaDevices();
   if (id === "off") return "off";
 

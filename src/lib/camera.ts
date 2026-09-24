@@ -3,7 +3,8 @@
 //
 // NEDEN AYRI BİR DOSYA (bu bir yeniden düzenleme değil, bug düzeltmesi):
 // Kamera açma mantığı `offScanner.ts`'te barkod dedektörüne KİLİTLİYDİ —
-//   • `cameraScanSupported()` (off.ts) üç koşul istiyor, İLKİ `BarcodeDetector`,
+//   • eski `cameraScanSupported()` (off.ts, v0.30.8'de KALDIRILDI) üç koşul
+//     istiyordu, İLKİ `BarcodeDetector`,
 //   • `useOffScanner`'ın efekti de `if (!Ctor) { setScanning(false); return; }`
 //     ile kamerayı hiç başlatmıyordu.
 // `BarcodeDetector` iOS Safari'de YOK. Yemek fotoğrafı ve besin etiketi okuma ise
@@ -16,8 +17,20 @@
 // ============================================================================
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { MutableRefObject } from "react";
-import { FOOD_BARCODE_FORMATS, barcodeDetectorCtor } from "./off";
+import { FOOD_BARCODE_FORMATS } from "./off";
 import type { BarcodeDetectorLike } from "./off";
+import {
+  BARCODE_SCAN_INTERVAL_MS,
+  FALLBACK_MAX_DIM,
+  FALLBACK_SCAN_INTERVAL_MS,
+  barcodeSupportSync,
+  loadBarcodeDetector,
+  markBarcodeCapability,
+  nativeDetector,
+} from "./barcode";
+import { scanFrameSize, scanOnce } from "./barcodeScan";
+import type { LastDetection } from "./barcodeScan";
+import { barcodeDiag } from "./barcodeDiag";
 import type { VisionMode } from "../types";
 import i18n from "../i18n/i18n";
 import {
@@ -26,9 +39,6 @@ import {
   summarizeSettings,
   truncateNote,
 } from "./cameraDiag";
-
-/** Kamera karesi tarama aralığı. 400 ms göze anında görünüyor, CPU'yu yormuyor. */
-const SCAN_INTERVAL_MS = 400;
 
 /**
  * CANLI kamera modları. "Galeri" bilerek burada YOK: o bir mod değil, bir eylem —
@@ -138,8 +148,9 @@ export function cropRectFor(
 // --- Yetenek ------------------------------------------------------------------
 
 /**
- * Kamera bu tarayıcıda açılabilir mi? `cameraScanSupported()`'tan (off.ts) FARKI:
- * `BarcodeDetector` ARANMAZ. Yemek/etiket çekimi ona ihtiyaç duymuyor.
+ * Kamera bu tarayıcıda açılabilir mi? `BarcodeDetector` ARANMAZ — yemek/etiket
+ * çekimi ona ihtiyaç duymuyor, barkod yolu da artık wasm yedeğiyle çalışıyor
+ * (bkz. `barcode.ts`).
  */
 export interface CameraDeviceLike {
   deviceId: string;
@@ -665,26 +676,55 @@ export interface UseBarcodeDetectionOptions {
 }
 
 /**
- * Canlı `<video>` üzerinde barkod arar. `BarcodeDetector` yoksa SESSİZCE hiçbir şey
- * yapmaz — kamerayı KAPATMAZ. Eski davranışta bu durum tüm kamerayı düşürüyordu.
+ * Barkod katmanının durumu — arayüz bunu DOĞRUDAN gösterir. "Yetenek yok"
+ * artık sessiz bir no-op DEĞİL, görünür bir durumdur (`unsupported`); aksi
+ * hâlde iOS'ta kullanıcı "otomatik okunuyor" nabzını sonsuza kadar izliyordu.
+ */
+export type BarcodeDetectorStatus = "off" | "preparing" | "scanning" | "unsupported";
+
+/**
+ * Canlı `<video>` üzerinde barkod arar.
+ *
+ * v0.30.8'DE DEĞİŞEN İKİ ŞEY:
+ *   1. OKUMA SONRASI DURMAZ. Eskiden ilk okumada interval kalıcı kapanıyordu ve
+ *      efektin bağımlılığı değişmediği için bir daha kurulmuyordu → ilk okuma
+ *      "ürün bulunamadı" ile biterse tarayıcı o oturum boyunca ölüydü. Artık
+ *      aynı kod `REPEAT_SUPPRESS_MS` boyunca yutulur (OFF kotası korunur),
+ *      FARKLI kod anında geçer (bkz. `barcodeScan.ts` — saf + testli karar).
+ *   2. Yerli `BarcodeDetector` yoksa wasm yedeği yüklenir (`preparing`), bu
+ *      yüzden durum döndürür. Kamera her koşulda AÇIK kalır.
  */
 export function useBarcodeDetection({
   videoRef,
   active,
   onDetected,
-}: UseBarcodeDetectionOptions): void {
+}: UseBarcodeDetectionOptions): { status: BarcodeDetectorStatus } {
   const onDetectedRef = useRef(onDetected);
   useEffect(() => {
     onDetectedRef.current = onDetected;
   }, [onDetected]);
 
+  const [status, setStatus] = useState<BarcodeDetectorStatus>("off");
+  /** Bastırma penceresi durumu — okuma iletilmese de yaşamaya devam eder ki
+   *  aynı ürün arka arkaya OFF'a sorulmasın. */
+  const lastRef = useRef<LastDetection | null>(null);
+
   useEffect(() => {
-    if (!active) return;
-    const Ctor = barcodeDetectorCtor();
-    if (!Ctor) return;
+    if (!active) {
+      setStatus("off");
+      lastRef.current = null; // moddan çıkıp dönünce aynı ürün yeniden okunabilir
+      return;
+    }
 
     let stopped = false;
     let timer: number | null = null;
+    /** Aynı anda tek kare: wasm çözümü bir kareden uzun sürebilir, birikmesin. */
+    let inFlight = false;
+    let canvas: HTMLCanvasElement | null = null;
+
+    markBarcodeCapability();
+    setStatus(barcodeSupportSync() === "native" ? "scanning" : "preparing");
+
     const stop = () => {
       stopped = true;
       if (timer !== null) window.clearInterval(timer);
@@ -692,36 +732,73 @@ export function useBarcodeDetection({
     };
 
     void (async () => {
+      // Yerli varsa indirme yok; yoksa burada wasm iner ("preparing" gösterilir).
+      const Ctor = await loadBarcodeDetector();
+      if (stopped) return;
+      if (!Ctor) {
+        setStatus("unsupported");
+        return;
+      }
+      const native = nativeDetector() !== null;
+
       let detector: BarcodeDetectorLike;
       try {
-        // Desteklenmeyen biçim istemek Chrome'da fırlatır — kesişim alınıyor.
+        // Desteklenmeyen biçim istemek Chrome'da fırlatır — kesişim alınır.
         const supported = (await Ctor.getSupportedFormats?.()) ?? null;
         const formats = supported
           ? FOOD_BARCODE_FORMATS.filter((f) => supported.includes(f))
           : [...FOOD_BARCODE_FORMATS];
         detector = new Ctor(formats.length > 0 ? { formats } : undefined);
-      } catch {
-        return; // dedektör kurulamadı — kamera yine de açık kalır
+      } catch (e) {
+        barcodeDiag.record("capability", `detector-init-failed:${(e as Error)?.name ?? "Error"}`);
+        setStatus("unsupported");
+        return; // kamera yine de açık kalır
       }
       if (stopped) return;
+      setStatus("scanning");
 
       timer = window.setInterval(() => {
         const video = videoRef.current;
-        if (!video || stopped) return;
-        void detector
-          .detect(video)
-          .then((hits) => {
-            const value = hits[0]?.rawValue?.trim();
-            if (!value || stopped) return;
-            stop();
-            onDetectedRef.current(value);
+        if (!video || stopped || inFlight) return;
+
+        // Yedek yolda kare küçültülür: 2560x1440'ı her yarım saniyede wasm'a
+        // vermek eski telefonlarda ısınma ve pil kaybı demekti. Kırpma yapılmaz
+        // (barkod zaten çerçevenin içinde olur), yalnızca ölçek düşer.
+        let source: CanvasImageSource = video;
+        if (!native) {
+          if (video.videoWidth === 0 || video.videoHeight === 0) return;
+          const size = scanFrameSize(video.videoWidth, video.videoHeight, FALLBACK_MAX_DIM);
+          if (size.width === 0 || size.height === 0) return;
+          canvas ??= document.createElement("canvas");
+          if (canvas.width !== size.width) canvas.width = size.width;
+          if (canvas.height !== size.height) canvas.height = size.height;
+          const ctx = canvas.getContext("2d");
+          if (!ctx) return;
+          ctx.drawImage(video, 0, 0, size.width, size.height);
+          source = canvas;
+        }
+
+        inFlight = true;
+        void scanOnce({
+          detector,
+          source,
+          last: lastRef.current,
+          now: Date.now(),
+          onAttempt: () => barcodeDiag.record("detect", native ? "native" : "wasm"),
+          onHit: (code) => barcodeDiag.record("hit", code),
+          onDetected: (code) => onDetectedRef.current(code),
+        })
+          .then((result) => {
+            lastRef.current = result.last;
           })
-          .catch(() => {
-            // Tek karenin çözülememesi normal — sonraki kare denenir.
+          .finally(() => {
+            inFlight = false;
           });
-      }, SCAN_INTERVAL_MS);
+      }, native ? BARCODE_SCAN_INTERVAL_MS : FALLBACK_SCAN_INTERVAL_MS);
     })();
 
     return stop;
   }, [active, videoRef]);
+
+  return { status };
 }

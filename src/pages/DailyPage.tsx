@@ -15,6 +15,7 @@ interface DailyPageProps {
   onResetTriggerExercise?: () => void;
   resetKey?: number;
   onOpenSupplementSettings?: () => void;
+  onOpenWaterSettings?: () => void;
 }
 
 export function DailyPage({
@@ -26,6 +27,7 @@ export function DailyPage({
   onResetTriggerExercise,
   resetKey = 0,
   onOpenSupplementSettings,
+  onOpenWaterSettings,
 }: DailyPageProps = {}) {
   const { t } = useTranslation();
   const [selectedDate, setSelectedDate] = useState<string>(todayISO());
@@ -52,6 +54,7 @@ export function DailyPage({
         showWeightCard={false}
         showTemplates
         onOpenSupplementSettings={onOpenSupplementSettings}
+        onOpenWaterSettings={onOpenWaterSettings}
         triggerAddMeal={triggerAddMeal}
         onResetTriggerAddMeal={onResetTriggerAddMeal}
         triggerScan={triggerScan}

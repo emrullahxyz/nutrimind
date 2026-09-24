@@ -13,7 +13,6 @@ import {
   OFF_SERVING_G,
   OffError,
   barcodeDetectorCtor,
-  cameraScanSupported,
   fetchOffProduct,
   isValidBarcode,
   mapOffNutriments,
@@ -381,28 +380,16 @@ describe("mesajlar, barkod ve yetenek testi", () => {
     }
   });
 
-  // --- BarcodeDetector yetenek testi ---
-  it("BarcodeDetector yokken kurucu null, kamera desteklenmiyor sayılır", () => {
-    expect(barcodeDetectorCtor()).toBeNull(); // node'da yok, iOS Safari'de de yok
-    expect(cameraScanSupported()).toBe(false);
+  // --- Yerli BarcodeDetector yoklaması ---
+  // NOT (v0.30.8): buradaki eski `cameraScanSupported()` testleri KALDIRILDI —
+  // fonksiyonun kendisi kaldırıldı. Artık "taranabilir mi?" sorusunun cevabı
+  // `barcode.ts`'te (yerli → doğrudan; yoksa wasm yedeği) ve testleri
+  // `barcode.test.ts` / `barcode.failure.test.ts` dosyalarında.
+  it("BarcodeDetector yokken yerli kurucu null (iOS Safari'de de böyle)", () => {
+    expect(barcodeDetectorCtor()).toBeNull();
   });
-  it("BarcodeDetector varsa bile getUserMedia yoksa kamera kapalı", () => {
+  it("BarcodeDetector varsa kurucu döner", () => {
     vi.stubGlobal("BarcodeDetector", function BarcodeDetector() {} as unknown);
-    vi.stubGlobal("isSecureContext", true);
-    vi.stubGlobal("navigator", {});
     expect(barcodeDetectorCtor()).not.toBeNull();
-    expect(cameraScanSupported()).toBe(false);
-  });
-  it("güvenli bağlam değilse kamera düğmesi gösterilmez (getUserMedia zaten reddeder)", () => {
-    vi.stubGlobal("BarcodeDetector", function BarcodeDetector() {} as unknown);
-    vi.stubGlobal("navigator", { mediaDevices: { getUserMedia: () => {} } });
-    vi.stubGlobal("isSecureContext", false);
-    expect(cameraScanSupported()).toBe(false);
-  });
-  it("üç koşul da sağlanınca kamera açılabilir", () => {
-    vi.stubGlobal("BarcodeDetector", function BarcodeDetector() {} as unknown);
-    vi.stubGlobal("navigator", { mediaDevices: { getUserMedia: () => {} } });
-    vi.stubGlobal("isSecureContext", true);
-    expect(cameraScanSupported()).toBe(true);
   });
 });

@@ -49,6 +49,9 @@ export default {
         warn: withAlpha("warn"),
         danger: withAlpha("danger"),
         under: withAlpha("under"),
+        // Su takibi (v0.30.8) — --water/--water-ink iki tema bloğunda tanımlı.
+        water: withAlpha("water"),
+        "water-ink": withAlpha("water-ink"),
         // Yeni yüzey/durum token'ları (hepsi withAlpha — glass temasında yarı
         // saydam beyaz dolgulara dönüşebilir):
         bar: withAlpha("bar"),

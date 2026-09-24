@@ -18,6 +18,7 @@ import { guessDeviceClass, measureSafeAreaInsets, readViewportFacts } from "./sa
 import type { SafeAreaInsets, ViewportFacts, DeviceClass } from "./safeArea";
 import { longTaskSummary } from "./perfProbe";
 import type { LongTaskSummary } from "./perfProbe";
+import { barcodeDiagSummary, formatBarcodeDiagLine } from "./barcodeDiag";
 
 /** Gönderilen metinde raporun başlangıcını işaretler — form bunu görüp
  *  ikinci kez eklemeyi engeller. ASCII, dile bağlı değil. */
@@ -62,6 +63,9 @@ export function buildDiagnosticsReport(input: DiagnosticsInput): string {
     ),
     row("device", `${input.deviceClass.size} top=${input.deviceClass.insetTop} → ${input.deviceClass.family}`),
     row("online", input.online ? "yes" : "no"),
+    // Barkod yeteneği: "tarayıcı çalışmıyor" geri bildirimini tahminle değil
+    // kayıtla çözmek için (bkz. barcodeDiag.ts).
+    row("barcode", formatBarcodeDiagLine(barcodeDiagSummary())),
     row(
       "longtask",
       input.longTasks

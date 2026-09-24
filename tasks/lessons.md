@@ -466,3 +466,48 @@ Gerçek sebep katmanlıydı ve mesajı veren kişi biz DEĞİLDİK:
 **Uygulama kapısı:** bu turda yalnızca okuma yapıldı (journalctl + md5 + sağlayıcı yoklamaları) ve
 önce kök neden kanıtlandı, sonra kod değişti — varsayımla düzeltmeye gidilse "timeout süresini
 uzatmak" gibi TERS yönde bir değişiklik yapılırdı (aslında pencere zaten dar).
+
+## L28 — Tek atışlık tarayıcı: dışa dönük tarama API'si kendini yeniden kurabilmeli
+
+**Olay (2026-09-24, kullanıcı bildirimi: "Barcode scanner isn't working"):** barkod tarayıcı ilk
+okumadan sonra SESSİZCE ölüyordu ve bu, kod okunmadan görülmeyen bir yarış değil, iki satırın
+birleşimiydi:
+
+- `useBarcodeDetection` bir barkod okuduğu an `stop()` çağırıp interval'i kalıcı kapatıyordu
+  (aynı ürünü OFF'a tekrar sormamak için — niyet doğruydu),
+- `ScanSheet`'teki efektin bağımlılığı `active` = `scanning && barkod modu && ready` idi ve bu
+  değer okumadan SONRA **değişmiyordu**, yani cleanup/effect döngüsü bir daha çalışmıyordu.
+
+Sonuç: ilk okuma "Ürün bulunamadı" ile biterse (Türkiye ürünlerinin çoğu OFF'ta yok), kullanıcı
+modu değiştirip geri dönmeden **hiçbir** barkodu okuyamıyordu. Hata mesajı yok, konsol hatası yok —
+"çalışmıyor"dan başka tarif edilecek bir şey de yoktu; geri bildirim bu yüzden tek cümleydi.
+
+**Kurallar.**
+1. **Tek atışlık (one-shot) hâle geçen bir tarama/izleme API'si, yeniden kurulabilir bir yol
+   sunmak zorundadır.** "Dur ve bitir" davranışı, çağıranın onu yeniden başlatacağı garanti
+   edilmiyorsa bug'dır. Burada doğru tasarım durup yeniden başlamak değil, **tekrarları
+   bastırmak**tı: aynı kod `REPEAT_SUPPRESS_MS` boyunca yutulur, FARKLI kod anında geçer.
+2. **Karar katmanını React'ten ayır.** Kural (`shouldAcceptDetection`, `scanOnce`) saf bir modüle
+   alınırsa hook test edilemese bile davranış test edilir; "ilk okuma sonrası ikinci farklı kod
+   ulaşır mı?" sorusu bu sayede bir birim testi oldu.
+3. **"Yetenek yok" sessiz no-op olmamalı.** Aynı turda ikinci kök neden şuydu: `BarcodeDetector`
+   olmayan cihazda (iOS Safari) hook hiçbir şey yapmıyordu ama arayüz "otomatik okunuyor" diye
+   nabız atıyordu. Yetenek sorusunun cevabı ARTIK dışa dönük bir DURUMdur
+   (`off | preparing | scanning | unsupported`) ve UI onu gösterir.
+4. Ölçüm notu: bu düzeltme masaüstünde kendiliğinden üretilemez (Chrome'un yerli dedektörü var) —
+   `?barcodes=none` bayrağı iPhone koşulunu üretir. L26 ile aynı ilke: üretilemeyen arıza
+   doğrulanamaz.
+
+## L29 — "Çalışmıyor" geri bildirimi kanal istiyorsa, kanalı ÖNCE aç
+
+**Olay (aynı tur):** "Barcode scanner isn't working" mesajı hangi cihazda ne olduğunu söylemiyordu
+— ne kullandığı tarayıcı, ne cihaz modeli, ne de tarama denemesinin hiç başlayıp başlamadığı
+biliniyordu. Bu projede bu bilinmezlik daha önce de yaşandı ve çözümü hazır bir desen olarak
+duruyordu: `deviceReport.ts` (uydurma yok, cihazın kendisi söyler).
+
+**Kural:** bir hata sınıfı "yalnızca gerçek cihazda görülür" ise, düzeltmeden ÖNCE o sınıfı
+kaydeden bir tanılama satırı eklenir (`barcodeDiag.ts` → `family=… attempts=… hits=… last=…`).
+Bedeli bir halka tampon; kazancı, bir sonraki şikâyetin "tahmin" değil "kayıt" olması.
+Ek olarak: **kaldırılan fonksiyonun anlamı yanlışsa kendisi de gitmeli** — `cameraScanSupported()`
+("BarcodeDetector yoksa taranamaz") wasm yedeğiyle birlikte YANLIŞ hâle geldi; bırakılsaydı
+iOS'ta kamera düğmesini gizlemeye devam ederdi.

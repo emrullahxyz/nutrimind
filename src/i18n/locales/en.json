@@ -65,7 +65,15 @@
     "eatenSodium": "Eaten Sodium"
   },
   "day": {
-    "weekdaysShort": ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"],
+    "weekdaysShort": [
+      "Mon",
+      "Tue",
+      "Wed",
+      "Thu",
+      "Fri",
+      "Sat",
+      "Sun"
+    ],
     "streak": "Day streak",
     "mergeDialogTitle": "Merge {{count}} Meals",
     "mergeSave": "Merge",
@@ -221,8 +229,9 @@
     "errorTooMany": "Too many attempts. Try again shortly.",
     "errorTooManyRetry": "Too many attempts. Try again in {{seconds}} s.",
     "errorBadResponse": "The server returned an unexpected response.",
-    "errorHttp": "Request failed (HTTP {{status}}).",      "emailPlaceholder": "name@example.com",
-      "namePlaceholder": "Your name",
+    "errorHttp": "Request failed (HTTP {{status}}).",
+    "emailPlaceholder": "name@example.com",
+    "namePlaceholder": "Your name",
     "ruleEmailRequired": "Email is required.",
     "ruleEmailTooLong": "Email is too long.",
     "ruleEmailInvalid": "Enter a valid email address.",
@@ -386,7 +395,10 @@
     "allowlistRemove": "Remove {{email}} from the list",
     "inboxTitle": "Feedback Inbox",
     "inboxSubtitle": "User messages & requests",
-    "subviewFeedbackInbox": "Feedback Inbox"
+    "subviewFeedbackInbox": "Feedback Inbox",
+    "subviewWater": "Water Tracking",
+    "waterTitle": "Water Tracking",
+    "waterSubtitle": "Daily target, quick add and undo"
   },
   "changelog": {
     "title": "What's New?",
@@ -453,8 +465,9 @@
       "network": "Cannot reach server — check your connection.",
       "rateLimit": "Too many requests. Try again shortly.",
       "rateLimitSeconds": "Too many requests. Try again in {{seconds}} s.",
-      "badResponse": "The AI service is not responding properly right now. Try again shortly.",        "disabled": "AI features are disabled in this environment.",
-        "badRequest": "The request could not be understood.",
+      "badResponse": "The AI service is not responding properly right now. Try again shortly.",
+      "disabled": "AI features are disabled in this environment.",
+      "badRequest": "The request could not be understood.",
       "timeout": "The AI service timed out. Try again shortly.",
       "http": "AI request failed (HTTP {{status}})."
     }
@@ -519,7 +532,11 @@
     "allItemsRemoved": "All items removed — retake to add.",
     "retake": "Retake",
     "savedButNotAdded": "Saved to food memory, but could not be added to today: {{error}}. You can add it manually from memory.",
-    "useShot": "Use"
+    "useShot": "Use",
+    "amountLabel": "Amount",
+    "hintBarcodeManual": "Enter the barcode manually below — this device has no on-device reader",
+    "barcodePreparing": "Preparing reader…",
+    "barcodeUnsupported": "No automatic scanning here"
   },
   "exercise": {
     "title": "Exercise & Activity Log",
@@ -1034,5 +1051,35 @@
     "sugar": "S",
     "satFat": "SF",
     "sodium": "Na"
+  },
+  "water": {
+    "title": "Water",
+    "unitLiters": "L",
+    "progressAria": "Daily water goal: {{percent}}%",
+    "goalReached": "Goal reached — nice.",
+    "emptyToday": "No water logged today yet.",
+    "remaining": "{{amount}} ml to go",
+    "addAmount": "Add {{amount}} ml",
+    "customLabel": "Custom amount (ml)",
+    "customPlaceholder": "e.g. {{amount}}",
+    "undo": "Undo last entry",
+    "lastEntry": "Last: {{amount}} ml",
+    "noEntryYet": "No entries yet",
+    "done": "Done",
+    "limitReached": "Daily limit reached ({{max}} ml).",
+    "invalidAmount": "Enter a value between 10 and 2000 ml.",
+    "manage": "Water settings",
+    "targetLabel": "Daily target (ml)",
+    "targetHint": "Current target: {{current}}",
+    "targetRange": "Target must be between 500 and 6000 ml.",
+    "saved": "Saved",
+    "suggestTitle": "Suggestion from your weight",
+    "suggestNoWeight": "Add your weight (Settings → Weight & Body) to get a suggestion.",
+    "suggestBody": "{{perKg}} ml per kg gives {{amount}}.",
+    "applySuggestion": "Apply suggestion",
+    "visibilityTitle": "Show on Today screen",
+    "visibilityBody": "Turning this off hides the card; your logged water is kept.",
+    "averageLabel": "Avg. of last 7 logged days",
+    "averageNone": "No entries yet"
   }
 }

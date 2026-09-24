@@ -3,6 +3,10 @@
  *  girdileriyle çakışmasın. */
 export const PREF = {
   supplementsOpen: "nutrimind.ui.supplementsOpen",
+  /** Su kartının açık/kapalı hâli — cihaz-yerel UI tercihi (kartın KENDİSİ
+   *  `config.water.enabled` ile hesap düzeyinde kapatılır; bu ikisi farklı
+   *  şeyler: biri "katlanmış mı", diğeri "hiç gösterilsin mi"). */
+  waterOpen: "nutrimind.ui.waterOpen",
   microsOpen: "nutrimind.ui.microsOpen",
   theme: "nutrimind.ui.theme",
 } as const;

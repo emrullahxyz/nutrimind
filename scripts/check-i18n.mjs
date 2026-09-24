@@ -271,6 +271,10 @@ const TR_WORDS = [
   "Besin",
   "Yemek",
   "Isim",
+  // "Miktar" v0.30.8'de eklendi: `ScanSheet` içinde `NumField label="Miktar"`
+  // sabit Türkçe basılıyordu ve bu liste onu göremiyordu — yani kapıda gerçek
+  // bir delik vardı. Anahtar (`scan.amountLabel`) üç dile eklendi.
+  "Miktar",
 ];
 const TR_WORD_RE = new RegExp(`\\b(?:${TR_WORDS.join("|")})\\b`);
 

@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { buildDiagnosticsReport, DIAGNOSTICS_MARKER } from "./deviceReport";
 import type { DiagnosticsInput } from "./deviceReport";
 import { summarizeLongTasks } from "./perfProbe";
+import { barcodeDiag, setBarcodeCapability } from "./barcodeDiag";
 
 const base: DiagnosticsInput = {
   version: "0.30.5",
@@ -81,6 +82,35 @@ describe("buildDiagnosticsReport", () => {
 
   it("çevrimdışı durumu bildirir", () => {
     expect(buildDiagnosticsReport({ ...base, online: false })).toContain("no");
+  });
+
+  // --- Barkod satırı (v0.30.8) ---
+  // "Barkod tarayıcı çalışmıyor" geri bildirimi bu satır olmadan tahminle
+  // kovalanyordu: cihazda yerli dedektör var mı, kaç kare denendi, kaç okuma
+  // oldu? Hepsi tek satırda.
+
+  it("barkod yeteneğini ve sayaçları tek satırda bildirir", () => {
+    setBarcodeCapability({ native: false, fallback: "zxing-wasm@3", loaded: true });
+    barcodeDiag.clear();
+    barcodeDiag.record("detect", "frame");
+    barcodeDiag.record("hit", "8690637025010");
+    barcodeDiag.record("lookup", "not-found:8690637025010");
+    const text = buildDiagnosticsReport(base);
+    expect(text).toContain("barcode");
+    expect(text).toContain(
+      "family=zxing-wasm@3(loaded) attempts=1 hits=1 last=lookup:not-found:8690637025010",
+    );
+    barcodeDiag.clear();
+    setBarcodeCapability({ native: false, fallback: null, loaded: false });
+  });
+
+  it("barkod satırı da kişisel veri içermez ve ASCII kalır", () => {
+    const line = buildDiagnosticsReport(base)
+      .split("\n")
+      .find((l) => l.trim().startsWith("barcode"));
+    expect(line).toBeDefined();
+    expect(line).toMatch(/^[\x20-\x7e]+$/);
+    expect(line).not.toMatch(/@/);
   });
 });
 
