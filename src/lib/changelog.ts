@@ -13,6 +13,38 @@ export interface ChangeLogVersion {
 
 export const CHANGELOG: ChangeLogVersion[] = [
   {
+    version: "0.30.9",
+    date: "2026-09-24",
+    summary: {
+      tr: "Yapay zeka öğün analizi artık daha hızlı ve güvenilir: tek sağlayıcıya bağlı değil, ücretsiz modelleri kendiliğinden en iyi sırayla dener ve model isimleri ölünce kendini yeniler.",
+      en: "AI meal analysis is now faster and more resilient: it no longer depends on a single provider, tries free models in the best order automatically, and self-refreshes its model names when providers retire them.",
+    },
+    items: [
+      {
+        type: "new",
+        tr: "Yapay zeka artık birden çok sağlayıcı kullanabiliyor: biri yoğun olursa diğerine geçer, sen fark etmezsin.",
+        en: "AI now uses multiple providers: if one is busy it falls back to another without you noticing.",
+      },
+      {
+        type: "improved",
+        tr: "Ücretsiz modeller önce denenir; metin girişi görsel analiz kotasını harcamaz ve görsel analiz metin modeline düşmez.",
+        en: "Free models are tried first; text input never consumes the vision quota and vision analysis never falls back to a text-only model.",
+      },
+      {
+        type: "improved",
+        tr: "Model isimleri artık kendiliğinden tazelenir: sağlayıcı bir modeli emekliye ayırdıysa uygulama listesinden çalışan yenisiyle devam eder.",
+        en: "Model names refresh on their own: if a provider retires a model, the app picks a working replacement from its list and keeps going.",
+      },
+    ],
+    dev: [
+      "AI zincirinin step üreticileri yeniden yazıldı; `runChain` (bütçe + devre kesici + 5xx kısa devresi + model rotasyonu) DOKUNULMADI. Metin: openrouter→opencode→ollama→gemini-tier1/2/3→cloudflare (deneysel). Görsel: yalnız gemini-tier* (vision modelleri). NIM tamamen kaldırıldı — NVIDIA env/kova/fetch referansı kalmadı.",
+      "Yeni server/aiDiscovery.js: servis açılışında + NUTRI_AI_DISCOVER_INTERVAL_MS (varsayılan 6 saat, min 15 dk) aralığıyla sağlayıcı listelerini tarar, canlı adayı aiModels.setDiscovered ile cache'ler. Asla throw etmez; NODE_ENV=test'te başlamaz. Kullanıcıyla etkileşimsiz bakım (klavye dışı).",
+      "aiModels PROVIDERS'a openrouter/ollama/cloudflare eklenir; her biri mevcut score() ile sıralanır (duplikasyon yok). Ollama native /api/chat, Cloudflare hesap-id gerektirir (yoksa sessizce devre dışı). listModelIds + setDiscovered export edildi.",
+      "Azalan ağ maliyeti: sağlıklı akışta istek-anı model keşfi YOK (önbellek + açılış taraması); keşif yalnız ölü model seviyesinde ya da periyotta. Fiyat/şarj takibi bu sürüm kapsamında DEĞİL (faturalı model eklenince ayrı PR).",
+      "Gate: 1082 test + typecheck + check:i18n + build yeşil. Runbook: docs/operations/ai.md bölüm 1/4/7/8 güncellendi.",
+    ],
+  },
+  {
     version: "0.30.8",
     date: "2026-09-24",
     summary: {
