@@ -6,21 +6,26 @@ const ENV_KEYS = [
   "GEMINI_MODEL",
   "GEMINI_TIER2_MODEL",
   "GEMINI_TIER3_MODEL",
-  "NVIDIA_NIM_API_KEY",
-  "NVIDIA_NIM_MODEL",
-  "NVIDIA_NIM_VISION_MODEL",
+  "OPENROUTER_API_KEY",
+  "OPENROUTER_MODEL",
   "OPENCODE_API_KEY",
   "OPENCODE_MODEL",
+  "OLLAMA_CLOUDE_API_KEY",
+  "OLLAMA_CLOUDE_MODEL",
+  "CLAUDEFLARE_API_KEY",
+  "CLAUDEFLARE_ACCOUNT_ID",
+  "CLAUDEFLARE_MODEL",
   "NUTRIMIND_CONFIDENCE_THRESHOLD",
   "NUTRI_AI_RATE_PARSE",
   "NUTRI_AI_RATE_GEMINI_TIER2",
   "NUTRI_AI_RATE_GEMINI_TIER3",
   "NUTRI_AI_RATE_VISION",
-  "NUTRI_AI_RATE_NIM",
-  "NUTRI_AI_RATE_NIM_VISION",
   "NUTRI_AI_RATE_OPENCODE",
+  "NUTRI_AI_RATE_OPENROUTER",
+  "NUTRI_AI_RATE_OLLAMA",
+  "NUTRI_AI_RATE_CLAUDEFLARE",
   "NUTRI_AI_TIMEOUT_MS",
-  "NUTRI_AI_NIM_TIMEOUT_MS",
+  "NUTRI_AI_FALLBACK_TIMEOUT_MS",
   // 2026-09-21: bütçe/devre kesici/model keşfi anahtarları da testler arasında
   // SIFIRLANIR (yoksa bir testin bıraktığı durum diğerini sessizce etkiler).
   "NUTRI_AI_API_WINDOW_MS",
@@ -95,7 +100,8 @@ function makeGeminiOkResponse(
   };
 }
 
-function makeNimOkResponse(
+/** OpenAI-uyumlu `/chat/completions` yanıtı — OpenRouter + Cloudflare'ı kapsar. */
+function makeOaiOkResponse(
   items = [
     { name: "Elma", kcal: 50, protein: 0.3, carbs: 14, fat: 0.2, fiber: 2.4, confidence: 0.95 },
   ],
@@ -114,6 +120,22 @@ function makeNimOkResponse(
   };
 }
 
+/** Ollama Cloud native `/api/chat` yanıtı — `message.content` alanı taşır. */
+function makeOllamaOkResponse(
+  items = [
+    { name: "Elma", kcal: 50, protein: 0.3, carbs: 14, fat: 0.2, fiber: 2.4, confidence: 0.95 },
+  ],
+) {
+  return {
+    ok: true,
+    status: 200,
+    text: async () =>
+      JSON.stringify({
+        message: { content: JSON.stringify({ items }) },
+      }),
+  };
+}
+
 function makeErrorResponse(status = 429) {
   return {
     ok: false,
@@ -123,9 +145,33 @@ function makeErrorResponse(status = 429) {
 }
 
 describe("AI fallback zinciri (server/ai.js)", () => {
-  it("NUTRIMIND_LLM_PROVIDER=auto iken, mock fetch ilk çağrıda (Gemini tier1) 429 dönerse, ikinci çağrının (tier2, farklı model adıyla) yapıldığını doğrula", async () => {
+  it("NUTRIMIND_LLM_PROVIDER=auto iken, mock fetch ilk çağrıda (openrouter) 429 dönerse, ikinci çağrının (opencode, farklı sağlayıcıyla) yapıldığını doğrula", async () => {
     const mockFetch = vi
       .fn()
+      .mockResolvedValueOnce(makeErrorResponse(429))
+      .mockResolvedValueOnce(makeOaiOkResponse());
+
+    vi.stubGlobal("fetch", mockFetch);
+
+    const { parseMealText } = await loadAi({
+      NUTRIMIND_LLM_PROVIDER: "auto",
+      GEMINI_API_KEY: "test_gemini_key",
+      OPENROUTER_API_KEY: "test_openrouter_key",
+      OPENCODE_API_KEY: "test_opencode_key",
+    });
+
+    const res = await parseMealText({ text: "1 elma", aliases: [] });
+
+    expect(res.status).toBe(200);
+    expect(mockFetch).toHaveBeenCalledTimes(2);
+    expect(mockFetch.mock.calls[0][0]).toContain("openrouter.ai");
+    expect(mockFetch.mock.calls[1][0]).toContain("opencode.ai");
+  });
+
+  it("openrouter+opencode 429 verirse, üçüncü çağrının gemini-tier1'e gittiğini doğrula", async () => {
+    const mockFetch = vi
+      .fn()
+      .mockResolvedValueOnce(makeErrorResponse(429))
       .mockResolvedValueOnce(makeErrorResponse(429))
       .mockResolvedValueOnce(makeGeminiOkResponse());
 
@@ -134,81 +180,60 @@ describe("AI fallback zinciri (server/ai.js)", () => {
     const { parseMealText } = await loadAi({
       NUTRIMIND_LLM_PROVIDER: "auto",
       GEMINI_API_KEY: "test_gemini_key",
-      GEMINI_MODEL: "gemini-flash-latest",
-      GEMINI_TIER2_MODEL: "gemini-3.5-flash",
-      NVIDIA_NIM_API_KEY: "test_nim_key",
+      OPENROUTER_API_KEY: "test_openrouter_key",
       OPENCODE_API_KEY: "test_opencode_key",
     });
 
     const res = await parseMealText({ text: "1 elma", aliases: [] });
 
     expect(res.status).toBe(200);
-    expect(mockFetch).toHaveBeenCalledTimes(2);
-    expect(mockFetch.mock.calls[0][0]).toContain("gemini-flash-latest");
-    expect(mockFetch.mock.calls[1][0]).toContain("gemini-3.5-flash");
+    expect(mockFetch).toHaveBeenCalledTimes(3);
+    expect(mockFetch.mock.calls[2][0]).toContain("generativelanguage.googleapis.com");
+
+    const geminiBody = JSON.parse(mockFetch.mock.calls[2][1].body);
+    expect(geminiBody).toMatchObject({ contents: [{ parts: [{ text: expect.any(String) }] }] });
   });
 
-  it("Tier1/tier2/tier3 hepsi 429/502 dönerse, dördüncü çağrının NIM'e gittiğini doğrula", async () => {
+  it("tüm plan-dahili + Gemini adımları başarısız olursa, metin zincirinde son adım Cloudflare'e gider", async () => {
+    // Gemini tier3, t1+t2'nin art arda 5xx'i (VENDOR_5XX_STREAK) yüzünden
+    // atlanır → cloudflare 6. çağrıdır.
     const mockFetch = vi
       .fn()
-      .mockResolvedValueOnce(makeErrorResponse(429))
-      .mockResolvedValueOnce(makeErrorResponse(429))
-      .mockResolvedValueOnce(makeErrorResponse(502))
-      .mockResolvedValueOnce(makeNimOkResponse());
+      .mockResolvedValueOnce(makeErrorResponse(429)) // openrouter
+      .mockResolvedValueOnce(makeErrorResponse(429)) // opencode
+      .mockResolvedValueOnce(makeErrorResponse(429)) // ollama
+      .mockResolvedValueOnce(makeErrorResponse(502)) // gemini-tier1
+      .mockResolvedValueOnce(makeErrorResponse(502)) // gemini-tier2
+      .mockResolvedValueOnce(makeOaiOkResponse()); // cloudflare
 
     vi.stubGlobal("fetch", mockFetch);
 
     const { parseMealText } = await loadAi({
       NUTRIMIND_LLM_PROVIDER: "auto",
       GEMINI_API_KEY: "test_gemini_key",
-      NVIDIA_NIM_API_KEY: "test_nim_key",
+      OPENROUTER_API_KEY: "test_openrouter_key",
       OPENCODE_API_KEY: "test_opencode_key",
+      OLLAMA_CLOUDE_API_KEY: "test_ollama_key",
+      CLAUDEFLARE_API_KEY: "test_cf_key",
+      CLAUDEFLARE_ACCOUNT_ID: "acct-1",
     });
 
     const res = await parseMealText({ text: "1 elma", aliases: [] });
 
     expect(res.status).toBe(200);
-    expect(mockFetch).toHaveBeenCalledTimes(4);
-    expect(mockFetch.mock.calls[3][0]).toBe("https://integrate.api.nvidia.com/v1/chat/completions");
-
-    const nimBody = JSON.parse(mockFetch.mock.calls[3][1].body);
-    expect(nimBody.model).toBe("meta/llama-3.1-8b-instruct");
+    expect(mockFetch).toHaveBeenCalledTimes(6);
+    expect(mockFetch.mock.calls[5][0]).toContain("api.cloudflare.com");
   });
 
-  it("Tüm Gemini + NIM adımları başarısız olursa, metin zincirinde beşinci (son) çağrının OpenCode Zen'e gittiğini doğrula", async () => {
-    const mockFetch = vi
-      .fn()
-      .mockResolvedValueOnce(makeErrorResponse(429))
-      .mockResolvedValueOnce(makeErrorResponse(429))
-      .mockResolvedValueOnce(makeErrorResponse(502))
-      .mockResolvedValueOnce(makeErrorResponse(502))
-      .mockResolvedValueOnce(makeNimOkResponse());
-
-    vi.stubGlobal("fetch", mockFetch);
-
-    const { parseMealText } = await loadAi({
-      NUTRIMIND_LLM_PROVIDER: "auto",
-      GEMINI_API_KEY: "test_gemini_key",
-      NVIDIA_NIM_API_KEY: "test_nim_key",
-      OPENCODE_API_KEY: "test_opencode_key",
-    });
-
-    const res = await parseMealText({ text: "1 elma", aliases: [] });
-
-    expect(res.status).toBe(200);
-    expect(mockFetch).toHaveBeenCalledTimes(5);
-    expect(mockFetch.mock.calls[4][0]).toBe("https://opencode.ai/zen/v1/chat/completions");
-  });
-
-  it("GEMINI_API_KEY yokken (env'den sil) ve auto modda, zincirin doğrudan NIM'den başladığını doğrula (Gemini'ye hiç istek atılmadığını)", async () => {
-    const mockFetch = vi.fn().mockResolvedValueOnce(makeNimOkResponse());
+  it("GEMINI_API_KEY yokken (env'den sil) ve auto modda, zincirin doğrudan openrouter'den başladığını doğrula (Gemini'ye hiç istek atılmadığını)", async () => {
+    const mockFetch = vi.fn().mockResolvedValueOnce(makeOaiOkResponse());
 
     vi.stubGlobal("fetch", mockFetch);
 
     const { parseMealText } = await loadAi({
       NUTRIMIND_LLM_PROVIDER: "auto",
       GEMINI_API_KEY: "",
-      NVIDIA_NIM_API_KEY: "test_nim_key",
+      OPENROUTER_API_KEY: "test_openrouter_key",
       OPENCODE_API_KEY: "test_opencode_key",
     });
 
@@ -216,7 +241,7 @@ describe("AI fallback zinciri (server/ai.js)", () => {
 
     expect(res.status).toBe(200);
     expect(mockFetch).toHaveBeenCalledTimes(1);
-    expect(mockFetch.mock.calls[0][0]).toBe("https://integrate.api.nvidia.com/v1/chat/completions");
+    expect(mockFetch.mock.calls[0][0]).toBe("https://openrouter.ai/api/v1/chat/completions");
   });
 
   it("Hiçbir API key yokken (auto modda), parseMealText'in ağa hiç çıkmadan {status:500} döndüğünü doğrula", async () => {
@@ -227,8 +252,10 @@ describe("AI fallback zinciri (server/ai.js)", () => {
     const { parseMealText } = await loadAi({
       NUTRIMIND_LLM_PROVIDER: "auto",
       GEMINI_API_KEY: "",
-      NVIDIA_NIM_API_KEY: "",
+      OPENROUTER_API_KEY: "",
       OPENCODE_API_KEY: "",
+      OLLAMA_CLOUDE_API_KEY: "",
+      CLAUDEFLARE_API_KEY: "",
     });
 
     const res = await parseMealText({ text: "1 elma", aliases: [] });
@@ -238,14 +265,14 @@ describe("AI fallback zinciri (server/ai.js)", () => {
   });
 
   it("İlk denemede başarılı olursa (200), zincirin durduğunu ve ikinci bir çağrı yapılmadığını doğrula", async () => {
-    const mockFetch = vi.fn().mockResolvedValueOnce(makeGeminiOkResponse());
+    const mockFetch = vi.fn().mockResolvedValueOnce(makeOaiOkResponse());
 
     vi.stubGlobal("fetch", mockFetch);
 
     const { parseMealText } = await loadAi({
       NUTRIMIND_LLM_PROVIDER: "auto",
       GEMINI_API_KEY: "test_gemini_key",
-      NVIDIA_NIM_API_KEY: "test_nim_key",
+      OPENROUTER_API_KEY: "test_openrouter_key",
       OPENCODE_API_KEY: "test_opencode_key",
     });
 
@@ -263,7 +290,6 @@ describe("AI fallback zinciri (server/ai.js)", () => {
     const { parseMealText } = await loadAi({
       NUTRIMIND_LLM_PROVIDER: "gemini",
       GEMINI_API_KEY: "test_gemini_key",
-      NVIDIA_NIM_API_KEY: "test_nim_key",
       OPENCODE_API_KEY: "test_opencode_key",
     });
 
@@ -274,22 +300,20 @@ describe("AI fallback zinciri (server/ai.js)", () => {
     expect(mockFetch.mock.calls[0][0]).toContain("gemini-flash-latest");
   });
 
-  it("parseMealImage için: Gemini kademeleri 5xx verirse NIM Vision'a düştüğünü, ve bu çağrıda imageBase64'ün OpenAI image_url (data URI) şeklinde gönderildiğini doğrula", async () => {
-    // DİKKAT: yalnızca İKİ Gemini kademesi denenir. 2026-09-21 dersi: aynı
-    // sağlayıcının art arda gelen 5xx'i sağlayıcı geneli arızadır, kalan
-    // kademeler atlanır (server/ai.js VENDOR_5XX_STREAK).
-    const mockFetch = vi
-      .fn()
-      .mockResolvedValueOnce(makeErrorResponse(502))
-      .mockResolvedValueOnce(makeErrorResponse(502))
-      .mockResolvedValueOnce(makeNimOkResponse());
+  it("parseMealImage için: vision zinciri YALNIZCA Gemini tier'larını dener — OpenRouter/OpenCode/Ollama (metin-only) çağrılmaz", async () => {
+    // Vision zinciri yalnız vision-destekli modellerdir (bkz. ai.js
+    // visionChainSteps). Bu test aynı zamanda "görsel modelin limiti metin
+    // işine harcanmaz" kuralını da doğrular: metin sağlayıcıları hiç denenmez.
+    const mockFetch = vi.fn().mockResolvedValue(makeGeminiOkResponse());
 
     vi.stubGlobal("fetch", mockFetch);
 
     const { parseMealImage } = await loadAi({
       NUTRIMIND_LLM_PROVIDER: "auto",
       GEMINI_API_KEY: "test_gemini_key",
-      NVIDIA_NIM_API_KEY: "test_nim_key",
+      OPENROUTER_API_KEY: "test_openrouter_key",
+      OPENCODE_API_KEY: "test_opencode_key",
+      OLLAMA_CLOUDE_API_KEY: "test_ollama_key",
     });
 
     const res = await parseMealImage({
@@ -300,17 +324,18 @@ describe("AI fallback zinciri (server/ai.js)", () => {
     });
 
     expect(res.status).toBe(200);
-    expect(mockFetch).toHaveBeenCalledTimes(3);
-    expect(mockFetch.mock.calls[2][0]).toBe("https://integrate.api.nvidia.com/v1/chat/completions");
+    // Yalnızca tek Gemini tier'ı başarılı oldu → 1 çağrı.
+    expect(mockFetch).toHaveBeenCalledTimes(1);
 
-    const nimBody = JSON.parse(mockFetch.mock.calls[2][1].body);
-    expect(nimBody.model).toBe("meta/llama-3.2-90b-vision-instruct");
-    const userMessage = nimBody.messages[0];
-    expect(Array.isArray(userMessage.content)).toBe(true);
+    const called = mockFetch.mock.calls.map((c) => String(c[0]));
+    // Hiçbir metin sağlayıcısı görsel isteğinde çağrılmadı:
+    for (const url of called) expect(url).toContain("generativelanguage.googleapis.com");
 
-    const imagePart = userMessage.content.find((part) => part.type === "image_url");
+    const geminiBody = JSON.parse(mockFetch.mock.calls[0][1].body);
+    const parts = geminiBody.contents[0].parts;
+    const imagePart = parts.find((part) => part.inline_data?.mime_type === "image/jpeg");
     expect(imagePart).toBeDefined();
-    expect(imagePart.image_url.url).toBe("data:image/jpeg;base64,test_base64_data");
+    expect(imagePart.inline_data.data).toBe("test_base64_data");
   });
 });
 
@@ -460,21 +485,22 @@ describe("etiket tabanı (baseAmount) — canlıdan depoya taşındı", () => {
     }
   });
 
-  it("NIM/OpenCode JSON talimatı da istem dilini izler (Türkçe talimat sızmaz)", async () => {
-    const mockFetch = vi.fn().mockResolvedValue(makeNimOkResponse());
+  it("OpenRouter/Ollama JSON talimatı da istem dilini izler (Türkçe talimat sızmaz)", async () => {
+    const mockFetch = vi.fn().mockResolvedValue(makeOaiOkResponse());
     vi.stubGlobal("fetch", mockFetch);
 
-    // GEMINI key'i YOK: zincir doğrudan NIM'e düşer ve JSON talimatı oraya gider.
-    // `""` şart — `.env`'deki gerçek anahtar aksi hâlde devreye girip testi
-    // Gemini yoluna kaydırır (bkz. yukarıdaki "GEMINI_API_KEY yokken" testi).
+    // GEMINI key'i YOK: zincir doğrudan openrouter'e düşer ve JSON talimatı
+    // oraya gider. `""` şart — `.env`'deki gerçek anahtar aksi hâlde devreye
+    // girip testi Gemini yoluna kaydırır (bkz. yukarıdaki "GEMINI_API_KEY yokken" testi).
     const { parseMealText } = await loadAi({
       NUTRIMIND_LLM_PROVIDER: "auto",
       GEMINI_API_KEY: "",
-      NVIDIA_NIM_API_KEY: "test_nim_key",
+      OPENROUTER_API_KEY: "test_openrouter_key",
     });
 
     const res = await parseMealText({ text: "2 eggs", aliases: [], lang: "en" });
     expect(res.status).toBe(200);
+    expect(mockFetch.mock.calls[0][0]).toContain("openrouter.ai");
 
     const body = JSON.parse(mockFetch.mock.calls[0][1].body);
     const prompt = body.messages[0].content;
@@ -527,7 +553,6 @@ describe("AI gözlem katmanı (server/aiLog.js kayıtları)", () => {
     const { parseMealText, aiLog } = await loadAi({
       NUTRIMIND_LLM_PROVIDER: "auto",
       GEMINI_API_KEY: "test_gemini_key",
-      NVIDIA_NIM_API_KEY: "test_nim_key",
     });
     aiLog.reset();
 
@@ -593,7 +618,7 @@ describe("AI gözlem katmanı (server/aiLog.js kayıtları)", () => {
     });
   });
 
-  it("zincir tükendiğinde denenen adımlar kronolojik kaydedilir; sağlayıcı geneli 5xx'te kalan kademe atlanır", async () => {
+  it("zincir tükendiğinde denenen adımlar kronolojik kaydedilir; sağlayıcı geneli 5xx'te kalan Gemini kademesi atlanır", async () => {
     const mockFetch = vi
       .fn()
       .mockResolvedValue(makeErrorResponse(502));
@@ -602,52 +627,62 @@ describe("AI gözlem katmanı (server/aiLog.js kayıtları)", () => {
     const { parseMealText, aiLog } = await loadAi({
       NUTRIMIND_LLM_PROVIDER: "auto",
       GEMINI_API_KEY: "test_gemini_key",
-      NVIDIA_NIM_API_KEY: "test_nim_key",
+      OPENROUTER_API_KEY: "test_openrouter_key",
       OPENCODE_API_KEY: "test_opencode_key",
+      OLLAMA_CLOUDE_API_KEY: "test_ollama_key",
+      CLAUDEFLARE_API_KEY: "test_cf_key",
+      CLAUDEFLARE_ACCOUNT_ID: "acct-1",
     });
     aiLog.reset();
 
     const res = await parseMealText({ text: "1 elma", aliases: [] });
     expect(res.status).toBe(502);
     expect(res.body.code).toBe("ai_provider_error");
-    // tier3 DENENMEZ: aynı sağlayıcının iki kademesi art arda 5xx verdi.
-    expect(mockFetch).toHaveBeenCalledTimes(4);
-    // Denemeler yanıt gövdesinde de görünür (telefonda tek ekran görüntüsüyle teşhis).
+    // Denemeler 6 ayrı provider çağırır; gemini-tier3 DENENMEZ: aynı sağlayıcının
+    // iki kademesi art arda 5xx verdi (VENDOR_5XX_STREAK) — openrouter/opencode/
+    // ollama/cloudflare farklı vendor olduğu için herbiri tek tek denenir.
+    expect(mockFetch).toHaveBeenCalledTimes(6);
     expect(res.body.attempts.map((a) => a.provider)).toEqual([
+      "openrouter",
+      "opencode",
+      "ollama",
       "gemini-tier1",
       "gemini-tier2",
       "gemini-tier3",
-      "nim",
-      "opencode",
+      "cloudflare",
     ]);
-    expect(res.body.attempts[2].skipped).toBe("vendor-5xx");
+    expect(res.body.attempts[5].skipped).toBe("vendor-5xx");
 
     const snap = aiLog.snapshot();
-    // snapshot en yenisi önce verir → kronolojik sıra için reverse. AtSanan adım
-    // kayıt BIRAKMAZ (hiç çağrılmadı).
     const providers = snap.entries.map((e) => e.provider).reverse();
-    expect(providers).toEqual(["gemini-tier1", "gemini-tier2", "nim", "opencode"]);
+    expect(providers).toEqual([
+      "openrouter",
+      "opencode",
+      "ollama",
+      "gemini-tier1",
+      "gemini-tier2",
+      "cloudflare",
+    ]);
     for (const e of snap.entries) {
       expect(e.status).toBe(502); // BİZİM döndüğümüz kod
       expect(e.upstream).toBe(502); // sağlayıcının ham kodu
       expect(e.code).toBe("ai_provider_error");
     }
     const by = Object.fromEntries(snap.providers.map((p) => [p.provider, p]));
-    expect(by["opencode"]).toMatchObject({ calls: 1, ok: 0, errors: 1 });
+    expect(by["cloudflare"]).toMatchObject({ calls: 1, ok: 0, errors: 1 });
   });
 
-  it("vision akışı kayıtları 'vision' endpoint'i taşır; düşüş nim-vision'a başarıyla gider", async () => {
+  it("vision akışı kayıtları 'vision' endpoint'i taşır; Gemini 503'leri vendor kısa devresiyle tier3'ü atlar", async () => {
     const mockFetch = vi
       .fn()
       .mockResolvedValueOnce(makeErrorResponse(503))
-      .mockResolvedValueOnce(makeErrorResponse(503))
-      .mockResolvedValueOnce(makeNimOkResponse());
+      .mockResolvedValueOnce(makeErrorResponse(503));
     vi.stubGlobal("fetch", mockFetch);
 
     const { parseMealImage, aiLog } = await loadAi({
       NUTRIMIND_LLM_PROVIDER: "auto",
       GEMINI_API_KEY: "test_gemini_key",
-      NVIDIA_NIM_API_KEY: "test_nim_key",
+      OPENROUTER_API_KEY: "test_openrouter_key",
     });
     aiLog.reset();
 
@@ -657,17 +692,16 @@ describe("AI gözlem katmanı (server/aiLog.js kayıtları)", () => {
       mode: "food_photo",
       aliases: [],
     });
-    expect(res.status).toBe(200);
+    expect(res.status).toBe(502);
 
     const snap = aiLog.snapshot();
-    expect(snap.entries).toHaveLength(3);
+    // Vision zinciri YALNIZ Gemini: openrouter metin sağlayıcı çağrılmadı.
+    expect(snap.entries).toHaveLength(2);
     expect(snap.entries.every((e) => e.endpoint === "vision")).toBe(true);
-    // en yeni (nim-vision) başarılı:
-    expect(snap.entries[0]).toMatchObject({ provider: "nim-vision", status: 200 });
+    expect(snap.entries.every((e) => e.provider.startsWith("gemini-tier"))).toBe(true);
     // `upstream`: sağlayıcının HAM kodu (Gemini 503) bizim 502'mizle karışmasın.
-    expect(snap.entries[1]).toMatchObject({ provider: "gemini-tier2", status: 502, upstream: 503 });
-    const providers = snap.entries.map((e) => e.provider).reverse();
-    expect(providers).toEqual(["gemini-tier1", "gemini-tier2", "nim-vision"]);
+    expect(snap.entries[0]).toMatchObject({ provider: "gemini-tier2", status: 502, upstream: 503 });
+    expect(mockFetch).toHaveBeenCalledTimes(2); // tier3 vendor-5xx ile atlanır
   });
 
   it("snapshot kova doluluklarını verir; tier2/tier3'ün metin+vision paylaşımlı olduğu adlarından okunur", async () => {
@@ -678,13 +712,16 @@ describe("AI gözlem katmanı (server/aiLog.js kayıtları)", () => {
 
     const snap = aiLog.snapshot();
     const names = snap.buckets.map((b) => b.name);
+    expect(names).toContain("openrouter");
+    expect(names).toContain("opencode");
+    expect(names).toContain("ollama");
     expect(names).toContain("gemini-tier1-text");
     expect(names).toContain("gemini-tier2");
     expect(names).toContain("gemini-tier3");
     expect(names).toContain("vision");
-    expect(names).toContain("nim");
-    expect(names).toContain("nim-vision");
-    expect(names).toContain("opencode");
+    expect(names).toContain("cloudflare");
+    expect(names).not.toContain("nim");
+    expect(names).not.toContain("nim-vision");
     for (const b of snap.buckets) {
       expect(b.tokens).toBeGreaterThanOrEqual(0);
       expect(b.tokens).toBeLessThanOrEqual(b.cap);
@@ -720,7 +757,6 @@ describe("zaman penceresi ve bütçe (2026-09-21 canlı olay)", () => {
     const { parseMealImage } = await loadAi({
       NUTRIMIND_LLM_PROVIDER: "auto",
       GEMINI_API_KEY: "test_gemini_key",
-      NVIDIA_NIM_API_KEY: "test_nim_key",
       NUTRI_AI_BUDGET_MS: "400",
       NUTRI_AI_MIN_STEP_MS: "50",
     });
@@ -758,21 +794,19 @@ describe("zaman penceresi ve bütçe (2026-09-21 canlı olay)", () => {
     expect(res.body.attempts.every((a) => a.skipped === "budget")).toBe(true);
   });
 
-  it("CANLI OLAY REGRESYONU: Gemini 503'leri + yedek zaman aşımı → 'zaman aşımı' DEĞİL 'sağlayıcı hatası'", async () => {
+  it("CANLI OLAY REGRESYONU: Gemini 503'leri → 'zaman aşımı' DEĞİL 'sağlayıcı hatası'; tier3 vendor kısa devresiyle atlanır", async () => {
     // Olay günü zincir [503, 503, tier3 timeout, nim timeout] şeklindeydi ve
     // son adımın 504'ü kullanıcıya gösterildi. Artık sebep tüm denemelerden
     // seçilir; ayrıca tier3 5xx kısa devresiyle hiç denenmez.
     const mockFetch = vi
       .fn()
       .mockResolvedValueOnce(makeErrorResponse(503))
-      .mockResolvedValueOnce(makeErrorResponse(503))
-      .mockRejectedValue(Object.assign(new Error("timeout"), { name: "TimeoutError" }));
+      .mockResolvedValueOnce(makeErrorResponse(503));
     vi.stubGlobal("fetch", mockFetch);
 
     const { parseMealImage } = await loadAi({
       NUTRIMIND_LLM_PROVIDER: "auto",
       GEMINI_API_KEY: "test_gemini_key",
-      NVIDIA_NIM_API_KEY: "test_nim_key",
     });
 
     const res = await parseMealImage({
@@ -784,12 +818,11 @@ describe("zaman penceresi ve bütçe (2026-09-21 canlı olay)", () => {
 
     expect(res.status).toBe(502);
     expect(res.body.code).toBe("ai_provider_error");
-    expect(mockFetch).toHaveBeenCalledTimes(3); // tier3 atlanır
+    expect(mockFetch).toHaveBeenCalledTimes(2); // tier3 atlanır
     expect(res.body.attempts[2]).toMatchObject({
       provider: "gemini-tier3",
       skipped: "vendor-5xx",
     });
-    expect(res.body.attempts[3]).toMatchObject({ provider: "nim-vision", code: "ai_timeout" });
   });
 
   it("üç ardışık zaman aşımından sonra adım devre dışı kalır: sonraki istek onu hiç denemez", async () => {
@@ -801,7 +834,6 @@ describe("zaman penceresi ve bütçe (2026-09-21 canlı olay)", () => {
     const { parseMealText, aiHealth } = await loadAi({
       NUTRIMIND_LLM_PROVIDER: "auto",
       GEMINI_API_KEY: "test_gemini_key",
-      NVIDIA_NIM_API_KEY: "test_nim_key",
     });
     aiHealth.reset();
 
@@ -831,7 +863,7 @@ describe("ölü model adı kendiliğinden onarılır (server/aiModels.js entegra
         return {
           ok: true,
           status: 200,
-          text: async () => JSON.stringify({ data: [{ id: "meta/llama3-chatqa-1.5-70b" }] }),
+          text: async () => JSON.stringify({ data: [{ id: "cohere/north-mini-code:free" }] }),
         };
       }
       return chatHandler(body, calls.filter((c) => !c.url.endsWith("/models")).length);
@@ -840,17 +872,18 @@ describe("ölü model adı kendiliğinden onarılır (server/aiModels.js entegra
     return { mockFetch, calls };
   }
 
-  it("NIM 410 dönerse listeden yeni model bulunur, yoklanır ve AYNI istekte denenir", async () => {
+  it("OpenRouter 410 dönerse listeden yeni model bulunur, yoklanır ve AYNI istekte denenir", async () => {
     const { calls } = modelAwareFetch((body, chatIndex) =>
       // 1) ölü model → 410  2) yoklama → 200  3) yeni modelle gerçek istek → 200
-      chatIndex === 1 ? makeErrorResponse(410) : makeNimOkResponse(),
+      chatIndex === 1 ? makeErrorResponse(410) : makeOaiOkResponse(),
     );
 
     const { parseMealText } = await loadAi({
       NUTRIMIND_LLM_PROVIDER: "auto",
       GEMINI_API_KEY: "",
-      NVIDIA_NIM_API_KEY: "test_nim_key",
+      OPENROUTER_API_KEY: "test_openrouter_key",
       OPENCODE_API_KEY: "",
+      OLLAMA_CLOUDE_API_KEY: "",
     });
 
     const res = await parseMealText({ text: "1 elma", aliases: [] });
@@ -858,10 +891,10 @@ describe("ölü model adı kendiliğinden onarılır (server/aiModels.js entegra
     expect(res.body.items[0].name).toBe("Elma");
 
     const chatCalls = calls.filter((c) => !c.url.endsWith("/models"));
-    expect(chatCalls[0].body.model).toBe("meta/llama-3.1-8b-instruct"); // yapılandırılmış (ölü)
-    expect(chatCalls[1].body.model).toBe("meta/llama3-chatqa-1.5-70b"); // liste yoklaması
+    expect(chatCalls[0].body.model).toBe("openrouter/free"); // yapılandırılmış (ölü)
+    expect(chatCalls[1].body.model).toBe("cohere/north-mini-code:free"); // liste yoklaması
     expect(chatCalls[1].body.max_tokens).toBe(1);
-    expect(chatCalls[2].body.model).toBe("meta/llama3-chatqa-1.5-70b"); // gerçek istek
+    expect(chatCalls[2].body.model).toBe("cohere/north-mini-code:free"); // gerçek istek
     expect(calls.some((c) => c.url.endsWith("/models"))).toBe(true);
   });
 
@@ -872,8 +905,9 @@ describe("ölü model adı kendiliğinden onarılır (server/aiModels.js entegra
     const { parseMealText } = await loadAi({
       NUTRIMIND_LLM_PROVIDER: "auto",
       GEMINI_API_KEY: "",
-      NVIDIA_NIM_API_KEY: "test_nim_key",
+      OPENROUTER_API_KEY: "test_openrouter_key",
       OPENCODE_API_KEY: "",
+      OLLAMA_CLOUDE_API_KEY: "",
       NUTRI_AI_AUTOMODEL: "0",
     });
 

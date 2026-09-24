@@ -1,5 +1,5 @@
 // ============================================================================
-// Nutrimind — AI istemcisi (Gemini kademeleri + NVIDIA NIM + OpenCode Zen fallback zinciri).
+// Nutrimind — AI istemcisi (OpenRouter + OpenCode + Ollama Cloud + Gemini kademeleri + Cloudflare).
 //
 // server/index.js "donmuş" kabul edildiği için bu mantık AYRI bir modülde
 // yaşıyor; index.js yalnızca /api/ai/parse ve /api/ai/vision isteklerini buraya
@@ -104,27 +104,30 @@ const GEMINI_API_KEY = process.env.GEMINI_API_KEY || "";
 const GEMINI_MODEL = process.env.GEMINI_MODEL || "gemini-flash-latest";
 const GEMINI_TIER2_MODEL = process.env.GEMINI_TIER2_MODEL || "gemini-3.5-flash";
 const GEMINI_TIER3_MODEL = process.env.GEMINI_TIER3_MODEL || "gemini-flash-lite-latest";
-const NVIDIA_NIM_API_KEY = process.env.NVIDIA_NIM_API_KEY || "";
-const NVIDIA_NIM_MODEL = process.env.NVIDIA_NIM_MODEL || "meta/llama-3.1-8b-instruct";
-const NVIDIA_NIM_VISION_MODEL =
-  process.env.NVIDIA_NIM_VISION_MODEL || "meta/llama-3.2-90b-vision-instruct";
 const OPENCODE_API_KEY = process.env.OPENCODE_API_KEY || "";
-const OPENCODE_MODEL = process.env.OPENCODE_MODEL || "deepseek-v4-flash-free";
+const OPENCODE_MODEL = process.env.OPENCODE_MODEL || "space-bunny-free";
+const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY || "";
+const OPENROUTER_MODEL = process.env.OPENROUTER_MODEL || "openrouter/free";
+const OLLAMA_CLOUDE_API_KEY = process.env.OLLAMA_CLOUDE_API_KEY || "";
+const OLLAMA_CLOUDE_MODEL = process.env.OLLAMA_CLOUDE_MODEL || "gemma4:31b";
+const CLAUDEFLARE_API_KEY = process.env.CLAUDEFLARE_API_KEY || "";
+const CLAUDEFLARE_ACCOUNT_ID = process.env.CLAUDEFLARE_ACCOUNT_ID || "";
+const CLAUDEFLARE_MODEL = process.env.CLAUDEFLARE_MODEL || "@cf/google/gemma-2b-it-lora";
 const LLM_PROVIDER = process.env.NUTRIMIND_LLM_PROVIDER || "none";
 const CONFIDENCE_THRESHOLD = Number(process.env.NUTRIMIND_CONFIDENCE_THRESHOLD || 0.8);
 const AI_RATE_PARSE = Number(process.env.NUTRI_AI_RATE_PARSE || 10);
 const AI_RATE_GEMINI_TIER2 = Number(process.env.NUTRI_AI_RATE_GEMINI_TIER2 || 10);
 const AI_RATE_GEMINI_TIER3 = Number(process.env.NUTRI_AI_RATE_GEMINI_TIER3 || 15);
-const NIM_RATE_PARSE = Number(process.env.NUTRI_AI_RATE_NIM || 10);
-const NIM_VISION_RATE = Number(process.env.NUTRI_AI_RATE_NIM_VISION || 5);
 const AI_RATE_OPENCODE = Number(process.env.NUTRI_AI_RATE_OPENCODE || 10);
+const AI_RATE_OPENROUTER = Number(process.env.NUTRI_AI_RATE_OPENROUTER || 15);
+const AI_RATE_OLLAMA = Number(process.env.NUTRI_AI_RATE_OLLAMA || 10);
+const AI_RATE_CLAUDEFLARE = Number(process.env.NUTRI_AI_RATE_CLAUDEFLARE || 5);
 const AI_TIMEOUT_MS = Number(process.env.NUTRI_AI_TIMEOUT_MS || 15000);
-// NIM/OpenCode fallback adımları hem soğuk-başlangıçta (~30sn, vision'da canlı
-// ölçüldü) hem de gerçek besin-analizi prompt'larında (kısa "OK" testinden çok
-// daha uzun JSON üretimi gerektiriyor, canlı testte 15sn'yi aşıp 504 verdiği
-// gözlendi) birincil Gemini denemesinden belirgin şekilde yavaş olabiliyor —
-// bu yüzden hepsi daha uzun bir zaman aşımı kullanıyor.
-const NIM_FALLBACK_TIMEOUT_MS = Number(process.env.NUTRI_AI_NIM_TIMEOUT_MS || 40000);
+// OpenCode/OpenRouter/Ollama fallback adımları hem soğuk-başlangıçta hem de
+// gerçek besin-analizi prompt'larında (kısa "OK" testinden çok daha uzun JSON
+// üretimi gerektiriyor) birincil Gemini denemesinden belirgin şekilde yavaş
+// olabiliyor — bu yüzden hepsi daha uzun bir zaman aşımı kullanıyor.
+const FALLBACK_TIMEOUT_MS = Number(process.env.NUTRI_AI_FALLBACK_TIMEOUT_MS || 40000);
 
 // --- Toplam süre bütçesi (2026-09-21 canlı olay) -----------------------------
 // nginx'in `/api/` bloğu `proxy_read_timeout 30s` ile SABİT (bkz.
@@ -146,7 +149,6 @@ const MIN_STEP_MS = Number(process.env.NUTRI_AI_MIN_STEP_MS || 2500);
 // verirse kalan kademeler atlanır (sağlayıcı geneli arıza). 429 BÖYLE SAYILMAZ:
 // kota model başına ayrı bir kovadır, sonraki kademe çalışabilir.
 const VENDOR_5XX_STREAK = Number(process.env.NUTRI_AI_VENDOR_5XX_STREAK || 2);
-const NIM_URL = "https://integrate.api.nvidia.com/v1/chat/completions";
 const OPENCODE_URL = "https://opencode.ai/zen/v1/chat/completions";
 
 /** Hata gövdeleri İngilizce tutulur: kullanıcıya gösterilen metni istemci
@@ -161,31 +163,32 @@ const geminiUrl = (model) =>
 function makeBucket(perMin) {
   return { tokens: perMin, cap: perMin, perMs: perMin / 60000, last: Date.now() };
 }
-// Metin zinciri: Gemini tier1 (mevcut GEMINI_MODEL) → tier2 → tier3 → NIM → OpenCode.
+// Metin zinciri: openrouter → opencode → ollama → gemini-tier1/2/3 → cloudflare.
+// Görsel zinciri: gemini-tier1/2/3 (yalnız bunlar vision modelidir).
+// Gemini tier2/tier3 kovaları metin+görsel arasında PAYLAŞILIYOR (aynı model,
+// aynı gerçek üst kota) — tier1 (aiBucket/visionBucket) ve diğerleri ayrı.
 const aiBucket = makeBucket(AI_RATE_PARSE);
 const geminiTier2Bucket = makeBucket(AI_RATE_GEMINI_TIER2);
 const geminiTier3Bucket = makeBucket(AI_RATE_GEMINI_TIER3);
-const nimBucket = makeBucket(NIM_RATE_PARSE);
 const opencodeBucket = makeBucket(AI_RATE_OPENCODE);
-// Görsel zinciri: Gemini tier1 → tier2 → tier3 → NIM Vision. Tier2/tier3 kovaları
-// metin zinciriyle PAYLAŞILIYOR (aynı Gemini modeli, aynı gerçek üst kota) —
-// yalnızca tier1 (aiBucket/visionBucket) ve NIM (nimBucket/nimVisionBucket) ayrı,
-// çünkü bunlar zaten var olan, prod'da ayarlı olabilecek env anahtarları.
+const openrouterBucket = makeBucket(AI_RATE_OPENROUTER);
+const ollamaBucket = makeBucket(AI_RATE_OLLAMA);
+const cloudflareBucket = makeBucket(AI_RATE_CLAUDEFLARE);
 const VISION_RATE = Number(process.env.NUTRI_AI_RATE_VISION || 15);
 const visionBucket = makeBucket(VISION_RATE);
-const nimVisionBucket = makeBucket(NIM_VISION_RATE);
 const VALID_IMAGE_MIME = new Set(["image/jpeg", "image/png", "image/webp"]);
 
 // Kovalar aiLog'a bildirilir: /api/ai/status anlık doluluk gösterir (teşhis:
 // "429 gerçekten kovadan mı geldi" sorusunun cevabı).
 aiLog.setBuckets([
+  { name: "openrouter", cap: openrouterBucket.cap, peek: () => peekTokens(openrouterBucket) },
+  { name: "opencode", cap: opencodeBucket.cap, peek: () => peekTokens(opencodeBucket) },
+  { name: "ollama", cap: ollamaBucket.cap, peek: () => peekTokens(ollamaBucket) },
   { name: "gemini-tier1-text", cap: aiBucket.cap, peek: () => peekTokens(aiBucket) },
   { name: "gemini-tier2", cap: geminiTier2Bucket.cap, peek: () => peekTokens(geminiTier2Bucket) },
   { name: "gemini-tier3", cap: geminiTier3Bucket.cap, peek: () => peekTokens(geminiTier3Bucket) },
   { name: "vision", cap: visionBucket.cap, peek: () => peekTokens(visionBucket) },
-  { name: "nim", cap: nimBucket.cap, peek: () => peekTokens(nimBucket) },
-  { name: "nim-vision", cap: nimVisionBucket.cap, peek: () => peekTokens(nimVisionBucket) },
-  { name: "opencode", cap: opencodeBucket.cap, peek: () => peekTokens(opencodeBucket) },
+  { name: "cloudflare", cap: cloudflareBucket.cap, peek: () => peekTokens(cloudflareBucket) },
 ]);
 
 function peekTokens(b) {
@@ -777,39 +780,84 @@ function geminiFetch(prompt, opts) {
   });
 }
 
-/** @param {{model:string, bucket:object, imageBase64?:string, mimeType?:string, timeoutMs?:number}} opts */
-function nimFetch(prompt, opts) {
-  const content = opts.imageBase64
-    ? [
-        { type: "text", text: prompt },
-        {
-          type: "image_url",
-          image_url: { url: `data:${opts.mimeType};base64,${opts.imageBase64}` },
-        },
-      ]
-    : prompt;
+/** OpenAI-uyumlu `/chat/completions` (OpenRouter). `nimFetch` deseni:
+ *  JSON-modu istem + model rotasyonu. Görsel metni desteklemez (text-only). */
+function openrouterFetch(prompt, opts) {
   return callLLM({
     bucket: opts.bucket,
-    buildUrl: () => NIM_URL,
+    buildUrl: () => "https://openrouter.ai/api/v1/chat/completions",
     headers: {
       "Content-Type": "application/json",
-      Authorization: `Bearer ${NVIDIA_NIM_API_KEY}`,
+      Authorization: `Bearer ${OPENROUTER_API_KEY}`,
     },
     buildBody: (model) => ({
       model,
-      messages: [{ role: "user", content }],
-      temperature: 0.2,
-      // Bazı NIM vision modelleri response_format'ı desteklemeyebilir — görsel
-      // isteklerde göndermiyoruz, sadece JSON_MODE_INSTRUCTIONS'a güveniyoruz.
-      ...(opts.imageBase64 ? {} : { response_format: { type: "json_object" } }),
+      messages: [{ role: "user", content: prompt }],
+      max_tokens: 2000,
+      response_format: { type: "json_object" },
     }),
     extractText: (j) => j?.choices?.[0]?.message?.content,
     deadlineAt: opts.deadlineAt,
     maxMs: opts.maxMs,
-    provider: opts.provider || "nim",
+    provider: opts.provider || "openrouter",
     endpoint: opts.endpoint,
     mode: opts.mode,
-    // Ölü model adı (410/404/400) → sağlayıcının listesinden yenisini bul.
+    // Ölü model adı ya da :free doluysa listeden yenisi bulunur.
+    allowModelRotation: true,
+    model: opts.model,
+  });
+}
+
+/** Ollama Cloud native `/api/chat` — OpenAI-uyumsuz body (`stream:false`).
+ *  JSON'u prompt yoluyla ister; `response_format` alanı yok. */
+function ollamaCloudFetch(prompt, opts) {
+  return callLLM({
+    bucket: opts.bucket,
+    buildUrl: () => "https://ollama.com/api/chat",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${OLLAMA_CLOUDE_API_KEY}`,
+    },
+    buildBody: (model) => ({
+      model,
+      messages: [{ role: "user", content: prompt }],
+      stream: false,
+    }),
+    extractText: (j) => j?.message?.content,
+    deadlineAt: opts.deadlineAt,
+    maxMs: opts.maxMs,
+    provider: opts.provider || "ollama",
+    endpoint: opts.endpoint,
+    mode: opts.mode,
+    allowModelRotation: true,
+    model: opts.model,
+  });
+}
+
+/** Cloudflare AI Gateway — OpenAI-uyumlu `/chat/completions`; hesap-id header'ı.
+ *  Deneysel sağlayıcı: yalnızca `CLAUDEFLARE_API_KEY` + `_ACCOUNT_ID` doluysa
+ *  çağrılır; aksi halde adım hiç `available` olmaz. */
+function cloudflareFetch(prompt, opts) {
+  return callLLM({
+    bucket: opts.bucket,
+    buildUrl: () =>
+      `https://api.cloudflare.com/client/v4/accounts/${CLAUDEFLARE_ACCOUNT_ID}/ai/v1/chat/completions`,
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${CLAUDEFLARE_API_KEY}`,
+      "cf-aig-gateway-id": "default",
+    },
+    buildBody: (model) => ({
+      model,
+      messages: [{ role: "user", content: prompt }],
+      max_tokens: 2000,
+    }),
+    extractText: (j) => j?.choices?.[0]?.message?.content,
+    deadlineAt: opts.deadlineAt,
+    maxMs: opts.maxMs,
+    provider: opts.provider || "cloudflare",
+    endpoint: opts.endpoint,
+    mode: opts.mode,
     allowModelRotation: true,
     model: opts.model,
   });
@@ -1000,9 +1048,61 @@ function textChainSteps(prompt, lang) {
   const jsonPrompt = buildJsonModePrompt(prompt, lang);
   // Model adı ÖNBELLEKTEN gelir; keşif yalnızca bir kademe model seviyesinde
   // hata verince çalışır (server/aiModels.js) — sağlıklı akışta ek ağ isteği yok.
-  const nimTextModel = aiModels.getModel("nim", "text", NVIDIA_NIM_MODEL).model;
+  const openrouterModel = aiModels.getModel("openrouter", "text", OPENROUTER_MODEL).model;
   const opencodeModel = aiModels.getModel("opencode", "text", OPENCODE_MODEL).model;
+  const ollamaModel = aiModels.getModel("ollama", "text", OLLAMA_CLOUDE_MODEL).model;
+  const cfModel = aiModels.getModel("cloudflare", "text", CLAUDEFLARE_MODEL).model;
+  const cfEnabled = !!CLAUDEFLARE_API_KEY && !!CLAUDEFLARE_ACCOUNT_ID;
+  // Sıralama kuralı (plan): önce plan-dahili/ücretsiz metin modelleri
+  // (openrouter → opencode → ollama), sonra Gemini tier'ları (yapısal JSON
+  // garantisi son çare), en sonda deneysel Cloudflare. Vision modelleri burada
+  // YOKTUR — metin işi görsel modelin limitini harcamaz.
   return [
+    {
+      provider: "openrouter",
+      vendor: "openrouter",
+      available: !!OPENROUTER_API_KEY,
+      run: (deadlineAt) =>
+        openrouterFetch(jsonPrompt, {
+          model: openrouterModel,
+          bucket: openrouterBucket,
+          maxMs: FALLBACK_TIMEOUT_MS,
+          provider: "openrouter",
+          endpoint: "parse",
+          mode: "text",
+          deadlineAt,
+        }),
+    },
+    {
+      provider: "opencode",
+      vendor: "opencode",
+      available: !!OPENCODE_API_KEY,
+      run: (deadlineAt) =>
+        opencodeFetch(jsonPrompt, {
+          model: opencodeModel,
+          bucket: opencodeBucket,
+          maxMs: FALLBACK_TIMEOUT_MS,
+          provider: "opencode",
+          endpoint: "parse",
+          mode: "text",
+          deadlineAt,
+        }),
+    },
+    {
+      provider: "ollama",
+      vendor: "ollama",
+      available: !!OLLAMA_CLOUDE_API_KEY,
+      run: (deadlineAt) =>
+        ollamaCloudFetch(jsonPrompt, {
+          model: ollamaModel,
+          bucket: ollamaBucket,
+          maxMs: FALLBACK_TIMEOUT_MS,
+          provider: "ollama",
+          endpoint: "parse",
+          mode: "text",
+          deadlineAt,
+        }),
+    },
     {
       provider: "gemini-tier1",
       vendor: "gemini",
@@ -1049,30 +1149,15 @@ function textChainSteps(prompt, lang) {
         }),
     },
     {
-      provider: "nim",
-      vendor: "nim",
-      available: !!NVIDIA_NIM_API_KEY,
+      provider: "cloudflare",
+      vendor: "cloudflare",
+      available: cfEnabled,
       run: (deadlineAt) =>
-        nimFetch(jsonPrompt, {
-          model: nimTextModel,
-          bucket: nimBucket,
-          maxMs: NIM_FALLBACK_TIMEOUT_MS,
-          provider: "nim",
-          endpoint: "parse",
-          mode: "text",
-          deadlineAt,
-        }),
-    },
-    {
-      provider: "opencode",
-      vendor: "opencode",
-      available: !!OPENCODE_API_KEY,
-      run: (deadlineAt) =>
-        opencodeFetch(jsonPrompt, {
-          model: opencodeModel,
-          bucket: opencodeBucket,
-          maxMs: NIM_FALLBACK_TIMEOUT_MS,
-          provider: "opencode",
+        cloudflareFetch(jsonPrompt, {
+          model: cfModel,
+          bucket: cloudflareBucket,
+          maxMs: FALLBACK_TIMEOUT_MS,
+          provider: "cloudflare",
           endpoint: "parse",
           mode: "text",
           deadlineAt,
@@ -1082,8 +1167,10 @@ function textChainSteps(prompt, lang) {
 }
 
 function visionChainSteps(prompt, imageBase64, mimeType, lang) {
-  const jsonPrompt = buildJsonModePrompt(prompt, lang);
-  const nimVisionModel = aiModels.getModel("nim", "vision", NVIDIA_NIM_VISION_MODEL).model;
+  // Görsel zinciri YALNIZCA vision-destekli modelleri denemelidir: şu an bu
+  // küme Gemini tier'larıdır (OpenRouter/Ollama/OpenCode metin-only — görsel
+  // modelin limiti metin işine harcanmaz). JSON garantisi Gemini `responseSchema`
+  // üzerinden gelir.
   return [
     {
       provider: "gemini-tier1",
@@ -1136,23 +1223,6 @@ function visionChainSteps(prompt, imageBase64, mimeType, lang) {
           maxMs: AI_TIMEOUT_MS,
         }),
     },
-    {
-      provider: "nim-vision",
-      vendor: "nim",
-      available: !!NVIDIA_NIM_API_KEY,
-      run: (deadlineAt) =>
-        nimFetch(jsonPrompt, {
-          model: nimVisionModel,
-          bucket: nimVisionBucket,
-          maxMs: NIM_FALLBACK_TIMEOUT_MS,
-          imageBase64,
-          mimeType,
-          provider: "nim-vision",
-          endpoint: "vision",
-          mode: "vision",
-          deadlineAt,
-        }),
-    },
   ];
 }
 
@@ -1202,7 +1272,7 @@ function forcedSteps(provider, steps, filters) {
 /** @param {{text: string, aliases: unknown[]}} input
  *  @returns {Promise<{status:number, body:object}>} */
 async function parseMealText({ text, aliases, lang }) {
-  if (!["gemini", "nim", "auto"].includes(LLM_PROVIDER)) {
+  if (!["gemini", "auto"].includes(LLM_PROVIDER)) {
     return { status: 503, body: { error: AI_DISABLED_MESSAGE, code: "ai_disabled" } };
   }
   if (typeof text !== "string" || !text.trim()) {
@@ -1211,13 +1281,11 @@ async function parseMealText({ text, aliases, lang }) {
 
   const prompt = buildPrompt(text.trim(), Array.isArray(aliases) ? aliases : [], lang);
 
-  // "auto": Gemini (3 kademe) → NIM → OpenCode Zen. "gemini"/"nim" zorlama
-  // modları da AYNI zincirden geçer (yalnızca adım listesi süzülür): bütçe,
-  // devre kesici ve hata raporu tek yerde kalsın. Eskiden tek-sağlayıcı yolu
-  // ayrıydı ve NIM'in 40 sn'lik zaman aşımı nginx penceresini aşabiliyordu.
+  // "auto": openrouter → opencode → ollama → gemini-tier1/2/3 → cloudflare.
+  // "gemini" zorlama da AYNI zincirden geçer (yalnızca adım listesi süzülür):
+  // bütçe, devre kesici ve hata raporu tek yerde kalsın.
   const steps = forcedSteps(LLM_PROVIDER, textChainSteps(prompt, lang), {
     gemini: (s) => s.provider === "gemini-tier1",
-    nim: (s) => s.vendor === "nim",
   });
   const result = await runChain(steps, "parse");
 
