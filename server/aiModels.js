@@ -77,12 +77,20 @@ const PROVIDERS = {
     chatUrl: "https://openrouter.ai/api/v1/chat/completions",
     key: () => process.env.OPENROUTER_API_KEY || "",
     /** OpenRouter free modelleri `:free` soneki ya da `openrouter/free` yönlendiricisidir.
-     *  Ücretsiz önce; günlük 50 istek limiti (kredi yoksa) → kova/429 üstten zaten handle edilir. */
-    pick: (ids, mode) =>
-      ids
+     *  Ücretsiz önce; günlük 50 istek limiti (kredi yoksa) → kova/429 üstten zaten handle edilir.
+     *  Kara liste: prod'da ölçülen başarısız adaylar (kod-odaklı/küçük modeller besin
+     *  çıkarımında timeout ya da bozuk JSON veriyor) keşifte ASLA seçilmez. */
+    pick: (ids, mode) => {
+      const BLOCKED = /north-mini|code|reasoning/i;
+      const sorted = ids
         .filter((id) => /:free-?:?\d*$/.test(id) || id === "openrouter/free")
+        .filter((id) => !BLOCKED.test(id))
         .filter((id) => (mode === "vision" ? /vision/i.test(id) : !/vision/i.test(id)))
-        .sort((a, b) => score(a) - score(b) || a.localeCompare(b)),
+        .sort((a, b) => score(a) - score(b) || a.localeCompare(b));
+      // `openrouter/free` genel yönlendirici — ücretsiz güvenilir, her zaman önde.
+      const router = sorted.find((id) => id === "openrouter/free");
+      return router ? [router, ...sorted.filter((id) => id !== router)] : sorted;
+    },
   },
   ollama: {
     listUrl: "https://ollama.com/api/tags",

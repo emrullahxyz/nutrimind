@@ -1051,56 +1051,12 @@ function textChainSteps(prompt, lang) {
   const ollamaModel = aiModels.getModel("ollama", "text", OLLAMA_CLOUD_MODEL).model;
   const cfModel = aiModels.getModel("cloudflare", "text", CLAUDEFLARE_MODEL).model;
   const cfEnabled = !!CLAUDEFLARE_API_KEY && !!CLAUDEFLARE_ACCOUNT_ID;
-  // Sıralama kuralı (plan): önce plan-dahili/ücretsiz metin modelleri
-  // (openrouter → opencode → ollama), sonra Gemini tier'ları (yapısal JSON
-  // garantisi son çare), en sonda deneysel Cloudflare. Vision modelleri burada
-  // YOKTUR — metin işi görsel modelin limitini harcamaz.
+  // Sıralama kuralı: Gemini tier'ları ÖNCE — hızlı, free-tier ve responseSchema
+  // ile yapısal JSON garantisi (prod'da 200 dönüyor). openrouter/free genel
+  // yönlendiricisi güvenilmez (reasoning modeline düşüp content:null bırakabiliyor,
+  // 15 sn yanıyor) → yedek. Plan-dahili/ücretsiz opencode→ollama arada.
+  // Vision modelleri burada YOKTUR — metin işi görsel modelin limitini harcamaz.
   return [
-    {
-      provider: "openrouter",
-      vendor: "openrouter",
-      available: !!OPENROUTER_API_KEY,
-      run: (deadlineAt) =>
-        openrouterFetch(jsonPrompt, {
-          model: openrouterModel,
-          bucket: openrouterBucket,
-          maxMs: FALLBACK_TIMEOUT_MS,
-          provider: "openrouter",
-          endpoint: "parse",
-          mode: "text",
-          deadlineAt,
-        }),
-    },
-    {
-      provider: "opencode",
-      vendor: "opencode",
-      available: !!OPENCODE_API_KEY,
-      run: (deadlineAt) =>
-        opencodeFetch(jsonPrompt, {
-          model: opencodeModel,
-          bucket: opencodeBucket,
-          maxMs: FALLBACK_TIMEOUT_MS,
-          provider: "opencode",
-          endpoint: "parse",
-          mode: "text",
-          deadlineAt,
-        }),
-    },
-    {
-      provider: "ollama",
-      vendor: "ollama",
-      available: !!OLLAMA_CLOUD_API_KEY,
-      run: (deadlineAt) =>
-        ollamaCloudFetch(jsonPrompt, {
-          model: ollamaModel,
-          bucket: ollamaBucket,
-          maxMs: FALLBACK_TIMEOUT_MS,
-          provider: "ollama",
-          endpoint: "parse",
-          mode: "text",
-          deadlineAt,
-        }),
-    },
     {
       provider: "gemini-tier1",
       vendor: "gemini",
@@ -1144,6 +1100,51 @@ function textChainSteps(prompt, lang) {
           mode: "text",
           deadlineAt,
           maxMs: AI_TIMEOUT_MS,
+        }),
+    },
+    {
+      provider: "opencode",
+      vendor: "opencode",
+      available: !!OPENCODE_API_KEY,
+      run: (deadlineAt) =>
+        opencodeFetch(jsonPrompt, {
+          model: opencodeModel,
+          bucket: opencodeBucket,
+          maxMs: FALLBACK_TIMEOUT_MS,
+          provider: "opencode",
+          endpoint: "parse",
+          mode: "text",
+          deadlineAt,
+        }),
+    },
+    {
+      provider: "ollama",
+      vendor: "ollama",
+      available: !!OLLAMA_CLOUD_API_KEY,
+      run: (deadlineAt) =>
+        ollamaCloudFetch(jsonPrompt, {
+          model: ollamaModel,
+          bucket: ollamaBucket,
+          maxMs: FALLBACK_TIMEOUT_MS,
+          provider: "ollama",
+          endpoint: "parse",
+          mode: "text",
+          deadlineAt,
+        }),
+    },
+    {
+      provider: "openrouter",
+      vendor: "openrouter",
+      available: !!OPENROUTER_API_KEY,
+      run: (deadlineAt) =>
+        openrouterFetch(jsonPrompt, {
+          model: openrouterModel,
+          bucket: openrouterBucket,
+          maxMs: FALLBACK_TIMEOUT_MS,
+          provider: "openrouter",
+          endpoint: "parse",
+          mode: "text",
+          deadlineAt,
         }),
     },
     {

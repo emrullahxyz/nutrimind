@@ -145,33 +145,9 @@ function makeErrorResponse(status = 429) {
 }
 
 describe("AI fallback zinciri (server/ai.js)", () => {
-  it("NUTRIMIND_LLM_PROVIDER=auto iken, mock fetch ilk çağrıda (openrouter) 429 dönerse, ikinci çağrının (opencode, farklı sağlayıcıyla) yapıldığını doğrula", async () => {
+  it("NUTRIMIND_LLM_PROVIDER=auto iken, mock fetch ilk çağrıda (gemini-tier1) 429 dönerse, ikinci çağrının (gemini-tier2, farklı modelle) yapıldığını doğrula", async () => {
     const mockFetch = vi
       .fn()
-      .mockResolvedValueOnce(makeErrorResponse(429))
-      .mockResolvedValueOnce(makeOaiOkResponse());
-
-    vi.stubGlobal("fetch", mockFetch);
-
-    const { parseMealText } = await loadAi({
-      NUTRIMIND_LLM_PROVIDER: "auto",
-      GEMINI_API_KEY: "test_gemini_key",
-      OPENROUTER_API_KEY: "test_openrouter_key",
-      OPENCODE_API_KEY: "test_opencode_key",
-    });
-
-    const res = await parseMealText({ text: "1 elma", aliases: [] });
-
-    expect(res.status).toBe(200);
-    expect(mockFetch).toHaveBeenCalledTimes(2);
-    expect(mockFetch.mock.calls[0][0]).toContain("openrouter.ai");
-    expect(mockFetch.mock.calls[1][0]).toContain("opencode.ai");
-  });
-
-  it("openrouter+opencode 429 verirse, üçüncü çağrının gemini-tier1'e gittiğini doğrula", async () => {
-    const mockFetch = vi
-      .fn()
-      .mockResolvedValueOnce(makeErrorResponse(429))
       .mockResolvedValueOnce(makeErrorResponse(429))
       .mockResolvedValueOnce(makeGeminiOkResponse());
 
@@ -187,23 +163,48 @@ describe("AI fallback zinciri (server/ai.js)", () => {
     const res = await parseMealText({ text: "1 elma", aliases: [] });
 
     expect(res.status).toBe(200);
-    expect(mockFetch).toHaveBeenCalledTimes(3);
-    expect(mockFetch.mock.calls[2][0]).toContain("generativelanguage.googleapis.com");
-
-    const geminiBody = JSON.parse(mockFetch.mock.calls[2][1].body);
-    expect(geminiBody).toMatchObject({ contents: [{ parts: [{ text: expect.any(String) }] }] });
+    expect(mockFetch).toHaveBeenCalledTimes(2);
+    expect(mockFetch.mock.calls[0][0]).toContain("generativelanguage.googleapis.com");
+    expect(mockFetch.mock.calls[1][0]).toContain("generativelanguage.googleapis.com");
   });
 
-  it("tüm plan-dahili + Gemini adımları başarısız olursa, metin zincirinde son adım Cloudflare'e gider", async () => {
-    // Gemini tier3, t1+t2'nin art arda 5xx'i (VENDOR_5XX_STREAK) yüzünden
-    // atlanır → cloudflare 6. çağrıdır.
+  it("gemini kademeleri 429 verirse (kova değil, sağlayıcının HTTP yanıtı) hepsi denenir ve opencode'a düşülür", async () => {
+    // isVendorFailure 429'u SAYMAZ (upstream>=500 değil) → gemini vendor streak'i
+    // her 429'da sıfırlanır, tier3 de denenir. opencode 4. çağrıdır.
     const mockFetch = vi
       .fn()
-      .mockResolvedValueOnce(makeErrorResponse(429)) // openrouter
-      .mockResolvedValueOnce(makeErrorResponse(429)) // opencode
-      .mockResolvedValueOnce(makeErrorResponse(429)) // ollama
+      .mockResolvedValueOnce(makeErrorResponse(429)) // gemini-tier1
+      .mockResolvedValueOnce(makeErrorResponse(429)) // gemini-tier2
+      .mockResolvedValueOnce(makeErrorResponse(429)) // gemini-tier3
+      .mockResolvedValueOnce(makeOaiOkResponse()); // opencode
+
+    vi.stubGlobal("fetch", mockFetch);
+
+    const { parseMealText } = await loadAi({
+      NUTRIMIND_LLM_PROVIDER: "auto",
+      GEMINI_API_KEY: "test_gemini_key",
+      OPENROUTER_API_KEY: "test_openrouter_key",
+      OPENCODE_API_KEY: "test_opencode_key",
+    });
+
+    const res = await parseMealText({ text: "1 elma", aliases: [] });
+
+    expect(res.status).toBe(200);
+    expect(mockFetch).toHaveBeenCalledTimes(4);
+    expect(mockFetch.mock.calls[3][0]).toContain("opencode.ai");
+  });
+
+  it("tüm adımlar başarısız olursa, metin zincirinde son adım Cloudflare'e gider", async () => {
+    // Gemini tier3, t1+t2'nin art arda 5xx'i (VENDOR_5XX_STREAK) yüzünden
+    // atlanır → cloudflare 6. çağrıdır. Yeni sıra: gemini t1/t2 → opencode →
+    // ollama → openrouter → cloudflare.
+    const mockFetch = vi
+      .fn()
       .mockResolvedValueOnce(makeErrorResponse(502)) // gemini-tier1
       .mockResolvedValueOnce(makeErrorResponse(502)) // gemini-tier2
+      .mockResolvedValueOnce(makeErrorResponse(429)) // opencode (farklı vendor — denenir)
+      .mockResolvedValueOnce(makeErrorResponse(429)) // ollama
+      .mockResolvedValueOnce(makeErrorResponse(429)) // openrouter
       .mockResolvedValueOnce(makeOaiOkResponse()); // cloudflare
 
     vi.stubGlobal("fetch", mockFetch);
@@ -225,7 +226,7 @@ describe("AI fallback zinciri (server/ai.js)", () => {
     expect(mockFetch.mock.calls[5][0]).toContain("api.cloudflare.com");
   });
 
-  it("GEMINI_API_KEY yokken (env'den sil) ve auto modda, zincirin doğrudan openrouter'den başladığını doğrula (Gemini'ye hiç istek atılmadığını)", async () => {
+  it("GEMINI_API_KEY yokken (env'den sil) ve auto modda, zincirin doğrudan opencode'den başladığını doğrula (Gemini'ye hiç istek atılmadığını)", async () => {
     const mockFetch = vi.fn().mockResolvedValueOnce(makeOaiOkResponse());
 
     vi.stubGlobal("fetch", mockFetch);
@@ -241,7 +242,7 @@ describe("AI fallback zinciri (server/ai.js)", () => {
 
     expect(res.status).toBe(200);
     expect(mockFetch).toHaveBeenCalledTimes(1);
-    expect(mockFetch.mock.calls[0][0]).toBe("https://openrouter.ai/api/v1/chat/completions");
+    expect(mockFetch.mock.calls[0][0]).toBe("https://opencode.ai/zen/v1/chat/completions");
   });
 
   it("Hiçbir API key yokken (auto modda), parseMealText'in ağa hiç çıkmadan {status:500} döndüğünü doğrula", async () => {
@@ -265,7 +266,7 @@ describe("AI fallback zinciri (server/ai.js)", () => {
   });
 
   it("İlk denemede başarılı olursa (200), zincirin durduğunu ve ikinci bir çağrı yapılmadığını doğrula", async () => {
-    const mockFetch = vi.fn().mockResolvedValueOnce(makeOaiOkResponse());
+    const mockFetch = vi.fn().mockResolvedValueOnce(makeGeminiOkResponse());
 
     vi.stubGlobal("fetch", mockFetch);
 
@@ -638,29 +639,30 @@ describe("AI gözlem katmanı (server/aiLog.js kayıtları)", () => {
     const res = await parseMealText({ text: "1 elma", aliases: [] });
     expect(res.status).toBe(502);
     expect(res.body.code).toBe("ai_provider_error");
-    // Denemeler 6 ayrı provider çağırır; gemini-tier3 DENENMEZ: aynı sağlayıcının
-    // iki kademesi art arda 5xx verdi (VENDOR_5XX_STREAK) — openrouter/opencode/
-    // ollama/cloudflare farklı vendor olduğu için herbiri tek tek denenir.
+    // Yeni sıra: gemini-tier1 → tier2 → opencode → ollama → openrouter → cloudflare.
+    // gemini-tier3 DENENMEZ: aynı sağlayıcının iki kademesi art arda 5xx verdi
+    // (VENDOR_5XX_STREAK). opencode/ollama/openrouter/cloudflare farklı vendor
+    // olduğu için herbiri tek tek denenir.
     expect(mockFetch).toHaveBeenCalledTimes(6);
     expect(res.body.attempts.map((a) => a.provider)).toEqual([
-      "openrouter",
-      "opencode",
-      "ollama",
       "gemini-tier1",
       "gemini-tier2",
       "gemini-tier3",
+      "opencode",
+      "ollama",
+      "openrouter",
       "cloudflare",
     ]);
-    expect(res.body.attempts[5].skipped).toBe("vendor-5xx");
+    expect(res.body.attempts[2].skipped).toBe("vendor-5xx");
 
     const snap = aiLog.snapshot();
     const providers = snap.entries.map((e) => e.provider).reverse();
     expect(providers).toEqual([
-      "openrouter",
-      "opencode",
-      "ollama",
       "gemini-tier1",
       "gemini-tier2",
+      "opencode",
+      "ollama",
+      "openrouter",
       "cloudflare",
     ]);
     for (const e of snap.entries) {
@@ -870,7 +872,7 @@ describe("ölü model adı kendiliğinden onarılır (server/aiModels.js entegra
         return {
           ok: true,
           status: 200,
-          text: async () => JSON.stringify({ data: [{ id: "cohere/north-mini-code:free" }] }),
+          text: async () => JSON.stringify({ data: [{ id: "deepseek-v4-flash-free" }] }),
         };
       }
       return chatHandler(body, calls.filter((c) => !c.url.endsWith("/models")).length);
@@ -879,7 +881,7 @@ describe("ölü model adı kendiliğinden onarılır (server/aiModels.js entegra
     return { mockFetch, calls };
   }
 
-  it("OpenRouter 410 dönerse listeden yeni model bulunur, yoklanır ve AYNI istekte denenir", async () => {
+  it("OpenCode 410 dönerse listeden yeni model bulunur, yoklanır ve AYNI istekte denenir", async () => {
     const { calls } = modelAwareFetch((body, chatIndex) =>
       // 1) ölü model → 410  2) yoklama → 200  3) yeni modelle gerçek istek → 200
       chatIndex === 1 ? makeErrorResponse(410) : makeOaiOkResponse(),
@@ -888,8 +890,8 @@ describe("ölü model adı kendiliğinden onarılır (server/aiModels.js entegra
     const { parseMealText } = await loadAi({
       NUTRIMIND_LLM_PROVIDER: "auto",
       GEMINI_API_KEY: "",
-      OPENROUTER_API_KEY: "test_openrouter_key",
-      OPENCODE_API_KEY: "",
+      OPENROUTER_API_KEY: "",
+      OPENCODE_API_KEY: "test_opencode_key",
       OLLAMA_CLOUD_API_KEY: "",
     });
 
@@ -898,10 +900,10 @@ describe("ölü model adı kendiliğinden onarılır (server/aiModels.js entegra
     expect(res.body.items[0].name).toBe("Elma");
 
     const chatCalls = calls.filter((c) => !c.url.endsWith("/models"));
-    expect(chatCalls[0].body.model).toBe("openrouter/free"); // yapılandırılmış (ölü)
-    expect(chatCalls[1].body.model).toBe("cohere/north-mini-code:free"); // liste yoklaması
+    expect(chatCalls[0].body.model).toBe("space-bunny-free"); // yapılandırılmış (ölü)
+    expect(chatCalls[1].body.model).toBe("deepseek-v4-flash-free"); // liste yoklaması
     expect(chatCalls[1].body.max_tokens).toBe(1);
-    expect(chatCalls[2].body.model).toBe("cohere/north-mini-code:free"); // gerçek istek
+    expect(chatCalls[2].body.model).toBe("deepseek-v4-flash-free"); // gerçek istek
     expect(calls.some((c) => c.url.endsWith("/models"))).toBe(true);
   });
 
@@ -912,8 +914,8 @@ describe("ölü model adı kendiliğinden onarılır (server/aiModels.js entegra
     const { parseMealText } = await loadAi({
       NUTRIMIND_LLM_PROVIDER: "auto",
       GEMINI_API_KEY: "",
-      OPENROUTER_API_KEY: "test_openrouter_key",
-      OPENCODE_API_KEY: "",
+      OPENROUTER_API_KEY: "",
+      OPENCODE_API_KEY: "test_opencode_key",
       OLLAMA_CLOUD_API_KEY: "",
       NUTRI_AI_AUTOMODEL: "0",
     });

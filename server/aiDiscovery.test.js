@@ -61,7 +61,7 @@ describe("aiDiscovery periyodik model taraması", () => {
   it("startDiscovery açılışta ilk turu çalıştırır: listeyi çeker, canlı adayı cache'ler", async () => {
     const mockFetch = vi.fn(async (url, init) => {
       if (String(url).endsWith("/models") || String(url).includes("/ai/models/search")) {
-        return listResponse(["cohere/north-mini-code:free", "openrouter/free"]);
+        return listResponse(["google/gemma-4-31b-it:free", "openrouter/free"]);
       }
       return chatOkResponse();
     });
@@ -74,7 +74,7 @@ describe("aiDiscovery periyodik model taraması", () => {
       await flushTick();
       // openrouter için listeye gidip canlı adayı cache'lediğini doğrula:
       const cached = aiModels.getModel("openrouter", "text", "openrouter/free");
-      expect(cached.model).toBe("cohere/north-mini-code:free");
+      expect(cached.model).toBe("openrouter/free");
       expect(cached.source).toBe("cached");
       // en az bir liste + bir probe çağrısı
       expect(mockFetch.mock.calls.length).toBeGreaterThanOrEqual(2);

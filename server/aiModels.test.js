@@ -265,7 +265,7 @@ describe("aiModels model keşfi", () => {
     expect(() => m.setDiscovered("yok", "text", "useless")).not.toThrow();
   });
 
-  it("openrouter pick: `:free` sonekli/adları ücretli olmayanların önüne alır; vision adayı yoksa boş döner", async () => {
+  it("openrouter pick: `:free` sonekli adları öne alır; kara listedeki kod modellerini atlar; openrouter/free en önde", async () => {
     const mockFetch = vi.fn(async (url, init) => {
       if (String(url).endsWith("/models")) {
         return listResponse([
@@ -281,13 +281,10 @@ describe("aiModels model keşfi", () => {
     const m = await loadModels(keys);
 
     const found = await m.refreshOnFailure("openrouter", "text", { budgetMs: 8000 });
-    // score(): `north-mini` → 0, yani `openrouter/free`'den (score 2) ÖNCE denenir.
-    expect(found.model).toBe("cohere/north-mini-code:free");
+    // `north-mini-code` kara listede (kod modeli, prod'da timeout) → aday değil.
+    expect(found.model).toBe("openrouter/free");
     expect(found.model).not.toBe("openai/gpt-4o-mini"); // ücretli hiç aday değil
-    expect(found.probed).toEqual([
-      "cohere/north-mini-code:free",
-      "openrouter/free",
-    ]);
+    expect(found.probed).toEqual(["openrouter/free"]);
 
     // Metin adayında vision filtresi `:free`+vision yok → aday çıkmaz.
     const vision = await m.refreshOnFailure("openrouter", "vision", { budgetMs: 8000 });
