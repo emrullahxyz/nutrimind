@@ -7,9 +7,9 @@ Bu dosya "canlıda AI hatası aldım, şimdi ne yapacağım" sorusunun cevabıd�
 ## 1. Zincir nasıl çalışır
 
 ```
-POST /api/ai/vision   →  Gemini tier1 → tier2 → tier3 → NIM vision
-POST /api/ai/parse    →  Gemini tier1 → tier2 → tier3 → NIM → OpenCode Zen
-(NUTRIMIND_LLM_PROVIDER=gemini|nim → aynı zincir, yalnızca tek adım süzülür)
+POST /api/ai/vision   →  Gemini tier1 → tier2 → tier3        (yalnız vision modeller)
+POST /api/ai/parse    →  OpenRouter → OpenCode → Ollama Cloud → Gemini tier1→tier2→tier3 → Cloudflare (deneysel)
+(NUTRIMIND_LLM_PROVIDER=gemini → yalnız Gemini tier1; auto → tam zincir)
 ```
 
 Her adım sırayla denenir; **ilk 200'de durulur**. Hepsi düşerse istemciye dönen kod
@@ -78,8 +78,11 @@ uzun sürdü (günlükte `503` görünüyordu, oysa biz 502 dönüyorduk ve sebe
 # Gemini anahtarı + model listesi (200 beklenir)
 curl -s "https://generativelanguage.googleapis.com/v1beta/models?key=$GEMINI_API_KEY" | head -c 200
 
-# NIM: hesabın gerçekten erişebildiği modeller (bazıları 404 "Not found for account" verir)
-curl -s -H "Authorization: Bearer $NVIDIA_NIM_API_KEY" https://integrate.api.nvidia.com/v1/models
+# OpenRouter: free modeller `:free` soneki ya da `openrouter/free` yönlendiricisi
+curl -s https://openrouter.ai/api/v1/models | grep -o ':free[^"]*' | head -20
+
+# Ollama Cloud (native): plan-dahili model adları
+curl -s -H "Authorization: Bearer $OLLAMA_CLOUDE_API_KEY" https://ollama.com/api/tags
 
 # OpenCode Zen: ücretsizler `-free` sonekiyle; LİSTEDE OLMAK YETMEZ (400 "Model is unavailable")
 curl -s -H "Authorization: Bearer $OPENCODE_API_KEY" https://opencode.ai/zen/v1/models
@@ -159,14 +162,15 @@ sınırlar ve olumsuz önbellek (15 dk) tekrarı önler. `NUTRI_AI_PROBE_TIMEOUT
 
 | Anahtar | Varsayılan | Not |
 |---|---|---|
-| `NUTRIMIND_LLM_PROVIDER` | `none` | `auto` tam zincir; `gemini`/`nim` tek adıma süzer |
+| `NUTRIMIND_LLM_PROVIDER` | `none` | `auto` tam zincir; `gemini` yalnız Gemini tier1'e süzer |
 | `NUTRI_AI_BUDGET_MS` | `25000` | **nginx penceresinin altında kalmalı** |
 | `NUTRI_AI_MIN_STEP_MS` | `2500` | Kalan süre bunun altındaysa adım başlatılmaz |
 | `NUTRI_AI_VENDOR_5XX_STREAK` | `2` | Aynı sağlayıcıda art arda 5xx → kalan kademeler atlanır |
 | `NUTRI_AI_TIMEOUT_MS` | `15000` | Gemini adımı (bütçeyle kırpılır) |
-| `NUTRI_AI_NIM_TIMEOUT_MS` | `40000` | NIM/OpenCode adımı (bütçeyle kırpılır) |
+| `NUTRI_AI_FALLBACK_TIMEOUT_MS` | `40000` | OpenRouter/OpenCode/Ollama/Cloudflare adımı (bütçeyle kırpılır) |
 | `NUTRI_AI_API_WINDOW_MS` | `30000` | Yalnızca değişmez testi için: nginx penceresi |
 | `NUTRI_AI_AUTOMODEL` | `1` | `0` = ölü model adında ısrar et, keşif yapma |
+| `NUTRI_AI_DISCOVER_INTERVAL_MS` | `21600000` | Periyodik free-model taraması aralığı (15 dk altı clamp) |
 | `NUTRI_AI_MODEL_TTL_MS` | `21600000` | Başarılı keşif önbelleği (6 saat) |
 | `NUTRI_AI_MODEL_NEGATIVE_TTL_MS` | `900000` | Başarısız keşif (15 dk) |
 | `NUTRI_AI_BREAKER_MS` | `600000` | Devrenin açık kalma süresi |
@@ -180,3 +184,16 @@ zaman aşımına uğrayanlar HER ZAMAN tam 15 sn yakıyor (hem 2026-09-21 olayı
 turda). Yani bu değeri düşürmek doğrudan bekleme kazancıdır — ancak gerçekten yavaş (büyük
 görsel, yavaş bağlantı) istekleri de keser. Karar ölçümle verilir; varsayılan bilinçli
 olarak geniş bırakıldı çünkü toplam süre zaten bütçeyle sınırlı.
+
+## 8. Periyodik free-model taraması (server/aiDiscovery.js)
+
+Süreç açılışında ve `NUTRI_AI_DISCOVER_INTERVAL_MS` (varsayılan 6 saat) aralığıyla
+openrouter/opencode/ollama/cloudflare model listelerini çeker, `pick()`'ten geçen canlı
+adayı yoklar ve `aiModels.setDiscovered` ile cache'e yazar. Amaç: **kullanıcı isteği
+olmadan** ölü ücretsiz modelin (403/404/400/410) ilk istekte 40 sn bekletmemesi.
+
+- **Asla throw etmez**; her hata sessizce atlanır (gözlem katmanı kuralı).
+- `NODE_ENV=test` iken başlamaz (test izolasyonu).
+- `NUTRI_AI_AUTOMODEL=0` ise açılmaz.
+- Log: `journalctl … | grep '\[ai\]' | grep '"kind":"discover"'` → `refreshed` satırları.
+- Min aralık 15 dk — daha küçük env değeri clamp'lanır (sağlayıcı listelerini spamlamamak).
