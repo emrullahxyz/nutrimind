@@ -9,6 +9,7 @@ import { Camera, Plus, Sparkles, Trash2 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { Modal } from "./Modal";
 import { ScanSheet } from "./ScanSheet";
+import { AliasPicker } from "./AliasPicker";
 import { AiError, aiErrorMessage, parseWithAI } from "../lib/ai";
 import { FormActions, NutrientSummaryLine, NumField, NutritionFields, TextField, fromDraft, toDraft } from "./FormBits";
 import type { MealTemplate } from "../lib/templates";
@@ -85,6 +86,12 @@ function initialDraftLines(template: MealTemplate, aliases: Alias[]): DraftLine[
       nutrition: item.nutrition,
       preserved: true,
       manualMeasured: false,
+      blank: false, // kayıttan gelen kalem: iskelet değil, kayda girer
+      // `fromRecord`: bu satır ŞABLONDAN geldi. Gramaj yazılınca `preserved`
+      // düşer ama satır hâlâ kayıttandır — elle alanları açılmaz. (ÖLÇÜLEN
+      // HATA: iki kaynaklı kaleme gramaj yazılınca satır elle satıra döndü ve
+      // kullanıcının girmediği kayıt adı elle alana düştü.)
+      fromRecord: true,
     });
   }
   return out;
@@ -113,6 +120,10 @@ export function TemplatePreview({
   const [aiLoading, setAiLoading] = useState(false);
   const [aiError, setAiError] = useState<string | null>(null);
   const [scanOpen, setScanOpen] = useState(false);
+  /** "Malzeme ekle" → AÇILAN İSKELE SATIRINA yönlendiren picker anahtarı.
+   *  Seçim yapılmadan kapanırsa satır, ad + makro alanları açık elle satır
+   *  olarak kalır. Açık satır yoksa (satır silinmiş) picker açılmaz. */
+  const [pickerFor, setPickerFor] = useState<string | null>(null);
 
   // Farklı şablon açılırsa sıfırla (bileşen yeniden mount olmayabilir).
   useEffect(() => {
@@ -173,6 +184,13 @@ export function TemplatePreview({
         // makro gerçek ama miktar bilinmiyor → korunmuş satır.
         preserved: !hasAmount,
         manualMeasured: false,
+        // AI besini hafızaya BAĞLI değildir (isim eşleşmesi ölçüm değildir);
+        // `blank` FALSE — içeriği gerçek, iskelet değil, kayda girer.
+        blank: false,
+        // `fromRecord` FALSE: AI satırı kullanıcının girdiği değil, AI'ın
+        // döndürdüğü — ama yine de KAYIT değil. Elle alanları AÇIK kalır ki
+        // kullanıcı makroları düzeltebilsin.
+        fromRecord: false,
       };
     });
     setLines((prev) => fresh.reduce((acc, l) => addDraftLine(acc, l), prev));
@@ -202,15 +220,18 @@ export function TemplatePreview({
     setLines((prev) => prev.map((l) => (l.key === key ? next : l)));
   }
 
-  /** "Malzeme ekle": BOŞ elle satır açar — kullanıcı ad ve makroları kendi
-   *  girer, ya da hafızadan besin seçmek için "Malzemeyi değiştir"e basar.
+  /** "Malzeme ekle": BOŞ elle satır açar VE İSKELE SATIRINDA HAFIZA
+   *  PICKER'INI AÇAR — "boş ekran geldi, hafızadan seçemiyorum" şikayetinin
+   *  asıl kökü, picker'ın yalnız gizli "Malzemeyi değiştir" düğmesinin
+   *  arkasında kalmasıydı. Kullanıcı açılışta aradığı besini yazar seçer;
+   *  açarsa ad + makro alanları açık elle satır olarak kalır (satır kapanmaz).
    *
    *  Önceden `newDraftLine(aliases[0])` ile hafızanın ilk besini rastgele
-   *  atılıyordu: kullanıcı istediği besini seçmek için ekledikten sonra
-   *  ayrıca değiştirmek zorundaydı, ve ekleme anında ekranda anlamsız bir
-   *  besin beliriyordu. */
+   *  atılıyordu; sonra iskelet satırı + gizli swap düğmesi vardı. */
   function addLine() {
-    setLines((prev) => addDraftLine(prev, newDraftLine(undefined)));
+    const line = newDraftLine(undefined);
+    setLines((prev) => addDraftLine(prev, line));
+    setPickerFor(line.key);
   }
 
   return (
@@ -251,16 +272,49 @@ export function TemplatePreview({
               // kapatırsa kullanıcı protein/karb/yağ/lif'i de giremez olur
               // (ölçüldü: adı yazar yazar alanlar kayboldu).
               //
-              // `preserved` hariç: o, kayıttan gelen kalemdir, elle girilen
-              // değil — makrosu alınmaz, kullanıcı yalnızca miktar yazabilir.
-              const isManualRow = line.aliasId === null && !line.preserved;
+              // `fromRecord` hariç: kayıttan gelen kalemdir, elle girilen değil —
+              // makrosu kullanıcının değil kaydın gerçeğidir, kullanıcı yalnızca
+              // miktar yazar ya da besini değiştirir. `preserved` TEK BAŞINA
+              // yetmez: korunmuş kaleme gramaj yazılınca `preserved` düşer ve
+              // satır `aliasId: null` olduğu için elle sayılırdı — kayıttaki gerçek
+              // ad "MALZEME ADI" alanına düşüyordu (ÖLÇÜLEN HATA).
+              const isManualRow = line.aliasId === null && !line.preserved && !line.fromRecord;
               return (
                 <li
                   key={line.key}
                   className="rounded-chip border border-line bg-white/[0.03] px-3 py-2.5"
                 >
                   <div className="flex items-center justify-between gap-2">
-                    {swapKey === line.key ? (
+                    {pickerFor === line.key ? (
+                      // "Malzeme ekle"nin açtığı İSKELE satırında hafıza
+                      // seçici — satırın ALTINDA değil YERİNDE. Seçim yapılırsa
+                      // `aliasId` dolar ve `blank` düşer; "Elle gir"e
+                      // basılırsa picker kapanır, satır ad + makro alanları
+                      // açık elle satır olur (iskelet kayda girmez).
+                      <div className="flex-1">
+                        <AliasPicker
+                          aliases={aliases}
+                          selectedAliasId={""}
+                          onSelectAlias={(id) => {
+                            const next = aliases.find((a) => a.id === id);
+                            setPickerFor(null);
+                            if (!next) return;
+                            // `swapDraftLine` gramajı KORUR, besini bağlar —
+                            // iskelet satırda gramaj 0, korunacak değer yok,
+                            // ve makro alias'tan ölçeklenir. `blank` düşer.
+                            patch(line.key, swapDraftLine(line, next));
+                          }}
+                          label={t("meal.memorySelectLabel")}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setPickerFor(null)}
+                          className="mt-1.5 w-full rounded-pill border border-line px-3 py-1.5 text-[11px] font-bold text-ink-secondary transition hover:text-ink-primary"
+                        >
+                          {t("recipeBuilder.manualMode")}
+                        </button>
+                      </div>
+                    ) : swapKey === line.key ? (
                       <select
                         autoFocus
                         aria-label={t("nutrition.swapIngredient")}

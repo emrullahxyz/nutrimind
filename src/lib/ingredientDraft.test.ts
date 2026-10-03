@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  __setDraftFlag,
   addDraftLine,
   draftLineFromAlias,
   draftLinesToItems,
@@ -105,6 +106,22 @@ describe("newDraftLine", () => {
     expect(l.qty).toBe("");
     expect(l.grams).toBe(0);
     expect(l.nutrition.kcal).toBe(0);
+  });
+
+  // `blank`: "Malzeme ekle" düğmesi bunu açar — henüz HİÇBİR BESİNE bağlı
+  // olmayan, kaydedilemeyen bir iskelet. Ad yazmak bağı değildir.
+  it("alias yoksa blank TRUE'dur (isimsiz iskelet kayda giremez)", () => {
+    expect(newDraftLine(undefined).blank).toBe(true);
+    expect(newDraftLine(undefined).manualMeasured).toBe(false);
+  });
+
+  it("ad yazılmış boş elle satır bile blank kalır (isim bağlamaz)", () => {
+    const named = { ...newDraftLine(undefined), name: "Peynir" };
+    expect(named.blank).toBe(true);
+  });
+
+  it("alias'lı satır blank FALSE'dur", () => {
+    expect(newDraftLine(tavuk).blank).toBe(false);
   });
 
   // Boş miktar ölçülmediği için redde düşmez; satır alias'ın varsayılan birimini alır.
@@ -318,6 +335,17 @@ describe("swapDraftLine", () => {
     const base = line(draftLineFromAlias(tavuk, "150", "g"));
     expect(swapDraftLine(base, tofu).key).toBe(base.key);
   });
+
+  // `blank` → false: swap BESİN BAĞLAR (picker'da "Elle gir" ya da hafızadan
+  // seçim çıkışının kendisi). blank satırın swap'ı, sayaç satıra "bağlı"
+  // der.
+  it("blank satırın swap'ı blank'ı düşürür (besin bağlandı)", () => {
+    const bos = newDraftLine(undefined);
+    const swapped = swapDraftLine(bos, tavuk);
+    expect(swapped.aliasId).toBe("a1");
+    expect(swapped.blank).toBe(false);
+    expect(swapped.preserved).toBe(false);
+  });
 });
 
 describe("addDraftLine / removeDraftLine", () => {
@@ -392,6 +420,8 @@ describe("preserved", () => {
       nutrition: kayitli,
       preserved: true,
       manualMeasured: false,
+      blank: false, // korunmuş satır: kayıttan gelir, iskelet değil
+      fromRecord: true, // kayıttan geldi (korunmuş)
     };
   }
 
@@ -415,11 +445,66 @@ describe("preserved", () => {
     expect(draftLinesToItems([sifirlandi])).toHaveLength(0);
   });
 
+  // blank: isimsiz iskelet kayda GİRMEZ — "Malzeme ekle" satırı içerik
+  // girmeden "şablonu güncelle" kutulu kaydedilirse `name:""` kalemi
+  // yazılmaz.
+  it("blank (isimsiz elle) satır KAYDA GİRMEZ — iskelet malzeme değil", () => {
+    expect(draftLinesToItems([newDraftLine(undefined)])).toHaveLength(0);
+    // Ad yazılsa bile blank kalır — tek başına ad bağlamaz.
+    const sadeceAd = { ...newDraftLine(undefined), name: "X" };
+    expect(draftLinesToItems([sadeceAd])).toHaveLength(0);
+  });
+
+  it("AI'ın blank AI satırı da kayda girmez (gramaj yok, blank)", () => {
+    const aiBos = { ...newDraftLine(undefined), key: "draft-ai-1", name: "Kayısı" };
+    expect(draftLinesToItems([aiBos])).toHaveLength(0);
+  });
+
+  // Gerçek `addAIItems`: gramajsız AI bonu `preserved:true` (korunur),
+  // blank DEĞİL — içeriği gerçek. İskelet, isimsiz boş satırdır.
+  it("gramajsız AI satırı preserved:true, blank:false → KAYDA GİRER", () => {
+    const aiKorunan = {
+      ...newDraftLine(undefined),
+      key: "draft-ai-2",
+      name: "Kayısı",
+      preserved: true,
+      blank: false, // `addAIItems` blank'i false kurar (içerik gerçektir)
+    };
+    const items = draftLinesToItems([aiKorunan]);
+    expect(items).toHaveLength(1);
+    expect(items[0].name).toBe("Kayısı");
+  });
+
   it("ölçülebilir hale gelince preserved DÜŞER (artık korunan değil, ölçülen)", () => {
     const olculen = setDraftGrams(korunmus(), "200", null);
     expect(olculen.preserved).toBe(false);
     expect(olculen.grams).toBe(200);
     expect(olculen.qty).toBe("200");
+  });
+
+  // ---- fromRecord: ölçülen hata (2026-10-03 tarayıcı ölçümü) ----
+  // Şablondan gelen iki kaynaklı kalem korunmuş (`preserved: true`) olarak
+  // açılır. Kullanıcı gramajı yazar → satır ÖLÇÜLEBİLİR olur, `preserved`
+  // düşer. `fromRecord` YAZILMAZSA satır `aliasId: null` + `preserved: false`
+  // olur ve `TemplatePreview` onu ELLE sayar: kullanıcının girmediği kayıt
+  // adı "MALZEME ADI" alanına düşer, beş makro alanı açılır. Miktar kaybolur.
+  it("korunmuş satır gramaj alınca fromRecord KALIR (elle satıra dönmez)", () => {
+    const olculen = setDraftGrams(korunmus(), "250", null);
+    expect(olculen.fromRecord).toBe(true);
+    expect(olculen.preserved).toBe(false);
+    expect(olculen.grams).toBe(250);
+  });
+
+  it("korunmuş satırın swap'ı fromRecord KORUR (kayıttan gelen kayıttan kalır)", () => {
+    const swapped = swapDraftLine(korunmus(), tofu);
+    expect(swapped.fromRecord).toBe(true);
+    expect(swapped.blank).toBe(false);
+  });
+
+  it("elle girilen satır fromRecord:false kalır", () => {
+    expect(elleSatir().fromRecord).toBe(false);
+    expect(newDraftLine(undefined).fromRecord).toBe(false);
+    expect(line(draftLineFromAlias(tavuk, "150", "g")).fromRecord).toBe(false);
   });
 
   it("newDraftLine / draftLineFromAlias preserved:false üretir", () => {
@@ -434,6 +519,8 @@ describe("preserved", () => {
     // ÖLÇÜLEN satırın swap'ı da korunmuşluk üretmez (miktarı var, korunacak
     // bir şey yok). Korunmuş satırın swap'ı ise KORUR — ayrı testte.
     expect(swapDraftLine(olculen, tofu).preserved).toBe(false);
+    // Ölçülü satır `blank:FALSE` — bir besine bağlı/ölçülmüş, iskelet değil.
+    expect(olculen.blank).toBe(false);
   });
 
   it("reddedilen birim preserved değiştirmez (satıra hiç dokunulmaz)", () => {
@@ -461,6 +548,8 @@ describe("preserved", () => {
       nutrition: elle,
       preserved: false,
       manualMeasured: true,
+      blank: false, // elle DOLU satır: iskelet değil
+      fromRecord: false, // elle girildi
     };
   }
 
@@ -492,6 +581,14 @@ describe("preserved", () => {
   it("preserved'in TERSİ: iki bayrak da false ise 0 gramajlı satır ATILIR", () => {
     const hicbiri = { ...elleSatir(), manualMeasured: false };
     expect(draftLinesToItems([hicbiri])).toHaveLength(0);
+  });
+
+  // blank düşünce kayıt YAZILIR (blank kayıt kapısı).
+  it("blank düşen elle satır kayda girer (manualMeasured kapısı)", () => {
+    const dolu = __setDraftFlag({ ...elleSatir(), blank: true }, { manualMeasured: true });
+    const items = draftLinesToItems([dolu]);
+    expect(items).toHaveLength(1);
+    expect(items[0].name).toBe("Ev yapımı sos");
   });
 
   it("gramaj girilince elle-makro bayrağı KORUNUR — miktar alanı elle makroyu geçersiz kılmaz", () => {

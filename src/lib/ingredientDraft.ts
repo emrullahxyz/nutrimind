@@ -58,6 +58,34 @@ export interface DraftLine {
    *  elle girilen makroda gramaj sorulmamıştır, bilinmiyor değil.
    *  `sources` YAZILMAZ (`aliasId` null zaten) — miktar uydurulmaz. */
   manualMeasured: boolean;
+  /** true = yeni eklenmiş ama henüz HİÇBİR BESİNE BAĞLANMAMIŞ (elle ya da
+   *  AI) satır. `aliasId` null'dur ve `name` boştur. `aliasId` dolar dolmaz
+   *  düşer — ister picker'dan ister swap'tan (bkz. `TemplatePreview.addLine`
+   *  ve `swapDraftLine`'ın zorunlu işaretlemesi: `alias: null` hiçbir zaman
+   *  `null` kalma durumunu diğer bayraklara bırakmaz). Alanların "düzenleme"
+   *  görünümüne geçmesi (`isManualRow`) BİRİKİMİ'dir: bayrak *ve* `name` ya
+   *  da makro. Tek başına `name` yazmak, besini hafıza ile BAĞLAMAK demek
+   *  değildir (düzenleme alanları 5 alanlı olduğu için geçerli olmayan bir
+   *  eşleşme). */
+  blank: boolean;
+  /** true = satır KAYITTAN GELDİ (şablon kalemi ya da günlük kayıt kalemi).
+   *  `preserved`dan BAĞIMSIZDIR ve `preserved` geçici bir durumdur: kayıttan
+   *  gelen kalem gramaj yazılınca ölçülebilir olur, `preserved` düşer — ama
+   *  hâlâ KAYITTAN gelmiştir.
+   *
+   *  Neden ayrı alan: `preserved` tek başına "elle mi" sorusunu yanıtlamaz.
+   *  Korunmuş satıra gramaj yazıldığında `preserved` düşer ve satır
+   *  `aliasId: null` olduğu için ELLE sayılır — kullanıcının elle girmediği bir
+   *  kayıt kalemi elle satır gibi gösterilir (ad + 5 makro alanı açılır,
+   *  kayıttaki gerçek ad silinir). ÖLÇÜLDÜ: öğünden türetilmiş iki kaynaklı
+   *  kaleme 250 g yazılınca satır elle alanlara döndü, miktar kayboldu. */
+  fromRecord: boolean;
+}
+
+/** Dev-Only: `manual` dışındaki bayrak kombinasyonlarını değiştirir (testler).
+ *  Üretimde asla çağrılmaz. */
+export function __setDraftFlag(line: DraftLine, patch: Partial<Pick<DraftLine, "preserved" | "manualMeasured">>): DraftLine {
+  return { ...line, ...patch };
 }
 
 let seq = 0;
@@ -122,6 +150,8 @@ export function draftLineFromAlias(
     nutrition: valid ? scaleNutrition(alias.nutrition, alias.serving_g, grams) : (fallback ?? { ...ZERO_NUTRITION }),
     preserved: false,
     manualMeasured: false,
+    blank: false,
+    fromRecord: false,
   };
 }
 
@@ -142,6 +172,8 @@ export function newDraftLine(alias: Alias | undefined): DraftLine {
       nutrition: { ...ZERO_NUTRITION },
       preserved: false,
       manualMeasured: false,
+      blank: true, // YENİ, HİÇBİR BESİNE BAĞLANMAMIŞ (bkz. alanın dokümanı)
+      fromRecord: false,
     };
   }
   return {
@@ -154,6 +186,8 @@ export function newDraftLine(alias: Alias | undefined): DraftLine {
     nutrition: { ...ZERO_NUTRITION },
     preserved: false,
     manualMeasured: false,
+    blank: false,
+    fromRecord: false,
   };
 }
 
@@ -235,6 +269,8 @@ export function setDraftGrams(line: DraftLine, gramsText: string, alias: Alias |
   // yazıp silmek zorunda kalır — alanlar `manualMeasured` true'yken
   // KAPANDIĞI için bu, görünür bir tuzaktır (ölçüldü: ad yazılınca alanlar
   // kayboldu).
+  // `blank` de BURADA DÜŞMEZ: gramaj yazmak hafızayla bağ kurmaz (bkz.
+  // `newDraftLine(undefined)` yorumu) — satır hâlâ elle giriliyor.
   const parsed = parseNum(gramsText);
   return { ...line, qty: gramsText, unit: "g", grams: parsed > 0 ? parsed : 0, preserved: false };
 }
@@ -264,6 +300,15 @@ export function swapDraftLine(line: DraftLine, next: Alias): DraftLine {
       // Elle makro bayrağı da düşer: swap BESİN değiştirir, kullanıcının
       // yazdığı makro değil — ölçüm artık yeni besinin gramajına bağlı.
       manualMeasured: false,
+      // Besin BAĞLANDI → `blank` düşer (yeni-elle satırın "henüz bağlanmadı"
+      // iddiası artık yanlış). Her iki dalda da zorunlu: `alias: null` var
+      // olduğu sürece bayrak `null` kalma durumunu başka bir bayrağa
+      // bırakmamalı.
+      blank: false,
+      // `fromRecord` KORUNUR: bu dal `preserved` yani kayıttan gelen satır.
+      // Yayılım (`...line`) zaten taşıyordu; `fromRecord` YAZILMAZ — yazmak
+      // satırı elle saydırır ve kullanıcının girmediği kayıt adı elle alana
+      // düşer (bkz. alanın dokümanındaki ölçülen hata).
     };
   }
   const qty = u.grams > 0 ? Math.round((line.grams / u.grams) * 10) / 10 : line.grams;
@@ -277,6 +322,8 @@ export function swapDraftLine(line: DraftLine, next: Alias): DraftLine {
     nutrition: scaleNutrition(next.nutrition, next.serving_g, line.grams),
     preserved: false,
     manualMeasured: false,
+    blank: false,
+    fromRecord: false,
   };
 }
 
@@ -313,7 +360,14 @@ export function removeDraftLine(lines: DraftLine[], key: string): DraftLine[] {
  *  kullanıcının sildiği satırları da kaydeder ve 1. koşulun garantisi düşer.
  *  `!Number.isFinite(l.grams)` ya da `l.grams === 0` gibi ikame koşullar da
  *  aynı işi görmez: ölçümün "anlamlı miktar" olma koşulu tam olarak
- *  `grams > 0`. */
+ *  `grams > 0`.
+ *
+ *  DÖRDÜNCÜ KOŞUL — `l.blank`: yeni eklenmiş, kayda giremeyen İSKELE
+ *  satırlarını eler. "Malzeme ekle" açtığı boş elle satır henüz İÇERİK DEĞİL:
+ *  adı boş, makrosu sıfır. Bayrak düşmeden kaydedilirse `name: ""` (sources'suz,
+ *  0 gramaj) bir kalem yazılırdı. Boş elle satır makro girişiyle zaten
+ *  `manualMeasured` olur, ölçümlü alias satırı zaten `grams > 0` — bu koşul
+ *  yalnız İSKELE satırını eler. */
 export function draftLinesToItems(lines: DraftLine[]): TemplateItem[] {
   const items: TemplateItem[] = [];
   for (const l of lines) {
@@ -328,7 +382,14 @@ export function draftLinesToItems(lines: DraftLine[]): TemplateItem[] {
     //   o "kayıttan geldi, ölçülemedi" demek, elle girilen ise tam tersi
     //   ("ölçtüm, gramaj vermedim"). Ayrı alan bu iki anlamı ayırır ve
     //   "Miktar bilinmiyor" etiketini elle girilen makroya YANLIŞ yazdırmaz.
-    if (l.grams <= 0 && !l.preserved && !l.manualMeasured) continue;
+    if (l.grams <= 0) {
+      // İSKELE: isimsiz, makrosuz satır malzeme DEĞİLDİR ("Malzeme ekle"nin
+      // açtığı boş satır ya da AI'ın dolu ama bağlanmış sanılan satırı).
+      // Makro girişi `manualMeasured` ile `blank`'in kayıt kapısını açar.
+      if (l.blank && !l.preserved && !l.manualMeasured) continue;
+      // Kullanıcı miktarı silmiş satır (preserved/manual korunmadıysa).
+      if (!l.preserved && !l.manualMeasured) continue;
+    }
     items.push({
       name: l.name,
       nutrition: roundNutrition(l.nutrition),

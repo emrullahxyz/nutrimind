@@ -13,6 +13,39 @@ export interface ChangeLogVersion {
 
 export const CHANGELOG: ChangeLogVersion[] = [
   {
+    version: "0.31.1",
+    date: "2026-10-03",
+    summary: {
+      tr: "Şablonda \"Malzeme ekle\" artık hafızanı doğrudan açıyor: açtığın anda besin arama kutusu çıkıyor, aradığını yazıp seçiyorsun. Hafızada yoksa \"Elle gir\" deyip adını ve besin değerlerini kendin yazıyorsun.",
+      en: "\"Add ingredient\" in a template now opens your food memory straight away: a search box appears and you pick what you need. If it isn't in memory, tap \"Enter manually\" and type the name and macros yourself.",
+    },
+    items: [
+      {
+        type: "fixed",
+        tr: "Şablona malzeme ekle dediğinde boş ekran çıkıyordu; hafızadan besin seçmenin yolu gizli bir düğmenin arkasındaydı. Artık ekle dediğinde hafıza arama kutusu açılıyor.",
+        en: "Adding an ingredient to a template showed a blank row, and the way to pick from memory was hidden behind a small button. Now the memory search opens as soon as you tap add.",
+      },
+      {
+        type: "improved",
+        tr: "Hafızada olmayan bir malzeme eklemek istersen \"Elle gir\" deyip adını ve besin değerlerini yazabiliyorsun. Doldurulmamış satır kaydedilmiyor — boş malzemeli yemek oluşmuyor.",
+        en: "If the ingredient isn't in memory, \"Enter manually\" lets you type its name and macros. A row you leave empty isn't saved — no meals with phantom ingredients.",
+      },
+      {
+        type: "fixed",
+        tr: "Şablondaki bir malzemenin miktarını değiştirince satır \"elle girilmiş\" gibi görünüp malzeme adını elle yazılır hale getiriyordu; kayıttaki ad gizleniyordu. Artık kayıttan gelen malzemeler her zaman yerinde kalıyor.",
+        en: "Changing an ingredient's amount in a template made the row look manually entered and hid the recorded name. Recorded ingredients now always stay as they are.",
+      },
+    ],
+    dev: [
+      "SABIT: TemplatePreview.addLine bos elle satir acinca hafiza secimi YOKTU; kullaniciya yalniz gizli 'Malzemeyi degistir' dugmesi kaliyordu. Artik addLine yeni satiri acar ve satir UZERINDE AliasPicker acar (arama yazip secmek tek adim), altinda 'Elle gir' cikisi ile elle satir yolu.",
+      "YENI DraftLine.blank: hicbir besine baglanmamis iskelet satir. draftLinesToItems bunu eler — 'Malzeme ekle' + 'Sablonu da guncelle' ile name:'' kalemi yazilma riski kapandi. swapDraftLine her iki dalinda da blank:false yazar (aliasId null iken bayrak null kalmamali).",
+      "OLCUMLE YAKALANAN HATA (tarayici, izole DB): sablon kayit kalemine (iki kaynakli, preserved:true) gramaj yazilinca preserved dustugu icin satir ELLE sayildi — kayittaki gercek ad 'MALZEME ADI' alanina dustu, miktar kayboldu. Kok neden: preserved 'kayittan mi' sorusunu tek basina yanitlamaz, gecici bir durumdur.",
+      "YENI DraftLine.fromRecord: 'kayittan geldi' bilgisi preserved'dan bagimsiz. TemplatePreview'in korunmus satiri fromRecord:true kurar; isManualRow = aliasId===null && !preserved && !fromRecord. setDraftGrams elle dali fromRecord'u YAZMAZ (yayilim tasiyor) — kayittan gelen kalem gramaj alsa da elle sayilmaz. swapDraftLine'in korunmus dalinda da YAZILMAZ (yazmak elle saydirirdi).",
+      "OLCUM (dev sunucusu :5173, izole DB kopyasi, canli data.db sha256 dokunulmadan): 'Malzeme ekle' -> HAFIZADAN BESIN SEC acildi; 'yulaf' yazildi -> 'Kupiec Platki Owsiane' dustu; secim baglandi (makro alanlari kapandi, ozet satir cikti); 100g yazildi -> P14,0 K60,0 Y7,3 L6,9, toplam 252->627 kcal (L20: ekran = kayit). Korunmus kaleme 250g -> elle alanlari ACILMADI. Bos iskelet satir + 'Sablonu da guncelle' -> kayitta bos ad yok, sablon 2 kalem kaldi.",
+      "Kapı: typecheck 0 · 1162/1162 (77 dosya) · check:i18n 970x3 · build. Bu turda server/** dokunulmadi.",
+    ],
+  },
+  {
     version: "0.31.0",
     date: "2026-10-03",
     summary: {
