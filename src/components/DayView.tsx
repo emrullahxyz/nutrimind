@@ -32,6 +32,8 @@ import { MACROS, MICROS } from "../lib/nutrients";
 import { coverage, dayTotal, mealsOf, sumMeals, toPayload } from "../lib/days";
 import { parseTemplatesConfig } from "../lib/templates";
 import type { MealTemplate } from "../lib/templates";
+import { draftLinesToItems } from "../lib/ingredientDraft";
+import type { DraftLine } from "../lib/ingredientDraft";
 import {
   buildRecipePreset,
   canSaveAsRecipe,
@@ -286,29 +288,22 @@ export function DayView({
    *  gösterilir, onayla eklenir. `previewTemplate` açık sheet'i tutar. */
   const [previewTemplate, setPreviewTemplate] = useState<MealTemplate | null>(null);
 
-  async function applyTemplate(
-    lines: { name: string; nutrition: MealPayload["nutrition"]; sources?: MealPayload["sources"] }[],
-    updateTemplate: boolean,
-  ) {
+  async function applyTemplate(lines: DraftLine[], updateTemplate: boolean) {
     const t = previewTemplate;
     if (busy || !t) return;
     setErr(null);
     setBusy(true);
     try {
-      const newPayloads: MealPayload[] = lines.map((it) => ({
+      const items = draftLinesToItems(lines);
+      const newPayloads: MealPayload[] = items.map((it) => ({
         name: it.name,
         nutrition: it.nutrition,
         ...(it.sources ? { sources: it.sources } : {}),
       }));
       await setDayMeals(date, [...toPayload(meals), ...newPayloads]);
       if (updateTemplate) {
-        const updated = lines.map((l) => ({
-          name: l.name,
-          nutrition: l.nutrition,
-          ...(l.sources ? { sources: l.sources } : {}),
-        }));
         await updateConfig("templates", {
-          list: templates.list.map((x) => (x.id === t.id ? { ...x, items: updated } : x)),
+          list: templates.list.map((x) => (x.id === t.id ? { ...x, items } : x)),
         });
       }
       setPreviewTemplate(null);

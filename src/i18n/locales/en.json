@@ -870,7 +870,13 @@
     "confirmDelete": "Delete this food?",
     "manualOverrideWarning": "You have manually edited macros. Changing the serving will reset them to scaled values. Continue?",
     "ingredientsTitle": "Ingredients",
-    "swapIngredient": "Swap ingredient"
+    "swapIngredient": "Swap ingredient",
+    "ingredientAdd": "Add ingredient",
+    "ingredientRemove": "Remove ingredient",
+    "ingredientManualName": "Ingredient name",
+    "ingredientGrams": "Amount",
+    "emptyIngredients": "All ingredients removed — add one to apply.",
+    "ingredientUnitUnknown": "This amount's unit is no longer defined — pick the ingredient's unit again."
   },
   "templatePreview": {
     "updateTemplate": "Also update the template with these changes"

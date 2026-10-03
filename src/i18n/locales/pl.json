@@ -870,7 +870,13 @@
     "confirmDelete": "Usunac ten posilek?",
     "manualOverrideWarning": "Ręcznie edytowałeś makro. Zmiana porcji zresetuje je do przeskalowanych wartości. Kontynuować?",
     "ingredientsTitle": "Składniki",
-    "swapIngredient": "Zamień składnik"
+    "swapIngredient": "Zamień składnik",
+    "ingredientAdd": "Dodaj składnik",
+    "ingredientRemove": "Usuń składnik",
+    "ingredientManualName": "Nazwa składnika",
+    "ingredientGrams": "Ilość",
+    "emptyIngredients": "Wszystkie składniki usunięte — dodaj jeden, aby zastosować.",
+    "ingredientUnitUnknown": "Jednostka tej ilości nie jest już zdefiniowana — wybierz jednostkę składnika ponownie."
   },
   "templatePreview": {
     "updateTemplate": "Zaktualizuj też szablon tymi zmianami"

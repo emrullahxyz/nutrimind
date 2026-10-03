@@ -153,10 +153,15 @@ export function setDraftGrams(line: DraftLine, gramsText: string, alias: Alias |
     const parsed = parseNum(gramsText);
     const grams = parsed > 0 ? toGrams(parsed, u) : 0;
     if (grams <= 0) {
-      // Makro korunur: kullanıcı yarım yazarken değerler titremesin.
-      // qty + grams birlikte güncellenir, nutrition ESKİ kalır — bu
-      // kasıtlıdır ve güvenlidir: 0 gramajlı satır `draftLinesToItems`'ta
-      // zaten ATILIR, yarım yazım kayda geçmez.
+      // `grams <= 0` tek bir koşul değil, üç durumu birleştirir:
+      //   • boş metin        → parseNum("") = 0
+      //   • sayı olmayan metin → parseNum("abc") = NaN → 0'a düşer
+      //     (parseNum sonlu olmayanı 0 yapar)
+      //   • EKSİ/negatif miktar → "-5", parseNum("-5") = -5 → 0'a düşer
+      // Makro korunur: kullanıcı yarım yazarken (ya da geçersiz bir miktar
+      // girerken) değerler titremesin. qty + grams birlikte güncellenir,
+      // nutrition ESKİ kalır — kasıtlıdır ve güvenlidir: 0 gramajlı satır
+      // `draftLinesToItems`'ta zaten ATILIR, yarım yazım kayda geçmez.
       return { ...line, qty: gramsText, unit: u.name, grams };
     }
     return {
@@ -196,8 +201,19 @@ export function removeDraftLine(lines: DraftLine[], key: string): DraftLine[] {
   return lines.filter((l) => l.key !== key);
 }
 
-/** Kayıt/şablon kalemlerine çevirir. 0 gramajlı satırlar ATILIR; elle
- *  satırlar `sources` üretmez. */
+/** Kayıt/şablon kalemlerine çevirir. `grams <= 0` satırlar ATILIR; elle
+ *  satırlar `sources` üretmez.
+ *
+ *  `grams <= 0` filtresi KALDIRILAMAZ: `setDraftGrams`'in geçersiz miktar
+ *  yolu `qty` + `grams`'ı günceller ama `nutrition`'ı ESKİ bırakır (yarım
+ *  yazımda titremesin diye). Bu filtre o tutarsız çifti `sources`'a
+ *  yazmadan eler — 3. turdaki reddetme düzeltmesinin (redde giren satıra
+ *  dokunulmaması) tutarlılık garantisini bu yüzden koruyor.
+ *
+ *  DİKKAT: gevşetmeyin. `!Number.isFinite(l.grams)` ya da `l.grams === 0`
+ *  gibi bir koşul aynı işlevi görmez — negatif olmayan ama NaN olan ya da
+ *  0'a çok yakın değerler kayda girer ve eski makroyla eşleşmez. Ölçümün
+ *  "anlamlı miktar" olma koşulu tam olarak `grams > 0`. */
 export function draftLinesToItems(lines: DraftLine[]): TemplateItem[] {
   const items: TemplateItem[] = [];
   for (const l of lines) {
