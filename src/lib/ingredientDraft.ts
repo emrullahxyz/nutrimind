@@ -227,19 +227,16 @@ export function setDraftGrams(line: DraftLine, gramsText: string, alias: Alias |
   }
 
   // Elle satır: gram cinsinden ölçülür.
+  //
+  // `manualMeasured` BURADA DÜŞMEZ. Kullanıcının elle yazdığı makro, gramaj
+  // alanına dokunmasından bağımsız olarak geçerlidir: alanı temizlemek
+  // "malzemeyi silmek" demek değil, sadece miktarı kaldırmaktır. Bayrağı
+  // düşürürsek kullanıcıCalories alanını açmak için miktar alanına bir şey
+  // yazıp silmek zorunda kalır — alanlar `manualMeasured` true'yken
+  // KAPANDIĞI için bu, görünür bir tuzaktır (ölçüldü: ad yazılınca alanlar
+  // kayboldu).
   const parsed = parseNum(gramsText);
-  return {
-    ...line,
-    qty: gramsText,
-    unit: "g",
-    grams: parsed > 0 ? parsed : 0,
-    preserved: false,
-    // Gramaj girilince elle makro bayrağı düşer: artık miktar da var, ölçüm
-    // tam. Miktar boşaltılırsa kullanıcının kendi sildiği miktar kayda
-    // geçmez — `manualMeasured` de düşer, filtre satırı eler (L20: yarım
-    // yazım kayda girmez).
-    manualMeasured: false,
-  };
+  return { ...line, qty: gramsText, unit: "g", grams: parsed > 0 ? parsed : 0, preserved: false };
 }
 
 /** Swap: gram korunur, miktar hedef alias'ın varsayılan birimine çevrilir.
@@ -339,6 +336,15 @@ export function draftLinesToItems(lines: DraftLine[]): TemplateItem[] {
       ...(l.aliasId && !l.preserved
         ? { sources: [{ aliasId: l.aliasId, qty: parseNum(l.qty), unit: l.unit }] }
         : {}),
+      // `sources` YAZILMAYAN satırlar (elle girilen, AI'ın döndüğü, kayıttan
+      // gelip korunan) gramajı `TemplateItem.grams` ile taşır. Daha önce
+      // miktar alanı yalnız EKRANDA vardı: kullanıcı 100 g yazıp kaydediyor,
+      // şablonu açtığında "Miktar bilinmiyor" yazıyordu (L20).
+      //
+      // İki KAYNAK ASLA birlikte yazılmaz: `sources` varsa miktar zaten
+      // `sources[].qty` içinde, ikinci bir kopyaya gerek yok — ve iki
+      // kopyadan biri güncellenip diğeri eskir.
+      ...(!l.aliasId && l.grams > 0 ? { grams: l.grams } : {}),
     });
   }
   return items;

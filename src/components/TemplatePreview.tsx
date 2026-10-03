@@ -42,12 +42,6 @@ import type { DraftLine } from "../lib/ingredientDraft";
  *  `preserved: true` satırı "kayıttan geldi ama gramajı ölçülemedi" olarak
  *  işaretler: gramaj alanı boş kalır, ekranda ayrıca etiketlenir, ama
  *  `draftLinesToItems` onu ATMAZ (bkz. `preserved` alanının dokümanı). */
-/** Makroların hepsi sıfır mı? `newDraftLine(undefined)` (elle satır) tam
- *  olarak böyle bir satır kurar; kullanıcı bir alana dokununca artık değildir. */
-function isZeroNutrition(n: Nutrition): boolean {
-  return n.kcal === 0 && n.protein === 0 && n.carbs === 0 && n.fat === 0 && n.fiber === 0;
-}
-
 /** `NutritionDraft` (metin tabanlı, form alanları) ↔ `Nutrition` (sayı tabanlı).
  *  `FormBits.NutritionFields` metin bekler, `DraftLine.nutrition` sayı tutar. */
 function draftFromNutrition(n: Nutrition): NutritionDraft {
@@ -94,9 +88,12 @@ function initialDraftLines(template: MealTemplate, aliases: Alias[]): DraftLine[
       key: `draft-manual-${i}-${item.name}`,
       aliasId: null,
       name: item.name,
-      qty: "",
+      // `item.grams`: `sources`ı olmayan kalemin gramajı. Miktar alanında
+      // GÖSTERİLMEDEN önce buraya konduğu için `preserved` doğru: miktar
+      // ölçülebilir değil (alias yok), ama kayıttan geldiği için korunur.
+      qty: item.grams !== undefined ? String(item.grams) : "",
       unit: "g",
-      grams: 0,
+      grams: item.grams ?? 0,
       nutrition: item.nutrition,
       preserved: true,
       manualMeasured: false,
@@ -257,14 +254,18 @@ export function TemplatePreview({
         <ul className="space-y-2">
           {lines.map((line) => {
               const alias = aliasOf(line);
-              // YENİ eklenen elle satır: kullanıcı "Malzeme ekle" dedi ve henüz ne ad ne
-              // makro girdi. `preserved` DEĞİL (o, kayıttan gelip ölçülemeyen
-              // kalem) — ayırt eden, boş ad + makrosu sıfır olması. Bu satır
-              // için beş makro alanı açılır: hafızadan olmayan bir besin için
-              // gramaj tek başına YETMEZ, "100 g'da kaç kalori var" bilgisi
-              // ancak makroyla gelir.
-              const isManualDraft =
-                !alias && !line.preserved && !line.manualMeasured && line.name.trim() === "" && isZeroNutrition(line.nutrition);
+              // ELLE satırı: kullanıcı ad + makroyu kendi giriyor (hafızadan değil).
+              //
+              // "Elle satır mı" sorusu `aliasId === null` ile yanıtlanır —
+              // `manualMeasured` DEĞİL. Bayrak, satırın kayda girmesini sağlar
+              // ama alanların AÇIK kalmasıyla ilgisi yoktur: `onChange` makro
+              // alanına ilk dokunuşta bayrağı yükseltir, bayrak da alanları
+              // kapatırsa kullanıcı protein/karb/yağ/lif'i de giremez olur
+              // (ölçüldü: adı yazar yazar alanlar kayboldu).
+              //
+              // `preserved` hariç: o, kayıttan gelen kalemdir, elle girilen
+              // değil — makrosu alınmaz, kullanıcı yalnızca miktar yazabilir.
+              const isManualRow = line.aliasId === null && !line.preserved;
               return (
                 <li
                   key={line.key}
@@ -289,7 +290,7 @@ export function TemplatePreview({
                           </option>
                         ))}
                       </select>
-                    ) : isManualDraft ? (
+                    ) : isManualRow && !swapKey ? (
                       <div className="flex-1">
                         <TextField
                           label={t("nutrition.ingredientManualName")}
@@ -322,15 +323,20 @@ export function TemplatePreview({
                         suffix="g"
                         value={line.qty}
                         onChange={(v) => patch(line.key, setDraftGrams(line, v, alias ?? null))}
-                        disabled={line.preserved && !alias}
                       />
-                      {/* Korunan kalem: gramajı BİLİNMIYOR (0 g değil), makrosu
-                          gerçek. Miktar alanı yalnız ALIAS'ı olmayan korunmuş
-                          satırda kilitlidir — `TemplateItem` miktarı ancak bir
-                          `sources` içinde, yani bir `aliasId` ile saklar;
-                          bağlantı yoksa yazılan sayı sessizce kaybolurdu.
+                      {/* Korunan kalem: gramajı kayıttan geldiği için varsa gösterilir,
+                          yoksa BİLİNMİYOR (0 g değil) — makrosu gerçek.
+                          Alan KİLİTLİ DEĞİLDİR: `TemplateItem.grams` gramajı
+                          alias olmadan da saklar.
 
-                          ALIAS'ı OLAN korunmuş satırda alan AÇIKTIR: `swapDraftLine`
+                          DIKKAT — alias'sız satırda gramaj ÖLÇEK değildir.
+                          `setDraftGrams`'ın elle dalı makroyu BİLEREK
+                          değiştirmez: kullanıcının yazdığı 200 kcal, "100 g'da
+                          kaç kalori var" bilgisinin karşılığı değildir —
+                          ölçeklemek uydurma bir dönüşüm olurdu. İkisi
+                          bağımsız gerçeklerdir: makro ne kadar, gramaj ne kadar.
+
+                          ALIAS'ı OLAN korunmuş satırda: `swapDraftLine`
                           korunmuş bir satıra besin bağladığında `aliasId` dolar ve
                           ölçülebilir bir taban (`serving_g`) gelir. `swapDraftLine`
                           bayrağı koruduğu için bayrak tek başına kilitli görünür;
@@ -372,7 +378,7 @@ export function TemplatePreview({
                       protein > 0` (`MealForm.tsx:427`).
                       `nutritionFromDraft` boş alanı `undefined` yapar, 0
                       DEĞİL — "bilinmiyor" ile "sıfır" farkı korunur. */}
-                  {isManualDraft && (
+                  {isManualRow && (
                     <div className="mt-2">
                       <NutritionFields
                         draft={draftFromNutrition(line.nutrition)}

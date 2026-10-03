@@ -480,15 +480,51 @@ describe("preserved", () => {
     expect(draftLinesToItems([hicbiri])).toHaveLength(0);
   });
 
-  it("gramaj girilince elle-makro bayrağı DÜŞER (artık gerçek ölçüm)", () => {
-    const olculen = setDraftGrams(elleSatir(), "250", null);
-    expect(olculen.manualMeasured).toBe(false);
-    expect(olculen.grams).toBe(250);
+  it("gramaj girilince elle-makro bayrağı KORUNUR — miktar alanı elle makroyu geçersiz kılmaz", () => {
+    // Ölçüldü: bayrağı burada düşürmek alanları kapatıyordu, kullanıcı
+    // protein/karb/yağ/lif'i de giremiyordu (görünür tuzak). Gramajı
+    // temizlemek "malzemeyi silmek" değil, sadece miktarı kaldırmaktır.
+    const gramajli = setDraftGrams(elleSatir(), "250", null);
+    expect(gramajli.manualMeasured).toBe(true);
+    expect(gramajli.grams).toBe(250);
+    // Miktar alanı boşaltılsa bile satır KAYDA GİRER (elle makro hâlâ geçerli).
+    const temizlenmis = setDraftGrams(elleSatir(), "", null);
+    expect(temizlenmis.manualMeasured).toBe(true);
+    expect(draftLinesToItems([temizlenmis])).toHaveLength(1);
   });
 
   it("korunmuş satır elle-girilmiş sayılmaz (farklı anlam)", () => {
     expect(korunmus().preserved).toBe(true);
     expect(korunmus().manualMeasured).toBe(false);
+  });
+
+  // ---- grams: alias'sız satırın gramajı kayda GİRER ----
+  // Gramaj normalde `sources[].qty` içinde yaşar; ama `sources` bir `aliasId`
+  // ister ve kullanıcının elle girdiği / AI'ın döndüğü besin hafızada
+  // olmayabilir. O satırlarda miktar alanı görünür ama kayda girmiyordu:
+  // kullanıcı 100 g yazıp kaydediyor, şablonu açtığında "Miktar bilinmiyor"
+  // yazıyordu. `TemplateItem.grams` bu boşluğu kapatır.
+  it("alias'sız satır gramajını `grams` olarak yazar (kayıpsız round-trip)", () => {
+    const gramajli = setDraftGrams(elleSatir(), "100", null);
+    const items = draftLinesToItems([gramajli]);
+    expect(items).toHaveLength(1);
+    expect(items[0].grams).toBe(100);
+    expect(items[0].sources).toBeUndefined();
+  });
+
+  it("alias'LI satır `grams` YAZMAZ — miktar zaten `sources[].qty` içinde", () => {
+    // İki kopyadan biri güncellenip diğeri eskirse kayıt kendi içinde
+    // tutarsızlaşır: kullanıcı 200 g yazdığında `sources.qty` 200 olur,
+    // `grams` 100 kalırsa hangisinin doğru olduğu belli olmaz.
+    const items = draftLinesToItems([line(draftLineFromAlias(tavuk, "150", "g"))]);
+    expect(items[0].sources?.[0]).toEqual({ aliasId: tavuk.id, qty: 150, unit: "g" });
+    expect(items[0].grams).toBeUndefined();
+  });
+
+  it("grams 0 veya negatifse YAZILMAZ (uydurma miktar)", () => {
+    expect(draftLinesToItems([elleSatir()])[0].grams).toBeUndefined();
+    const negatif = setDraftGrams(elleSatir(), "0", null);
+    expect(draftLinesToItems([negatif])[0].grams).toBeUndefined();
   });
 
   it("swap elle-makro bayrağını düşürür (besin değişti, ölçüm değişti)", () => {
