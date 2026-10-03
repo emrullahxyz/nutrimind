@@ -13,6 +13,45 @@ export interface ChangeLogVersion {
 
 export const CHANGELOG: ChangeLogVersion[] = [
   {
+    version: "0.31.0",
+    date: "2026-10-03",
+    summary: {
+      tr: "Şablonlar artık düzenlenebilir: içindeki malzemeleri ekleyip çıkarabilir, gramajlarını değiştirebilir, bir malzemenin yerine başkasını koyabilirsin. Kayıtlı öğünlerde de aynı şey geçerli — toplamın altında malzeme malzeme görebilirsin.",
+      en: "Templates are now editable: add or remove ingredients, change their amounts, or swap one for another. The same works for logged meals — every ingredient's macros are listed under the total.",
+    },
+    items: [
+      {
+        type: "new",
+        tr: "Bir öğüne dokununca içindeki her malzeme kendi satırında, gramajı ve makrosuyla listelenir. Gramajı değiştirebilir, malzeme silebilir, yeni malzeme ekleyebilir ya da bir malzemenin yerine başkasını koyabilirsin.",
+        en: "Tap a meal and every ingredient is listed on its own row with its amount and macros. Change the amount, remove an ingredient, add a new one, or swap one for another.",
+      },
+      {
+        type: "new",
+        tr: "Malzeme değiştirirken gramajı korunur: 150 g tavuk yerine 150 g tofu koyarsan yeni malzemenin makrosu o gramajla hesaplanır.",
+        en: "Swapping keeps the weight: swap 150 g chicken for 150 g tofu and the new ingredient's macros are calculated for that amount.",
+      },
+      {
+        type: "new",
+        tr: "Şablona dokununca doğrudan eklemek yerine önizleme açılır: kalemleri orada düzenleyip ekleyebilirsin. \"Şablonu da güncelle\" kutusu işaretliyse değişiklik kalıcı olur, sonraki kullanımlarda yeni haliyle gelir.",
+        en: "Tapping a template opens a preview instead of adding it straight away: edit the items there, then add. Tick \"Also update the template\" to make the change stick for next time.",
+      },
+      {
+        type: "improved",
+        tr: "Miktar değiştirince makrolar anında yeniden hesaplanır ve kaydettikçe ekranda gördüğün değer veriye aynen yazılır.",
+        en: "Macros recalculate the moment an amount changes, and what you see on screen is exactly what gets saved.",
+      },
+    ],
+    dev: [
+      "Yeni lib/ingredientDraft.ts (saf, testli): DraftLine cebiri — newDraftLine/draftLineFromAlias/setDraftGrams/swapDraftLine/addDraftLine/removeDraftLine/draftLinesToItems + roundNutrition. Iki yüzey (TemplatePreview, NutritionSheet) ayni modulu paylasir.",
+      "roundNutrition 1 ondaliga yuvarlar (sodyum tam sayi): addNutrition kayan nokta artigi birakip girdi alaninda gorunuyordu (42.800000000000004) — lessons.md L20'nin kardes kapatildi.",
+      "`preserved` alani: kayittan gelip gramaji COZULEMEYEN kalem. `grams: 0` yazmak uydurma miktar olurdu; ayri bir bayrak sayiyi degil anlami tasiyor. draftLinesToItems iki BAGIMSIZ kapidan gecer: satirin KAYDA GIRECEGI (grams<=0 && !preserved) ve kaynak YAZILACAGI (aliasId && !preserved). Bu iki kosul birlestirilmemeli.",
+      "Bu turda server/** dokunulmadi; templates config anahtari zaten serbest JSON (PUT /api/config/:key) oldugu icin backend degisikligi gerekmedi. Canli data.db hic dokunulmadi — olcum izole kopyada yapildi.",
+      "TASMA OLCUMU (uretim derlemesi :4173, izole DB kopyasi, 8 adim — hepsi gecti): yulaf 80g->120g (300->450 kcal); Lavaş'a swap (gramaj 120'de KORUNDU, 175/60x120=350); 30 g protein tozu ekleme (+116 kcal); satir silme (543->427); sablon kalici (200g/750 kcal, sources guncellendi); kayit ekraninda 200g->100g (baslik 750->375, DB'ye 375 kcal + qty:100 yazildi); kaynaksiz ogunde malzeme bolumu CIKMADI; konsol hatasi 0.",
+      "L20 ihlali iki kez yakalandi ve kapida onarildi: (1) handleApplySave'da `...meal` yayilimi elle duzenlenen makro yaninda ESKI sources'i tasiyordu — hafiza baglantisi koptugu soylenen ama kalan kayit. (2) malzeme basligi ham `lines` uzerinden topluyordu, kayit ise `draftLinesToItems` ile; kullanici bir malzemenin gramajini temizleyince o malzeme ekranda kaliyor ama kayda girmiyordu (150g tavuk + 100g pilavda 377.5 ekrana, 247.5 kayda). Ikisi de testle degil ancak tarayicida yakalandi.",
+      "Kapı: typecheck 0 · 1138/1138 (77 dosya) · check:i18n 969x3 · build. NOT: iki 'mutasyon öldürücü' testi silindi — ölçüldü, ikisi de zaten başka testlerin yanında aynı mutasyonları öldürüyordu, kapsam artırmıyordu. Test sayısı şişirmek kapsam değildir.",
+    ],
+  },
+  {
     version: "0.30.9",
     date: "2026-09-24",
     summary: {
