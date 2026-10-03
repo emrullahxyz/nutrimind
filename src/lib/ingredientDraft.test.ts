@@ -74,8 +74,19 @@ describe("resolveDraftUnit", () => {
   });
 
   // Sessiz varsayılan ölçümün geri gelmesini engelleyen asıl test.
-  it("bilinmeyen ad gram OLARAK da çözülmez", () => {
-    expect(resolveDraftUnit(ekmekDilim, "kase")).not.toEqual({ name: "g", grams: 1 });
+  //
+  // Fixture seçimi önemli: `ekmekDilim`in varsayılanı "Dilim", bu yüzden
+  // onunla "grama düşmez" demek hiçbir şey kanıtlamaz — sessiz düşüş de
+  // "Dilim" döndürür. `tavuk`un özel birimi YOK, yani varsayılanı gerçekten
+  // "g"; düşüş geri gelirse burada {name:"g"} çıkar ve test kırılır.
+  it("varsayılanı 'g' olan alias'ta bile gram OLARAK çözülmez", () => {
+    expect(resolveDraftUnit(tavuk, "kase")).toBeNull();
+  });
+
+  // Aynı ayrım, özel birimli alias üzerinden: sessiz düşüş "Dilim" verirdi.
+  it("bilinmeyen ad, alias'ın varsayılanına da düşmez", () => {
+    expect(resolveDraftUnit(ekmekDilim, "kase")).toBeNull();
+    expect(resolveDraftUnit(ekmekDilim, "kase")).not.toEqual({ name: "Dilim", grams: 25 });
   });
 });
 
@@ -191,31 +202,58 @@ describe("setDraftGrams", () => {
     expect(l.nutrition.kcal).toBe(750); // 250 kcal / 50 g × 150 g
   });
 
-  // ---- fix round 2 ----
+  // ---- fix round 2: reddedilen birim ----
+  // ---- fix round 3: red HEP-TEK: satır qty dâhil HİÇ değişmez ----
 
-  it("birim çözülemezse ÖLÇMEZ, son geçerli gramajı korur", () => {
+  it("birim çözülemezse satıra HİÇ dokunmaz (qty dâhil)", () => {
     const base = line(draftLineFromAlias(ekmekDilim, "4", "Dilim"));
     base.unit = "kase"; // alias artık tanımıyor (birim silinmiş)
-    const typed = setDraftGrams(base, "6", ekmekDilim);
-    expect(typed.grams).toBe(100); // 6 × 25 = 150 DEĞİL — hiç ölçülmedi
-    expect(typed.nutrition.kcal).toBe(500); // önceki değer korundu
-    expect(typed.unit).toBe("kase"); // birim UYDURULMADI
-    expect(typed.qty).toBe("6"); // ham metin yine de güncel
+    const after = setDraftGrams(base, "6", ekmekDilim);
+
+    expect(after).toEqual(base); // qty, grams, unit, nutrition — hepsi aynı
+    expect(after.qty).toBe("4"); // "6" YAZILMADI (round 2'deki kısmi güncelleme)
+    expect(after.grams).toBe(100); // 6 × 25 = 150 DEĞİL — hiç ölçülmedi
+    expect(after.nutrition.kcal).toBe(500);
+    expect(after.unit).toBe("kase"); // birim UYDURULMADI
+  });
+
+  // Round 2'deki asıl bozulma: qty güncellenip makro korunuyordu, ve
+  // draftLinesToItems bunu olduğu gibi `sources`'a yazıyordu.
+  it("reddedilen birimde qty ile makro AYRI ÖLÇÜM anlatmaz (L20)", () => {
+    const base = line(draftLineFromAlias(ekmekDilim, "4", "Dilim"));
+    base.unit = "kase";
+    const after = setDraftGrams(base, "6", ekmekDilim);
+    const [item] = draftLinesToItems([after]);
+    // Saklanan qty hâlâ "4" → saklanan makro 4 × 25 g ile tutarlı.
+    expect(item.sources).toEqual([{ aliasId: "a3", qty: 4, unit: "kase" }]);
+    expect(item.nutrition.kcal).toBe(500); // 250 kcal/50 g × 100 g
   });
 
   it("birim çözülemezse varsayılan birime düşmez (2 dilim = 50 g DEĞİL)", () => {
     const base = line(draftLineFromAlias(ekmekDilim, "4", "Dilim"));
     base.unit = "kase";
-    const typed = setDraftGrams(base, "2", ekmekDilim);
-    expect(typed.grams).not.toBe(50);
-    expect(typed.grams).not.toBe(2);
-    expect(typed.grams).toBe(100);
+    const after = setDraftGrams(base, "2", ekmekDilim);
+    expect(after.grams).not.toBe(50);
+    expect(after.grams).not.toBe(2);
+    expect(after.grams).toBe(100);
+    expect(after.qty).toBe("4");
   });
 
   it("alias'ın tanımadığı birim, normalleşme değil reddedilir", () => {
     const base = line(draftLineFromAlias(tavuk, "150", "g"));
     base.unit = "KASE"; // farklı ad, sadece büyük harf
     expect(setDraftGrams(base, "2", tavuk).grams).toBe(150);
+  });
+
+  // Çağıran reddi önceden görür: gösterim katmanı bu yüzden setDraftGrams'i
+  // hiç çağırmaz. Sözleşmenin "tespit edilebilirlik" yarısı.
+  it("çağıran reddi resolveDraftUnit ile ÖNCEDEN görebilir", () => {
+    const base = line(draftLineFromAlias(ekmekDilim, "4", "Dilim"));
+    base.unit = "kase";
+    const resolvable = resolveDraftUnit(ekmekDilim, base.unit);
+    expect(resolvable).toBeNull();
+    // Çözülemiyorsa çağıran uyarır ve setter'ı çağırmaz.
+    expect(base.qty).toBe("4");
   });
 
   // Q2 + Q4: alias yok — elle satır, gram cinsinden ölçülür.

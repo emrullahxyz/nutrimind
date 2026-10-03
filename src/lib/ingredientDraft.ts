@@ -124,39 +124,53 @@ export function newDraftLine(alias: Alias | undefined): DraftLine {
 
 /** Gramaj alanı değişti. Makro yalnızca GEÇERLİ gramajda yeniden hesaplanır.
  *
+ *  BÖLÜM YA HEP YA HİÇ: bir `DraftLine`ın `qty`, `grams` ve `nutrition`
+ *  değerleri DAİMA aynı ölçümü anlatır. Birim çözülemiyorsa satıra hiç
+ *  dokunulmaz — `qty` dâhil. Kısmi güncelleme yeni `qty`'yi eski makroyla
+ *  eşleştirirdi; `draftLinesToItems` bunu olduğu gibi `sources`'a yazar ve
+ *  kayıt, saklanan miktar ile saklanan makronun iki ayrı ölçüm anlattığı bir
+ *  satıra dönüşürdi (L20 ihlali, dersin tam olarak önlediği ayrım).
+ *
  *  Üç yol:
+ *   • birim çözülemez → SATIR DEĞİŞMEZ. Ölçüm yapılmaz; tahmini birimle
+ *     gramaja çevirmek sayıyı bozardı (bkz. mealActions:139-140).
  *   • `alias` null → elle satır. Gram cinsinden ölçülür; makro bu modülün
  *     işi değildir, satırın kendi değeri korunur.
- *   • birim çözülemez → ÖLÇÜM YAPILMAZ. Satır son geçerli `grams`/`nutrition`
- *     değerini korur ve yalnızca ham metni günceller; tahmini birimle
- *     gramaja çevirmek sayıyı bozardı (bkz. mealActions:139-140).
  *   • aksi → gramaj ve makro yeniden hesaplanır, ÇÖZÜLEN birim geri yazılır
- *     (hesap bu birimle yapıldı; satır aynısını göstermeli — L20). */
+ *     (hesap bu birimle yapıldı; satır aynısını göstermeli — L20).
+ *
+ *  REDDİ NEREDE ELE ALINIR: burada değil, GÖSTERİM katmanında. Çağıran
+ *  `resolveDraftUnit(alias, line.unit)` ile önceden sorar; `null` gelirse
+ *  uyarıyı gösterir ve bu fonksiyonu ÇAĞIRMAZ. "Hangi satırı gösteriyorum"
+ *  sorusunun cevabı ekranda; ikinci bir gerçek kaynak (`stale` bayrağı)
+ *  bu yüzden yok. */
 export function setDraftGrams(line: DraftLine, gramsText: string, alias: Alias | null): DraftLine {
+  if (alias) {
+    const u = resolveDraftUnit(alias, line.unit);
+    // Red: hiçbir alan değişmez — qty dâhil.
+    if (!u) return { ...line };
+
+    const parsed = parseNum(gramsText);
+    const grams = parsed > 0 ? toGrams(parsed, u) : 0;
+    if (grams <= 0) {
+      // Makro korunur: kullanıcı yarım yazarken değerler titremesin.
+      // qty + grams birlikte güncellenir, nutrition ESKİ kalır — bu
+      // kasıtlıdır ve güvenlidir: 0 gramajlı satır `draftLinesToItems`'ta
+      // zaten ATILIR, yarım yazım kayda geçmez.
+      return { ...line, qty: gramsText, unit: u.name, grams };
+    }
+    return {
+      ...line,
+      qty: gramsText,
+      unit: u.name,
+      grams,
+      nutrition: scaleNutrition(alias.nutrition, alias.serving_g, grams),
+    };
+  }
+
+  // Elle satır: gram cinsinden ölçülür.
   const parsed = parseNum(gramsText);
-
-  if (!alias) {
-    return { ...line, qty: gramsText, unit: "g", grams: parsed > 0 ? parsed : 0 };
-  }
-
-  const u = resolveDraftUnit(alias, line.unit);
-  if (!u) {
-    // Birim bilinmiyor: ölçmeden geç, son geçerli ölçümü olduğu gibi bırak.
-    return { ...line, qty: gramsText, grams: line.grams };
-  }
-
-  const grams = parsed > 0 ? toGrams(parsed, u) : 0;
-  if (grams <= 0) {
-    // Makro korunur: kullanıcı yarım yazarken değerler titremesin.
-    return { ...line, qty: gramsText, unit: u.name, grams };
-  }
-  return {
-    ...line,
-    qty: gramsText,
-    unit: u.name,
-    grams,
-    nutrition: scaleNutrition(alias.nutrition, alias.serving_g, grams),
-  };
+  return { ...line, qty: gramsText, unit: "g", grams: parsed > 0 ? parsed : 0 };
 }
 
 /** Swap: gram korunur, miktar hedef alias'ın varsayılan birimine çevrilir. */
