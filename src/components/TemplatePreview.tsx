@@ -363,7 +363,16 @@ export function TemplatePreview({
                           uydurmuş olurdu); alanı açılan şey bayrak değil,
                           bağlanan besindir. Alanı açıp ölçülebilir hale getiren
                           tek eylem, miktarı YAZMAKTIR. */}
-                      {alias || (line.preserved && aliases.length > 0) ? (
+                      {/* Hafızaya bağlama düğmesi HER SATIRDA görünür —
+                          korunmuş satırda çıkış yoludur; YENİ elle satırda
+                          da çıkış yoludur: kullanıcı "Malzeme ekle" dedi,
+                          ad + makro yazacaktı ama hafızada zaten var —
+                          aranıp bağlanabileceğini görmesini istiyoruz.
+                          Önceden koşul `alias || (preserved && aliases.length)`
+                          idi; yeni elle satırda (aliasId null, preserved false)
+                          düğme YOKTU — hafızadaki domates bile elle yeniden
+                          yazılıyordu, makroları sıfır kalıyordu. */}
+                      {(alias || (line.preserved && aliases.length > 0) || isManualRow) ? (
                         <button
                           type="button"
                           onClick={() => setSwapKey(line.key)}
