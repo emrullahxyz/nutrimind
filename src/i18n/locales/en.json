@@ -878,7 +878,8 @@
     "ingredientAmountUnknown": "Amount unknown"
   },
   "templatePreview": {
-    "updateTemplate": "Also update the template with these changes"
+    "updateTemplate": "Also update the template with these changes",
+    "aiCamera": "Add an ingredient with the camera"
   },
   "export": {
     "modalTitle": "Data Management",

@@ -878,7 +878,8 @@
     "ingredientAmountUnknown": "Ilość nieznana"
   },
   "templatePreview": {
-    "updateTemplate": "Zaktualizuj też szablon tymi zmianami"
+    "updateTemplate": "Zaktualizuj też szablon tymi zmianami",
+    "aiCamera": "Dodaj składnik aparatem"
   },
   "export": {
     "modalTitle": "Zarządzanie danymi",

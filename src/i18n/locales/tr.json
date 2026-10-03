@@ -878,7 +878,8 @@
     "ingredientAmountUnknown": "Miktar bilinmiyor"
   },
   "templatePreview": {
-    "updateTemplate": "Şablonu da bu değişikliklerle güncelle"
+    "updateTemplate": "Şablonu da bu değişikliklerle güncelle",
+    "aiCamera": "Kamera ile malzeme ekle"
   },
   "export": {
     "modalTitle": "Veri Yönetimi",

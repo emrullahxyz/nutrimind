@@ -376,13 +376,19 @@ export function NutritionSheet({ isOpen, onClose, meal, onSave, onDelete }: Prop
   }
 
   const handleStep = (delta: number) => {
-    // Swap sonrası stepper: kalemler toplamdan türetildiği için swap geçersiz
-    // kalır — stepper kazanır, swap sıfırlanır.
-    setSwappedLines(null);
-    // Elle düzenlenen makro değerleri varsa uyar
-    if (basis === "manual") {
+    // Porsiyon değiştirmek, KAYITTAN türetilen satırları geçersiz kılar:
+    // çarpan yeni bir ölçüm uygular, kullanıcının kalem düzenlemeleriyle
+    // birleştirilemez.
+    //
+    // Uyarı KAPSAMI önemli: yalnız `basis === "manual"`'a bakmak, malzeme
+    // düzenlemelerini sessizce yutuyordu. Malzeme düzenlendiğinde `basis`
+    // `"quantity"`'ya çevrilir, dolayısıyla eski uyarı tetiklenmiyordu —
+    // ekranda düzenlenmiş satırlar görünürken kaydet tıklandığında hepsi
+    // düşüyordu. `swappedLines` doluysa da uyar.
+    if (basis === "manual" || swappedLines) {
       if (!window.confirm(t("nutrition.manualOverrideWarning"))) return;
     }
+    setSwappedLines(null);
     // Miktar her zaman kazanır: porsiyon çarpanı değiştiğinde önceki elle
     // düzenlenmiş makro değerleri geçersiz kılınır, taslak yeniden ölçeklenmiş
     // değerle kurulur.
@@ -633,9 +639,19 @@ export function NutritionSheet({ isOpen, onClose, meal, onSave, onDelete }: Prop
 
         {meal && (
           <IngredientLines
-            meal={meal}
+            // Ölçeklenmiş kopya: porsiyon çarpanı `sources[].qty`'ye de
+            // uygulanmalı, aksi halde satırlar çarpanı göstermezken ana kart
+            // gösterirdi (gösterilen ≠ kaydedilen). Aynı sebeple stepper
+            // bastığında `swappedLines` sıfırlanır: çarpan KAYITTAN türetilen
+            // ölçümleri değiştirir, kullanıcının kalem düzenlemeleriyle
+            // birleştirilemez — bu yüzden `handleStep` uyarı sorar.
+            meal={{
+              ...meal,
+              computed: scaleMealNutrition(meal.computed, multiplier),
+              sources: scaleMealSources(meal.sources, multiplier),
+            }}
             aliases={aliases}
-            resetKey={meal.id}
+            resetKey={`${meal.id}:${multiplier}`}
             onCommit={(next) => {
               setSwappedLines(next);
               // Gösterim kaydedilenle AYNI olmalı (L20): ana kart eski toplamı

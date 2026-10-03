@@ -391,6 +391,7 @@ describe("preserved", () => {
       grams: 0,
       nutrition: kayitli,
       preserved: true,
+      manualMeasured: false,
     };
   }
 
@@ -439,6 +440,59 @@ describe("preserved", () => {
     const base = line(draftLineFromAlias(ekmekDilim, "4", "Dilim"));
     base.unit = "kase";
     expect(setDraftGrams(base, "6", ekmekDilim).preserved).toBe(false);
+  });
+
+  // ---- manualMeasured: kullanıcı ELLE ad + makro girdi ----
+  // `preserved`'in karşıtı. `preserved` = "kayıttan geldi, gramaj çözülemedi";
+  // `manualMeasured` = "kullanıcı ölçtü, gramaj vermedi". İkisi de `grams: 0`
+  // taşır ve ikisi de kayda girer, ama anlamları farklı: elle girilen makro
+  // için "Miktar bilinmiyor" yazmak YANLIŞ (gramaj sorulmadı, bilinmiyor
+  // değil), `sources` yine yazılmaz (ölçülmüş miktar iddiası olurdu).
+  const elle: Nutrition = { kcal: 200, protein: 3, carbs: 5, fat: 10, fiber: 0 };
+
+  function elleSatir(): DraftLine {
+    return {
+      key: "draft-manual-0-Sos",
+      aliasId: null,
+      name: "Ev yapımı sos",
+      qty: "",
+      unit: "g",
+      grams: 0,
+      nutrition: elle,
+      preserved: false,
+      manualMeasured: true,
+    };
+  }
+
+  it("grams 0 olsa da kayıtta KALIR — kullanıcının yazdığı makro kaybolmaz", () => {
+    const items = draftLinesToItems([elleSatir()]);
+    expect(items).toHaveLength(1);
+    expect(items[0].name).toBe("Ev yapımı sos");
+    expect(items[0].nutrition).toEqual(elle);
+  });
+
+  it("kaynak UYDURMAZ (aliasId yok — miktar iddiası olmaz)", () => {
+    expect(draftLinesToItems([elleSatir()])[0].sources).toBeUndefined();
+  });
+
+  it("preserved'in TERSİ: iki bayrak da false ise 0 gramajlı satır ATILIR", () => {
+    const hicbiri = { ...elleSatir(), manualMeasured: false };
+    expect(draftLinesToItems([hicbiri])).toHaveLength(0);
+  });
+
+  it("gramaj girilince elle-makro bayrağı DÜŞER (artık gerçek ölçüm)", () => {
+    const olculen = setDraftGrams(elleSatir(), "250", null);
+    expect(olculen.manualMeasured).toBe(false);
+    expect(olculen.grams).toBe(250);
+  });
+
+  it("korunmuş satır elle-girilmiş sayılmaz (farklı anlam)", () => {
+    expect(korunmus().preserved).toBe(true);
+    expect(korunmus().manualMeasured).toBe(false);
+  });
+
+  it("swap elle-makro bayrağını düşürür (besin değişti, ölçüm değişti)", () => {
+    expect(swapDraftLine(elleSatir(), tavuk).manualMeasured).toBe(false);
   });
 
   // Swap, KORUNMUŞ bir satırın miktarını ÖĞRETMEZ. Besin değişir, miktar

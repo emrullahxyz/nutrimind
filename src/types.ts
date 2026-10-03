@@ -68,6 +68,13 @@ export interface AIParseItem {
   confidence?: number;
   /** Sunucu tarafında `NUTRIMIND_CONFIDENCE_THRESHOLD` altında hesaplanır. */
   needsReview?: boolean;
+  /** Besin değerlerinin dayandığı miktar, gram: etikette "100 g başına"
+   *  yazıyorsa 100, "30 g'lik 1 porsiyon" yazıyorsa 30. YALNIZCA etiket
+   *  okunduğunda anlamlıdır; metin ve yemek fotoğrafı akışlarında gelmez.
+   *  `undefined` = miktar bilinmiyor (0 DEĞİL — 0, "miktarım sıfır" demek
+   *  olurdu). `DraftLine` tarafında `grams`/`qty` bu değere oturur, yoksa
+   *  satır miktarı bilinmeyen korunmuş kalem olarak durur. */
+  baseAmount?: number;
 }
 
 export interface AIParseResult {

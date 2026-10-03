@@ -51,6 +51,13 @@ export interface DraftLine {
    *  yazılmaz (`aliasId` null), ve miktar girilene kadar ekranda "bilinmiyor"
    *  olarak gösterilir. Ölçülebilir hale gelince `setDraftGrams` false yapar. */
   preserved: boolean;
+  /** true = KULLANICI elle ad + makro girdi, gramaj vermedi. `preserved`'in
+   *  karşıtı: `preserved` "kayıttan geldi, ölçülemedi", bu ise "kullanıcı
+   *  ölçtü, gramajı yok". İkisi de `grams: 0` taşır ve ikisi de kayda girer,
+   *  ama "Miktar bilinmiyor" etiketi YALNIZCA `preserved` için doğrudur —
+   *  elle girilen makroda gramaj sorulmamıştır, bilinmiyor değil.
+   *  `sources` YAZILMAZ (`aliasId` null zaten) — miktar uydurulmaz. */
+  manualMeasured: boolean;
 }
 
 let seq = 0;
@@ -114,6 +121,7 @@ export function draftLineFromAlias(
     grams: valid ? grams : 0,
     nutrition: valid ? scaleNutrition(alias.nutrition, alias.serving_g, grams) : (fallback ?? { ...ZERO_NUTRITION }),
     preserved: false,
+    manualMeasured: false,
   };
 }
 
@@ -124,7 +132,17 @@ export function draftLineFromAlias(
  *  zaman `unitOptions`'ın içindedir. */
 export function newDraftLine(alias: Alias | undefined): DraftLine {
   if (!alias) {
-    return { key: nextKey(), aliasId: null, name: "", qty: "", unit: "g", grams: 0, nutrition: { ...ZERO_NUTRITION }, preserved: false };
+    return {
+      key: nextKey(),
+      aliasId: null,
+      name: "",
+      qty: "",
+      unit: "g",
+      grams: 0,
+      nutrition: { ...ZERO_NUTRITION },
+      preserved: false,
+      manualMeasured: false,
+    };
   }
   return {
     key: nextKey(),
@@ -135,6 +153,7 @@ export function newDraftLine(alias: Alias | undefined): DraftLine {
     grams: 0,
     nutrition: { ...ZERO_NUTRITION },
     preserved: false,
+    manualMeasured: false,
   };
 }
 
@@ -201,12 +220,26 @@ export function setDraftGrams(line: DraftLine, gramsText: string, alias: Alias |
       grams,
       nutrition: scaleNutrition(alias.nutrition, alias.serving_g, grams),
       preserved: false,
+      // Gramaj girildi → satır artık ÖLÇÜLMÜŞ; elle girilmiş makro bayrağı
+      // düşer (biri diğerini dışlar: ya gramaj var ya elle makro).
+      manualMeasured: false,
     };
   }
 
   // Elle satır: gram cinsinden ölçülür.
   const parsed = parseNum(gramsText);
-  return { ...line, qty: gramsText, unit: "g", grams: parsed > 0 ? parsed : 0, preserved: false };
+  return {
+    ...line,
+    qty: gramsText,
+    unit: "g",
+    grams: parsed > 0 ? parsed : 0,
+    preserved: false,
+    // Gramaj girilince elle makro bayrağı düşer: artık miktar da var, ölçüm
+    // tam. Miktar boşaltılırsa kullanıcının kendi sildiği miktar kayda
+    // geçmez — `manualMeasured` de düşer, filtre satırı eler (L20: yarım
+    // yazım kayda girmez).
+    manualMeasured: false,
+  };
 }
 
 /** Swap: gram korunur, miktar hedef alias'ın varsayılan birimine çevrilir.
@@ -231,6 +264,9 @@ export function swapDraftLine(line: DraftLine, next: Alias): DraftLine {
       unit: u.name,
       qty: "",
       preserved: true,
+      // Elle makro bayrağı da düşer: swap BESİN değiştirir, kullanıcının
+      // yazdığı makro değil — ölçüm artık yeni besinin gramajına bağlı.
+      manualMeasured: false,
     };
   }
   const qty = u.grams > 0 ? Math.round((line.grams / u.grams) * 10) / 10 : line.grams;
@@ -243,6 +279,7 @@ export function swapDraftLine(line: DraftLine, next: Alias): DraftLine {
     grams: line.grams,
     nutrition: scaleNutrition(next.nutrition, next.serving_g, line.grams),
     preserved: false,
+    manualMeasured: false,
   };
 }
 
@@ -283,7 +320,18 @@ export function removeDraftLine(lines: DraftLine[], key: string): DraftLine[] {
 export function draftLinesToItems(lines: DraftLine[]): TemplateItem[] {
   const items: TemplateItem[] = [];
   for (const l of lines) {
-    if (l.grams <= 0 && !l.preserved) continue;
+    // `grams > 0` → ölçülmüş satır.
+    // `preserved`    → kayıttan geldi, gramajı çözülemedi ama adı+makrosu gerçek.
+    // `manualMeasured` → kullanıcı elle ad + makro girdi, gramaj vermedi.
+    //   Üçüncü koşul YENİ: `TemplateItem` gramajı ayrı bir alanda TUTMAZ —
+    //   gramaj ancak `sources` içinde saklanır, ve elle satırın `aliasId`'si
+    //   yoktur (yani `sources` yazılamaz). Buna rağmen kullanıcının yazdığı
+    //   makro GERÇEK bir ölçümdür ve kaybolmamalıdır: "200 kcal'lık ev
+    //   yapımı sos" de bir malzemedir. `preserved` burada YANLIŞ olurdu —
+    //   o "kayıttan geldi, ölçülemedi" demek, elle girilen ise tam tersi
+    //   ("ölçtüm, gramaj vermedim"). Ayrı alan bu iki anlamı ayırır ve
+    //   "Miktar bilinmiyor" etiketini elle girilen makroya YANLIŞ yazdırmaz.
+    if (l.grams <= 0 && !l.preserved && !l.manualMeasured) continue;
     items.push({
       name: l.name,
       nutrition: roundNutrition(l.nutrition),
