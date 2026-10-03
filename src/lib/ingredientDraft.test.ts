@@ -421,19 +421,18 @@ describe("preserved", () => {
     expect(olculen.qty).toBe("200");
   });
 
-  it("newDraftLine / draftLineFromAlias / swapDraftLine preserved:false üretir", () => {
+  it("newDraftLine / draftLineFromAlias preserved:false üretir", () => {
     expect(newDraftLine(undefined).preserved).toBe(false);
     expect(newDraftLine(tavuk).preserved).toBe(false);
-    expect(line(draftLineFromAlias(tavuk, "150", "g")).preserved).toBe(false);
     // alias'lı ÖLÇÜLEN satır korunmuş SAYILMAZ: makrosu ölçülmüş gerçek bir
     // miktardan geliyor, gramajı bilinmiyor değil. (alias dalındaki
     // `preserved: false` mutasyona uğrarsa burada kırılır.)
     const olculen = line(draftLineFromAlias(tavuk, "150", "g"));
     expect(olculen.preserved).toBe(false);
     expect(olculen.grams).toBe(150);
-    const swapped = swapDraftLine(korunmus(), tofu);
-    expect(swapped.preserved).toBe(false);
-    expect(swapped.grams).toBe(0); // korunmuş satırın gramajı yok — swap ölçemez
+    // ÖLÇÜLEN satırın swap'ı da korunmuşluk üretmez (miktarı var, korunacak
+    // bir şey yok). Korunmuş satırın swap'ı ise KORUR — ayrı testte.
+    expect(swapDraftLine(olculen, tofu).preserved).toBe(false);
   });
 
   it("reddedilen birim preserved değiştirmez (satıra hiç dokunulmaz)", () => {
@@ -442,13 +441,42 @@ describe("preserved", () => {
     expect(setDraftGrams(base, "6", ekmekDilim).preserved).toBe(false);
   });
 
-  // Kilitli alanın (C1) çıkış yolu: korunmuş satır hafızaya bağlanınca
-  // miktar girilebilir HALE gelir ve bu kez kayda gerçekten geçer.
-  it("swap korunmuş satırı bağlar, sonra girilen miktar KAYDA GEÇER", () => {
+  // Swap, KORUNMUŞ bir satırın miktarını ÖĞRETMEZ. Besin değişir, miktar
+  // bilinmemeye devam eder: `preserved` true kalır, `grams` 0 kalır, kayıtlı
+  // gerçek makro korunur. Kullanıcı miktarı YAZDIĞINDA satır ölçülebilir olur.
+  //
+  // Daha önce swap `preserved: false` yazıyordu; filtre satırı düşürüyor ve
+  // "korun → besine bağla → kaydet" yolu malzemeyi SİLİYORDU. Preserved
+  // alanının var oluş sebebi olan L21 hatası, kendi kurtarma yolumuzda.
+  it("swap korunmuş satırı korur: miktar hâlâ bilinmiyor, kayıt KAYBOLMAZ", () => {
     const swapped = swapDraftLine(korunmus(), tofu);
-    expect(swapped.preserved).toBe(false);
-    expect(swapped.aliasId).toBe("a2");
+    expect(swapped.preserved).toBe(true); // besin değişti, miktar bilinmiyor
+    expect(swapped.aliasId).toBe("a2"); // besin BAĞLANDI
+    expect(swapped.name).toBe("Tofu");
+    expect(swapped.grams).toBe(0);
+    // Makro silinmez: 0 g'den ölçeklemek kayıtlı değerleri 0'a düşürürdü.
+    expect(swapped.nutrition).toEqual(kayitli);
+    // Asıl önemlisi: kayda giriyor.
+    const items = draftLinesToItems([swapped]);
+    expect(items).toHaveLength(1);
+    expect(items[0].name).toBe("Tofu");
+    expect(items[0].nutrition).toEqual(kayitli);
+  });
+
+  // Korunmuş bir satır kaydedilirken `sources` YAZMAZ: alias'ı var ama
+  // ölçülebilir miktarı yok, dolayısıyla uydurma bir kaynak üretmek yanlış
+  // olurdu (miktar bilinmiyor — kaydedilecek bir miktar da yok).
+  it("korunmuş satır swap sonrası da sources UYDURMAZ", () => {
+    expect(draftLinesToItems([swapDraftLine(korunmus(), tofu)])[0].sources).toBeUndefined();
+  });
+
+  // Çıkış yolu hâlâ çalışır: bağlandıktan sonra miktar girilince satır
+  // ölçülür, bayrak düşer ve bu kez kaynak gerçekten yazılır.
+  it("miktar girilince korunmuş satır ÖLÇÜLÜR ve kaynak yazılır", () => {
+    const swapped = swapDraftLine(korunmus(), tofu);
+    expect(swapped.preserved).toBe(true); // önce hâlâ korunmuş
     const measured = setDraftGrams(swapped, "150", tofu);
+    expect(measured.preserved).toBe(false);
     expect(measured.grams).toBe(150);
     const items = draftLinesToItems([measured]);
     expect(items).toHaveLength(1);

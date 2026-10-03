@@ -154,11 +154,21 @@ export function newDraftLine(alias: Alias | undefined): DraftLine {
  *   • aksi → gramaj ve makro yeniden hesaplanır, ÇÖZÜLEN birim geri yazılır
  *     (hesap bu birimle yapıldı; satır aynısını göstermeli — L20).
  *
- *  REDDİ NEREDE ELE ALINIR: burada değil, GÖSTERİM katmanında. Çağıran
- *  `resolveDraftUnit(alias, line.unit)` ile önceden sorar; `null` gelirse
- *  uyarıyı gösterir ve bu fonksiyonu ÇAĞIRMAZ. "Hangi satırı gösteriyorum"
- *  sorusunun cevabı ekranda; ikinci bir gerçek kaynak (`stale` bayrağı)
- *  bu yüzden yok. */
+ *  RED SESSİZDİR ve GÜVENLİDİR: çözülemeyen birimde satıra hiç dokunulmaz,
+ *  dolayısıyla satır son TUTARLI ölçümünü korur — `qty` eski metniyle birlikte.
+ *  Çağıranın UYARMAK ya da bir şey yapmak zorunda olduğu bir durum yoktur;
+ *  satır tutarlı kalır ve olduğu gibi kaydedilebilir.
+ *
+ *  Koşulu ÖNCEDEN görmek isteyen çağıran `resolveDraftUnit(alias, line.unit)`
+ *  kullanabilir — bu fonksiyon hâlâ dışa açıktır ve "bu satırın birimi
+ *  çözülebilir mi?" sorusunu tek başına yanıtlar. Ancak `setDraftGrams`'i
+ *  GÜVENLE çağırmak için önceden sorgulamak ZORUNLU DEĞİLDİR: çağırmak
+ *  güvenlidir, yalnızca reddedilen bir değişiklik sessizce uygulanmaz.
+ *
+ *  (Bu dal, "kullanıcı sayı yazdı ama alan geri sekti" derdini bir uyarıyla
+ *  çözmeye çalışıyordu. `TemplatePreview` bu uyarıyı kaldırdı: o ekranda
+ *  birim çözülemeyen satırlar zaten `aliasId: null` olan KORUNMUŞ satırlara
+ *  dönüşüyor, yani dallara hiç ulaşılamıyordu.) */
 export function setDraftGrams(line: DraftLine, gramsText: string, alias: Alias | null): DraftLine {
   if (alias) {
     const u = resolveDraftUnit(alias, line.unit);
@@ -198,9 +208,30 @@ export function setDraftGrams(line: DraftLine, gramsText: string, alias: Alias |
   return { ...line, qty: gramsText, unit: "g", grams: parsed > 0 ? parsed : 0, preserved: false };
 }
 
-/** Swap: gram korunur, miktar hedef alias'ın varsayılan birimine çevrilir. */
+/** Swap: gram korunur, miktar hedef alias'ın varsayılan birimine çevrilir.
+ *
+ *  `preserved` satırlar ÖZEL DAVRANIR: miktarı BİLİNMEYEN bir satırı başka
+ *  bir besine bağlamak miktarı öğretmez. Yalnız `aliasId`/`name`/`unit`
+ *  değişir; `grams` 0 kalır, `preserved` TRUE kalır ve `nutrition` ESKİ
+ *  değeriyle KORUNUR — çünkü `next.nutrition`'ı `grams: 0`'dan ölçeklemek
+ *  kayıtlı gerçek makroyu 0'a silerdi. Kullanıcı miktarı yazınca
+ *  `setDraftGrams` satırı gerçekten ölçülebilir hale getirir ve o an hem
+ *  makro hem `preserved` düşer.
+ *
+ *  Buradaki `preserved: false` bir "korunmuş satırı ölçülebilir yap" adımı
+ *  DEĞİLDİR; bayrağı sıfırlamak miktarı uydurmak olurdu. */
 export function swapDraftLine(line: DraftLine, next: Alias): DraftLine {
   const u = defaultUnitForAlias(next);
+  if (line.preserved) {
+    return {
+      ...line,
+      aliasId: next.id,
+      name: next.name,
+      unit: u.name,
+      qty: "",
+      preserved: true,
+    };
+  }
   const qty = u.grams > 0 ? Math.round((line.grams / u.grams) * 10) / 10 : line.grams;
   return {
     key: line.key,
@@ -222,7 +253,7 @@ export function removeDraftLine(lines: DraftLine[], key: string): DraftLine[] {
   return lines.filter((l) => l.key !== key);
 }
 
-/** Kayıt/şablon kalemlerine çevirir. Elle satırlar `sources` üretmez.
+/** Kayıt/şablon kalemlerine çevirir.
  *
  *  FİLTRE — İKİ KOŞUL, İKİ FARKLI ANLAM:
  *   1. `grams <= 0` (ve `!preserved`) → KULLANICININ SİLDİĞİ miktar. Satır
@@ -236,6 +267,13 @@ export function removeDraftLine(lines: DraftLine[], key: string): DraftLine[] {
  *      görebiliyor. Düşürülürse kullanıcının kayıtlı şablonundan malzeme
  *      sessizce silinmiş olur (lessons.md L21) — kaydetmenin sonucu olamaz.
  *
+ *  `sources` — YALNIZ ÖLÇÜLMÜŞ MİKTAR YAZAR. Bir `sources` girdisi miktarı
+ *  da taşır; ölçülmemiş bir miktarı `qty: 0` olarak yazmak "0 g aldım"
+ *  demektir, ki hiç ölçülmedi. Bu yüzden `preserved` satırlar kaynak
+ *  YAZMAZ — `swapDraftLine` bir korunmuş satıra `aliasId` bağlasa bile.
+ *  Korunmuş satırın kaydı yalnız ad + makrodur: miktarı bilinmeyen bir
+ *  malzemenin kaynağı, kayda gerçeği yansıtmaz.
+ *
  *  DİKKAT: `preserved` koşulunu gevşetmeyin. `!l.preserved` olmadan filtre
  *  kullanıcının sildiği satırları da kaydeder ve 1. koşulun garantisi düşer.
  *  `!Number.isFinite(l.grams)` ya da `l.grams === 0` gibi ikame koşullar da
@@ -248,7 +286,10 @@ export function draftLinesToItems(lines: DraftLine[]): TemplateItem[] {
     items.push({
       name: l.name,
       nutrition: roundNutrition(l.nutrition),
-      ...(l.aliasId ? { sources: [{ aliasId: l.aliasId, qty: parseNum(l.qty), unit: l.unit }] } : {}),
+      // Korunmuş satırın miktarı bilinmiyor; kaynak yazmak `qty: 0` uydurur.
+      ...(l.aliasId && !l.preserved
+        ? { sources: [{ aliasId: l.aliasId, qty: parseNum(l.qty), unit: l.unit }] }
+        : {}),
     });
   }
   return items;
