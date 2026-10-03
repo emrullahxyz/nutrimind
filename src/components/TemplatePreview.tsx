@@ -205,10 +205,14 @@ export function TemplatePreview({
                     </div>
                     <div className="flex items-end justify-end">
                       {/* Hafızaya bağlı satır (alias'lı) VE korunmuş satır aynı
-                          çıkış yolunu sunar: besine bağla. Korunmuş satırın
-                          miktar alanı kilitli olduğu için bu ONUN çıkış
-                          yoludur — bağlanınca `swapDraftLine` `preserved`'ı
-                          düşürür ve alan açılır. */}
+                          çıkış yolunu sunar: besine bağla. Bu, alias'ı OLMAYAN
+                          korunmuş satırın çıkış yoludur — miktar alanı
+                          `preserved && !alias` yüzünden kilitlidir ve yalnız
+                          `alias` gelince açılır. `swapDraftLine` bayrağı
+                          KORUR (düşürseydi kayıttan gelen gerçek miktarı
+                          uydurmuş olurdu); alanı açılan şey bayrak değil,
+                          bağlanan besindir. Alanı açıp ölçülebilir hale getiren
+                          tek eylem, miktarı YAZMAKTIR. */}
                       {alias || (line.preserved && aliases.length > 0) ? (
                         <button
                           type="button"

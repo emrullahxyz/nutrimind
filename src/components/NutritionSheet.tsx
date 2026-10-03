@@ -1,22 +1,27 @@
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { ArrowLeft, Flame, Beef, Wheat, Droplet, Trash2 } from "lucide-react";
+import { ArrowLeft, Flame, Beef, Wheat, Droplet, Trash2, Plus } from "lucide-react";
 import { ZERO_NUTRITION } from "../types";
 import type { Alias, MealCategory, MealItem, Nutrition } from "../types";
 import { useBodyScrollLock } from "../hooks/useBodyScrollLock";
 import { useDialogFocus } from "../hooks/useDialogFocus";
 import { useModalHistory } from "../hooks/useModalHistory";
 import { useModalExit } from "../hooks/useModalExit";
-import { scaleMealSources } from "../lib/nutrition";
+import { addNutrition, scaleMealSources } from "../lib/nutrition";
 import {
-  linesToMealParts,
-  resolveMealIngredients,
-  swapIngredientLine,
-} from "../lib/ingredientLines";
-import type { IngredientLine } from "../lib/ingredientLines";
+  addDraftLine,
+  draftLineFromAlias,
+  draftLinesToItems,
+  newDraftLine,
+  removeDraftLine,
+  roundNutrition,
+  setDraftGrams,
+  swapDraftLine,
+} from "../lib/ingredientDraft";
+import type { DraftLine } from "../lib/ingredientDraft";
 import { EditableStat, toDraft, fromDraft } from "./FormBits";
 import type { NutritionDraft } from "./FormBits";
-import { NutrientSummaryLine } from "./FormBits";
+import { NutrientSummaryLine, NumField } from "./FormBits";
 import { MEAL_CATEGORIES, categoryForHour } from "../lib/mealCategory";
 import { useData } from "../lib/data";
 
@@ -48,94 +53,219 @@ export function scaleMealNutrition(computed: Nutrition | undefined, multiplier: 
   };
 }
 
-/** sources çözülebilen öğünün kalem satırları + swap. */
+/** Miktar alanı KİLİTLİ mi?
+ *
+ *  İki AYRI iddia birleşiyor:
+ *   • `preserved` — bu satırın miktarı BİLİNMIYOR (kayıttan geldi, ölçülemedi).
+ *   • `!alias`   — ölçecek bir taban yok (`MealItem.sources` miktarı ancak bir
+ *     `aliasId` ile saklar; alias yoksa yazılan sayı kayda giremezdi).
+ *
+ *  İkisi birden gerekir. Yalnız `preserved`'a bakmak, besine BAĞLANMIŞ ama
+ *  miktarı hâlâ bilinmeyen satırı kilitli bırakır ve kullanıcı hiçbir işlem
+ *  yapamadan satırı yalnızca silebilir — `swapDraftLine` korunmuş bir satırda
+ *  bayrağı DÜŞÜRMEZ (bayrak düşseydi kayıttan gelen gerçek miktar uydurulurdu),
+ *  dolayısıyla kilidi kaldıran tek şey `alias`'ın gelmesidir. Bu koşul
+ *  `TemplatePreview`'daki `disabled={line.preserved && !alias}` ile AYNIDIR.
+ *
+ *  JSX içine gömülü bırakılırsa test edilemez; bu yüzden dışa açıktır
+ *  (`NutritionSheet.test.ts` — jsdom'suz, saf fonksiyon). */
+export function isAmountLocked(line: DraftLine, alias: Alias | undefined): boolean {
+  return line.preserved && !alias;
+}
+
+/** Kaydın malzemelerini düzenlenebilir satırlara çevirir — YA HİÇ ya da HİÇBİRİ.
+ *
+ *  TÜM-ORA-HİÇBİRİ kuralı bilinçlidir: tek bir kaynak çözülemezse (alias
+ *  silinmiş ya da birim artık tanınmıyor) bölümün TAMAMI çizilmez. Kısmi bir
+ *  liste çizmek, kaydederken çözülmeyen malzemeyi kayıttan SİLMEK demektir —
+ *  `normalizeMeals` gövdeyi geçirdiği için kayıt sessizce değişir. Ölçülmüş
+ *  davranış: kaynaksız/çözülemez öğünde toplam ekranı aynen kalır.
+ *
+ *  Bu, aynı zamanda "silinmiş alias'a bağlı satır" (dangling aliasId) durumunu
+ *  YAPISAL OLARAK IMKÂNSIZ kılar: o satır `alias` bulunamadığı için `null`
+ *  döndürür ve bölüm hiç render edilmez. Dolayısıyla `isAmountLocked`'ın
+ *  kilitlediği ama kurtarma yolu olmayan bir satır bu ekranda OLUŞAMAZ. */
+function mealDraftLines(meal: MealItem, aliases: Alias[]): DraftLine[] | null {
+  const sources = meal.sources;
+  if (!sources || sources.length === 0) return null;
+  const byId = new Map(aliases.map((a) => [a.id, a]));
+  const out: DraftLine[] = [];
+  for (const s of sources) {
+    const alias = byId.get(s.aliasId);
+    // Alias yoksa ya da birim çözülemiyorsa satır ÜRETİLMEZ → bölüm hiç çizilmez.
+    const line = alias ? draftLineFromAlias(alias, String(s.qty), s.unit) : null;
+    if (!line) return null;
+    out.push(line);
+  }
+  return out.length > 0 ? out : null;
+}
+
+/** Kaydın çözülebilen kalem satırları + tam düzenleme (ekle/sil/gramaj/swap).
+ *  Saf kurallar `lib/ingredientDraft.ts`'te. */
 function IngredientLines({
   meal,
   aliases,
   resetKey,
-  onSwap,
+  onCommit,
 }: {
   meal: MealItem;
   aliases: Alias[];
   resetKey: unknown;
-  onSwap: (lines: IngredientLine[]) => void;
+  onCommit: (lines: DraftLine[]) => void;
 }) {
   const { t } = useTranslation();
   // `key` yerine iç state: parent farklı öğünde resetKey değiştirir.
-  const [lines, setLines] = useState<IngredientLine[] | null>(() =>
-    resolveMealIngredients(meal, aliases),
-  );
-  const [swapIdx, setSwapIdx] = useState<number | null>(null);
+  const [lines, setLines] = useState<DraftLine[] | null>(() => mealDraftLines(meal, aliases));
+  const [swapKey, setSwapKey] = useState<string | null>(null);
 
   // Farklı öğün açılınca sıfırla (aynı sheet yeniden mount edilmiyor).
   // meal/aliases doğrudan deps'e konmaz: resolve her render yeni dizi
   // üretir, effect döngüye girer. resetKey parent'tan gelir.
   useEffect(() => {
-    setLines(resolveMealIngredients(meal, aliases));
-    setSwapIdx(null);
+    setLines(mealDraftLines(meal, aliases));
+    setSwapKey(null);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [resetKey]);
 
-  if (!lines) return null;
+  // Kaynaksız/çözülemez öğün: kırılım yok, bölüm hiç çizilmez (ölçülmüş regresyon).
+  if (!lines || lines.length === 0) return null;
 
-  function doSwap(idx: number, aliasId: string) {
-    const next = aliases.find((a) => a.id === aliasId);
-    if (!next) return;
+  function aliasOf(line: DraftLine): Alias | undefined {
+    return line.aliasId ? aliases.find((a) => a.id === line.aliasId) : undefined;
+  }
+
+  /** Satırı günceller ve HER DEĞİŞİMDE parent'a bildirir — ana kartın toplamı
+   *  kaydedilenle aynı kalmalı (L20): yalnız kaydet anında değil, düzenleme
+   *  ANINDA da eşitlenir. */
+  function patch(key: string, next: DraftLine) {
     setLines((prev) => {
       if (!prev) return prev;
-      const swapped = prev.map((l, i) => (i === idx ? swapIngredientLine(l, next) : l));
-      onSwap(swapped);
-      return swapped;
+      const updated = prev.map((l) => (l.key === key ? next : l));
+      onCommit(updated);
+      return updated;
     });
-    setSwapIdx(null);
   }
+
+  function removeRow(key: string) {
+    setLines((prev) => {
+      if (!prev) return prev;
+      const updated = removeDraftLine(prev, key);
+      onCommit(updated);
+      return updated;
+    });
+  }
+
+  function addRow() {
+    setLines((prev) => {
+      if (!prev) return prev;
+      const updated = addDraftLine(prev, newDraftLine(aliases[0]));
+      onCommit(updated);
+      return updated;
+    });
+  }
+
+  // Kayıtta `draftLinesToItems` `roundNutrition` uygular; gösterim de aynısını
+  // uygulamazsa ekran 2 ondalık gösterirken kayıt 1 ondalık saklar.
+  const total = roundNutrition(
+    lines.reduce<Nutrition>((acc, l) => addNutrition(acc, l.nutrition), { ...ZERO_NUTRITION }),
+  );
 
   return (
     <div className="space-y-2.5 pt-2">
-      <div className="text-sm font-bold text-white/90">{t("nutrition.ingredientsTitle")}</div>
+      <div className="flex items-center justify-between gap-2">
+        <span className="text-sm font-bold text-white/90">{t("nutrition.ingredientsTitle")}</span>
+        <span className="font-mono text-[11px] text-white/50">{total.kcal} kcal</span>
+      </div>
       <ul className="space-y-2">
-        {lines.map((l, i) => (
-          <li
-            key={`${l.aliasId}-${i}`}
-            className="rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-xs sm:text-sm"
-          >
-            <div className="flex items-center justify-between gap-2">
-              <span className="min-w-0 flex-1 truncate font-semibold text-white/90">{l.name}</span>
-              <span className="flex-none font-mono text-white/50">
-                {l.grams} g · {l.nutrition.kcal} kcal
-              </span>
-            </div>
-            <NutrientSummaryLine
-              as="span"
-              nutrition={l.nutrition}
-              className="mt-1 block font-mono text-[11px] text-white/50"
-            />
-            {swapIdx === i ? (
-              <select
-                autoFocus
-                className="mt-2 w-full rounded-xl bg-field px-3 py-2 text-xs font-bold text-white focus:outline-none"
-                value={l.aliasId}
-                onChange={(e) => doSwap(i, e.target.value)}
-                onBlur={() => setSwapIdx(null)}
-              >
-                {aliases.map((a) => (
-                  <option key={a.id} value={a.id} className="bg-field text-white">
-                    {a.name} · {a.nutrition.kcal} kcal/{a.serving_g}g
-                  </option>
-                ))}
-              </select>
-            ) : (
-              <button
-                type="button"
-                onClick={() => setSwapIdx(i)}
-                className="mt-2 text-[11px] font-bold text-amber-300 hover:underline"
-              >
-                {t("nutrition.swapIngredient")}
-              </button>
-            )}
-          </li>
-        ))}
+        {lines.map((line) => {
+          const alias = aliasOf(line);
+          const locked = isAmountLocked(line, alias);
+          return (
+            <li
+              key={line.key}
+              className="rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-xs sm:text-sm"
+            >
+              <div className="flex items-center justify-between gap-2">
+                {swapKey === line.key ? (
+                  <select
+                    autoFocus
+                    aria-label={t("nutrition.swapIngredient")}
+                    className="w-full rounded-xl bg-field px-3 py-2 text-xs font-bold text-white focus:outline-none"
+                    value={line.aliasId ?? ""}
+                    onChange={(e) => {
+                      const next = aliases.find((a) => a.id === e.target.value);
+                      if (next) patch(line.key, swapDraftLine(line, next));
+                      setSwapKey(null);
+                    }}
+                  >
+                    {aliases.map((a) => (
+                      <option key={a.id} value={a.id} className="bg-field text-white">
+                        {a.name} · {a.nutrition.kcal} kcal/{a.serving_g}g
+                      </option>
+                    ))}
+                  </select>
+                ) : (
+                  <>
+                    <span className="min-w-0 flex-1 truncate font-semibold text-white/90">
+                      {line.name}
+                    </span>
+                    {lines.length > 1 && (
+                      <button
+                        type="button"
+                        onClick={() => removeRow(line.key)}
+                        aria-label={t("nutrition.ingredientRemove")}
+                        title={t("nutrition.ingredientRemove")}
+                        className="p-1 text-ink-tertiary transition hover:text-danger"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                    )}
+                  </>
+                )}
+              </div>
+
+              <div className="mt-2 flex items-end gap-2">
+                <div>
+                  <NumField
+                    label={t("nutrition.ingredientGrams")}
+                    suffix="g"
+                    value={line.qty}
+                    onChange={(v) => patch(line.key, setDraftGrams(line, v, alias ?? null))}
+                    disabled={locked}
+                  />
+                  {locked && (
+                    <p className="mt-1 text-[11px] text-amber-300">
+                      {t("nutrition.ingredientAmountUnknown")}
+                    </p>
+                  )}
+                </div>
+                {alias && (
+                  <button
+                    type="button"
+                    onClick={() => setSwapKey(line.key)}
+                    className="mb-1 rounded-pill border border-white/15 px-3 py-2 text-[11px] font-bold text-amber-300 transition hover:text-amber-200"
+                  >
+                    {t("nutrition.swapIngredient")}
+                  </button>
+                )}
+              </div>
+
+              <NutrientSummaryLine
+                as="span"
+                nutrition={line.nutrition}
+                className="mt-2 block font-mono text-[11px] text-white/50"
+              />
+            </li>
+          );
+        })}
       </ul>
+      <button
+        type="button"
+        onClick={addRow}
+        className="flex w-full items-center justify-center gap-1.5 rounded-pill border border-white/15 bg-white/[0.04] px-3 py-2.5 text-[11px] font-bold text-ink-secondary transition hover:text-ink-primary"
+      >
+        <Plus className="h-3.5 w-3.5" /> {t("nutrition.ingredientAdd")}
+      </button>
     </div>
   );
 }
@@ -201,7 +331,7 @@ export function NutritionSheet({ isOpen, onClose, meal, onSave, onDelete }: Prop
   // Swap sonrası kalemler: Kaydet'e basılana kadar bekler, basılınca
   // sources + computed birlikte güncellenir (gösterilen = kaydedilen).
   // Hook sırası: erken return'dan ÖNCE (hook kuralı).
-  const [swappedLines, setSwappedLines] = useState<IngredientLine[] | null>(null);
+  const [swappedLines, setSwappedLines] = useState<DraftLine[] | null>(null);
   useEffect(() => {
     setSwappedLines(null);
   }, [meal]);
@@ -243,13 +373,20 @@ export function NutritionSheet({ isOpen, onClose, meal, onSave, onDelete }: Prop
     // Swap edildiyse kalemler kazanır (stepper/manuel dokunuş ayrıca basis'i
     // değiştirir; swap sonrası elle makro yazmak sources'u koparır).
     if (swappedLines && basis === "quantity") {
-      const parts = linesToMealParts(swappedLines);
+      const items = draftLinesToItems(swappedLines);
+      let nutrition = { ...ZERO_NUTRITION };
+      for (const item of items) nutrition = addNutrition(nutrition, item.nutrition);
+      const collected = items.flatMap((i) => i.sources ?? []);
       const updated: MealItem = {
         ...meal,
         label,
         category,
-        computed: parts.nutrition,
-        sources: parts.sources,
+        computed: roundNutrition(nutrition),
+        // `sources` DAİMA yazılır — koşullu yayılım (`collected.length > 0`)
+        // yazılmayan durumda `...meal`'den gelen ESKİ kaynakları kayıtta
+        // bırakırdı: kullanıcı malzemeleri silmiş olsa bile öğün eski
+        // kaynaklarıyla kaydedilirdi. Toplam `computed` ile tutarsız kalırdı.
+        sources: collected,
       };
       onSave(updated);
       beginClose();
@@ -461,13 +598,16 @@ export function NutritionSheet({ isOpen, onClose, meal, onSave, onDelete }: Prop
             meal={meal}
             aliases={aliases}
             resetKey={meal.id}
-            onSwap={(next) => {
+            onCommit={(next) => {
               setSwappedLines(next);
               // Gösterim kaydedilenle AYNI olmalı (L20): ana kart eski toplamı
               // göstermeye devam ederse kullanıcı "225 → 175 gördüm ama
               // 418 yazıyor" diye kaydeder.
+              const items = draftLinesToItems(next);
+              let nutrition = { ...ZERO_NUTRITION };
+              for (const item of items) nutrition = addNutrition(nutrition, item.nutrition);
               setBasis("quantity");
-              setDraft(toDraft(linesToMealParts(next).nutrition));
+              setDraft(toDraft(roundNutrition(nutrition)));
             }}
           />
         )}

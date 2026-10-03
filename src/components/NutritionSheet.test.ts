@@ -7,8 +7,67 @@
 // yalnızca stepper ölçeklemesinde (m ≠ 1) meşru.
 // ============================================================================
 import { describe, expect, it } from "vitest";
-import { scaleMealNutrition } from "./NutritionSheet";
+import { isAmountLocked, scaleMealNutrition } from "./NutritionSheet";
 import { ZERO_NUTRITION } from "../types";
+import type { Alias } from "../types";
+import type { DraftLine } from "../lib/ingredientDraft";
+
+function satir(over: Partial<DraftLine> = {}): DraftLine {
+  return {
+    key: "k1",
+    aliasId: "a1",
+    name: "Tavuk",
+    qty: "150",
+    unit: "g",
+    grams: 150,
+    nutrition: { kcal: 247.5, protein: 46.5, carbs: 0, fat: 5.4, fiber: 0 },
+    preserved: false,
+    ...over,
+  };
+}
+
+const tavuk: Alias = {
+  id: "a1",
+  triggers: ["tavuk"],
+  name: "Tavuk",
+  brand: null,
+  serving_g: 100,
+  nutrition: { kcal: 165, protein: 31, carbs: 0, fat: 3.6, fiber: 0 },
+};
+
+// ============================================================================
+// isAmountLocked — miktar alanının kilidi. JSX'e gömülüydü ve bu yüzden test
+// EDİLEMEZDI; dışa açıldı. Koşul yanlışsa üç test birden kırılır.
+//
+// Not: 2. gövde sadece fonksiyonu test eder, erişilebilirliği değil. Erişim
+// doğrulaması canlı uygulamada yapıldı (bkz. görev raporu).
+// ============================================================================
+describe("isAmountLocked — miktar alanı kilidi", () => {
+  it("korunmuş + alias BAĞLI → kilitli DEĞİL (miktar girilebilir)", () => {
+    // `swapDraftLine` korunmuş bir satırda bayrağı KORUR; kilidi kaldıran tek
+    // şey alias'ın gelmesi. Bu ikisinin ikisi birden gerekir.
+    expect(isAmountLocked(satir({ preserved: true }), tavuk)).toBe(false);
+  });
+
+  it("korunmuş + alias YOK → kilitli (ölçecek taban yok, sayı kayda giremez)", () => {
+    expect(isAmountLocked(satir({ preserved: true, aliasId: null }), undefined)).toBe(true);
+  });
+
+  it("ÖLÇÜLMÜŞ satır → kilitli değil (alias olsa da olmasa da)", () => {
+    expect(isAmountLocked(satir(), tavuk)).toBe(false);
+    expect(isAmountLocked(satir({ aliasId: null }), undefined)).toBe(false);
+  });
+
+  it("yalnız alias'a bakmak yanlış olurdu: korunmuş satır kilitlenmemeli", () => {
+    // `return line.preserved` yazsaydık bu üçüncü test kırılırdı.
+    expect(isAmountLocked(satir({ preserved: true }), tavuk)).not.toBe(true);
+  });
+
+  it("yalnız alias'a bakmak yanlış olurdu: alias'sız korunmuş satır kilitlenmeli", () => {
+    // `return !alias` yazsaydık ilk test kırılırdı.
+    expect(isAmountLocked(satir({ preserved: true, aliasId: null }), undefined)).toBe(true);
+  });
+});
 
 describe("scaleMealNutrition — aç-kaydet sözleşmesi (m=1 kayıpsız)", () => {
   it("m=1 iken 2 ondalıklı makrolar KORUNUR (8.75 → 8.8 DEĞİL)", () => {
