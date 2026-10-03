@@ -475,6 +475,20 @@ describe("preserved", () => {
     expect(draftLinesToItems([elleSatir()])[0].sources).toBeUndefined();
   });
 
+  // Mikrobesin korunur mu? `draftLinesToItems` `roundNutrition` uygular;
+  // `undefined` ("bilinmiyor") alanları 0'a ÇEVİRMEMELİ — bileşenler arası
+  // dönüşüm (TemplatePreview'deki fromDraft) mikrobesinleri kaybetmemeli.
+  it("elle satırda mikrobesin (sodyum) korunur — 'bilinmiyor' 0'a düşmez", () => {
+    const sodyumlu = {
+      ...elleSatir(),
+      nutrition: { ...elle, sodium: 400 },
+      key: "draft-manual-1-Sos-tuzlu",
+    };
+    const items = draftLinesToItems([sodyumlu]);
+    expect(items[0].nutrition.sodium).toBe(400);
+    expect(items[0].nutrition.fiber).toBe(0); // ana makro: 0 gerçek değer
+  });
+
   it("preserved'in TERSİ: iki bayrak da false ise 0 gramajlı satır ATILIR", () => {
     const hicbiri = { ...elleSatir(), manualMeasured: false };
     expect(draftLinesToItems([hicbiri])).toHaveLength(0);

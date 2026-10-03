@@ -10,8 +10,7 @@ import { useTranslation } from "react-i18next";
 import { Modal } from "./Modal";
 import { ScanSheet } from "./ScanSheet";
 import { AiError, aiErrorMessage, parseWithAI } from "../lib/ai";
-import { FormActions, NutrientSummaryLine, NumField, NutritionFields, TextField } from "./FormBits";
-import type { NutritionDraft } from "./FormBits";
+import { FormActions, NutrientSummaryLine, NumField, NutritionFields, TextField, fromDraft, toDraft } from "./FormBits";
 import type { MealTemplate } from "../lib/templates";
 import type { AIParseItem, Alias, Nutrition } from "../types";
 import { addNutrition, parseNum } from "../lib/nutrition";
@@ -42,22 +41,11 @@ import type { DraftLine } from "../lib/ingredientDraft";
  *  `preserved: true` satırı "kayıttan geldi ama gramajı ölçülemedi" olarak
  *  işaretler: gramaj alanı boş kalır, ekranda ayrıca etiketlenir, ama
  *  `draftLinesToItems` onu ATMAZ (bkz. `preserved` alanının dokümanı). */
-/** `NutritionDraft` (metin tabanlı, form alanları) ↔ `Nutrition` (sayı tabanlı).
- *  `FormBits.NutritionFields` metin bekler, `DraftLine.nutrition` sayı tutar. */
-function draftFromNutrition(n: Nutrition): NutritionDraft {
-  const out = {} as NutritionDraft;
-  for (const key of NUTRIENT_KEYS) out[key] = n[key] === undefined ? "" : String(n[key]);
-  return out;
-}
-
-function nutritionFromDraft(d: NutritionDraft): Nutrition {
-  const out = {} as Nutrition;
-  for (const key of NUTRIENT_KEYS) {
-    const v = parseNum(d[key] ?? "");
-    if (v > 0) out[key] = v;
-  }
-  return out;
-}
+/** `Nutrition` ↔ `NutritionDraft` dönüşümleri `FormBits`'ten (`toDraft`/`fromDraft`) içe
+ *  aktarılır — burada kopyalanmaz. Kopya, orijinalden saptı ve mikrobesinleri
+ *  kaybetti: kullanıcı elle satırda sodyum giriyordu, kayıtta görünmüyordu. */
+const draftFromNutrition = toDraft;
+const nutritionFromDraft = fromDraft;
 
 function initialDraftLines(template: MealTemplate, aliases: Alias[]): DraftLine[] {
   const byId = new Map(aliases.map((a) => [a.id, a]));
