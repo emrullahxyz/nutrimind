@@ -3,18 +3,22 @@
 // modülü kullanır; iki yüzey de aynı kuralları gösterir, bu yüzden kurallar
 // BURADA yaşar ve jsdom olmadan test edilir.
 //
-// İki sözleşme:
+// ÜÇ sözleşme:
 //   1. Gösterilen = kaydedilen (bkz. lessons.md L20). Gramaj alanında yazan
 //      metin `qty`'ye aynen girer; ölçüm `grams` üzerinden yapılır. ÇÖZÜLEN
 //      birim de satıra geri yazılır — "adet" görünürken makrosu "g" ile
 //      hesaplanmış bir satır L20'nin ihlali olurdu.
 //   2. Yarım yazılan bir gramaj makroyu SIFIRLAMAZ — kullanıcı "1" yazıp
 //      "50" yaparken değerler titrer.
+//   3. ÇÖZÜLEMEYEN birim TAHMİN EDİLMEZ, reddedilir. `mealActions.ts:139-140`
+//      ("2 'adet'i sessizce 2 g yapar ve tarifin 100 g hesabını bozar") ve
+//      `ingredientLines.resolveMealIngredients` (birim çözülmezse null) aynı
+//      kararı verdi: bilinmeyen birim, ölçülmüş değil ÇÖZÜLEMEZ demektir.
+//      Görünür ama yanlış miktar hâlâ miktar bozulmasıdır.
 import type { Alias, AliasUnit, Nutrition } from "../types";
 import { ZERO_NUTRITION } from "../types";
 import { NUTRIENT_KEYS } from "./nutrients";
 import {
-  GRAM_UNIT,
   defaultUnitForAlias,
   parseNum,
   scaleNutrition,
@@ -55,34 +59,36 @@ export function roundNutrition(n: Nutrition): Nutrition {
   return out;
 }
 
-/** Birim adını alias'ın kendi seçenekleriyle eşleştirir. `mealActions.ts`in
- *  yaptığı gibi tr-TR küçük harfe indirger ve kırpar: "Adet" de "adet" ile
- *  eşleşir. Eşleşme yoksa alias'ın varsayılan birimine düşer.
+/** Verilen adı alias'ın KENDİ seçenekleriyle eşleştirir — `mealActions.ts`in
+ *  yaptığı gibi tr-TR küçük harfe indirger ve kırpar, yalnız HALFASİ yapar:
+ *  " Dilim " de "Dilim" ile eşleşir ve kanonik ad ("Dilim") çağırana döner.
  *
- *  Bu düşüş "2 adet" → 2 g bozulmasıdır, ama çağıran onu GÖREBİLİR: çözülen ad
- *  satırın `unit`ine geri yazılır, yani satır artık "g" gösterir. Sessiz
- *  çevrim değil, görünür düzeltme — L20. */
-function unitFor(alias: Alias | null, unit: string): AliasUnit {
-  // Hafıza bağlantısı yoksa bu modülün o besine dair birim bilgisi yoktur.
-  // Tek gerçek birim gramdır; uydurma `{ grams: 1 }` tablosu, "adet" gibi elle
-  // yazılmış metni sessizce 1 g yapardı.
-  if (!alias) return GRAM_UNIT;
+ *  Eşleşme yoksa `null`. Varsayılan birime ya da grama DÜŞMEZ: kayıtlı "2 kase"
+ *  ile bu besinin dilimi başka bir ölçüdür, onu sessizce ölçmek sayıyı
+ *  bozar. Reddetme `mealActions.buildRecipePreset` ve
+ *  `ingredientLines.resolveMealIngredients` ile aynı sözleşmedir.
+ *
+ *  `alias` null ise (elle satır) modülün o besine dair birim bilgisi yoktur:
+ *  tek gerçek birim gramdır, gram da `unitOptions`'ın daima ilk girdisidir. */
+export function resolveDraftUnit(alias: Alias, unit: string): AliasUnit | null {
   const wanted = unit.trim().toLocaleLowerCase("tr");
-  return (
-    unitOptions(alias.units).find((u) => u.name.trim().toLocaleLowerCase("tr") === wanted) ??
-    defaultUnitForAlias(alias)
-  );
+  if (!wanted) return null;
+  return unitOptions(alias.units).find((u) => u.name.trim().toLocaleLowerCase("tr") === wanted) ?? null;
 }
 
-/** Verilen alias + miktar/birimden satır. Geçersiz gramajda `nutrition`
- *  dokunulmadan `ZERO_NUTRITION` DEĞİL, verilen `fallback` korunur. */
+/** Verilen alias + miktar/birimden satır.
+ *
+ *  `unit` çözülemiyorsa `null` döner — sessiz ölçüm YAPILMAZ; çağıran
+ *  reddi kendi yüzeyinde ele alır (bkz. `resolveMealIngredients`: kırılımı
+ *  düşürür). Yalnız büyük/küçük harf ve boşluk farkı normalleşir. */
 export function draftLineFromAlias(
   alias: Alias,
   qty: string,
   unit: string,
   fallback?: Nutrition,
-): DraftLine {
-  const u = unitFor(alias, unit);
+): DraftLine | null {
+  const u = resolveDraftUnit(alias, unit);
+  if (!u) return null;
   const grams = toGrams(parseNum(qty), u);
   const valid = grams > 0;
   return {
@@ -96,22 +102,51 @@ export function draftLineFromAlias(
   };
 }
 
-/** Hafızadan seçilmiş bir besinle yeni satır (boş miktar). */
+/** Hafızadan seçilmiş bir besinle yeni satır (boş miktar).
+ *
+ *  Satır doğrudan kurulur, `draftLineFromAlias` çağrılmaz: miktar boş
+ *  olduğu için ölçüm zaten yapılmayacak, alias'ın varsayılan birimi her
+ *  zaman `unitOptions`'ın içindedir. */
 export function newDraftLine(alias: Alias | undefined): DraftLine {
   if (!alias) {
     return { key: nextKey(), aliasId: null, name: "", qty: "", unit: "g", grams: 0, nutrition: { ...ZERO_NUTRITION } };
   }
-  return draftLineFromAlias(alias, "", defaultUnitForAlias(alias).name);
+  return {
+    key: nextKey(),
+    aliasId: alias.id,
+    name: alias.name,
+    qty: "",
+    unit: defaultUnitForAlias(alias).name,
+    grams: 0,
+    nutrition: { ...ZERO_NUTRITION },
+  };
 }
 
 /** Gramaj alanı değişti. Makro yalnızca GEÇERLİ gramajda yeniden hesaplanır.
- *  `unit` her zaman çözülür ve geri yazılır: hesap bu birimle yapılıyorsa
- *  satır aynısını göstermelidir (L20). */
+ *
+ *  Üç yol:
+ *   • `alias` null → elle satır. Gram cinsinden ölçülür; makro bu modülün
+ *     işi değildir, satırın kendi değeri korunur.
+ *   • birim çözülemez → ÖLÇÜM YAPILMAZ. Satır son geçerli `grams`/`nutrition`
+ *     değerini korur ve yalnızca ham metni günceller; tahmini birimle
+ *     gramaja çevirmek sayıyı bozardı (bkz. mealActions:139-140).
+ *   • aksi → gramaj ve makro yeniden hesaplanır, ÇÖZÜLEN birim geri yazılır
+ *     (hesap bu birimle yapıldı; satır aynısını göstermeli — L20). */
 export function setDraftGrams(line: DraftLine, gramsText: string, alias: Alias | null): DraftLine {
-  const u = unitFor(alias, line.unit);
   const parsed = parseNum(gramsText);
+
+  if (!alias) {
+    return { ...line, qty: gramsText, unit: "g", grams: parsed > 0 ? parsed : 0 };
+  }
+
+  const u = resolveDraftUnit(alias, line.unit);
+  if (!u) {
+    // Birim bilinmiyor: ölçmeden geç, son geçerli ölçümü olduğu gibi bırak.
+    return { ...line, qty: gramsText, grams: line.grams };
+  }
+
   const grams = parsed > 0 ? toGrams(parsed, u) : 0;
-  if (grams <= 0 || !alias) {
+  if (grams <= 0) {
     // Makro korunur: kullanıcı yarım yazarken değerler titremesin.
     return { ...line, qty: gramsText, unit: u.name, grams };
   }
