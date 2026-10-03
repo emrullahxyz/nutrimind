@@ -15,6 +15,14 @@
 //      `ingredientLines.resolveMealIngredients` (birim çözülmezse null) aynı
 //      kararı verdi: bilinmeyen birim, ölçülmüş değil ÇÖZÜLEMEZ demektir.
 //      Görünür ama yanlış miktar hâlâ miktar bozulmasıdır.
+//
+// DÖRTÜNCÜ SÖZLEŞME — `preserved`: kayıttan gelip ölçüLEMEYEN kalem. Birim
+// çözülemediği ya da alias silindiği için gramajı bilmiyoruz, ama kayıttaki
+// adı ve makrosu GERÇEK. Bu satırlar `grams: 0` taşır (uydurma miktar yok)
+// ve `draftLinesToItems` onları yine de kaydeder — kullanıcının kayıtlı
+// şablonundan malzeme SİLMEK kaydetmenin sonucu olamaz (lessons.md L21).
+// Kullanıcı miktarı girip satır ölçülebilir hale gelince `preserved` düşer:
+// artık "korunan" değil, "ölçülen" bir satırdır.
 import type { Alias, AliasUnit, Nutrition } from "../types";
 import { ZERO_NUTRITION } from "../types";
 import { NUTRIENT_KEYS } from "./nutrients";
@@ -38,6 +46,11 @@ export interface DraftLine {
   unit: string;
   grams: number;
   nutrition: Nutrition;
+  /** true = bu kalem kayıttan geldi ama gramajı ÇÖZÜLEMEDİ; `grams` 0'dır ve
+   *  ölçüm değildir. Kayıtta KORUNUR (bkz. `draftLinesToItems`), `sources`
+   *  yazılmaz (`aliasId` null), ve miktar girilene kadar ekranda "bilinmiyor"
+   *  olarak gösterilir. Ölçülebilir hale gelince `setDraftGrams` false yapar. */
+  preserved: boolean;
 }
 
 let seq = 0;
@@ -99,6 +112,7 @@ export function draftLineFromAlias(
     unit: u.name,
     grams: valid ? grams : 0,
     nutrition: valid ? scaleNutrition(alias.nutrition, alias.serving_g, grams) : (fallback ?? { ...ZERO_NUTRITION }),
+    preserved: false,
   };
 }
 
@@ -109,7 +123,7 @@ export function draftLineFromAlias(
  *  zaman `unitOptions`'ın içindedir. */
 export function newDraftLine(alias: Alias | undefined): DraftLine {
   if (!alias) {
-    return { key: nextKey(), aliasId: null, name: "", qty: "", unit: "g", grams: 0, nutrition: { ...ZERO_NUTRITION } };
+    return { key: nextKey(), aliasId: null, name: "", qty: "", unit: "g", grams: 0, nutrition: { ...ZERO_NUTRITION }, preserved: false };
   }
   return {
     key: nextKey(),
@@ -119,6 +133,7 @@ export function newDraftLine(alias: Alias | undefined): DraftLine {
     unit: defaultUnitForAlias(alias).name,
     grams: 0,
     nutrition: { ...ZERO_NUTRITION },
+    preserved: false,
   };
 }
 
@@ -160,8 +175,12 @@ export function setDraftGrams(line: DraftLine, gramsText: string, alias: Alias |
       //   • EKSİ/negatif miktar → "-5", parseNum("-5") = -5 → 0'a düşer
       // Makro korunur: kullanıcı yarım yazarken (ya da geçersiz bir miktar
       // girerken) değerler titremesin. qty + grams birlikte güncellenir,
-      // nutrition ESKİ kalır — kasıtlıdır ve güvenlidir: 0 gramajlı satır
-      // `draftLinesToItems`'ta zaten ATILIR, yarım yazım kayda geçmez.
+      // nutrition ESKİ kalır — kasıtlıdır ve güvenlidir: kullanıcının kendi
+      // sildiği miktar `draftLinesToItems`'ta ATILIR, yarım yazım kayda geçmez.
+      //
+      // DİKKAT: burada `preserved` DÜŞÜRÜLMEZ. Gramaj hâlâ ölçülebilir değil;
+      // kullanıcı alanı temizledi, "korunan kalem" değil. `grams > 0` olan
+      // tek yol aşağıdaki asıl dönüş — orada `preserved: false` yazılır.
       return { ...line, qty: gramsText, unit: u.name, grams };
     }
     return {
@@ -170,12 +189,13 @@ export function setDraftGrams(line: DraftLine, gramsText: string, alias: Alias |
       unit: u.name,
       grams,
       nutrition: scaleNutrition(alias.nutrition, alias.serving_g, grams),
+      preserved: false,
     };
   }
 
   // Elle satır: gram cinsinden ölçülür.
   const parsed = parseNum(gramsText);
-  return { ...line, qty: gramsText, unit: "g", grams: parsed > 0 ? parsed : 0 };
+  return { ...line, qty: gramsText, unit: "g", grams: parsed > 0 ? parsed : 0, preserved: false };
 }
 
 /** Swap: gram korunur, miktar hedef alias'ın varsayılan birimine çevrilir. */
@@ -190,6 +210,7 @@ export function swapDraftLine(line: DraftLine, next: Alias): DraftLine {
     unit: u.name,
     grams: line.grams,
     nutrition: scaleNutrition(next.nutrition, next.serving_g, line.grams),
+    preserved: false,
   };
 }
 
@@ -201,23 +222,29 @@ export function removeDraftLine(lines: DraftLine[], key: string): DraftLine[] {
   return lines.filter((l) => l.key !== key);
 }
 
-/** Kayıt/şablon kalemlerine çevirir. `grams <= 0` satırlar ATILIR; elle
- *  satırlar `sources` üretmez.
+/** Kayıt/şablon kalemlerine çevirir. Elle satırlar `sources` üretmez.
  *
- *  `grams <= 0` filtresi KALDIRILAMAZ: `setDraftGrams`'in geçersiz miktar
- *  yolu `qty` + `grams`'ı günceller ama `nutrition`'ı ESKİ bırakır (yarım
- *  yazımda titremesin diye). Bu filtre o tutarsız çifti `sources`'a
- *  yazmadan eler — 3. turdaki reddetme düzeltmesinin (redde giren satıra
- *  dokunulmaması) tutarlılık garantisini bu yüzden koruyor.
+ *  FİLTRE — İKİ KOŞUL, İKİ FARKLI ANLAM:
+ *   1. `grams <= 0` (ve `!preserved`) → KULLANICININ SİLDİĞİ miktar. Satır
+ *      kayda giremez. Buradaki `setDraftGrams` geçersiz-miktar yolu `qty` +
+ *      `grams`'ı günceller ama `nutrition`'ı ESKİ bırakır (yarım yazımda
+ *      titremesin diye); filtre o tutarsız çifti `sources`'a yazmadan eler.
+ *      3. turdaki reddetme düzeltmesinin (redde giren satıra dokunulmaması)
+ *      tutarlılık garantisi BURAYA bağlıdır.
+ *   2. `grams <= 0` AMA `preserved` → KAYITTAN GELEN, ÖLÇÜLEMEYEN kalem.
+ *      Gramajı bilmiyoruz ama adı ve makrosu gerçek ve kullanıcı bunu
+ *      görebiliyor. Düşürülürse kullanıcının kayıtlı şablonundan malzeme
+ *      sessizce silinmiş olur (lessons.md L21) — kaydetmenin sonucu olamaz.
  *
- *  DİKKAT: gevşetmeyin. `!Number.isFinite(l.grams)` ya da `l.grams === 0`
- *  gibi bir koşul aynı işlevi görmez — negatif olmayan ama NaN olan ya da
- *  0'a çok yakın değerler kayda girer ve eski makroyla eşleşmez. Ölçümün
- *  "anlamlı miktar" olma koşulu tam olarak `grams > 0`. */
+ *  DİKKAT: `preserved` koşulunu gevşetmeyin. `!l.preserved` olmadan filtre
+ *  kullanıcının sildiği satırları da kaydeder ve 1. koşulun garantisi düşer.
+ *  `!Number.isFinite(l.grams)` ya da `l.grams === 0` gibi ikame koşullar da
+ *  aynı işi görmez: ölçümün "anlamlı miktar" olma koşulu tam olarak
+ *  `grams > 0`. */
 export function draftLinesToItems(lines: DraftLine[]): TemplateItem[] {
   const items: TemplateItem[] = [];
   for (const l of lines) {
-    if (l.grams <= 0) continue;
+    if (l.grams <= 0 && !l.preserved) continue;
     items.push({
       name: l.name,
       nutrition: roundNutrition(l.nutrition),

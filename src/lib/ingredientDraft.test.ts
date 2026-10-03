@@ -372,3 +372,67 @@ describe("draftLinesToItems", () => {
     expect(items[0].sources).toEqual([{ aliasId: "a3", qty: 1.5, unit: "Dilim" }]);
   });
 });
+
+// ---- preserved: kayıttan gelip ÖLÇÜLEMEYEN kalem ----
+// Ruling 2-A'nın amacı: çözülemeyen kalem SİLİNMEZ. `preserved` bunu bir
+// alanla yapar; `grams: 0` "ölçüldü ve sıfır" anlamına geldiği için aynı
+// satırı hem ölçülmemiş hem kayda girmiş yapmak zorundaydı.
+describe("preserved", () => {
+  const kayitli: Nutrition = { kcal: 300, protein: 62, carbs: 0, fat: 7.2, fiber: 0 };
+
+  /** TemplatePreview'in 2-A fallback satırının birebir şekli. */
+  function korunmus(): DraftLine {
+    return {
+      key: "draft-manual-0-Tavuk göğsü",
+      aliasId: null,
+      name: "Tavuk göğsü",
+      qty: "",
+      unit: "g",
+      grams: 0,
+      nutrition: kayitli,
+      preserved: true,
+    };
+  }
+
+  it("grams 0 olsa da kayıtta KALIR (ad + makro birebir)", () => {
+    const items = draftLinesToItems([korunmus()]);
+    expect(items).toHaveLength(1);
+    expect(items[0].name).toBe("Tavuk göğsü");
+    expect(items[0].nutrition).toEqual(kayitli);
+  });
+
+  it("kaynak UYDURMAZ — kaydedilen kayıt eskisiyle aynı (yalnız ad + makro)", () => {
+    expect(draftLinesToItems([korunmus()])[0].sources).toBeUndefined();
+  });
+
+  // Bu, 2-A'nın kendi değişikliğinin koruması: `preserved` koşulu olmadan
+  // filtre kullanıcının SİLDİĞİ satırları da kaydetmeye başlardı.
+  it("preserved DEĞİLSE 0 gramajlı satır yine ATILIR (kullanıcı sildi)", () => {
+    const temizlenmis = line(draftLineFromAlias(tavuk, "150", "g"));
+    const sifirlandi = { ...temizlenmis, qty: "", grams: 0 };
+    expect(sifirlandi.preserved).toBe(false);
+    expect(draftLinesToItems([sifirlandi])).toHaveLength(0);
+  });
+
+  it("ölçülebilir hale gelince preserved DÜŞER (artık korunan değil, ölçülen)", () => {
+    const olculen = setDraftGrams(korunmus(), "200", null);
+    expect(olculen.preserved).toBe(false);
+    expect(olculen.grams).toBe(200);
+    expect(olculen.qty).toBe("200");
+  });
+
+  it("newDraftLine / draftLineFromAlias / swapDraftLine preserved:false üretir", () => {
+    expect(newDraftLine(undefined).preserved).toBe(false);
+    expect(newDraftLine(tavuk).preserved).toBe(false);
+    expect(line(draftLineFromAlias(tavuk, "150", "g")).preserved).toBe(false);
+    const swapped = swapDraftLine(korunmus(), tofu);
+    expect(swapped.preserved).toBe(false);
+    expect(swapped.grams).toBe(0); // korunmuş satırın gramajı yok — swap ölçemez
+  });
+
+  it("reddedilen birim preserved değiştirmez (satıra hiç dokunulmaz)", () => {
+    const base = line(draftLineFromAlias(ekmekDilim, "4", "Dilim"));
+    base.unit = "kase";
+    expect(setDraftGrams(base, "6", ekmekDilim).preserved).toBe(false);
+  });
+});

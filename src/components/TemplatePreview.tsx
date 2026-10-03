@@ -25,24 +25,6 @@ import {
 } from "../lib/ingredientDraft";
 import type { DraftLine } from "../lib/ingredientDraft";
 
-/** Çözülemeyen kalemin taşıdığı gramaj değeri.
- *
- *  `draftLinesToItems` `grams <= 0` satırları ATAR. Ruling 2-A'nın düşen
- *  kalemi elle satıra çevirmesi bu filtreyle çarpışır: `grams: 0` verilirse
- *  satır kayıtta YOK olur — yani 2-A'nın engellemek istediği sessiz silme
- *  (lessons.md L21) 2-A'nın kendi koduyla gerçekleşir.
- *
- *  Bu yüzden çözülemeyen kalem `grams: 1` taşır: filtre onu geçirir, kayıtta
- *  kalır. `qty` boş olduğu için `sources` YAZILMAZ (aliasId null), yani
- *  kaydedilen kayıt eskisiyle birebir aynıdır: ad + makro, kaynak olmadan.
- *  Önceki kod da tam olarak bunu yapıyordu (`grams: null` → filtre yok →
- *  `sources: it.sources` korunurdu).
- *
- *  1 g keyfi bir ölçüm DEĞİL, "bu kalem kayda girecek" işareti; gramaj
- *  alanı boş olduğu için ekranda da hiç görünmez. Kullanıcı miktarı girerse
- *  `setDraftGrams` gerçek gramaja ve gerçek makroya geçer. */
-const UNRESOLVED_GRAMS = 1;
-
 /** Şablon kalemlerini düzenlenebilir satırlara çevirir.
  *
  *  Hafızada çözülebilen kalemler alias'a bağlanır (gramaj/swap açılır).
@@ -51,7 +33,11 @@ const UNRESOLVED_GRAMS = 1;
  *  (elle satır). Bu ekranın kayıt yolu şablonun TAMAMINI yeniden yazdığı
  *  için düşen bir satır, kullanıcının kayıtlı şablonundan sessizce silinmiş
  *  bir malzeme olurdu (bkz. lessons.md L21). Yanlışlık bedeli: kullanıcının
- *  elle yeniden bağlayacağı, görünür bir satır — düzeltilebilir. */
+ *  elle yeniden bağlayacağı, görünür bir satır — düzeltilebilir.
+ *
+ *  `preserved: true` satırı "kayıttan geldi ama gramajı ölçülemedi" olarak
+ *  işaretler: gramaj alanı boş kalır, ekranda ayrıca etiketlenir, ama
+ *  `draftLinesToItems` onu ATMAZ (bkz. `preserved` alanının dokümanı). */
 function initialDraftLines(template: MealTemplate, aliases: Alias[]): DraftLine[] {
   const byId = new Map(aliases.map((a) => [a.id, a]));
   return template.items.map((item, i) => {
@@ -67,8 +53,9 @@ function initialDraftLines(template: MealTemplate, aliases: Alias[]): DraftLine[
       name: item.name,
       qty: "",
       unit: "g",
-      grams: UNRESOLVED_GRAMS,
+      grams: 0,
       nutrition: item.nutrition,
+      preserved: true,
     };
   });
 }
@@ -210,12 +197,22 @@ export function TemplatePreview({
                   </div>
 
                   <div className="mt-2 grid grid-cols-2 gap-2">
-                    <NumField
-                      label={t("nutrition.ingredientGrams")}
-                      suffix="g"
-                      value={line.qty}
-                      onChange={(v) => onGramsChange(line, alias ?? null, v)}
-                    />
+                    <div>
+                      <NumField
+                        label={t("nutrition.ingredientGrams")}
+                        suffix="g"
+                        value={line.qty}
+                        onChange={(v) => onGramsChange(line, alias ?? null, v)}
+                      />
+                      {/* Korunan kalem: gramajı BİLİNMIYOR (0 g değil), makrosu
+                          gerçek. Boş alan "ölçüldü ama sıfır" izlenimi
+                          vereceğinden ayrıca etiketlenir. */}
+                      {line.preserved && (
+                        <p className="mt-1 text-[11px] text-amber-300">
+                          {t("nutrition.ingredientAmountUnknown")}
+                        </p>
+                      )}
+                    </div>
                     <div className="flex items-end justify-end">
                       {alias ? (
                         <button

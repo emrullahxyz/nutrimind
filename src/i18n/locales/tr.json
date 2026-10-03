@@ -876,7 +876,8 @@
     "ingredientManualName": "Malzeme adı",
     "ingredientGrams": "Miktar",
     "emptyIngredients": "Tüm malzemeler kaldırıldı — uygulamak için bir tane ekle.",
-    "ingredientUnitUnknown": "Bu miktarın birimi artık tanımlı değil — malzemenin birimini yeniden seç."
+    "ingredientUnitUnknown": "Bu miktarın birimi artık tanımlı değil — malzemenin birimini yeniden seç.",
+    "ingredientAmountUnknown": "Miktar bilinmiyor"
   },
   "templatePreview": {
     "updateTemplate": "Şablonu da bu değişikliklerle güncelle"

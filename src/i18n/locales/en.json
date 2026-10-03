@@ -876,7 +876,8 @@
     "ingredientManualName": "Ingredient name",
     "ingredientGrams": "Amount",
     "emptyIngredients": "All ingredients removed — add one to apply.",
-    "ingredientUnitUnknown": "This amount's unit is no longer defined — pick the ingredient's unit again."
+    "ingredientUnitUnknown": "This amount's unit is no longer defined — pick the ingredient's unit again.",
+    "ingredientAmountUnknown": "Amount unknown"
   },
   "templatePreview": {
     "updateTemplate": "Also update the template with these changes"
