@@ -92,8 +92,9 @@ export function resolveDraftUnit(alias: Alias, unit: string): AliasUnit | null {
 /** Verilen alias + miktar/birimden satır.
  *
  *  `unit` çözülemiyorsa `null` döner — sessiz ölçüm YAPILMAZ; çağıran
- *  reddi kendi yüzeyinde ele alır (bkz. `resolveMealIngredients`: kırılımı
- *  düşürür). Yalnız büyük/küçük harf ve boşluk farkı normalleşir. */
+ *  reddi kendi yüzeyinde ele alır (`mealDraftLines` kırılımın tamamını
+ *  düşürür, `NutritionSheet` bölümü hiç çizmez). Yalnız büyük/küçük harf ve
+ *  boşluk farkı normalleşir. */
 export function draftLineFromAlias(
   alias: Alias,
   qty: string,

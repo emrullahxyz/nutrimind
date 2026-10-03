@@ -179,10 +179,22 @@ function IngredientLines({
     commit(lines ? addDraftLine(lines, newDraftLine(aliases[0])) : null);
   }
 
-  // Kayıtta `draftLinesToItems` `roundNutrition` uygular; gösterim de aynısını
-  // uygulamazsa ekran 2 ondalık gösterirken kayıt 1 ondalık saklar.
+  // Başlık toplamı, kayıt YOLUNDAN hesaplanır — `lines`'ten DEĞİL.
+  //
+  // L20: gösterilen = kaydedilen. `draftLinesToItems` gramajı boşaltılmış
+  // ölçülebilir satırları DÜŞÜRÜR (kullanıcı malzeme silmiştir); ham `lines`
+  // üzerinden toplam alırsak o satırın makrosu ekranda kalır ama kayda girmez.
+  // Ölçüldü: 150 g tavuk + 100 g pilav, pilavın gramajı temizlenince başlık
+  // 377.5 kcal, kayıt 247.5 kcal — kalıcı 130 kcal fark.
+  //
+  // `draftLinesToItems` `roundNutrition`'ı KENDİ uygular, ama toplama
+  // SONRASI da uygulanmalı: satır toplamının yuvarlanmamış hâli ekrana
+  // (2 ondalık) kayda (1 ondalık) ayrışmasın diye.
   const total = roundNutrition(
-    lines.reduce<Nutrition>((acc, l) => addNutrition(acc, l.nutrition), { ...ZERO_NUTRITION }),
+    draftLinesToItems(lines).reduce<Nutrition>(
+      (acc, item) => addNutrition(acc, item.nutrition),
+      { ...ZERO_NUTRITION },
+    ),
   );
 
   return (

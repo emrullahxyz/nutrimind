@@ -161,7 +161,7 @@ describe("draftLineFromAlias", () => {
   // ---- fix round 2: sessiz varsayılan ölçümün YERİNE reddetme ----
 
   // Asıl reddetme testi: `kase`, ekmeğin birimi değil. Ne grama ne dilime
-  // düşülür — satır hiç üretilmez (resolveMealIngredients'in null sözleşmesi).
+  // düşülür — satır hiç üretilmez (draftLineFromAlias'in null sözleşmesi).
   it("bilinmeyen birimde null döner: gram OLARAK da ÖLÇMEZ", () => {
     expect(draftLineFromAlias(ekmekDilim, "2", "kase")).toBeNull();
   });
