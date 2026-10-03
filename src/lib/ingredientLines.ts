@@ -5,7 +5,7 @@
 // Swap gram korur: 150g tavuk → 150g tofu, makro yeniden hesaplanır.
 import type { Alias, MealItem, MealSource, Nutrition } from "../types";
 import { addNutrition, defaultUnitForAlias, scaleNutrition, toGrams, unitOptions } from "./nutrition";
-import { NUTRIENT_KEYS } from "./nutrients";
+import { roundNutrition } from "./ingredientDraft";
 import { ZERO_NUTRITION } from "../types";
 
 export interface IngredientLine {
@@ -62,20 +62,14 @@ export function swapIngredientLine(line: IngredientLine, next: Alias): Ingredien
 /** Kalemlerden toplam besin + kayıt sources'u.
  *  Toplam 1 ondalığa yuvarlanır: `addNutrition` kayan nokta artığı bırakır
  *  (4 kalem → 42.800000000000004) ve bu `NutritionSheet`in girdi alanında
- *  olduğu gibi görünürdü — L20'nin kardeşi, gösterim veriyi tırnaklıyor. */
+ *  olduğu gibi görünürdü — L20'nin kardeşi, gösterim veriyi tırnaklıyor.
+ *  Yuvarlamanın kendisi `ingredientDraft.roundNutrition`'da yaşar — iki kopyası
+ *  zamanla ayrışır. */
 export function linesToMealParts(lines: IngredientLine[]): { nutrition: Nutrition; sources: MealSource[] } {
   let nutrition = { ...ZERO_NUTRITION };
   for (const l of lines) nutrition = addNutrition(nutrition, l.nutrition);
-  const out = { ...nutrition };
-  for (const key of NUTRIENT_KEYS) {
-    const v = out[key];
-    // Sodyum mg cinsinden tam sayı; diğerleri 1 ondalık. undefined kalır
-    // ("bilinmiyor" ≠ 0 kuralı).
-    if (typeof v !== "number") continue;
-    out[key] = key === "sodium" ? Math.round(v) : Math.round(v * 10) / 10;
-  }
   return {
-    nutrition: out,
+    nutrition: roundNutrition(nutrition),
     sources: lines.map((l) => ({ aliasId: l.aliasId, qty: l.qty, unit: l.unit })),
   };
 }

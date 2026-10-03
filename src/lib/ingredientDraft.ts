@@ -5,14 +5,22 @@
 //
 // İki sözleşme:
 //   1. Gösterilen = kaydedilen (bkz. lessons.md L20). Gramaj alanında yazan
-//      metin `qty`'ye aynen girer; ölçüm `grams` üzerinden yapılır.
+//      metin `qty`'ye aynen girer; ölçüm `grams` üzerinden yapılır. ÇÖZÜLEN
+//      birim de satıra geri yazılır — "adet" görünürken makrosu "g" ile
+//      hesaplanmış bir satır L20'nin ihlali olurdu.
 //   2. Yarım yazılan bir gramaj makroyu SIFIRLAMAZ — kullanıcı "1" yazıp
 //      "50" yaparken değerler titrer.
-import type { Alias, Nutrition } from "../types";
+import type { Alias, AliasUnit, Nutrition } from "../types";
 import { ZERO_NUTRITION } from "../types";
-import type { NutrientKey } from "./nutrients";
 import { NUTRIENT_KEYS } from "./nutrients";
-import { defaultUnitForAlias, parseNum, scaleNutrition, toGrams, unitOptions } from "./nutrition";
+import {
+  GRAM_UNIT,
+  defaultUnitForAlias,
+  parseNum,
+  scaleNutrition,
+  toGrams,
+  unitOptions,
+} from "./nutrition";
 import type { TemplateItem } from "./templates";
 
 export interface DraftLine {
@@ -47,9 +55,23 @@ export function roundNutrition(n: Nutrition): Nutrition {
   return out;
 }
 
-function unitFor(alias: Alias | null, unit: string) {
-  if (!alias) return { name: unit.trim() || "g", grams: 1 };
-  return unitOptions(alias.units).find((u) => u.name === unit) ?? defaultUnitForAlias(alias);
+/** Birim adını alias'ın kendi seçenekleriyle eşleştirir. `mealActions.ts`in
+ *  yaptığı gibi tr-TR küçük harfe indirger ve kırpar: "Adet" de "adet" ile
+ *  eşleşir. Eşleşme yoksa alias'ın varsayılan birimine düşer.
+ *
+ *  Bu düşüş "2 adet" → 2 g bozulmasıdır, ama çağıran onu GÖREBİLİR: çözülen ad
+ *  satırın `unit`ine geri yazılır, yani satır artık "g" gösterir. Sessiz
+ *  çevrim değil, görünür düzeltme — L20. */
+function unitFor(alias: Alias | null, unit: string): AliasUnit {
+  // Hafıza bağlantısı yoksa bu modülün o besine dair birim bilgisi yoktur.
+  // Tek gerçek birim gramdır; uydurma `{ grams: 1 }` tablosu, "adet" gibi elle
+  // yazılmış metni sessizce 1 g yapardı.
+  if (!alias) return GRAM_UNIT;
+  const wanted = unit.trim().toLocaleLowerCase("tr");
+  return (
+    unitOptions(alias.units).find((u) => u.name.trim().toLocaleLowerCase("tr") === wanted) ??
+    defaultUnitForAlias(alias)
+  );
 }
 
 /** Verilen alias + miktar/birimden satır. Geçersiz gramajda `nutrition`
@@ -82,19 +104,21 @@ export function newDraftLine(alias: Alias | undefined): DraftLine {
   return draftLineFromAlias(alias, "", defaultUnitForAlias(alias).name);
 }
 
-/** Gramaj alanı değişti. Makro yalnızca GEÇERLİ gramajda yeniden hesaplanır. */
+/** Gramaj alanı değişti. Makro yalnızca GEÇERLİ gramajda yeniden hesaplanır.
+ *  `unit` her zaman çözülür ve geri yazılır: hesap bu birimle yapılıyorsa
+ *  satır aynısını göstermelidir (L20). */
 export function setDraftGrams(line: DraftLine, gramsText: string, alias: Alias | null): DraftLine {
-  const parsed = parseNum(gramsText);
-  const valid = parsed > 0;
   const u = unitFor(alias, line.unit);
-  const grams = valid ? toGrams(parsed, u) : 0;
-  if (!valid || !alias) {
+  const parsed = parseNum(gramsText);
+  const grams = parsed > 0 ? toGrams(parsed, u) : 0;
+  if (grams <= 0 || !alias) {
     // Makro korunur: kullanıcı yarım yazarken değerler titremesin.
-    return { ...line, qty: gramsText, grams };
+    return { ...line, qty: gramsText, unit: u.name, grams };
   }
   return {
     ...line,
     qty: gramsText,
+    unit: u.name,
     grams,
     nutrition: scaleNutrition(alias.nutrition, alias.serving_g, grams),
   };
