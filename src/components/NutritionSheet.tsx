@@ -2,15 +2,23 @@ import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { ArrowLeft, Flame, Beef, Wheat, Droplet, Trash2 } from "lucide-react";
 import { ZERO_NUTRITION } from "../types";
-import type { MealCategory, MealItem, Nutrition } from "../types";
+import type { Alias, MealCategory, MealItem, Nutrition } from "../types";
 import { useBodyScrollLock } from "../hooks/useBodyScrollLock";
 import { useDialogFocus } from "../hooks/useDialogFocus";
 import { useModalHistory } from "../hooks/useModalHistory";
 import { useModalExit } from "../hooks/useModalExit";
 import { scaleMealSources } from "../lib/nutrition";
+import {
+  linesToMealParts,
+  resolveMealIngredients,
+  swapIngredientLine,
+} from "../lib/ingredientLines";
+import type { IngredientLine } from "../lib/ingredientLines";
 import { EditableStat, toDraft, fromDraft } from "./FormBits";
 import type { NutritionDraft } from "./FormBits";
+import { NutrientSummaryLine } from "./FormBits";
 import { MEAL_CATEGORIES, categoryForHour } from "../lib/mealCategory";
+import { useData } from "../lib/data";
 
 interface Props {
   isOpen: boolean;
@@ -40,10 +48,103 @@ export function scaleMealNutrition(computed: Nutrition | undefined, multiplier: 
   };
 }
 
+/** sources çözülebilen öğünün kalem satırları + swap. */
+function IngredientLines({
+  meal,
+  aliases,
+  resetKey,
+  onSwap,
+}: {
+  meal: MealItem;
+  aliases: Alias[];
+  resetKey: unknown;
+  onSwap: (lines: IngredientLine[]) => void;
+}) {
+  const { t } = useTranslation();
+  // `key` yerine iç state: parent farklı öğünde resetKey değiştirir.
+  const [lines, setLines] = useState<IngredientLine[] | null>(() =>
+    resolveMealIngredients(meal, aliases),
+  );
+  const [swapIdx, setSwapIdx] = useState<number | null>(null);
+
+  // Farklı öğün açılınca sıfırla (aynı sheet yeniden mount edilmiyor).
+  // meal/aliases doğrudan deps'e konmaz: resolve her render yeni dizi
+  // üretir, effect döngüye girer. resetKey parent'tan gelir.
+  useEffect(() => {
+    setLines(resolveMealIngredients(meal, aliases));
+    setSwapIdx(null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [resetKey]);
+
+  if (!lines) return null;
+
+  function doSwap(idx: number, aliasId: string) {
+    const next = aliases.find((a) => a.id === aliasId);
+    if (!next) return;
+    setLines((prev) => {
+      if (!prev) return prev;
+      const swapped = prev.map((l, i) => (i === idx ? swapIngredientLine(l, next) : l));
+      onSwap(swapped);
+      return swapped;
+    });
+    setSwapIdx(null);
+  }
+
+  return (
+    <div className="space-y-2.5 pt-2">
+      <div className="text-sm font-bold text-white/90">{t("nutrition.ingredientsTitle")}</div>
+      <ul className="space-y-2">
+        {lines.map((l, i) => (
+          <li
+            key={`${l.aliasId}-${i}`}
+            className="rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-xs sm:text-sm"
+          >
+            <div className="flex items-center justify-between gap-2">
+              <span className="min-w-0 flex-1 truncate font-semibold text-white/90">{l.name}</span>
+              <span className="flex-none font-mono text-white/50">
+                {l.grams} g · {l.nutrition.kcal} kcal
+              </span>
+            </div>
+            <NutrientSummaryLine
+              as="span"
+              nutrition={l.nutrition}
+              className="mt-1 block font-mono text-[11px] text-white/50"
+            />
+            {swapIdx === i ? (
+              <select
+                autoFocus
+                className="mt-2 w-full rounded-xl bg-field px-3 py-2 text-xs font-bold text-white focus:outline-none"
+                value={l.aliasId}
+                onChange={(e) => doSwap(i, e.target.value)}
+                onBlur={() => setSwapIdx(null)}
+              >
+                {aliases.map((a) => (
+                  <option key={a.id} value={a.id} className="bg-field text-white">
+                    {a.name} · {a.nutrition.kcal} kcal/{a.serving_g}g
+                  </option>
+                ))}
+              </select>
+            ) : (
+              <button
+                type="button"
+                onClick={() => setSwapIdx(i)}
+                className="mt-2 text-[11px] font-bold text-amber-300 hover:underline"
+              >
+                {t("nutrition.swapIngredient")}
+              </button>
+            )}
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
 export function NutritionSheet({ isOpen, onClose, meal, onSave, onDelete }: Props) {
   // Lock background body scroll when modal is open
   useBodyScrollLock(isOpen);
   const { t } = useTranslation();
+  const { aliases } = useData();
 
   const [label, setLabel] = useState(meal?.label ?? "");
   const [category, setCategory] = useState<MealCategory>(
@@ -97,16 +198,29 @@ export function NutritionSheet({ isOpen, onClose, meal, onSave, onDelete }: Prop
     autoFocus: "container",
   });
 
+  // Swap sonrası kalemler: Kaydet'e basılana kadar bekler, basılınca
+  // sources + computed birlikte güncellenir (gösterilen = kaydedilen).
+  // Hook sırası: erken return'dan ÖNCE (hook kuralı).
+  const [swappedLines, setSwappedLines] = useState<IngredientLine[] | null>(null);
+  useEffect(() => {
+    setSwappedLines(null);
+  }, [meal]);
+
   if (!isOpen || !meal) return null;
 
   const scaledSources = scaleMealSources(meal.sources, multiplier);
 
   function updateField(key: keyof NutritionDraft, value: string) {
     setBasis("manual");
+    // Elle makro = sources kopar (swap da geçersiz kalır).
+    setSwappedLines(null);
     setDraft((d) => ({ ...d, [key]: value }));
   }
 
   const handleStep = (delta: number) => {
+    // Swap sonrası stepper: kalemler toplamdan türetildiği için swap geçersiz
+    // kalır — stepper kazanır, swap sıfırlanır.
+    setSwappedLines(null);
     // Elle düzenlenen makro değerleri varsa uyar
     if (basis === "manual") {
       if (!window.confirm(t("nutrition.manualOverrideWarning"))) return;
@@ -126,6 +240,21 @@ export function NutritionSheet({ isOpen, onClose, meal, onSave, onDelete }: Prop
     // iki katına çıkar ama kaynak miktar eski değerde kalır, `usualQuantity`nin
     // ("geçmişe dayalı miktar tahmini") temel aldığı veri bozulur. Bir alan elle
     // düzenlendiyse (`basis==="manual"`) hafıza bağlantısı koparılır.
+    // Swap edildiyse kalemler kazanır (stepper/manuel dokunuş ayrıca basis'i
+    // değiştirir; swap sonrası elle makro yazmak sources'u koparır).
+    if (swappedLines && basis === "quantity") {
+      const parts = linesToMealParts(swappedLines);
+      const updated: MealItem = {
+        ...meal,
+        label,
+        category,
+        computed: parts.nutrition,
+        sources: parts.sources,
+      };
+      onSave(updated);
+      beginClose();
+      return;
+    }
     const finalNutrition = fromDraft(draft);
     const finalSources = basis === "manual" ? undefined : scaledSources;
     const updated: MealItem = {
@@ -326,6 +455,22 @@ export function NutritionSheet({ isOpen, onClose, meal, onSave, onDelete }: Prop
             </div>
           </label>
         </div>
+
+        {meal && (
+          <IngredientLines
+            meal={meal}
+            aliases={aliases}
+            resetKey={meal.id}
+            onSwap={(next) => {
+              setSwappedLines(next);
+              // Gösterim kaydedilenle AYNI olmalı (L20): ana kart eski toplamı
+              // göstermeye devam ederse kullanıcı "225 → 175 gördüm ama
+              // 418 yazıyor" diye kaydeder.
+              setBasis("quantity");
+              setDraft(toDraft(linesToMealParts(next).nutrition));
+            }}
+          />
+        )}
 
         {/* Other Nutrition Facts List (Diğer Besin Değerleri) */}
         <div className="space-y-2.5 pt-2">

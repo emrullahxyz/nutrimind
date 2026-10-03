@@ -868,7 +868,12 @@
     "microEmptyNote": "Pozostawienie pustego mikroskładnika oznacza \"nieznane\" — nie zostanie zapisane jako 0.",
     "total": "Łącznie:",
     "confirmDelete": "Usunac ten posilek?",
-    "manualOverrideWarning": "Ręcznie edytowałeś makro. Zmiana porcji zresetuje je do przeskalowanych wartości. Kontynuować?"
+    "manualOverrideWarning": "Ręcznie edytowałeś makro. Zmiana porcji zresetuje je do przeskalowanych wartości. Kontynuować?",
+    "ingredientsTitle": "Składniki",
+    "swapIngredient": "Zamień składnik"
+  },
+  "templatePreview": {
+    "updateTemplate": "Zaktualizuj też szablon tymi zmianami"
   },
   "export": {
     "modalTitle": "Zarządzanie danymi",

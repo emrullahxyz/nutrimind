@@ -20,6 +20,7 @@ import { WeightCard } from "./WeightCard";
 import { MealRow } from "./MealRow";
 import { MealActionSheet } from "./MealActionSheet";
 import { RecipeBuilder } from "./RecipeBuilder";
+import { TemplatePreview } from "./TemplatePreview";
 import { ExerciseModal } from "./ExerciseModal";
 import { NutritionSheet } from "./NutritionSheet";
 import { useToast } from "./Toast";
@@ -211,6 +212,7 @@ export function DayView({
       setShowMergeModal(false);
       setMenuFor(null);
       setRecipePreset(null);
+      setPreviewTemplate(null);
     }
   }, [resetKey]);
   const [showScan, setShowScan] = useState(false);
@@ -280,17 +282,36 @@ export function DayView({
     }
   }
 
-  async function applyTemplate(t: MealTemplate) {
-    if (busy) return;
+  /** Şablon çipi artık kör uygulamaz: önizleme açılır, kalemler + swap
+   *  gösterilir, onayla eklenir. `previewTemplate` açık sheet'i tutar. */
+  const [previewTemplate, setPreviewTemplate] = useState<MealTemplate | null>(null);
+
+  async function applyTemplate(
+    lines: { name: string; nutrition: MealPayload["nutrition"]; sources?: MealPayload["sources"] }[],
+    updateTemplate: boolean,
+  ) {
+    const t = previewTemplate;
+    if (busy || !t) return;
     setErr(null);
     setBusy(true);
     try {
-      const newPayloads: MealPayload[] = t.items.map((it) => ({
+      const newPayloads: MealPayload[] = lines.map((it) => ({
         name: it.name,
         nutrition: it.nutrition,
         ...(it.sources ? { sources: it.sources } : {}),
       }));
       await setDayMeals(date, [...toPayload(meals), ...newPayloads]);
+      if (updateTemplate) {
+        const updated = lines.map((l) => ({
+          name: l.name,
+          nutrition: l.nutrition,
+          ...(l.sources ? { sources: l.sources } : {}),
+        }));
+        await updateConfig("templates", {
+          list: templates.list.map((x) => (x.id === t.id ? { ...x, items: updated } : x)),
+        });
+      }
+      setPreviewTemplate(null);
     } catch (e) {
       setErr(String((e as Error)?.message ?? e));
     } finally {
@@ -498,7 +519,7 @@ export function DayView({
                 key={t.id}
                 type="button"
                 disabled={busy}
-                onClick={() => applyTemplate(t)}
+                onClick={() => setPreviewTemplate(t)}
                 className="flex-none rounded-pill border border-line bg-white/[0.06] px-3 py-1.5 text-xs font-semibold text-ink-secondary transition hover:border-memory/40 hover:bg-white/[0.09] hover:text-ink-primary disabled:opacity-40"
               >
                 {t.name}
@@ -617,6 +638,16 @@ export function DayView({
 
       {recipePreset && (
         <RecipeBuilder initial={null} preset={recipePreset} onClose={() => setRecipePreset(null)} />
+      )}
+
+      {previewTemplate && (
+        <TemplatePreview
+          template={previewTemplate}
+          aliases={aliases}
+          busy={busy}
+          onClose={() => setPreviewTemplate(null)}
+          onApply={(lines, update) => void applyTemplate(lines, update)}
+        />
       )}
 
       {showScan && (
