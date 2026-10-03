@@ -875,8 +875,6 @@
     "ingredientRemove": "Usuń składnik",
     "ingredientManualName": "Nazwa składnika",
     "ingredientGrams": "Ilość",
-    "emptyIngredients": "Wszystkie składniki usunięte — dodaj jeden, aby zastosować.",
-    "ingredientUnitUnknown": "Jednostka tej ilości nie jest już zdefiniowana — wybierz jednostkę składnika ponownie.",
     "ingredientAmountUnknown": "Ilość nieznana"
   },
   "templatePreview": {

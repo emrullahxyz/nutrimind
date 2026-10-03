@@ -425,6 +425,12 @@ describe("preserved", () => {
     expect(newDraftLine(undefined).preserved).toBe(false);
     expect(newDraftLine(tavuk).preserved).toBe(false);
     expect(line(draftLineFromAlias(tavuk, "150", "g")).preserved).toBe(false);
+    // alias'lı ÖLÇÜLEN satır korunmuş SAYILMAZ: makrosu ölçülmüş gerçek bir
+    // miktardan geliyor, gramajı bilinmiyor değil. (alias dalındaki
+    // `preserved: false` mutasyona uğrarsa burada kırılır.)
+    const olculen = line(draftLineFromAlias(tavuk, "150", "g"));
+    expect(olculen.preserved).toBe(false);
+    expect(olculen.grams).toBe(150);
     const swapped = swapDraftLine(korunmus(), tofu);
     expect(swapped.preserved).toBe(false);
     expect(swapped.grams).toBe(0); // korunmuş satırın gramajı yok — swap ölçemez
@@ -434,5 +440,30 @@ describe("preserved", () => {
     const base = line(draftLineFromAlias(ekmekDilim, "4", "Dilim"));
     base.unit = "kase";
     expect(setDraftGrams(base, "6", ekmekDilim).preserved).toBe(false);
+  });
+
+  // Kilitli alanın (C1) çıkış yolu: korunmuş satır hafızaya bağlanınca
+  // miktar girilebilir HALE gelir ve bu kez kayda gerçekten geçer.
+  it("swap korunmuş satırı bağlar, sonra girilen miktar KAYDA GEÇER", () => {
+    const swapped = swapDraftLine(korunmus(), tofu);
+    expect(swapped.preserved).toBe(false);
+    expect(swapped.aliasId).toBe("a2");
+    const measured = setDraftGrams(swapped, "150", tofu);
+    expect(measured.grams).toBe(150);
+    const items = draftLinesToItems([measured]);
+    expect(items).toHaveLength(1);
+    expect(items[0].sources).toEqual([{ aliasId: "a2", qty: 150, unit: "g" }]);
+  });
+
+  // setDraftGrams'in ALIAS dalı `{ ...line }` yayılımı yaptığı için, gelen
+  // satır `preserved: true` taşıyorsa yazmazsa DEĞERİYLE taşır. Bu test
+  // ölçülen alias satırında alanın AÇIKÇA sıfırlandığını sabitler — yayılım
+  // bir gün korunmuş bir satırı taşımaya başlarsa kırılır.
+  it("setDraftGrams alias dalı korunmuşluğu AÇIKÇA sıfırlar (yayılıma bırakmaz)", () => {
+    const korunmusGibi = { ...korunmus(), aliasId: "a1", unit: "g", qty: "100" };
+    expect(korunmusGibi.preserved).toBe(true);
+    const olculen = setDraftGrams(korunmusGibi, "150", tavuk);
+    expect(olculen.preserved).toBe(false);
+    expect(olculen.grams).toBe(150);
   });
 });

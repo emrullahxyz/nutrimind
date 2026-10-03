@@ -18,7 +18,6 @@ import {
   draftLineFromAlias,
   newDraftLine,
   removeDraftLine,
-  resolveDraftUnit,
   roundNutrition,
   setDraftGrams,
   swapDraftLine,
@@ -78,15 +77,12 @@ export function TemplatePreview({
   const [lines, setLines] = useState<DraftLine[]>(() => initialDraftLines(template, aliases));
   const [swapKey, setSwapKey] = useState<string | null>(null);
   const [updateTemplate, setUpdateTemplate] = useState(false);
-  /** Birimi artık tanınmayan satırlar — uyarı satırın altında görünür. */
-  const [unresolved, setUnresolved] = useState<Record<string, true>>({});
 
   // Farklı şablon açılırsa sıfırla (bileşen yeniden mount olmayabilir).
   useEffect(() => {
     setLines(initialDraftLines(template, aliases));
     setSwapKey(null);
     setUpdateTemplate(false);
-    setUnresolved({});
   }, [template]);
 
   const total = useMemo(
@@ -103,26 +99,6 @@ export function TemplatePreview({
 
   function patch(key: string, next: DraftLine) {
     setLines((prev) => prev.map((l) => (l.key === key ? next : l)));
-  }
-
-  /** Gramaj alanı değişti.
-   *
-   *  `setDraftGrams` çözülemeyen birimde satıra HİÇ dokunmuyor (toparlak ve
-   *  serileştirilebilir kalmak için) — ama kullanıcı sayı yazdığı hâlde
-   *  alan geri seken bir input bozuk görünür. Bu yüzden reddi ÖNCEDEN
-   *  soruyoruz: `resolveDraftUnit` null dönerse setter'a hiç girmeyip
-   *  satırın altında uyarı gösteriyoruz. Bayrak eklemiyoruz — koşul zaten
-   *  bu fonksiyonla hesaplanabiliyor. */
-  function onGramsChange(line: DraftLine, alias: Alias | null, value: string) {
-    if (alias && !resolveDraftUnit(alias, line.unit)) {
-      setUnresolved((prev) => ({ ...prev, [line.key]: true }));
-      return;
-    }
-    setUnresolved((prev) => {
-      const { [line.key]: _drop, ...rest } = prev;
-      return rest;
-    });
-    patch(line.key, setDraftGrams(line, value, alias));
   }
 
   /** "Malzeme ekle": aliases boşsa elle satır (yoksa ekleyecek isim yok). */
@@ -146,13 +122,16 @@ export function TemplatePreview({
       }
     >
       <div className="flex flex-col gap-3">
-        {lines.length === 0 ? (
-          <p className="rounded-chip border border-line bg-white/[0.03] p-3 text-[11px] text-ink-tertiary">
-            {t("nutrition.emptyIngredients")}
-          </p>
-        ) : (
-          <ul className="space-y-2">
-            {lines.map((line) => {
+        {/* NOT: boş-durum dalı BİLEREK YOK. Çöp kutusu yalnız
+            `lines.length > 1` iken görünür, yani son satır silinemez ve
+            `lines.length === 0` hiç oluşmaz. Son satırın silinememesi
+            bilinçli: malzemesi olmayan bir "yemek" kaydedilmemeli, kullanıcı
+            her an "Malzeme ekle" ile yenisini açabilir. `nutrition.
+            emptyIngredients` anahtarı da bu yüzden kaldırıldı — ulaşılamayan
+            UI ve ulaşılamayan i18n ölü koddur. Son satırı silmek istenirse
+            tek yapılacak koşulu gevşetmek; o zaman dal ve anahtar geri gelir. */}
+        <ul className="space-y-2">
+          {lines.map((line) => {
               const alias = aliasOf(line);
               return (
                 <li
@@ -202,11 +181,15 @@ export function TemplatePreview({
                         label={t("nutrition.ingredientGrams")}
                         suffix="g"
                         value={line.qty}
-                        onChange={(v) => onGramsChange(line, alias ?? null, v)}
+                        onChange={(v) => patch(line.key, setDraftGrams(line, v, alias ?? null))}
+                        disabled={line.preserved}
                       />
                       {/* Korunan kalem: gramajı BİLİNMIYOR (0 g değil), makrosu
-                          gerçek. Boş alan "ölçüldü ama sıfır" izlenimi
-                          vereceğinden ayrıca etiketlenir. */}
+                          gerçek. Alan KİLİTLİ — `draftLinesToItems` hafıza
+                          bağlantısı olmayan satır için miktarı KAYDEDEMEZ
+                          (`TemplateItem` yalnız ad + makro tutar), yazılan sayı
+                          sessizce kaybolurdu. Çıkış yolu: besine bağla
+                          (swap) ya da önce besin seç, sonra miktar gir. */}
                       {line.preserved && (
                         <p className="mt-1 text-[11px] text-amber-300">
                           {t("nutrition.ingredientAmountUnknown")}
@@ -214,7 +197,12 @@ export function TemplatePreview({
                       )}
                     </div>
                     <div className="flex items-end justify-end">
-                      {alias ? (
+                      {/* Hafızaya bağlı satır (alias'lı) VE korunmuş satır aynı
+                          çıkış yolunu sunar: besine bağla. Korunmuş satırın
+                          miktar alanı kilitli olduğu için bu ONUN çıkış
+                          yoludur — bağlanınca `swapDraftLine` `preserved`'ı
+                          düşürür ve alan açılır. */}
+                      {alias || (line.preserved && aliases.length > 0) ? (
                         <button
                           type="button"
                           onClick={() => setSwapKey(line.key)}
@@ -232,15 +220,6 @@ export function TemplatePreview({
                     </div>
                   </div>
 
-                  {unresolved[line.key] && (
-                    <p
-                      role="alert"
-                      className="mt-1.5 text-[11px] text-amber-300"
-                    >
-                      {t("nutrition.ingredientUnitUnknown")}
-                    </p>
-                  )}
-
                   <NutrientSummaryLine
                     as="span"
                     nutrition={line.nutrition}
@@ -249,8 +228,7 @@ export function TemplatePreview({
                 </li>
               );
             })}
-          </ul>
-        )}
+        </ul>
 
         <button
           type="button"
