@@ -343,7 +343,11 @@ export function TemplatePreview({
                           kilidin kalkması için BİRİKİMİ olması gerekir. Aksi halde
                           korunmuş satır kalıcı olarak yalnızca silinebilir olurdu:
                           ne ölçülebilir ne düzeltilebilir. */}
-                      {line.preserved && (
+                      {/* "Miktar bilinmiyor" YALNIZCA gramaj gerçekten yokken. Kayıttan
+                          `item.grams` ile gelen satırda miktar BİLİNİYOR
+                          (100 g), ama gramajı ölçülemediği için `preserved`
+                          taşıyor — etiket bu satırda yanlış olurdu. */}
+                      {line.preserved && line.grams <= 0 && (
                         <p className="mt-1 text-[11px] text-amber-300">
                           {t("nutrition.ingredientAmountUnknown")}
                         </p>
