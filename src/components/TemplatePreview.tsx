@@ -182,14 +182,21 @@ export function TemplatePreview({
                         suffix="g"
                         value={line.qty}
                         onChange={(v) => patch(line.key, setDraftGrams(line, v, alias ?? null))}
-                        disabled={line.preserved}
+                        disabled={line.preserved && !alias}
                       />
                       {/* Korunan kalem: gramajı BİLİNMIYOR (0 g değil), makrosu
-                          gerçek. Alan KİLİTLİ — `draftLinesToItems` hafıza
-                          bağlantısı olmayan satır için miktarı KAYDEDEMEZ
-                          (`TemplateItem` yalnız ad + makro tutar), yazılan sayı
-                          sessizce kaybolurdu. Çıkış yolu: besine bağla
-                          (swap) ya da önce besin seç, sonra miktar gir. */}
+                          gerçek. Miktar alanı yalnız ALIAS'ı olmayan korunmuş
+                          satırda kilitlidir — `TemplateItem` miktarı ancak bir
+                          `sources` içinde, yani bir `aliasId` ile saklar;
+                          bağlantı yoksa yazılan sayı sessizce kaybolurdu.
+
+                          ALIAS'ı OLAN korunmuş satırda alan AÇIKTIR: `swapDraftLine`
+                          korunmuş bir satıra besin bağladığında `aliasId` dolar ve
+                          ölçülebilir bir taban (`serving_g`) gelir. `swapDraftLine`
+                          bayrağı koruduğu için bayrak tek başına kilitli görünür;
+                          kilidin kalkması için BİRİKİMİ olması gerekir. Aksi halde
+                          korunmuş satır kalıcı olarak yalnızca silinebilir olurdu:
+                          ne ölçülebilir ne düzeltilebilir. */}
                       {line.preserved && (
                         <p className="mt-1 text-[11px] text-amber-300">
                           {t("nutrition.ingredientAmountUnknown")}
