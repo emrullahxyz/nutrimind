@@ -868,7 +868,18 @@
     "microEmptyNote": "Boş bıraktığın mikro besin \"bilinmiyor\" sayılır — 0 olarak kaydedilmez.",
     "total": "Toplam:",
     "confirmDelete": "Bu besin silinsin mi?",
-    "manualOverrideWarning": "Makro değerlerini elle düzenlediniz. Porsiyon değiştirildiğinde ölçeklenmiş değerlere dönecektir. Devam edilsin mi?"
+    "manualOverrideWarning": "Makro değerlerini elle düzenlediniz. Porsiyon değiştirildiğinde ölçeklenmiş değerlere dönecektir. Devam edilsin mi?",
+    "ingredientsTitle": "Malzemeler",
+    "swapIngredient": "Malzemeyi değiştir",
+    "ingredientAdd": "Malzeme ekle",
+    "ingredientRemove": "Malzemeyi kaldır",
+    "ingredientManualName": "Malzeme adı",
+    "ingredientGrams": "Miktar",
+    "ingredientAmountUnknown": "Miktar bilinmiyor"
+  },
+  "templatePreview": {
+    "updateTemplate": "Şablonu da bu değişikliklerle güncelle",
+    "aiCamera": "Kamera ile malzeme ekle"
   },
   "export": {
     "modalTitle": "Veri Yönetimi",

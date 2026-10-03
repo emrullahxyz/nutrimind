@@ -7,8 +7,68 @@
 // yalnızca stepper ölçeklemesinde (m ≠ 1) meşru.
 // ============================================================================
 import { describe, expect, it } from "vitest";
-import { scaleMealNutrition } from "./NutritionSheet";
+import { isAmountLocked, scaleMealNutrition } from "./NutritionSheet";
 import { ZERO_NUTRITION } from "../types";
+import type { Alias } from "../types";
+import type { DraftLine } from "../lib/ingredientDraft";
+
+function satir(over: Partial<DraftLine> = {}): DraftLine {
+  return {
+    key: "k1",
+    aliasId: "a1",
+    name: "Tavuk",
+    qty: "150",
+    unit: "g",
+    grams: 150,
+    nutrition: { kcal: 247.5, protein: 46.5, carbs: 0, fat: 5.4, fiber: 0 },
+    preserved: false,
+    manualMeasured: false,
+    ...over,
+  };
+}
+
+const tavuk: Alias = {
+  id: "a1",
+  triggers: ["tavuk"],
+  name: "Tavuk",
+  brand: null,
+  serving_g: 100,
+  nutrition: { kcal: 165, protein: 31, carbs: 0, fat: 3.6, fiber: 0 },
+};
+
+// ============================================================================
+// isAmountLocked — miktar alanının kilidi. JSX'e gömülüydü ve bu yüzden test
+// EDİLEMEZDI; dışa açıldı.
+//
+// ÜÇ test, üç ayrı mutasyonu öldürür (ölçüldü, tahmin değil):
+//   `return line.preserved` → 1. test kırmızı
+//   `return !alias`          → 3. test kırmızı
+//   `return true`            → 1. ve 3. test kırmızı
+// Dosyada 4. ve 5. bir "mutasyon öldürücü" testi de vardı; ikisi de zaten
+// ölü olan aynı mutasyonları ÖNCEKİ testlerin YANINDA öldürdüğü için silindi.
+// Ayrı bir mutasyonu öldürmedikleri ayrıca ölçüldü: ikisi de çıkarıldığında
+// yukarıdaki üç mutasyon yine kırmızıya dönüyor. Kopyalayan bir test, dosyada
+// o mutasyonu zaten öldüren bir varsa kapsam artırmaz — yalnızca sayı şişirir.
+//
+// Not: bu gövde fonksiyonu test eder, erişilebilirliği değil. Erişim
+// doğrulaması canlı uygulamada yapıldı (bkz. görev raporu).
+// ============================================================================
+describe("isAmountLocked — miktar alanı kilidi", () => {
+  it("korunmuş + alias BAĞLI → kilitli DEĞİL (miktar girilebilir)", () => {
+    // `swapDraftLine` korunmuş bir satırda bayrağı KORUR; kilidi kaldıran tek
+    // şey alias'ın gelmesi. Bu ikisinin ikisi birden gerekir.
+    expect(isAmountLocked(satir({ preserved: true }), tavuk)).toBe(false);
+  });
+
+  it("korunmuş + alias YOK → kilitli (ölçecek taban yok, sayı kayda giremez)", () => {
+    expect(isAmountLocked(satir({ preserved: true, aliasId: null }), undefined)).toBe(true);
+  });
+
+  it("ÖLÇÜLMÜŞ satır → kilitli değil (alias olsa da olmasa da)", () => {
+    expect(isAmountLocked(satir(), tavuk)).toBe(false);
+    expect(isAmountLocked(satir({ aliasId: null }), undefined)).toBe(false);
+  });
+});
 
 describe("scaleMealNutrition — aç-kaydet sözleşmesi (m=1 kayıpsız)", () => {
   it("m=1 iken 2 ondalıklı makrolar KORUNUR (8.75 → 8.8 DEĞİL)", () => {

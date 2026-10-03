@@ -868,7 +868,18 @@
     "microEmptyNote": "If you leave a micronutrient blank it is counted as \"unknown\" and not saved as 0.",
     "total": "Total:",
     "confirmDelete": "Delete this food?",
-    "manualOverrideWarning": "You have manually edited macros. Changing the serving will reset them to scaled values. Continue?"
+    "manualOverrideWarning": "You have manually edited macros. Changing the serving will reset them to scaled values. Continue?",
+    "ingredientsTitle": "Ingredients",
+    "swapIngredient": "Swap ingredient",
+    "ingredientAdd": "Add ingredient",
+    "ingredientRemove": "Remove ingredient",
+    "ingredientManualName": "Ingredient name",
+    "ingredientGrams": "Amount",
+    "ingredientAmountUnknown": "Amount unknown"
+  },
+  "templatePreview": {
+    "updateTemplate": "Also update the template with these changes",
+    "aiCamera": "Add an ingredient with the camera"
   },
   "export": {
     "modalTitle": "Data Management",

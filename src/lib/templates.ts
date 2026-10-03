@@ -5,6 +5,18 @@ export interface TemplateItem {
   name: string;
   nutrition: Nutrition;
   sources?: MealSource[];
+  /** `sources`'ı OLMAYAN kalemlerin gramajı (gram).
+   *
+   *  Gramaj normalde `sources[].qty` içinde saklanır — ama `sources` bir
+   *  `aliasId` gerektirir, ve kullanıcının ELLE girdiği ya da AI'ın döndüğü
+   *  besin hafızada olmayabilir. O satırlarda miktar alanı görünür ama
+   *  kayda giremezdi: kullanıcı 100 g yazıp kaydediyor, şablonu açtığında
+   *  "Miktar bilinmiyor" yazıyordu (gösterilen ≠ kaydedilen, L20).
+   *
+   *  `sources` varsa bu alan YAZILMAZ — kaynak zaten miktarı taşıyor, iki
+   *  yerde aynı sayının iki kopyası ise birinin güncellenip diğerinin
+   *  eskimesi demektir. */
+  grams?: number;
 }
 
 export interface MealTemplate {
@@ -56,11 +68,18 @@ export function parseTemplatesConfig(config: AppConfig): TemplatesConfig {
 
       const nutrition = fill(itemRec.nutrition as Partial<Record<string, number | null>> | undefined);
       const sources = parseSources(itemRec.sources);
+      // Yalnız POZİTİF ve sonlu gramaj: 0 "ölçtüm, sıfır gram" anlamına gelir,
+      // kayıttaki belirsizliği çözmez. `sources` varsa alan yok sayılır —
+      // miktar zaten orada taşınıyor.
+      const rawGrams = itemRec.grams;
+      const grams =
+        !sources && typeof rawGrams === "number" && Number.isFinite(rawGrams) && rawGrams > 0 ? rawGrams : undefined;
 
       validItems.push({
         name: itemName,
         nutrition,
         ...(sources ? { sources } : {}),
+        ...(grams !== undefined ? { grams } : {}),
       });
     }
 

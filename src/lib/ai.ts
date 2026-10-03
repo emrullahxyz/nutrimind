@@ -108,6 +108,14 @@ function parseAIItem(raw: unknown): AIParseItem | null {
   const item: AIParseItem = { name, nutrition };
   if (isFiniteNum(raw.confidence)) item.confidence = Math.max(0, Math.min(1, raw.confidence));
   if (raw.needsReview === true) item.needsReview = true;
+  // `baseAmount`: besin değerlerinin dayandığı miktar (etikette "100g başına"
+  // yazıyorsa 100, "30g'lik 1 porsiyon" yazıyorsa 30). Sunucu YALNIZCA pozitif
+  // ve sonlu geldiğinde gönderiyor (`server/ai.js`), ama aynı kör güvenmeme
+  // ilkesiyle burada da doğrulanır: sıfır/NaN taşımak "miktarım 0" anlamına
+  // gelirdi, oysa model etiket okumadığında alan boş gelir.
+  if (isFiniteNum(raw.baseAmount) && (raw.baseAmount as number) > 0) {
+    item.baseAmount = raw.baseAmount as number;
+  }
   return item;
 }
 

@@ -80,11 +80,16 @@ export function NumField({
   value,
   onChange,
   suffix,
+  disabled = false,
 }: {
   label: string;
   value: string;
   onChange: (v: string) => void;
   suffix?: string;
+  /** Alan kilitli: görünür ama girilemez. `onChange` ÇAĞRILMAZ — devre dışı
+   *  bir input'un değeri değişmiş gibi görünmesi, yazdığını sandığı ama
+   *  kaydedilmeyen bir değerin en kötü hâli (L20). */
+  disabled?: boolean;
 }) {
   const id = useId();
   return (
@@ -92,10 +97,13 @@ export function NumField({
       <Label htmlFor={id}>{suffix ? `${label} (${suffix})` : label}</Label>
       <input
         id={id}
-        className={`${fieldCls} font-mono`}
+        className={`${fieldCls} font-mono ${disabled ? "cursor-not-allowed opacity-45" : ""}`}
         inputMode="decimal"
         value={value}
+        disabled={disabled}
+        aria-disabled={disabled || undefined}
         onChange={(e) => {
+          if (disabled) return;
           const v = e.target.value;
           if (acceptsNumericEntry(v)) onChange(v);
         }}

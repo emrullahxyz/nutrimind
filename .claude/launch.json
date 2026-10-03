@@ -9,8 +9,8 @@
     },
     {
       "name": "nutrimind-api",
-      "runtimeExecutable": "node",
-      "runtimeArgs": ["server/index.js"],
+      "runtimeExecutable": "bash",
+      "runtimeArgs": ["-lc", "NUTRI_DB=$PWD/server/data.tplcheck.db node server/index.js"],
       "port": 8790
     },
     {
