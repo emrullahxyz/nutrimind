@@ -12,8 +12,8 @@
 //      "50" yaparken değerler titrer.
 //   3. ÇÖZÜLEMEYEN birim TAHMİN EDİLMEZ, reddedilir. `mealActions.ts:139-140`
 //      ("2 'adet'i sessizce 2 g yapar ve tarifin 100 g hesabını bozar") ve
-//      `ingredientLines.resolveMealIngredients` (birim çözülmezse null) aynı
-//      kararı verdi: bilinmeyen birim, ölçülmüş değil ÇÖZÜLEMEZ demektir.
+//      `resolveDraftUnit` (birim çözülmezse null) aynı kararı verdi: bilinmeyen
+//      birim, ölçülmüş değil ÇÖZÜLEMEZ demektir.
 //      Görünür ama yanlış miktar hâlâ miktar bozulmasıdır.
 //
 // DÖRTÜNCÜ SÖZLEŞME — `preserved`: kayıttan gelip ölçüLEMEYEN kalem. Birim
@@ -79,7 +79,7 @@ export function roundNutrition(n: Nutrition): Nutrition {
  *  Eşleşme yoksa `null`. Varsayılan birime ya da grama DÜŞMEZ: kayıtlı "2 kase"
  *  ile bu besinin dilimi başka bir ölçüdür, onu sessizce ölçmek sayıyı
  *  bozar. Reddetme `mealActions.buildRecipePreset` ve
- *  `ingredientLines.resolveMealIngredients` ile aynı sözleşmedir.
+ *  `resolveDraftUnit` ile aynı sözleşmedir.
  *
  *  `alias` null ise (elle satır) modülün o besine dair birim bilgisi yoktur:
  *  tek gerçek birim gramdır, gram da `unitOptions`'ın daima ilk girdisidir. */

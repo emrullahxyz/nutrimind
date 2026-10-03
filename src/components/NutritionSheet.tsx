@@ -83,8 +83,20 @@ export function isAmountLocked(line: DraftLine, alias: Alias | undefined): boole
  *
  *  Bu, aynı zamanda "silinmiş alias'a bağlı satır" (dangling aliasId) durumunu
  *  YAPISAL OLARAK IMKÂNSIZ kılar: o satır `alias` bulunamadığı için `null`
- *  döndürür ve bölüm hiç render edilmez. Dolayısıyla `isAmountLocked`'ın
- *  kilitlediği ama kurtarma yolu olmayan bir satır bu ekranda OLUŞAMAZ. */
+ *  döndürür ve bölüm hiç render edilmez.
+ *
+ *  ÖNEMLİ — `preserved` burada ŞU AN MÜMKÜN DEĞİL ve kilit kodunun kendisi de
+ *  ölü: yukarıdaki YA HİÇ ya da HİÇBİRİ kuralı yüzünden buraya ulaşan HER
+ *  satırın alias'ı canlıdır, dolayısıyla `isAmountLocked` hep `false` döner ve
+ *  miktar alanı hiç kilitlenmez. Bu bir gizli varsayım değil, TÜM-ORA-HİÇBİRİ
+ *  kuralının DOĞAL SONUCUDUR.
+ *
+ *  Kod YİNE DE TUTULUYOR, çünkü tek kurtarma yolu bu: bir öğün ileride
+ *  çözülemeyen bir satırla buraya ulaşırsa (ör. `preserved` taşıyan bir kayıt,
+ *  ya da bu kuralın gevşetilmesi), kilitli alan, "girilebilir ama kaydedilemez"
+ *  2. tur hatasının bir daha oluşmasını engeller. Silinirse tuzak sessizce
+ *  yeniden açılır. Bakım notu: kilidi burada kaldırırsanız, aynı zamanda
+ *  `mealDraftLines`'in ya-hiç-ya-hiçbiri kuralını da gözden geçirin. */
 function mealDraftLines(meal: MealItem, aliases: Alias[]): DraftLine[] | null {
   const sources = meal.sources;
   if (!sources || sources.length === 0) return null;
@@ -134,34 +146,37 @@ function IngredientLines({
     return line.aliasId ? aliases.find((a) => a.id === line.aliasId) : undefined;
   }
 
-  /** Satırı günceller ve HER DEĞİŞİMDE parent'a bildirir — ana kartın toplamı
-   *  kaydedilenle aynı kalmalı (L20): yalnız kaydet anında değil, düzenleme
-   *  ANINDA da eşitlenir. */
+  /** Satırları hem yerel state'e yazar hem parent'a bildirir — ana kartın
+   *  toplamı kaydedilenle aynı kalmalı (L20): yalnız kaydet anında değil,
+   *  düzenleme ANINDA da eşitlenir.
+   *
+   *  `onCommit` BİLEREK `setLines` updater'ının DIŞINDA çağrılır. Parent bu
+   *  çağrıda kendi `setState`'lerini çalıştırır (`setSwappedLines`, `setBasis`,
+   *  `setDraft`); updater'ın içinde çağırmak parent setState'lerini bir React
+   *  updater'ının içine sokardı — StrictMode (`main.tsx:22`) updater'ları
+   *  geliştirmede iki kez çağırdığı için yan etki iki kez koşardı.
+   *
+   *  `lines` bu bileşenin tek doğruluk kaynağı (`:130`), bu yüzden `prev`'den
+   *  okumak yerine doğrudan `lines`'ten türetmek bir yarış koşulu yaratmaz.
+   *  `null` kapatma durumudur (`:143`) — oysa `patch`/`removeRow`/`addRow`
+   *  yalnız KAPALI bir listeden çağrılır; `commit` tek giriş noktası olduğu
+   *  için daraltmayı burada bir kez toparlıyoruz. */
+  function commit(updated: DraftLine[] | null) {
+    if (!updated) return;
+    setLines(updated);
+    onCommit(updated);
+  }
+
   function patch(key: string, next: DraftLine) {
-    setLines((prev) => {
-      if (!prev) return prev;
-      const updated = prev.map((l) => (l.key === key ? next : l));
-      onCommit(updated);
-      return updated;
-    });
+    commit(lines?.map((l) => (l.key === key ? next : l)) ?? null);
   }
 
   function removeRow(key: string) {
-    setLines((prev) => {
-      if (!prev) return prev;
-      const updated = removeDraftLine(prev, key);
-      onCommit(updated);
-      return updated;
-    });
+    commit(lines ? removeDraftLine(lines, key) : null);
   }
 
   function addRow() {
-    setLines((prev) => {
-      if (!prev) return prev;
-      const updated = addDraftLine(prev, newDraftLine(aliases[0]));
-      onCommit(updated);
-      return updated;
-    });
+    commit(lines ? addDraftLine(lines, newDraftLine(aliases[0])) : null);
   }
 
   // Kayıtta `draftLinesToItems` `roundNutrition` uygular; gösterim de aynısını
@@ -192,6 +207,7 @@ function IngredientLines({
                     aria-label={t("nutrition.swapIngredient")}
                     className="w-full rounded-xl bg-field px-3 py-2 text-xs font-bold text-white focus:outline-none"
                     value={line.aliasId ?? ""}
+                    onBlur={() => setSwapKey(null)}
                     onChange={(e) => {
                       const next = aliases.find((a) => a.id === e.target.value);
                       if (next) patch(line.key, swapDraftLine(line, next));
@@ -394,12 +410,22 @@ export function NutritionSheet({ isOpen, onClose, meal, onSave, onDelete }: Prop
     }
     const finalNutrition = fromDraft(draft);
     const finalSources = basis === "manual" ? undefined : scaledSources;
+    // `...meal` yayılımı `sources`'u da getirir. Koşullu yayılım
+    // (`...(finalSources ? … : {})`) `undefined`'da HİÇBİR ŞEY yazmadığı için
+    // eski kaynaklar kayıtta kalırdı — `basis === "manual"` (kullanıcı makroyu
+    // elle yazdı) hafıza bağlantısını kopyalayacağı halde bağlantı KOPMUŞ
+    // olarak kaydedilirdi. Boş dizi de yanlış cevap: "ölçtüm, malzeme yok"
+    // der. Doğru cevap alanı YOKSUN kılmak, o yüzden `meal`'den DESTRUCTURE
+    // edilip ayrıca konur. `!== undefined` yazmak yetmezdi: o da `undefined`
+    // için bir şey yazmıyordu (ölçüldü: her iki biçim de eski kaynakları
+    // koruyordu).
+    const { sources: _ignored, ...mealWithoutSources } = meal;
     const updated: MealItem = {
-      ...meal,
+      ...mealWithoutSources,
       label,
       category,
       computed: finalNutrition,
-      ...(finalSources ? { sources: finalSources } : {}),
+      ...(finalSources !== undefined ? { sources: finalSources } : {}),
     };
     onSave(updated);
     beginClose();

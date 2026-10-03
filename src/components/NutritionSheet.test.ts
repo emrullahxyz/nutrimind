@@ -37,9 +37,12 @@ const tavuk: Alias = {
 
 // ============================================================================
 // isAmountLocked — miktar alanının kilidi. JSX'e gömülüydü ve bu yüzden test
-// EDİLEMEZDI; dışa açıldı. Koşul yanlışsa üç test birden kırılır.
+// EDİLEMEZDI; dışa açıldı.
 //
-// Not: 2. gövde sadece fonksiyonu test eder, erişilebilirliği değil. Erişim
+// Son iki test GERÇEKTEN ayırt edicidir: her biri tek bir mutasyonu öldürür
+// (mutasyon sonuçları görev raporunda doğrulandı, tahmin değil).
+//
+// Not: bu gövde fonksiyonu test eder, erişilebilirliği değil. Erişim
 // doğrulaması canlı uygulamada yapıldı (bkz. görev raporu).
 // ============================================================================
 describe("isAmountLocked — miktar alanı kilidi", () => {
@@ -58,14 +61,23 @@ describe("isAmountLocked — miktar alanı kilidi", () => {
     expect(isAmountLocked(satir({ aliasId: null }), undefined)).toBe(false);
   });
 
-  it("yalnız alias'a bakmak yanlış olurdu: korunmuş satır kilitlenmemeli", () => {
-    // `return line.preserved` yazsaydık bu üçüncü test kırılırdı.
-    expect(isAmountLocked(satir({ preserved: true }), tavuk)).not.toBe(true);
+  // --- AYIRT EDİCİ MUTASYON KILLER (aşağıdaki iki test) ---
+  //
+  // 4. test  `return line.preserved` mutasyonunu ÖLDÜRÜR (&& !alias unutulursa).
+  //        İşaretlenmiş beklenen çıktı KULLANILMAZ: onun yerine `toBe(false)`
+  //        vardır, çünkü alias'lı korunmuş satır KİLİTLİ OLMAMALIDIR. Eğer
+  //        yanlışlıkla `not.toBe(true)` yazılırsa test, kendi kopyasıyla
+  //        aynı iki girdi üzerinde çalışıp hiçbir şey ayırt etmez.
+  it("MUTASYON KILLER: 'preserved && !alias' → 'preserved' yazılırsa KIRILIR", () => {
+    expect(isAmountLocked(satir({ preserved: true }), tavuk)).toBe(false);
   });
 
-  it("yalnız alias'a bakmak yanlış olurdu: alias'sız korunmuş satır kilitlenmeli", () => {
-    // `return !alias` yazsaydık ilk test kırılırdı.
-    expect(isAmountLocked(satir({ preserved: true, aliasId: null }), undefined)).toBe(true);
+  // 5. test  `return !alias` mutasyonunu ÖLDÜRÜR. Buradaki girdi ÖLÇÜLMÜŞ
+  //        bir satırdır ve alias'ı YOKTUR; doğru davranış "kilitli değil"dir
+  //        (ölçülmüş miktar girilebilir), `!alias` ise "kilitli" der ve
+  //        ölçülen satırın miktarını da öldürürdü.
+  it("MUTASYON KILLER: 'preserved && !alias' → '!alias' yazılırsa KIRILIR", () => {
+    expect(isAmountLocked(satir({ aliasId: null }), undefined)).toBe(false);
   });
 });
 
