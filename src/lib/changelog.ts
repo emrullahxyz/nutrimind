@@ -40,6 +40,11 @@ export const CHANGELOG: ChangeLogVersion[] = [
         tr: "Bugün ekranındaki şablonlar yan yana sıkışıp taşıyordu. Artık en çok kullandığın üç şablon kart olarak görünüyor ve kullandıkça listedeki yerleri değişiyorlar. Fazlası \"+N şablon daha\" arkasında.",
         en: "The templates on Today used to squeeze into each other and overflow. Now your three most-used templates appear as cards and move up as you use them. The rest sit behind \"+N more templates\".",
       },
+      {
+        type: "improved",
+        tr: "Çok malzemeli şablonu sıfırdan kurabiliyorsun. \"Yeni Şablon\" düğmesi hem Hafıza'da hem de Bugün ekranında; açtığında adını yazıp besin aramaya başlıyorsun, istediğin kadar malzeme ekliyorsun.",
+        en: "You can now build a multi-ingredient template from scratch. The \"New Template\" button is on both the Memory and Today screens: name it, start searching for foods, add as many ingredients as you like.",
+      },
     ],
     dev: [
       "ÖLÇÜMLE DÜZELTILDI (tarayıcı): kullanıcı 'malzeme miktarını azaltamıyorum' dedi. İlk ölçüm yanlış yorumlandı: yapay `grams` kaydıyla test edildi, gerçek akış `mealToTemplate` -> `sources` yazıyor. Gercek `sources`'lu kalemde 90g->45g toplami 338->169 kcal dogru olcekleniyordu. Asil hata: hafizaya BAGLI OLMAYAN kalemde miktar degisiyor ama toplam sabit kaliyordu VE kullaniciya hicbir geri bildirim cikmiyordu (setDraftGrams alias'siz dali nutrition'a BILEREK dokunmuyor).",
@@ -56,7 +61,10 @@ export const CHANGELOG: ChangeLogVersion[] = [
       "ÖLÇÜMLE DÜZELTILDI (tarayıcı): kullanici 'malzeme miktarını azaltamıyorum' dedi. Ilk olcum YANLIŞ yorumlandi: yapay `grams` kaydiyla test edildi, gercek akis `mealToTemplate` -> `sources` yaziyor. Gercek `sources`'lu kalemde 90g->45g toplami 338->169 kcal DOGRU olcekleniyordu. Asil hata: hafizaya BAGLI OLMAYAN kalemde miktar degisiyor ama toplam sabit kaliyordu VE kullaniciya hicbir geri bildirim cikmiyordu. Ayrica silme dugmesi ve miktar alani KODDA ZATEN VARDI — kullanici bunlari gorememis.",
       "COZUM: setDraftGrams'in alias'siz dali DEGISTIRILMEDI — `preserved` satirlarda makro kayittan gelen gercek bir deger, gramajla iliskisi bilinmiyor, olcek uydurma olurdu. Degisiklik GORUNURLUKTE: draftGramHint saf fonksiyonu uc dal donuyor (scaled / notInMemory / unresolvableUnit) + kcal='inline'.",
       "YENI sabit: MealPayload/MealItem'e `templateId` (kullanim sayacinin kaynagi). Sayac config'te DEGIL gun verisinden turuyor: updateConfig offline'ta throw ediyor (docs/operations/offline.md), sayac config'te olsaydi offline'da sablon uygulama yolu kirilirdi. DORT uc tasidi: api.ts parseDays, days.ts toPayload, offlineProjection.ts applyOperation, DayView.applyTemplate yazimi. Dordunden biri unutulursa sayac sessizce 0 — hepsine round-trip testi yazildi.",
-      "Kapı: typecheck 0 · 1186/1186 test (77 dosya) · check:i18n 977x3 PARITY/KEYS/HARDCODED OK · build. Bu turda server/** dokunulmadi.",
+      "SABIT (OLCULE KOYDURULDU): coklu kalemli sablon kurmanin HICBIR yolu yoktu — sablon yalnizca 'ogun ekle -> Sablon olarak kaydet' ile olusuyordu ve mealToTemplate TEK kalem yaziyordu; AliasPage sablonlari yalnizca listeliyor/siliyordu. Iki giris noktasi eklendi: Hafiza'da 'Yeni Besin'in yaninda 'Yeni Sablon', Bugun sekmesinde 'Sablonlar' basligi satirinda sagi'da '+ Yeni Sablon' (notr gri, vurgulu degil — ikincil ozellik).",
+      "TemplatePreview bos sablon modunda: name=='' ise tek iskelet satir PICKER ACIK baslar (yazmadan arama), ad alani cikar, 'Sablonu da guncelle' kutusu gizlenir (guncelleme degil olusturma), kaydet dugmesi ad dolmadan etkinlesmez. onApply imzasi 3. parametre (name) aldi.",
+      "KRITIK KOSUL DUZELTMESI: Bugun'da bolum `templates.list.length > 0` ile kosulluydu; o koruma durumunda 'Yeni Sablon' dugmesi tam olarak kaybolur ve ilk sablon yine kurulamazdi. Kapsam sadece TemplateShelf'e indirildi, baslik+dugme her zaman gorunuyor.",
+      "Kapı: typecheck 0 · 1186/1186 test (77 dosya) · check:i18n 982x3 PARITY/KEYS/HARDCODED OK · build. Bu turda server/** dokunulmadi.",
     ],
   },
   {
