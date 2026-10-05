@@ -881,8 +881,7 @@
     "ingredientGrams": "Miktar",
     "ingredientAmountUnknown": "Miktar bilinmiyor",
     "ingredientRescaled": "{{from}} g → {{to}} g için besin değerleri yeniden hesaplandı",
-    "ingredientNotInMemory": "Bu malzeme hafızada yok — miktarı değiştirmek besin değerlerini değiştirmez",
-    "ingredientUnresolvable": "Bu besine bağlı değil — miktarı değiştirmek besin değerlerini değiştirmez. Bağlamak için \"Malzemeyi değiştir\""
+    "ingredientNoNutrition": "Bu kalemde besin değeri yok — önce protein/karb/yağ/lif'i gir, sonra miktarı yaz"
   },
   "templatePreview": {
     "updateTemplate": "Şablonu da bu değişikliklerle güncelle",

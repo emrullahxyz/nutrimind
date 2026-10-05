@@ -21,6 +21,7 @@ function satir(over: Partial<DraftLine> = {}): DraftLine {
     unit: "g",
     grams: 150,
     nutrition: { kcal: 247.5, protein: 46.5, carbs: 0, fat: 5.4, fiber: 0 },
+    nutritionGrams: 0,
     preserved: false,
     manualMeasured: false,
     blank: false,

@@ -30,6 +30,7 @@ import {
   defaultUnitForAlias,
   parseNum,
   scaleNutrition,
+  scaleNutritionByFactor,
   toGrams,
   unitOptions,
 } from "./nutrition";
@@ -46,6 +47,19 @@ export interface DraftLine {
   unit: string;
   grams: number;
   nutrition: Nutrition;
+  /** `nutrition` HANGİ gramaja ait? (g, 0 = bilinmiyor)
+   *
+   *  HAFIZAYA BAĞLI OLMAYAN kalemlerde gramaj ile makro arasındaki ilişki
+   *  kayıttan gelir: kullanıcı 100 g için 225 kcal yazdıysa, sonradan miktarı
+   *  50'ye düşürünce 112,5 kcal olmalıdır. Ölçekleme tabanı olmadan oranlama
+   *  YAPILAMAZ — ekranda 50 g yazarken 225 kcal görünmesi L20 ihlalidir
+   *  (gösterilen ≠ kaydedilen).
+   *
+   *  Taban bir kez kurulur ve ÖLÇEKLEME sırasında DEĞİŞMEZ: kullanıcı
+   *  100 g/225 kcal yazdıktan sonra 50'ye indirip tekrar 100'e çıkarırsa
+   *  225 kcal'ye döner. `sources`'lı (ölçülebilir) satırlarda kullanılmaz —
+   *  onlarda taban alias'ın `serving_g`'sidir ve `draftLineFromAlias` yazar. */
+  nutritionGrams: number;
   /** true = bu kalem kayıttan geldi ama gramajı ÇÖZÜLEMEDİ; `grams` 0'dır ve
    *  ölçüm değildir. Kayıtta KORUNUR (bkz. `draftLinesToItems`), `sources`
    *  yazılmaz (`aliasId` null), ve miktar girilene kadar ekranda "bilinmiyor"
@@ -148,6 +162,9 @@ export function draftLineFromAlias(
     unit: u.name,
     grams: valid ? grams : 0,
     nutrition: valid ? scaleNutrition(alias.nutrition, alias.serving_g, grams) : (fallback ?? { ...ZERO_NUTRITION }),
+    // Ölçülebilir satırda taban alias'ın `serving_g`'sidir; `setDraftGrams`
+    // her zaman `scaleNutrition(alias…)` kullandığı için bu alanı okumaz.
+    nutritionGrams: valid ? grams : 0,
     preserved: false,
     manualMeasured: false,
     blank: false,
@@ -170,6 +187,7 @@ export function newDraftLine(alias: Alias | undefined): DraftLine {
       unit: "g",
       grams: 0,
       nutrition: { ...ZERO_NUTRITION },
+      nutritionGrams: 0,
       preserved: false,
       manualMeasured: false,
       blank: true, // YENİ, HİÇBİR BESİNE BAĞLANMAMIŞ (bkz. alanın dokümanı)
@@ -184,6 +202,7 @@ export function newDraftLine(alias: Alias | undefined): DraftLine {
     unit: defaultUnitForAlias(alias).name,
     grams: 0,
     nutrition: { ...ZERO_NUTRITION },
+    nutritionGrams: 0,
     preserved: false,
     manualMeasured: false,
     blank: false,
@@ -262,17 +281,53 @@ export function setDraftGrams(line: DraftLine, gramsText: string, alias: Alias |
 
   // Elle satır: gram cinsinden ölçülür.
   //
-  // `manualMeasured` BURADA DÜŞMEZ. Kullanıcının elle yazdığı makro, gramaj
-  // alanına dokunmasından bağımsız olarak geçerlidir: alanı temizlemek
-  // "malzemeyi silmek" demek değil, sadece miktarı kaldırmaktır. Bayrağı
-  // düşürürsek kullanıcıCalories alanını açmak için miktar alanına bir şey
-  // yazıp silmek zorunda kalır — alanlar `manualMeasured` true'yken
-  // KAPANDIĞI için bu, görünür bir tuzaktır (ölçüldü: ad yazılınca alanlar
-  // kayboldu).
-  // `blank` de BURADA DÜŞMEZ: gramaj yazmak hafızayla bağ kurmaz (bkz.
-  // `newDraftLine(undefined)` yorumu) — satır hâlâ elle giriliyor.
+  // ÖLÇEKLEME (v0.31.2, kullanıcı isteği): hafızada olmayan kalemde de miktar
+  // ile makro arasında ORAN vardır ve ekranda görünen gerçek budur — 50 g
+  // yazarken 225 kcal yazması L20 ihlaliydi (gösterilen ≠ kaydedilen).
+  //
+  // TABAN (`nutritionGrams`) bir kez kurulur, sonra değişmez:
+  //   • taban > 0 → kayıttan gelen gerçek miktar (ör. 100 g için 225 kcal).
+  //     Kullanıcı 50'ye indirince çarpan 0,5 → 112,5 kcal.
+  //   • taban 0   → makro henüz gramaja bağlanmamış (elle yeni kalem).
+  //     `manualMeasured` true ise (kullanıcı makroyu kendi yazdı) ilk geçerli
+  //     gramaj taban olur ve değerler KENDİSİ korunur: kullanıcı 100 g için
+  //     225 kcal yazdı, sonra miktarı 200 g yaparsa 450 kcal bekler.
+  //     Makro boşsa (`hasManualNutrition` kapısı) taban kurulmaz, makro 0'dır.
+  //
+  // `manualMeasured` ve `blank` BURADA DÜŞMEZ — alanları açık/kapalı tutan
+  // bayraklar, ölçeklemeyle ilgisi yok (bkz. eski yorum + NutritionSheet
+  // tuzağı: ad yazılınca alanlar kaybolmuştu).
   const parsed = parseNum(gramsText);
-  return { ...line, qty: gramsText, unit: "g", grams: parsed > 0 ? parsed : 0, preserved: false };
+  const grams = parsed > 0 ? parsed : 0;
+
+  // Geçersiz/boş gramaj: değerler ESKİ kalır (titreme olmaz), kullanıcının
+  // sildiği miktar kayda giremez — `draftLinesToItems` satırı düşürür.
+  if (grams <= 0) {
+    return { ...line, qty: gramsText, unit: "g", grams: 0, preserved: false };
+  }
+
+  const base = line.nutritionGrams;
+  if (base > 0 && line.grams > 0) {
+    // Taban belliyse oranla. `line.nutrition` `line.grams` içindir; taban
+    // `base` gramaja ait. Yeni miktar bu ikisinin oranıyla gelir:
+    // taban 100 g, mevcut 50 g, yeni 25 g → 0,25.
+    return {
+      ...line,
+      qty: gramsText,
+      unit: "g",
+      grams,
+      nutrition: scaleNutritionByFactor(line.nutrition, grams / line.grams),
+      preserved: false,
+    };
+  }
+
+  // Taban yok: kullanıcı makroyu kendi yazdıysa bu miktar onun da tabanı olur.
+  if (line.manualMeasured) {
+    return { ...line, qty: gramsText, unit: "g", grams, nutritionGrams: grams, preserved: false };
+  }
+
+  // Makro da yok — gramaj yazmak tek başına değer üretmez.
+  return { ...line, qty: gramsText, unit: "g", grams, preserved: false };
 }
 
 /** Swap: gram korunur, miktar hedef alias'ın varsayılan birimine çevrilir.
@@ -297,6 +352,9 @@ export function swapDraftLine(line: DraftLine, next: Alias): DraftLine {
       unit: u.name,
       qty: "",
       preserved: true,
+      // Taban da sıfırlanır: satır artık "makro bu gramaja ait" değil,
+      // kullanıcı ölçüm girene kadar korunan bir kalem.
+      nutritionGrams: 0,
       // Elle makro bayrağı da düşer: swap BESİN değiştirir, kullanıcının
       // yazdığı makro değil — ölçüm artık yeni besinin gramajına bağlı.
       manualMeasured: false,
@@ -320,6 +378,7 @@ export function swapDraftLine(line: DraftLine, next: Alias): DraftLine {
     unit: u.name,
     grams: line.grams,
     nutrition: scaleNutrition(next.nutrition, next.serving_g, line.grams),
+    nutritionGrams: line.grams,
     preserved: false,
     manualMeasured: false,
     blank: false,
@@ -339,16 +398,17 @@ export function addDraftLine(lines: DraftLine[], line: DraftLine): DraftLine[] {
  *  azaltamıyorum" diye bildirdi. Davranışın KENDİSİ korundu — davranış
  *  değiştirilmedi, görünür oldu.
  *
- *  `scaled`: satır hafızadaki bir besine bağlı → `setDraftGrams` makroyu
- *  ölçekledi, kullanıcı bunu göremiyordu.
- *  `notInMemory`: kullanıcının kendi yazdığı kalem — gramaj ile makro bağımsız
- *  gerçekler, ölçeklemek uydurma olurdu.
- *  `unresolvableUnit`: kayıttan geldi ama birim/alias çözülemiyor — aynı
- *  sonuç, farklı sebep, farklı çıkış yolu ("Malzemeyi değiştir"). */
+ *  `scaled`: satırın makrosu gerçek → `setDraftGrams` oranladı, kullanıcı
+ *  bunu göremiyordu.
+ *  `noNutrition`: satırda makro YOK (elle yeni kalem ya da makrosuz kayıt) —
+ *  ölçeklemenin nereye göre yapılacağı bilinmiyor, kullanıcı değer girmeli.
+ *
+ *  v0.31.2 ÖNCESİ üç dal vardı (`notInMemory`/`unresolvableUnit`), ama
+ *  hepsinin çözümü aynıydı: besin değerini gir. Ayrım yalnız metni bölecekti
+ *  ve AI kaleminde YANLIŞ uyarı üretiyordu (AI besin değerini zaten bilir). */
 export type GramEditHint =
   | { kind: "scaled"; fromGrams: number; toGrams: number }
-  | { kind: "notInMemory" }
-  | { kind: "unresolvableUnit" }
+  | { kind: "noNutrition" }
   | null;
 
 /** @param previous miktar YAZILMADAN ÖNCEKİ satır (`null` = yeni eklenen). */
@@ -361,9 +421,24 @@ export function draftGramHint(
   // Miktar gerçekten değişmediyse uyarı göstermek gürültü.
   if (previous.grams === line.grams) return null;
 
-  if (alias) return { kind: "scaled", fromGrams: previous.grams, toGrams: line.grams };
-  if (line.fromRecord) return { kind: "unresolvableUnit" };
-  return { kind: "notInMemory" };
+  // v0.31.2'den sonra HAFIZAYA BAĞLI OLMAYAN kalemler de ölçeklenir
+  // (`nutritionGrams` tabanı), yani artık "ölçeklenmedi" durumu YOKTUR:
+  // tabanı OLAN VE MAKROSU GERÇEK olan her satır ölçekler. Ölçeklenmeyen
+  // tek durum: makrosu henüz olmayan satır (kullanıcı ilk kez miktar
+  // yazıyor) — o zaman "besin değerini gir" uyarısı DOĞRUDUR.
+  //
+  // `hasNutrition` ölçütü makronun GERÇEKTEN dolu olduğuna bakar; gramajı
+  // tek başına yeterli değil (AI satırında makro her zaman doludur, elle
+  // iskelet satırda hep sıfırdır).
+  const hasNutrition = line.nutrition.kcal > 0 || line.nutrition.protein > 0;
+  if (alias || (line.nutritionGrams > 0 && hasNutrition) || line.manualMeasured) {
+    return { kind: "scaled", fromGrams: previous.grams, toGrams: line.grams };
+  }
+  // Makro yok: kullanıcıya DEĞER GİRMESİ gerektiğini söyle. `fromRecord`
+  // ayrımı KALDIRILDI: eskiden "kayıttan geldi ama çözülemedi" ile "kullanıcı
+  // elle girdi" ayrı dalları vardı, ama ikisinin de çözümü aynıydı (besin
+  // değerini gir). Ayrım yalnız metni bölecekti, davranışı değiştirmiyordu.
+  return { kind: "noNutrition" };
 }
 
 export function removeDraftLine(lines: DraftLine[], key: string): DraftLine[] {

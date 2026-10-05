@@ -98,6 +98,10 @@ function initialDraftLines(
       unit: "g",
       grams: item.grams ?? 0,
       nutrition: item.nutrition,
+      // `item.grams` doluysa kayıttaki makro O gramaja aittir — miktar
+      // değişince oranlama tabanı bu. `grams` yoksa 0: gramaj bilinmiyor,
+      // ölçekleme yapılamaz (eskiden davranış).
+      nutritionGrams: item.grams ?? 0,
       preserved: true,
       manualMeasured: false,
       blank: false, // kayıttan gelen kalem: iskelet değil, kayda girer
@@ -212,6 +216,11 @@ export function TemplatePreview({
         grams: hasAmount ? (it.baseAmount as number) : 0,
         unit: "g",
         nutrition: it.nutrition,
+        // AI makrosu `baseAmount` gramajı içindir — kullanıcı miktarı
+        // değiştirince ORANLANSIN, yoksa "değer gir" uyarısı yanlış çıkardı
+        // (AI besin değerini zaten biliyor). Gramaj gelmediyse taban yok:
+        // ölçeklemenin nereye göre yapılacağı bilinmiyor.
+        nutritionGrams: hasAmount ? (it.baseAmount as number) : 0,
         // Gramaj geldiyse bu bir ÖLÇÜM (ölçülebilir satır); gelmediyse
         // makro gerçek ama miktar bilinmiyor → korunmuş satır.
         preserved: !hasAmount,
@@ -517,14 +526,11 @@ export function TemplatePreview({
                       })}
                     </p>
                   )}
-                  {hint?.key === line.key &&
-                    (hint.hint?.kind === "notInMemory" || hint.hint?.kind === "unresolvableUnit") && (
-                      <p className="mt-1 text-[11px] text-amber-300">
-                        {hint.hint.kind === "notInMemory"
-                          ? t("nutrition.ingredientNotInMemory")
-                          : t("nutrition.ingredientUnresolvable")}
-                      </p>
-                    )}
+                  {hint?.key === line.key && hint.hint?.kind === "noNutrition" && (
+                    <p className="mt-1 text-[11px] text-amber-300">
+                      {t("nutrition.ingredientNoNutrition")}
+                    </p>
+                  )}
                 </li>
               );
             })}

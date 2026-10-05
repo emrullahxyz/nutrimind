@@ -45,6 +45,11 @@ export const CHANGELOG: ChangeLogVersion[] = [
         tr: "Çok malzemeli şablonu sıfırdan kurabiliyorsun. \"Yeni Şablon\" düğmesi hem Hafıza'da hem de Bugün ekranında; açtığında adını yazıp besin aramaya başlıyorsun, istediğin kadar malzeme ekliyorsun.",
         en: "You can now build a multi-ingredient template from scratch. The \"New Template\" button is on both the Memory and Today screens: name it, start searching for foods, add as many ingredients as you like.",
       },
+      {
+        type: "fixed",
+        tr: "Hafızada olmayan bir malzemenin miktarını değiştirince besin değerleri yerinde duruyordu. Artık gramajla oranlanıyor: 100 g için yazdığın 225 kcal'yı 50'ye indirince 113 kcal oluyor.",
+        en: "Changing the amount of an ingredient not in your memory left its nutrition untouched. It's now scaled by weight: 225 kcal written for 100 g becomes 113 kcal at 50 g.",
+      },
     ],
     dev: [
       "ÖLÇÜMLE DÜZELTILDI (tarayıcı): kullanıcı 'malzeme miktarını azaltamıyorum' dedi. İlk ölçüm yanlış yorumlandı: yapay `grams` kaydıyla test edildi, gerçek akış `mealToTemplate` -> `sources` yazıyor. Gercek `sources`'lu kalemde 90g->45g toplami 338->169 kcal dogru olcekleniyordu. Asil hata: hafizaya BAGLI OLMAYAN kalemde miktar degisiyor ama toplam sabit kaliyordu VE kullaniciya hicbir geri bildirim cikmiyordu (setDraftGrams alias'siz dali nutrition'a BILEREK dokunmuyor).",
@@ -64,7 +69,11 @@ export const CHANGELOG: ChangeLogVersion[] = [
       "SABIT (OLCULE KOYDURULDU): coklu kalemli sablon kurmanin HICBIR yolu yoktu — sablon yalnizca 'ogun ekle -> Sablon olarak kaydet' ile olusuyordu ve mealToTemplate TEK kalem yaziyordu; AliasPage sablonlari yalnizca listeliyor/siliyordu. Iki giris noktasi eklendi: Hafiza'da 'Yeni Besin'in yaninda 'Yeni Sablon', Bugun sekmesinde 'Sablonlar' basligi satirinda sagi'da '+ Yeni Sablon' (notr gri, vurgulu degil — ikincil ozellik).",
       "TemplatePreview bos sablon modunda: name=='' ise tek iskelet satir PICKER ACIK baslar (yazmadan arama), ad alani cikar, 'Sablonu da guncelle' kutusu gizlenir (guncelleme degil olusturma), kaydet dugmesi ad dolmadan etkinlesmez. onApply imzasi 3. parametre (name) aldi.",
       "KRITIK KOSUL DUZELTMESI: Bugun'da bolum `templates.list.length > 0` ile kosulluydu; o koruma durumunda 'Yeni Sablon' dugmesi tam olarak kaybolur ve ilk sablon yine kurulamazdi. Kapsam sadece TemplateShelf'e indirildi, baslik+dugme her zaman gorunuyor.",
-      "Kapı: typecheck 0 · 1186/1186 test (77 dosya) · check:i18n 982x3 PARITY/KEYS/HARDCODED OK · build. Bu turda server/** dokunulmadi.",
+      "SABIT (OLCULE KOYDURULDU, kullanici istegi): hafizada olmayan kalemde 100 g -> 50 g yazilınca ekranda 50 g gorunuyor ama toplam 225 kcal SABIT kaliyordu — setDraftGrams'in alias'siz dali nutrition'a dokunmuyordu. Ekran 50 g derken 225 kcal gostermek L20 ihlaliydi (gosterilen ≠ kaydedilen).",
+      "COZUM: DraftLine'a `nutritionGrams` alani (makronun ait oldugu miktar). Taban bir kez kurulur ve olceklemede DEGISMez: 100g/225kcal -> 50g/113kcal -> 100g/225kcal (olculdu). Taban yoksa elle girilen makroda (manualMeasured) ilk gecerli gramaj taban olur. Gecersiz gramajda degerler ESKI kalir (titreme olmaz) — mevcut koruma bozulmadi.",
+      "AI KALEMI (kullanici sorusuyla yakalandi): addAIItems `nutritionGrams` YAZMIYORDU -> AI kaleminde miktar degisince oranlama olmaz, 'deger gir' uyarisi cikardi; ama AI besin degerini zaten biliyor. DuZELTILDI: nutritionGrams = baseAmount.",
+      "GramEditHint 3 daldan 2 indirildi: notInMemory + unresolvableUnit AYNI seyi soyluyordu ('besin degerini gir') ve ayrim yalniz metni boluyordu. Artik `scaled` | `noNutrition`. `hasNutrition` olcutu makronun gercekten dolu oldugunu bakar (kcal>0 || protein>0) — gramaj tek basina yeterli degil.",
+      "Kapı: typecheck 0 · 1194/1194 test (77 dosya) · check:i18n 981x3 PARITY/KEYS/HARDCODED OK · build. Bu turda server/** dokunulmadi.",
     ],
   },
   {

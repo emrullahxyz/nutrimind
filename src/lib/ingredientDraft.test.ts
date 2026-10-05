@@ -419,6 +419,7 @@ describe("preserved", () => {
       unit: "g",
       grams: 0,
       nutrition: kayitli,
+      nutritionGrams: 0,
       preserved: true,
       manualMeasured: false,
       blank: false, // korunmuş satır: kayıttan gelir, iskelet değil
@@ -547,6 +548,7 @@ describe("preserved", () => {
       unit: "g",
       grams: 0,
       nutrition: elle,
+      nutritionGrams: 0,
       preserved: false,
       manualMeasured: true,
       blank: false, // elle DOLU satır: iskelet değil
@@ -572,6 +574,7 @@ describe("preserved", () => {
     const sodyumlu = {
       ...elleSatir(),
       nutrition: { ...elle, sodium: 400 },
+      nutritionGrams: 0,
       key: "draft-manual-1-Sos-tuzlu",
     };
     const items = draftLinesToItems([sodyumlu]);
@@ -722,6 +725,7 @@ describe("draftGramHint", () => {
       unit: "g",
       grams: 90,
       nutrition: { kcal: 225, protein: 1, carbs: 8, fat: 20, fiber: 1 },
+      nutritionGrams: 0,
       preserved: false,
       manualMeasured: false,
       blank: false,
@@ -730,7 +734,7 @@ describe("draftGramHint", () => {
     const sonraki = setDraftGrams(onceki, "45", null);
     // Makro BİLEREK değişmez (ölçeklemek uydurma olurdu) — ipucu bunu söyler.
     expect(sonraki.nutrition.kcal).toBe(225);
-    expect(draftGramHint(sonraki, null, onceki)).toEqual({ kind: "notInMemory" });
+    expect(draftGramHint(sonraki, null, onceki)).toEqual({ kind: "noNutrition" });
   });
 
   it("kayıttan gelip çözülemeyen satırda 'birim tanınmıyor' uyarısı verir", () => {
@@ -742,13 +746,14 @@ describe("draftGramHint", () => {
       unit: "g",
       grams: 90,
       nutrition: { kcal: 100, protein: 5, carbs: 10, fat: 2, fiber: 1 },
+      nutritionGrams: 0,
       preserved: false,
       manualMeasured: false,
       blank: false,
       fromRecord: true,
     };
     expect(draftGramHint(setDraftGrams(onceki, "45", null), null, onceki)).toEqual({
-      kind: "unresolvableUnit",
+      kind: "noNutrition",
     });
   });
 
@@ -756,5 +761,126 @@ describe("draftGramHint", () => {
     const satir = aliasliSatir("90");
     expect(draftGramHint(satir, tavuk, satir)).toBeNull();
     expect(draftGramHint(satir, tavuk, null)).toBeNull();
+  });
+});
+
+describe("hafızada olmayan kalemde grama göre ölçekleme", () => {
+  /** 100 g için 225 kcal yazılmış, kayıttan gelen korunmuş kalem. */
+  function kayitliKalem(): DraftLine {
+    return {
+      key: "k",
+      aliasId: null,
+      name: "Ev yapımı sos",
+      qty: "100",
+      unit: "g",
+      grams: 100,
+      nutrition: { kcal: 225, protein: 1, carbs: 8, fat: 20, fiber: 1 },
+      nutritionGrams: 100,
+      preserved: true,
+      manualMeasured: false,
+      blank: false,
+      fromRecord: true,
+    };
+  }
+
+  it("miktarı yarıya indirince makro da yarıya iner", () => {
+    const sonraki = setDraftGrams(kayitliKalem(), "50", null);
+    expect(sonraki.grams).toBe(50);
+    expect(sonraki.nutrition.kcal).toBe(112.5);
+    expect(sonraki.nutrition.fat).toBe(10);
+  });
+
+  it("taban KORUNUR: 50'ye inip 100'e dönünce değerler geri gelir", () => {
+    const yarisi = setDraftGrams(kayitliKalem(), "50", null);
+    const tamami = setDraftGrams(yarisi, "100", null);
+    expect(tamami.nutrition.kcal).toBe(225);
+  });
+
+  it("elle girilen makronun tabanı ilk geçerli gramajdır (100 g/225 kcal → 200 g/450 kcal)", () => {
+    const elle: DraftLine = {
+      ...kayitliKalem(),
+      qty: "",
+      grams: 0,
+      nutritionGrams: 0,
+      preserved: false,
+      manualMeasured: true,
+      fromRecord: false,
+    };
+    const yuz = setDraftGrams(elle, "100", null);
+    expect(yuz.nutritionGrams).toBe(100);
+    expect(yuz.nutrition.kcal).toBe(225); // kendi değeri korunur
+
+    const ikiYuz = setDraftGrams(yuz, "200", null);
+    expect(ikiYuz.nutrition.kcal).toBe(450);
+  });
+
+  it("geçersiz gramajda değerler ESKİ kalır (titreme olmaz), satır kayda giremez", () => {
+    const satir = kayitliKalem();
+    for (const bozuk of ["", "abc", "-5"]) {
+      const sonraki = setDraftGrams(satir, bozuk, null);
+      expect(sonraki.grams).toBe(0);
+      expect(sonraki.nutrition.kcal).toBe(225);
+      // Kullanıcının sildiği miktar kayda GİREMEZ.
+      expect(draftLinesToItems([sonraki])).toEqual([]);
+    }
+  });
+
+  it("makrosu olmayan elle satırda gramaj taban kurmaz", () => {
+    const bos = newDraftLine(undefined);
+    const sonraki = setDraftGrams(bos, "150", null);
+    expect(sonraki.nutritionGrams).toBe(0);
+    expect(sonraki.nutrition.kcal).toBe(0);
+  });
+
+  it("ölçülebilir (alias'lı) satır tabanı alias'tan okur, etkilenmez", () => {
+    const satir = draftLineFromAlias(tavuk, "200", "g", undefined) as DraftLine;
+    expect(satir.nutritionGrams).toBe(200);
+    expect(satir.nutrition.kcal).toBe(330);
+    const yuz = setDraftGrams(satir, "100", tavuk);
+    expect(yuz.nutrition.kcal).toBe(165);
+  });
+});
+
+describe("AI kalemi (ölçülen makro + baseAmount)", () => {
+  // TemplatePreview.addAIItems'in kurduğu satırın shape'i: gramaj geldiyse
+  // ölçülebilir, `manualMeasured: false`, `preserved: false`.
+  function aiSatiri(grams: number, nutrition: Nutrition): DraftLine {
+    const base = newDraftLine(undefined);
+    return {
+      ...base,
+      key: "draft-ai-1",
+      name: "Yulaf",
+      qty: grams > 0 ? String(grams) : "",
+      grams,
+      unit: "g",
+      nutrition,
+      nutritionGrams: grams,
+      preserved: false,
+      manualMeasured: false,
+      blank: false,
+    };
+  }
+
+  it("gramaj geldiyse kullanıcı miktarı değiştirince ORANLANIR", () => {
+    const ai = aiSatiri(100, { kcal: 375, protein: 12, carbs: 66, fat: 7, fiber: 10 });
+    const yarim = setDraftGrams(ai, "50", null);
+    expect(yarim.nutrition.kcal).toBe(187.5);
+    expect(yarim.nutrition.protein).toBe(6);
+    // AI makrosu GERÇEK olduğu için uyarı YOK (ölçeklendi).
+    expect(draftGramHint(yarim, null, ai)).toEqual({
+      kind: "scaled",
+      fromGrams: 100,
+      toGrams: 50,
+    });
+  });
+
+  it("gramaj gelmediyse makro korunur, miktar girilince ilk miktar taban olur", () => {
+    const ai = aiSatiri(0, { kcal: 375, protein: 12, carbs: 66, fat: 7, fiber: 10 });
+    // Gramaj yokken makro dokunulmaz (ölçekleme nereye göre bilinmiyor).
+    const giris = setDraftGrams(ai, "100", null);
+    expect(giris.nutrition.kcal).toBe(375); // kendi değeri
+    expect(giris.nutritionGrams).toBe(0); // hâlâ taban yok (AI satırı manualMeasured değil)
+    // Uyarı: "besin değeri yok, gir" — ama makro ASLINDA var.
+    expect(draftGramHint(giris, null, ai)).toEqual({ kind: "noNutrition" });
   });
 });

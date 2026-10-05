@@ -881,8 +881,7 @@
     "ingredientGrams": "Amount",
     "ingredientAmountUnknown": "Amount unknown",
     "ingredientRescaled": "Nutrition recalculated for {{from}} g → {{to}} g",
-    "ingredientNotInMemory": "This ingredient isn't in memory — changing the amount won't change its nutrition",
-    "ingredientUnresolvable": "Not linked to a food — changing the amount won't change its nutrition. Use \"Swap ingredient\" to link it"
+    "ingredientNoNutrition": "This item has no nutrition yet — enter protein/carbs/fat/fiber first, then the amount"
   },
   "templatePreview": {
     "updateTemplate": "Also update the template with these changes",
