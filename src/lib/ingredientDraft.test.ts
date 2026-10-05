@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   __setDraftFlag,
   addDraftLine,
+  draftGramHint,
   draftLineFromAlias,
   draftLinesToItems,
   newDraftLine,
@@ -694,5 +695,66 @@ describe("preserved", () => {
     const olculen = setDraftGrams(korunmusGibi, "150", tavuk);
     expect(olculen.preserved).toBe(false);
     expect(olculen.grams).toBe(150);
+  });
+});
+
+describe("draftGramHint", () => {
+  function aliasliSatir(qty = "90"): DraftLine {
+    return draftLineFromAlias(tavuk, qty, "g", undefined) as DraftLine;
+  }
+
+  it("hafızaya bağlı satırda miktar değişince ölçeklendiğini bildirir", () => {
+    const onceki = aliasliSatir("90");
+    const sonraki = setDraftGrams(onceki, "45", tavuk);
+    expect(draftGramHint(sonraki, tavuk, onceki)).toEqual({
+      kind: "scaled",
+      fromGrams: 90,
+      toGrams: 45,
+    });
+  });
+
+  it("elle girilen kalemde 'hafızada yok' uyarısı verir", () => {
+    const onceki: DraftLine = {
+      key: "k",
+      aliasId: null,
+      name: "Ev yapımı sos",
+      qty: "90",
+      unit: "g",
+      grams: 90,
+      nutrition: { kcal: 225, protein: 1, carbs: 8, fat: 20, fiber: 1 },
+      preserved: false,
+      manualMeasured: false,
+      blank: false,
+      fromRecord: false,
+    };
+    const sonraki = setDraftGrams(onceki, "45", null);
+    // Makro BİLEREK değişmez (ölçeklemek uydurma olurdu) — ipucu bunu söyler.
+    expect(sonraki.nutrition.kcal).toBe(225);
+    expect(draftGramHint(sonraki, null, onceki)).toEqual({ kind: "notInMemory" });
+  });
+
+  it("kayıttan gelip çözülemeyen satırda 'birim tanınmıyor' uyarısı verir", () => {
+    const onceki: DraftLine = {
+      key: "k",
+      aliasId: null,
+      name: "Silinmiş besin",
+      qty: "90",
+      unit: "g",
+      grams: 90,
+      nutrition: { kcal: 100, protein: 5, carbs: 10, fat: 2, fiber: 1 },
+      preserved: false,
+      manualMeasured: false,
+      blank: false,
+      fromRecord: true,
+    };
+    expect(draftGramHint(setDraftGrams(onceki, "45", null), null, onceki)).toEqual({
+      kind: "unresolvableUnit",
+    });
+  });
+
+  it("miktar değişmediyse veya yeni satırda sessiz kalır", () => {
+    const satir = aliasliSatir("90");
+    expect(draftGramHint(satir, tavuk, satir)).toBeNull();
+    expect(draftGramHint(satir, tavuk, null)).toBeNull();
   });
 });

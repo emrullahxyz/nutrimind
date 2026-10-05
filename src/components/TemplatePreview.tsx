@@ -19,6 +19,7 @@ import { NUTRIENT_KEYS } from "../lib/nutrients";
 import { ZERO_NUTRITION } from "../types";
 import {
   addDraftLine,
+  draftGramHint,
   draftLineFromAlias,
   draftLinesToItems,
   newDraftLine,
@@ -27,7 +28,7 @@ import {
   setDraftGrams,
   swapDraftLine,
 } from "../lib/ingredientDraft";
-import type { DraftLine } from "../lib/ingredientDraft";
+import type { DraftLine, GramEditHint } from "../lib/ingredientDraft";
 
 /** Şablon kalemlerini düzenlenebilir satırlara çevirir.
  *
@@ -47,6 +48,10 @@ import type { DraftLine } from "../lib/ingredientDraft";
  *  kaybetti: kullanıcı elle satırda sodyum giriyordu, kayıtta görünmüyordu. */
 const draftFromNutrition = toDraft;
 const nutritionFromDraft = fromDraft;
+
+function round1(value: number): number {
+  return Math.round(value * 10) / 10;
+}
 
 function initialDraftLines(template: MealTemplate, aliases: Alias[]): DraftLine[] {
   const byId = new Map(aliases.map((a) => [a.id, a]));
@@ -124,6 +129,9 @@ export function TemplatePreview({
    *  Seçim yapılmadan kapanırsa satır, ad + makro alanları açık elle satır
    *  olarak kalır. Açık satır yoksa (satır silinmiş) picker açılmaz. */
   const [pickerFor, setPickerFor] = useState<string | null>(null);
+  /** Miktar değişikliğinin kullanıcıya gösterilecek sonucu. Satırın anahtarıyla
+   *  tutulur — ipucu hangi satıra ait olmalı? */
+  const [hint, setHint] = useState<{ key: string; hint: GramEditHint } | null>(null);
 
   // Farklı şablon açılırsa sıfırla (bileşen yeniden mount olmayabilir).
   useEffect(() => {
@@ -364,7 +372,15 @@ export function TemplatePreview({
                         label={t("nutrition.ingredientGrams")}
                         suffix="g"
                         value={line.qty}
-                        onChange={(v) => patch(line.key, setDraftGrams(line, v, alias ?? null))}
+                        onChange={(v) => {
+                          // Önceki satır GÖVDEDE okunur: `setHint` içinde
+                          // state updater'ı kullanmak StrictMode'da iki kez
+                          // çalışır (bkz. NutritionSheet.tsx:149-163).
+                          const onceki = lines.find((l) => l.key === line.key) ?? null;
+                          const sonraki = setDraftGrams(line, v, alias ?? null);
+                          setHint({ key: line.key, hint: draftGramHint(sonraki, alias ?? null, onceki) });
+                          patch(line.key, sonraki);
+                        }}
                       />
                       {/* Korunan kalem: gramajı kayıttan geldiği için varsa gösterilir,
                           yoksa BİLİNMİYOR (0 g değil) — makrosu gerçek.
@@ -444,11 +460,36 @@ export function TemplatePreview({
                     </div>
                   )}
 
+                  {/* Kalem başına besin değeri. `kcal="inline"` ile KALORI DE
+                      GÖSTERİLİR: yalnız makrolar (P/K/Y/L) yazınca "besin
+                      değeri görünmüyor" gibi duruyordu. */}
                   <NutrientSummaryLine
                     as="span"
                     nutrition={line.nutrition}
+                    kcal="inline"
                     className="mt-2 block font-mono text-[11px] text-ink-tertiary"
                   />
+
+                  {/* Miktar değişikliğinin sonucu. Hafızaya bağlı satırda
+                      besin değerleri ölçeklendi (şeffaf onay); bağlı olmayanda
+                      DEĞİŞMEZ ve kullanıcı bunu bilmeliydi — "miktarı
+                      azaltamıyorum" şikâyetinin kaynağı buydu. */}
+                  {hint?.key === line.key && hint.hint?.kind === "scaled" && (
+                    <p className="mt-1 text-[11px] text-memory">
+                      {t("nutrition.ingredientRescaled", {
+                        from: round1(hint.hint.fromGrams),
+                        to: round1(hint.hint.toGrams),
+                      })}
+                    </p>
+                  )}
+                  {hint?.key === line.key &&
+                    (hint.hint?.kind === "notInMemory" || hint.hint?.kind === "unresolvableUnit") && (
+                      <p className="mt-1 text-[11px] text-amber-300">
+                        {hint.hint.kind === "notInMemory"
+                          ? t("nutrition.ingredientNotInMemory")
+                          : t("nutrition.ingredientUnresolvable")}
+                      </p>
+                    )}
                 </li>
               );
             })}

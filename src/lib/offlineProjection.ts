@@ -32,6 +32,8 @@ export function applyOperation(data: AppData, operation: OfflineOperation): AppD
             ...(meal.sources ? { sources: meal.sources } : {}),
             ...(meal.loggedAt ? { loggedAt: meal.loggedAt } : {}),
             ...(meal.category ? { category: meal.category } : {}),
+            ...(meal.templateId ? { templateId: meal.templateId } : {}),
+            ...(meal.grams !== undefined ? { grams: meal.grams } : {}),
           })),
         },
       };

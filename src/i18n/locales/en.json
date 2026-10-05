@@ -84,6 +84,8 @@
     "addMeal": "Add meal",
     "other": "Other",
     "recentMeals": "Recently added",
+    "templatesMore": "+{{n}} more templates",
+    "templatesAll": "All Templates",
     "clearSelection": "Clear selection",
     "merge": "Merge",
     "done": "Done",
@@ -129,7 +131,8 @@
     "noKcal": "no kcal"
   },
   "aliasPicker": {
-    "noResults": "No results found"
+    "noResults": "No results found",
+    "moreTriggers": "+{{n}}"
   },
   "dayType": {
     "changeTitle": "Change this day's type",
@@ -875,7 +878,10 @@
     "ingredientRemove": "Remove ingredient",
     "ingredientManualName": "Ingredient name",
     "ingredientGrams": "Amount",
-    "ingredientAmountUnknown": "Amount unknown"
+    "ingredientAmountUnknown": "Amount unknown",
+    "ingredientRescaled": "Nutrition recalculated for {{from}} g → {{to}} g",
+    "ingredientNotInMemory": "This ingredient isn't in memory — changing the amount won't change its nutrition",
+    "ingredientUnresolvable": "Not linked to a food — changing the amount won't change its nutrition. Use \"Swap ingredient\" to link it"
   },
   "templatePreview": {
     "updateTemplate": "Also update the template with these changes",
@@ -958,6 +964,7 @@
     "addIngredient": "Add Ingredient",
     "weightSectionTitle": "Cooked Total Weight & Portions",
     "cookedWeightLabel": "Cooked Total Weight",
+    "cookedWeightHint": "Filled in automatically from your ingredients. Per 100 g nutrition is calculated from this number; correct it manually if the weight changed while cooking.",
     "portionCountLabel": "Portion Count (optional)",
     "livePreview": "Live Recipe Preview",
     "saveAsFood": "Save as Food",

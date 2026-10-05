@@ -84,6 +84,8 @@
     "addMeal": "Dodaj posiłek",
     "other": "Inne",
     "recentMeals": "Ostatnio dodane",
+    "templatesMore": "+{{n}} więcej szablonów",
+    "templatesAll": "Wszystkie szablony",
     "clearSelection": "Wyczyść zaznaczenie",
     "merge": "Połącz",
     "done": "Gotowe",
@@ -129,7 +131,8 @@
     "noKcal": "brak kcal"
   },
   "aliasPicker": {
-    "noResults": "Nie znaleziono wyników"
+    "noResults": "Nie znaleziono wyników",
+    "moreTriggers": "+{{n}}"
   },
   "dayType": {
     "changeTitle": "Zmień typ tego dnia",
@@ -875,7 +878,10 @@
     "ingredientRemove": "Usuń składnik",
     "ingredientManualName": "Nazwa składnika",
     "ingredientGrams": "Ilość",
-    "ingredientAmountUnknown": "Ilość nieznana"
+    "ingredientAmountUnknown": "Ilość nieznana",
+    "ingredientRescaled": "Wartości odżywcze przeliczone dla {{from}} g → {{to}} g",
+    "ingredientNotInMemory": "Ten składnik nie jest w pamięci — zmiana ilości nie zmieni jego wartości odżywczych",
+    "ingredientUnresolvable": "Nie powiązano z produktem — zmiana ilości nie zmieni wartości odżywczych. Użyj \"Zmień składnik\", aby powiązać"
   },
   "templatePreview": {
     "updateTemplate": "Zaktualizuj też szablon tymi zmianami",
@@ -958,6 +964,7 @@
     "addIngredient": "Dodaj składnik",
     "weightSectionTitle": "Całkowita waga po ugotowaniu i porcje",
     "cookedWeightLabel": "Całkowita waga po ugotowaniu",
+    "cookedWeightHint": "Wypełniane automatycznie ze składników. Wartość odżywcza na 100 g liczona jest od tej liczby; popraw ręcznie, jeśli waga zmieniła się w trakcie gotowania.",
     "portionCountLabel": "Liczba porcji (opcjonalnie)",
     "livePreview": "Podgląd przepisu na żywo",
     "saveAsFood": "Zapisz jako produkt",

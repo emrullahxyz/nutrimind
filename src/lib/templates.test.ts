@@ -1,6 +1,15 @@
 import { describe, expect, it } from "vitest";
-import { parseTemplatesConfig, newTemplateId, EMPTY_TEMPLATES } from "./templates";
+import {
+  parseTemplatesConfig,
+  newTemplateId,
+  EMPTY_TEMPLATES,
+  buildTemplateUsageIndex,
+  rankTemplatesByUsage,
+  templateTotal,
+} from "./templates";
+import type { MealTemplate, TemplateUsageIndex } from "./templates";
 import type { AppConfig } from "../types";
+import type { Days } from "./days";
 
 describe("parseTemplatesConfig", () => {
   it("boş config ve eksik templates anahtarı için boş liste döner", () => {
@@ -140,3 +149,78 @@ describe("newTemplateId", () => {
     expect(id1).not.toBe(id2);
   });
 });
+
+describe("templateTotal", () => {
+  it("kalemlerin besin değerlerini toplar ve 1 ondalığa yuvarlar", () => {
+    const total = templateTotal([
+      { name: "Yulaf", nutrition: { kcal: 337.5, protein: 10.8, carbs: 59.4, fat: 6.3, fiber: 9 } },
+      { name: "Süt", nutrition: { kcal: 112, protein: 5.6, carbs: 8.4, fat: 5.8, fiber: 0 } },
+    ]);
+    expect(total.kcal).toBe(449.5);
+    expect(total.protein).toBe(16.4);
+    expect(total.carbs).toBe(67.8);
+    expect(total.fat).toBe(12.1);
+  });
+
+  it("mikro besinde 'bilinmiyor ≠ sıfır' farkını korur (L21)", () => {
+    const total = templateTotal([
+      { name: "Tuzlu sos", nutrition: { kcal: 50, protein: 0, carbs: 5, fat: 2, fiber: 0, sodium: 200 } },
+      { name: "Sebze", nutrition: { kcal: 30, protein: 1, carbs: 6, fat: 0, fiber: 2 } },
+    ]);
+    expect(total.sodium).toBe(200);
+
+    const clean = templateTotal([
+      { name: "Sebze", nutrition: { kcal: 30, protein: 1, carbs: 6, fat: 0, fiber: 2 } },
+    ]);
+    expect("sodium" in clean).toBe(false);
+  });
+});
+
+describe("buildTemplateUsageIndex", () => {
+  const nutrition = { kcal: 100, protein: 5, carbs: 10, fat: 2, fiber: 1 };
+
+  it("templateId taşımayan günler sayacı boş bırakır (sayaç 0, hata değil)", () => {
+    const days: Days = { "2026-10-01": [{ id: "a", label: "Öğle", computed: nutrition }] };
+    expect(buildTemplateUsageIndex(days).size).toBe(0);
+  });
+
+  it("aynı şablonu iki günde kullanınca count 2 olur", () => {
+    const days: Days = {
+      "2026-10-01": [{ id: "a", label: "Kahvaltı", computed: nutrition, templateId: "t1" }],
+      "2026-10-02": [{ id: "b", label: "Kahvaltı", computed: nutrition, templateId: "t1" }],
+      "2026-10-03": [{ id: "c", label: "Öğle", computed: nutrition }],
+    };
+    const index = buildTemplateUsageIndex(days);
+    expect(index.get("t1")).toEqual({ count: 2, lastDate: "2026-10-02" });
+  });
+});
+
+describe("rankTemplatesByUsage", () => {
+  const tpl = (id: string): MealTemplate => ({ id, name: id, items: [] });
+
+  it("en çok kullanılan önce; eşitlikte LİSTEDEKİ sıra korunur", () => {
+    const list = [tpl("a"), tpl("b"), tpl("c"), tpl("d")];
+    const usage: TemplateUsageIndex = new Map([
+      ["b", { count: 3, lastDate: "2026-10-01" }],
+      ["d", { count: 1, lastDate: "2026-10-02" }],
+      ["a", { count: 3, lastDate: "2026-10-01" }],
+    ]);
+    // a ve b aynı sayaçta: a listede önceydi, öne geçmeli.
+    expect(rankTemplatesByUsage(list, usage).map((t) => t.id)).toEqual(["a", "b", "d", "c"]);
+  });
+
+  it("eşit sayıda son kullanma tarihi yenisini öne alır", () => {
+    const list = [tpl("eski"), tpl("yeni")];
+    const usage: TemplateUsageIndex = new Map([
+      ["eski", { count: 2, lastDate: "2026-09-01" }],
+      ["yeni", { count: 2, lastDate: "2026-10-01" }],
+    ]);
+    expect(rankTemplatesByUsage(list, usage).map((t) => t.id)).toEqual(["yeni", "eski"]);
+  });
+
+  it("hiç kullanılmamış şablonlar listedeki sıralarını korur", () => {
+    const list = [tpl("bir"), tpl("iki"), tpl("üç")];
+    expect(rankTemplatesByUsage(list, new Map()).map((t) => t.id)).toEqual(["bir", "iki", "üç"]);
+  });
+});
+

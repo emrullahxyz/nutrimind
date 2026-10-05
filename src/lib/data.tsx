@@ -12,6 +12,7 @@ import {
 import type { AliasPayload, AppData } from "./api";
 import type { GoalConfig, MealPayload } from "../types";
 import { buildUsageIndex, type UsageIndex } from "./aliasRank";
+import { buildTemplateUsageIndex, type TemplateUsageIndex } from "./templates";
 import { AppSkeleton } from "../components/Skeleton";
 import { getSnapshot, listOperations, putSnapshot } from "./offlineCache";
 import type { OfflineOperation } from "./offlineCache";
@@ -52,7 +53,11 @@ export interface Actions {
   updateConfig: (key: string, value: Record<string, unknown>) => Promise<void>;
 }
 
-type Ctx = AppData & Actions & { usageIndex: UsageIndex; offline: boolean };
+type Ctx = AppData & Actions & {
+  usageIndex: UsageIndex;
+  templateUsageIndex: TemplateUsageIndex;
+  offline: boolean;
+};
 
 const DataCtx = createContext<Ctx | null>(null);
 
@@ -346,9 +351,17 @@ export function DataProvider({ children }: { children: ReactNode }) {
     return buildUsageIndex(visible.days, visible.goals);
   }, [visible]);
 
+  /** "En çok kullanılan 3 şablon" sıralamasının kaynağı — `usageIndex`'in
+   *  şablon karşılığı ama `goals`'a bağlı değil: şablon kullanımı hafta günü
+   *  ya da profil ile ilgili değil, yalnız kaç kez kullanıldığı. */
+  const templateUsageIndex = useMemo<TemplateUsageIndex>(() => {
+    if (!visible) return new Map();
+    return buildTemplateUsageIndex(visible.days);
+  }, [visible]);
+
   const value = useMemo<Ctx | null>(
-    () => (visible ? { ...visible, ...actions, usageIndex, offline } : null),
-    [visible, actions, usageIndex, offline],
+    () => (visible ? { ...visible, ...actions, usageIndex, templateUsageIndex, offline } : null),
+    [visible, actions, usageIndex, templateUsageIndex, offline],
   );
 
   if (stale) return <StaleFallback refresh={refresh} onResolved={() => setStale(false)} />;

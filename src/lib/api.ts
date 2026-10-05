@@ -226,12 +226,26 @@ interface RawMeal {
   sources?: unknown;
   loggedAt?: unknown;
   category?: unknown;
+  templateId?: unknown;
+  grams?: unknown;
 }
 
 const VALID_MEAL_CATEGORIES = new Set(["breakfast", "lunch", "dinner", "snack"]);
 
 function parseLoggedAt(raw: unknown): string | undefined {
   return typeof raw === "string" && raw.trim().length > 0 ? raw : undefined;
+}
+
+/** Şablon referansı — boş/geçersiz gelirse yok sayılır (sayaç 0). */
+function parseTemplateId(raw: unknown): string | undefined {
+  return typeof raw === "string" && raw.trim().length > 0 ? raw : undefined;
+}
+
+/** Kaynaksız kalemin gramajı — yalnız POZİTIF ve sonlu kabul edilir
+ *  (`parseTemplatesConfig`'in `grams` kuralıyla aynı: 0 "ölçtüm, sıfır gram"
+ *  demek değil, belirsizliği çözmez). */
+function parseGrams(raw: unknown): number | undefined {
+  return typeof raw === "number" && Number.isFinite(raw) && raw > 0 ? raw : undefined;
 }
 
 function parseMealCategory(raw: unknown): MealCategory | undefined {
@@ -284,6 +298,32 @@ export function signalUnauthorizedFromApi(): string {
   return sessionExpiredMessage();
 }
 
+/** Ham gün verisini `MealItem[]`'a çevirir — `fetchData`'ın saf parçası,
+ *  test edilebilir olsun diye dışa aktarıldı. */
+export function parseDays(raw: RawData): Record<string, MealItem[]> {
+  const days: Record<string, MealItem[]> = {};
+  for (const [date, meals] of Object.entries(raw.days ?? {})) {
+    days[date] = (meals ?? []).map((m, i) => {
+      const parsedSources = parseSources(m.sources);
+      const loggedAt = parseLoggedAt(m.loggedAt);
+      const category = parseMealCategory(m.category);
+      const templateId = parseTemplateId(m.templateId);
+      const grams = parseGrams(m.grams);
+      return {
+        id: `${date}_${i}`,
+        label: m.name,
+        computed: fill(m.nutrition),
+        ...(parsedSources ? { sources: parsedSources } : {}),
+        ...(loggedAt ? { loggedAt } : {}),
+        ...(category ? { category } : {}),
+        ...(templateId ? { templateId } : {}),
+        ...(grams !== undefined ? { grams } : {}),
+      };
+    });
+  }
+  return days;
+}
+
 /** Backend'den { goals, days, aliases } çeker; öğünleri MealItem'a dönüştürür. */
 export async function fetchData(): Promise<AppData> {
   const res = await fetch("/api/data", {
@@ -294,22 +334,7 @@ export async function fetchData(): Promise<AppData> {
   if (!res.ok) throw new Error(`API ${res.status}`);
   const raw = (await res.json()) as RawData;
 
-  const days: Record<string, MealItem[]> = {};
-  for (const [date, meals] of Object.entries(raw.days ?? {})) {
-    days[date] = (meals ?? []).map((m, i) => {
-      const parsedSources = parseSources(m.sources);
-      const loggedAt = parseLoggedAt(m.loggedAt);
-      const category = parseMealCategory(m.category);
-      return {
-        id: `${date}_${i}`,
-        label: m.name,
-        computed: fill(m.nutrition),
-        ...(parsedSources ? { sources: parsedSources } : {}),
-        ...(loggedAt ? { loggedAt } : {}),
-        ...(category ? { category } : {}),
-      };
-    });
-  }
+  const days = parseDays(raw);
 
   const aliases: Alias[] = (raw.aliases ?? []).map((a) => ({
     id: a.id,

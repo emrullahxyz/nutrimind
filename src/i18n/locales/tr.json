@@ -84,6 +84,8 @@
     "addMeal": "Öğün ekle",
     "other": "Diğer",
     "recentMeals": "Son eklenen",
+    "templatesMore": "+{{n}} şablon daha",
+    "templatesAll": "Tüm Şablonlar",
     "clearSelection": "Seçimi temizle",
     "merge": "Birleştir",
     "done": "Tamam",
@@ -129,7 +131,8 @@
     "noKcal": "kcal yok"
   },
   "aliasPicker": {
-    "noResults": "Sonuç bulunamadı"
+    "noResults": "Sonuç bulunamadı",
+    "moreTriggers": "+{{n}}"
   },
   "dayType": {
     "changeTitle": "Bu günün tipini değiştir",
@@ -875,7 +878,10 @@
     "ingredientRemove": "Malzemeyi kaldır",
     "ingredientManualName": "Malzeme adı",
     "ingredientGrams": "Miktar",
-    "ingredientAmountUnknown": "Miktar bilinmiyor"
+    "ingredientAmountUnknown": "Miktar bilinmiyor",
+    "ingredientRescaled": "{{from}} g → {{to}} g için besin değerleri yeniden hesaplandı",
+    "ingredientNotInMemory": "Bu malzeme hafızada yok — miktarı değiştirmek besin değerlerini değiştirmez",
+    "ingredientUnresolvable": "Bu besine bağlı değil — miktarı değiştirmek besin değerlerini değiştirmez. Bağlamak için \"Malzemeyi değiştir\""
   },
   "templatePreview": {
     "updateTemplate": "Şablonu da bu değişikliklerle güncelle",
@@ -958,6 +964,7 @@
     "addIngredient": "Malzeme Ekle",
     "weightSectionTitle": "Pişmiş Toplam Ağırlık & Porsiyon",
     "cookedWeightLabel": "Pişmiş Toplam Ağırlık",
+    "cookedWeightHint": "Malzemelerin toplamı otomatik yazılır. 100 g besin değeri bu sayıdan hesaplanır; pişince ağırlık değiştiyse elle düzeltin.",
     "portionCountLabel": "Porsiyon Sayısı (opsiyonel)",
     "livePreview": "Canlı Tarif Önizleme",
     "saveAsFood": "Besin Olarak Kaydet",

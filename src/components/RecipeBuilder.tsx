@@ -17,6 +17,7 @@ import { formatNumber } from "../lib/format";
 import {
   calculateRecipeTotals,
   defaultUnitForAlias,
+  draftIngredientsTotalG,
   parseNum,
   scaleNutrition,
   toGrams,
@@ -80,6 +81,7 @@ import { useBodyScrollLock } from "../hooks/useBodyScrollLock";
 import { useDialogFocus } from "../hooks/useDialogFocus";
 import { useModalHistory } from "../hooks/useModalHistory";
 import { useModalExit } from "../hooks/useModalExit";
+import { AliasPicker } from "./AliasPicker";
 import { useTranslation } from "react-i18next";
 
 /** Tarif oluşturma & düzenleme full-screen modal
@@ -142,6 +144,12 @@ export function RecipeBuilder({
     ingredientDrafts(initial?.recipe?.ingredients ?? preset?.ingredients, aliases),
   );
 
+  /** Kullanıcı toplam ağırlık alanına elle dokundu mu? Dokunmadıysa alan
+   *  malzemelerin gram toplamını izler; dokunduysa KENDİ değeri korunur
+   *  (pişince ağırlık değişmiş olabilir — kullanıcının bilgisi bizimkinden
+   *  iyidir). */
+  const [totalGTouched, setTotalGTouched] = useState(false);
+
   const [saving, setSaving] = useState(false);
   const [err, setErr] = useState<string | null>(null);
 
@@ -190,13 +198,21 @@ export function RecipeBuilder({
 
   const totalGNum = parseNum(totalG);
   const portionCountNum = parseNum(portionCount);
+
+  /** Malzemelerin gram toplamı — "Pişmiş Toplam Ağırlık" alanının varsayılanı.
+   *  HAM taslak satırlardan hesaplanır (`parsedIngredients` boş satırları attığı
+   *  için miktar yazılırken toplam sıfır göstermemeli). */
+  const ingredientTotalG = draftIngredientsTotalG(ingredients, aliases);
+  /** Kayda giden toplam: kullanıcı dokunmadıysa otomatik, dokunduysa elle değeri. */
+  const effectiveTotalG = totalGTouched ? totalGNum : ingredientTotalG;
+
   const canSave =
     triggerList.length > 0 &&
     name.trim().length > 0 &&
-    totalGNum > 0 &&
+    effectiveTotalG > 0 &&
     parsedIngredients.length > 0;
 
-  const { totalNutrition, per100g } = calculateRecipeTotals(parsedIngredients, totalGNum);
+  const { totalNutrition, per100g } = calculateRecipeTotals(parsedIngredients, effectiveTotalG);
 
   function updateRow(id: string, updater: (prev: IngredientDraft) => IngredientDraft) {
     setIngredients((prev) => prev.map((row) => (row.id === id ? updater(row) : row)));
@@ -227,10 +243,10 @@ export function RecipeBuilder({
     setErr(null);
 
     const validUnits: AliasUnit[] = [];
-    if (portionCountNum > 0 && totalGNum > 0) {
+    if (portionCountNum > 0 && effectiveTotalG > 0) {
       validUnits.push({
         name: "porsiyon",
-        grams: round1(totalGNum / portionCountNum),
+        grams: round1(effectiveTotalG / portionCountNum),
       });
     }
 
@@ -246,7 +262,7 @@ export function RecipeBuilder({
         defaultUnit: validUnits.length > 0 ? "porsiyon" : "g",
         recipe: {
           ingredients: parsedIngredients,
-          totalG: totalGNum,
+          totalG: effectiveTotalG,
         },
       });
       beginClose();
@@ -377,29 +393,26 @@ export function RecipeBuilder({
 
                 {ing.mode === "alias" ? (
                   <div className="space-y-3">
-                    <label className="block">
-                      <span className="text-xs font-semibold text-white/70 block mb-1">{t("recipeBuilder.memoryFoodLabel")}</span>
-                      <select
-                        className="w-full px-3 py-2.5 rounded-xl bg-field border border-white/15 text-xs font-bold text-white focus:outline-none focus:border-carb"
-                        value={ing.aliasId}
-                        onChange={(e) => {
-                          const newAliasId = e.target.value;
-                          const selected = aliases.find((a) => a.id === newAliasId);
-                          updateRow(ing.id, (prev) => ({
-                            ...prev,
-                            aliasId: newAliasId,
-                            name: selected?.name ?? prev.name,
-                            unit: selected ? defaultUnitForAlias(selected).name : "g",
-                          }));
-                        }}
-                      >
-                        {aliases.map((a) => (
-                          <option key={a.id} value={a.id} className="bg-field text-white">
-                            {a.name} ({a.serving_g}g · {a.nutrition.kcal} kcal)
-                          </option>
-                        ))}
-                      </select>
-                    </label>
+                    {/* Düz `<select>` yerine AliasPicker: ad/marka/tetikleyicide
+                     *  arar, tetikleyici rozetlerini gösterir. `MealForm` ve
+                     *  `TemplatePreview` zaten bunu kullanıyor — tarif ekranı
+                     *  tek başına kalmıştı. */}
+                    <AliasPicker
+                      aliases={aliases}
+                      selectedAliasId={ing.aliasId}
+                      onSelectAlias={(newAliasId) => {
+                        const selected = aliases.find((a) => a.id === newAliasId);
+                        updateRow(ing.id, (prev) => ({
+                          ...prev,
+                          aliasId: newAliasId,
+                          name: selected?.name ?? prev.name,
+                          unit: selected ? defaultUnitForAlias(selected).name : "g",
+                        }));
+                      }}
+                      label={t("recipeBuilder.memoryFoodLabel")}
+                      mealIndex={index}
+                      showTriggers
+                    />
 
                     <div className="grid grid-cols-2 gap-2">
                       <NumField
@@ -492,12 +505,21 @@ export function RecipeBuilder({
             <span className="text-xs font-bold text-white/90">{t("recipeBuilder.weightSectionTitle")}</span>
           </div>
 
+          {/* Otomatik dolan alan: kullanıcı dokunmadıkça malzemelerin gram
+           *  toplamını gösterir (90 + 35 + 175 → 300). `totalGTouched` sayesinde
+           *  elle yazdığı değer geri alınmaz. */}
           <NumField
             label={t("recipeBuilder.cookedWeightLabel")}
             suffix="g"
-            value={totalG}
-            onChange={setTotalG}
+            value={totalGTouched ? totalG : ingredientTotalG > 0 ? String(round1(ingredientTotalG)) : ""}
+            onChange={(val) => {
+              setTotalGTouched(true);
+              setTotalG(val);
+            }}
           />
+          <p className="text-[11px] leading-snug text-white/50 -mt-2">
+            {t("recipeBuilder.cookedWeightHint")}
+          </p>
           <NumField
             label={t("recipeBuilder.portionCountLabel")}
             value={portionCount}
@@ -506,7 +528,7 @@ export function RecipeBuilder({
         </div>
 
         {/* Live Preview Card */}
-        {totalGNum > 0 && parsedIngredients.length > 0 && (
+        {effectiveTotalG > 0 && parsedIngredients.length > 0 && (
           <div className="rounded-2xl border border-carb/20 bg-carb/5 p-4 text-white space-y-2">
             <div className="flex items-center gap-1.5 text-carb font-extrabold text-xs">
               <Sparkles className="w-4 h-4 text-carb" /> {t("recipeBuilder.livePreview")}

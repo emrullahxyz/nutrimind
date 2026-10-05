@@ -27,6 +27,46 @@ describe("offline projection", () => {
     expect(applyOperation(base, operation).days["2026-08-28"][0].label).toBe("Yogurt");
   });
 
+  it("şablondan uygulanan öğün templateId'sini korur (sayaç sessizce 0 olmasın)", () => {
+    const operation: OfflineOperation = {
+      id: "1",
+      kind: "save-day",
+      date: "2026-08-28",
+      meals: [
+        {
+          name: "Sabah Kahvaltısı",
+          nutrition: { kcal: 100, protein: 5, carbs: 10, fat: 2, fiber: 1 },
+          templateId: "t_kahvalti",
+        },
+      ],
+      base,
+      createdAt: "2026-08-28T10:00:00Z",
+      retryCount: 0,
+      status: "pending",
+    };
+    expect(applyOperation(base, operation).days["2026-08-28"][0].templateId).toBe("t_kahvalti");
+  });
+
+  it("kaynaksız kalemin gramajını korur (offline'da kaybolmasın)", () => {
+    const operation: OfflineOperation = {
+      id: "1",
+      kind: "save-day",
+      date: "2026-08-28",
+      meals: [
+        {
+          name: "Ev yapimi sos",
+          nutrition: { kcal: 100, protein: 5, carbs: 10, fat: 2, fiber: 1 },
+          grams: 150,
+        },
+      ],
+      base,
+      createdAt: "2026-08-28T10:00:00Z",
+      retryCount: 0,
+      status: "pending",
+    };
+    expect(applyOperation(base, operation).days["2026-08-28"][0].grams).toBe(150);
+  });
+
   it("projects alias create and update", () => {
     const operation: OfflineOperation = {
       id: "1",

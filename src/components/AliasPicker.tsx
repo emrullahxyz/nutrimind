@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { KeyboardEvent } from "react";
 import type { Alias } from "../types";
-import { filterAliases } from "../lib/aliasFilter";
+import { filterAliases, normalizeTr } from "../lib/aliasFilter";
 import { rankAliases } from "../lib/aliasRank";
 import { useData } from "../lib/data";
 import { todayISO, weekdayIndex } from "../lib/format";
@@ -15,6 +15,26 @@ export interface AliasPickerProps {
   onSelectAlias: (id: string) => void;
   label?: string;
   mealIndex?: number;
+  /** Sonuç satırında tetikleyici rozetlerini göster. Kullanıcı adı/markayı
+   *  bildiği için tetikleyicisini bildiği ve "neden bu çıktı?" diye sorduğu
+   *  ekranlarda (tarif oluşturma) açar; öğün formunda kapalı kalır. */
+  showTriggers?: boolean;
+}
+
+const MAX_TRIGGER_BADGES = 3;
+
+/** Eşleşen tetikleyiciler: ad/marka zaten görünür olduğu için onlar sayılmaz,
+ *  yalnızca tetikleyicide eşleşenler rozetlenir (arama alanları `filterAliases` ile
+ *  aynı: ad, marka, tetikleyici — `src/lib/aliasFilter.ts`). */
+function matchingTriggers(alias: Alias, query: string): string[] {
+  const q = normalizeTr(query.trim());
+  const pool = q
+    ? alias.triggers.filter((tr) => normalizeTr(tr).includes(q))
+    : alias.triggers;
+  const unique = [...new Set(pool.map((tr) => tr.trim()))].filter(Boolean);
+  // Arama varken "+N" anlamsız: gösterilmeyen tetikleyiciler eşleşmeyenler,
+  // onları "gizli" saymak kullanıcıya yanlış bir toplam gösterirdi.
+  return q ? unique : unique.slice(0, MAX_TRIGGER_BADGES);
 }
 
 export function AliasPicker({
@@ -23,6 +43,7 @@ export function AliasPicker({
   onSelectAlias,
   label,
   mealIndex = 0,
+  showTriggers = false,
 }: AliasPickerProps) {
   const { t } = useTranslation();
   const effectiveLabel = label ?? t("meal.memorySelectLabel");
@@ -173,6 +194,11 @@ export function AliasPicker({
             ranked.map((alias, idx) => {
               const isSelected = alias.id === selectedAliasId;
               const isHighlighted = idx === highlightedIndex;
+              const badges = showTriggers ? matchingTriggers(alias, query) : [];
+              // "+N" yalnızca boş sorguda anlamlı: arama varken gösterilmeyenler
+              // eşleşmeyen tetikleyicilerdir, gizlenen değil (bkz. matchingTriggers).
+              const hiddenTriggers =
+                showTriggers && !normalizeTr(query.trim()) ? alias.triggers.length - badges.length : 0;
 
               return (
                 <li
@@ -182,19 +208,38 @@ export function AliasPicker({
                     handleSelect(alias);
                   }}
                   onMouseEnter={() => setHighlightedIndex(idx)}
-                  className={`flex cursor-pointer items-center justify-between rounded px-3 py-2 text-xs transition ${
+                  className={`flex cursor-pointer items-start justify-between gap-2 rounded px-3 py-2 text-xs transition ${
                     isHighlighted ? "bg-white/[0.08]" : ""
                   } ${isSelected ? "text-memory font-semibold" : "text-ink-primary"}`}
                 >
-                  <div className="flex items-center gap-1.5 min-w-0">
-                    <span className="min-w-0 block truncate">{alias.name}</span>
-                    {alias.brand && (
-                      <span className="flex-none rounded bg-white/[0.06] px-1.5 py-0.5 font-mono text-[10px] text-ink-tertiary">
-                        {alias.brand}
-                      </span>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-1.5">
+                      <span className="min-w-0 block truncate">{alias.name}</span>
+                      {alias.brand && (
+                        <span className="flex-none rounded bg-white/[0.06] px-1.5 py-0.5 font-mono text-[10px] text-ink-tertiary">
+                          {alias.brand}
+                        </span>
+                      )}
+                    </div>
+                    {badges.length > 0 && (
+                      <div className="mt-1 flex flex-wrap items-center gap-1">
+                        {badges.map((trigger) => (
+                          <span
+                            key={trigger}
+                            className="max-w-[10rem] truncate rounded bg-white/[0.06] px-1.5 py-0.5 text-[10px] text-ink-tertiary"
+                          >
+                            {trigger}
+                          </span>
+                        ))}
+                        {hiddenTriggers > 0 && (
+                          <span className="text-[10px] text-ink-tertiary">
+                            {t("aliasPicker.moreTriggers", { n: hiddenTriggers })}
+                          </span>
+                        )}
+                      </div>
                     )}
                   </div>
-                  {isSelected && <span className="ml-2 font-bold text-memory">✓</span>}
+                  {isSelected && <span className="ml-2 flex-none font-bold text-memory">✓</span>}
                 </li>
               );
             })

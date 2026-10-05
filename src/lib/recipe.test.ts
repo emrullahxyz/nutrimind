@@ -1,7 +1,14 @@
 import { describe, expect, it } from "vitest";
 import { parseRecipe } from "./api";
-import { calculateRecipeTotals, scaleNutrition, toGrams } from "./nutrition";
-import type { RecipeIngredient } from "../types";
+import {
+  calculateRecipeTotals,
+  draftIngredientGrams,
+  draftIngredientsTotalG,
+  scaleNutrition,
+  toGrams,
+} from "./nutrition";
+import type { DraftIngredientWeight } from "./nutrition";
+import type { Alias, RecipeIngredient } from "../types";
 import { ZERO_NUTRITION } from "../types";
 
 describe("recipe calculation & validation (Faz 7)", () => {
@@ -147,5 +154,52 @@ describe("recipe calculation & validation (Faz 7)", () => {
     expect(ZERO_NUTRITION.kcal).toBe(0);
     // totalG geçersizken de aynı koruma geçerli olmalı.
     expect(calculateRecipeTotals([], -5).per100g.kcal).toBe(0);
+  });
+});
+
+describe("taslak malzemelerinden toplam gram", () => {
+  const oat = {
+    id: "yulaf",
+    units: [{ name: "avuç", grams: 40 }],
+  } as Pick<Alias, "id" | "units">;
+  const milk = { id: "sut", units: [] } as Pick<Alias, "id" | "units">;
+  const aliases = [oat, milk];
+
+  it("kullanıcının tarifindeki gram toplamını verir (90 + 35 + 175)", () => {
+    // Gerçek senaryo: yulaf + protein tozu + süt → 300 g pişmiş toplam.
+    const rows: DraftIngredientWeight[] = [
+      { mode: "alias", aliasId: "yulaf", qty: "90", unit: "g" },
+      { mode: "alias", aliasId: "sut", qty: "175", unit: "g" },
+    ];
+    expect(draftIngredientsTotalG(rows, aliases)).toBe(265);
+    expect(
+      draftIngredientsTotalG(
+        [...rows, { mode: "manual", aliasId: "", qty: "35", unit: "g" }],
+        aliases,
+      ),
+    ).toBe(300);
+  });
+
+  it("alias satırında özel birimi gram karşılığına çevirir", () => {
+    expect(draftIngredientGrams({ mode: "alias", aliasId: "yulaf", qty: "2", unit: "avuç" }, aliases)).toBe(80);
+    // Birim adı alias'ın birim listesinde yoksa varsayılana (gram) düşer.
+    expect(draftIngredientGrams({ mode: "alias", aliasId: "yulaf", qty: "2", unit: "kase" }, aliases)).toBe(2);
+  });
+
+  it("elle satırda yalnızca 'g' toplama katılır", () => {
+    // "ml" yoğunluk bilinmediği, "adet" ağırlığı kişiye göre olduğu için sayılmaz.
+    expect(draftIngredientGrams({ mode: "manual", aliasId: "", qty: "200", unit: "ml" }, aliases)).toBe(0);
+    expect(draftIngredientGrams({ mode: "manual", aliasId: "", qty: "2", unit: "adet" }, aliases)).toBe(0);
+    expect(draftIngredientGrams({ mode: "manual", aliasId: "", qty: "20", unit: "G" }, aliases)).toBe(20);
+    expect(draftIngredientGrams({ mode: "manual", aliasId: "", qty: "20", unit: " g " }, aliases)).toBe(20);
+  });
+
+  it("miktar hâlâ yazılıyken geçersiz satırı 0 sayar (liste zorla sıfırlanmaz)", () => {
+    expect(draftIngredientGrams({ mode: "alias", aliasId: "yulaf", qty: "", unit: "g" }, aliases)).toBe(0);
+    expect(draftIngredientGrams({ mode: "alias", aliasId: "yulaf", qty: "abc", unit: "g" }, aliases)).toBe(0);
+    expect(draftIngredientGrams({ mode: "alias", aliasId: "yulaf", qty: "-5", unit: "g" }, aliases)).toBe(0);
+    // Silinmiş bir hafıza kaydına bağlı satır da 0 — sessizce yanlış gram üretmez.
+    expect(draftIngredientGrams({ mode: "alias", aliasId: "yok", qty: "50", unit: "g" }, aliases)).toBe(0);
+    expect(draftIngredientsTotalG([], aliases)).toBe(0);
   });
 });

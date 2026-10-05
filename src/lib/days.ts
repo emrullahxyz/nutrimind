@@ -42,5 +42,7 @@ export function toPayload(meals: MealItem[]): MealPayload[] {
     ...(m.sources && m.sources.length > 0 ? { sources: m.sources } : {}),
     ...(m.loggedAt ? { loggedAt: m.loggedAt } : {}),
     ...(m.category ? { category: m.category } : {}),
+    ...(m.templateId ? { templateId: m.templateId } : {}),
+    ...(m.grams !== undefined ? { grams: m.grams } : {}),
   }));
 }

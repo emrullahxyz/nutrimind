@@ -331,6 +331,41 @@ export function addDraftLine(lines: DraftLine[], line: DraftLine): DraftLine[] {
   return [...lines, line];
 }
 
+/** Miktar alanı değiştirilince kullanıcıya gösterilecek geri bildirim.
+ *
+ *  ÖLÇÜLEN HATA (tarayıcı): hafızaya bağlı olmayan bir kalemde 90 g → 45 g
+ *  yazılınca miktar değişiyor ama toplam kcal SABİT kalıyordu (`setDraftGrams`
+ *  alias'sız dalı `nutrition`'a bilerek dokunmuyor). Kullanıcı "miktarı
+ *  azaltamıyorum" diye bildirdi. Davranışın KENDİSİ korundu — davranış
+ *  değiştirilmedi, görünür oldu.
+ *
+ *  `scaled`: satır hafızadaki bir besine bağlı → `setDraftGrams` makroyu
+ *  ölçekledi, kullanıcı bunu göremiyordu.
+ *  `notInMemory`: kullanıcının kendi yazdığı kalem — gramaj ile makro bağımsız
+ *  gerçekler, ölçeklemek uydurma olurdu.
+ *  `unresolvableUnit`: kayıttan geldi ama birim/alias çözülemiyor — aynı
+ *  sonuç, farklı sebep, farklı çıkış yolu ("Malzemeyi değiştir"). */
+export type GramEditHint =
+  | { kind: "scaled"; fromGrams: number; toGrams: number }
+  | { kind: "notInMemory" }
+  | { kind: "unresolvableUnit" }
+  | null;
+
+/** @param previous miktar YAZILMADAN ÖNCEKİ satır (`null` = yeni eklenen). */
+export function draftGramHint(
+  line: DraftLine,
+  alias: Alias | null | undefined,
+  previous: DraftLine | null,
+): GramEditHint {
+  if (previous === null) return null;
+  // Miktar gerçekten değişmediyse uyarı göstermek gürültü.
+  if (previous.grams === line.grams) return null;
+
+  if (alias) return { kind: "scaled", fromGrams: previous.grams, toGrams: line.grams };
+  if (line.fromRecord) return { kind: "unresolvableUnit" };
+  return { kind: "notInMemory" };
+}
+
 export function removeDraftLine(lines: DraftLine[], key: string): DraftLine[] {
   return lines.filter((l) => l.key !== key);
 }

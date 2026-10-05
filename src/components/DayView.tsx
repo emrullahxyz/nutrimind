@@ -1,10 +1,11 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { UtensilsCrossed } from "lucide-react";
 import { StatCardCarousel } from "./StatCardCarousel";
 import { MacroBar } from "./MacroBar";
 import { Card } from "./Card";
 import { DayTypeBadge } from "./DayTypeBadge";
 import { MealForm } from "./MealForm";
+import { TemplateShelf } from "./TemplateShelf";
 import {
   ErrorText,
   ExpandableMealName,
@@ -171,7 +172,7 @@ export function DayView({
   resetKey?: number;
 }) {
   const { t } = useTranslation();
-  const { goals, days, setDayMeals, config, updateConfig, aliases, offline } = useData();
+  const { goals, days, setDayMeals, config, updateConfig, aliases, offline, templateUsageIndex } = useData();
   const { showToast } = useToast();
   const goal = effectiveGoal(goals, date);
   const meals = mealsOf(days, date);
@@ -214,7 +215,7 @@ export function DayView({
       setShowMergeModal(false);
       setMenuFor(null);
       setRecipePreset(null);
-      setPreviewTemplate(null);
+      setPreviewTemplateId(null);
     }
   }, [resetKey]);
   const [showScan, setShowScan] = useState(false);
@@ -285,8 +286,17 @@ export function DayView({
   }
 
   /** Şablon çipi artık kör uygulamaz: önizleme açılır, kalemler + swap
-   *  gösterilir, onayla eklenir. `previewTemplate` açık sheet'i tutar. */
-  const [previewTemplate, setPreviewTemplate] = useState<MealTemplate | null>(null);
+   *  gösterilir, onayla eklenir. `previewTemplate` açık sheet'i tutar.
+   *
+   *  KİMLİK tutulur, nesne değil: `templates.list` her render'da yeniden
+   *  parse edilir (`parseTemplatesConfig` memo'lu değil), nesne tutulsaydı
+   *  her render'da yeni referans alır ve `TemplatePreview`'in
+   *  `useEffect([template])`'i sonsuz kurma döngüsü kurardı. */
+  const [previewTemplateId, setPreviewTemplateId] = useState<string | null>(null);
+  const previewTemplate = useMemo(
+    () => templates.list.find((t) => t.id === previewTemplateId) ?? null,
+    [templates.list, previewTemplateId],
+  );
 
   async function applyTemplate(lines: DraftLine[], updateTemplate: boolean) {
     const t = previewTemplate;
@@ -299,6 +309,15 @@ export function DayView({
         name: it.name,
         nutrition: it.nutrition,
         ...(it.sources ? { sources: it.sources } : {}),
+        // Şablon kullanım sayacının kaynağı: gün verisinden türetilen indeks
+        // ("en çok kullanılan 3 şablon") bu alandan beslenir. Yazılmazsa
+        // sayaç sessizce hep 0 kalır ve sıralama hiç değişmez.
+        templateId: t.id,
+        // `grams` yalnız `sources` YOKSA yazılır (`TemplateItem` sözleşmesi):
+        // kaynak varsa miktar zaten `sources[].qty` içinde. Yazılmazsa
+        // alias'sız kalemler (ev yapımı sos) şablondan uygulandığında
+        // gramajını kaybeder.
+        ...(it.sources ? {} : it.grams !== undefined ? { grams: it.grams } : {}),
       }));
       await setDayMeals(date, [...toPayload(meals), ...newPayloads]);
       if (updateTemplate) {
@@ -306,7 +325,7 @@ export function DayView({
           list: templates.list.map((x) => (x.id === t.id ? { ...x, items } : x)),
         });
       }
-      setPreviewTemplate(null);
+      setPreviewTemplateId(null);
     } catch (e) {
       setErr(String((e as Error)?.message ?? e));
     } finally {
@@ -508,19 +527,12 @@ export function DayView({
         {err && <ErrorText>{err}</ErrorText>}
 
         {showTemplates && templates.list.length > 0 && (
-          <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1">
-            {templates.list.map((t) => (
-              <button
-                key={t.id}
-                type="button"
-                disabled={busy}
-                onClick={() => setPreviewTemplate(t)}
-                className="flex-none rounded-pill border border-line bg-white/[0.06] px-3 py-1.5 text-xs font-semibold text-ink-secondary transition hover:border-memory/40 hover:bg-white/[0.09] hover:text-ink-primary disabled:opacity-40"
-              >
-                {t.name}
-              </button>
-            ))}
-          </div>
+          <TemplateShelf
+            templates={templates.list}
+            usage={templateUsageIndex}
+            busy={busy}
+            onPick={(id) => setPreviewTemplateId(id)}
+          />
         )}
 
         {hasData ? (
@@ -640,7 +652,7 @@ export function DayView({
           template={previewTemplate}
           aliases={aliases}
           busy={busy}
-          onClose={() => setPreviewTemplate(null)}
+          onClose={() => setPreviewTemplateId(null)}
           onApply={(lines, update) => void applyTemplate(lines, update)}
         />
       )}

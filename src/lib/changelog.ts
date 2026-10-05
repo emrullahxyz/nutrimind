@@ -13,6 +13,53 @@ export interface ChangeLogVersion {
 
 export const CHANGELOG: ChangeLogVersion[] = [
   {
+    version: "0.31.2",
+    date: "2026-10-05",
+    summary: {
+      tr: "Tarif ve şablon bölümlerinde dört yorucu adım kalktı: tarifin toplam ağırlığı kendisi topluyor, malzeme seçimi arama kutulu, şablonun miktar değişikliği ne yaptığını söylüyor ve Bugün ekranındaki şablonlar en çok kullandığın üçü gösteriyor.",
+      en: "Four tedious steps are gone from recipes and templates: the total weight adds itself up, ingredient picking is searchable, changing an ingredient's amount says what it did, and Today shows your three most-used templates.",
+    },
+    items: [
+      {
+        type: "fixed",
+        tr: "Şablonun malzemesinde miktarı değiştirince besin değerlerinin değişip değişmediği belli değildi. Artık hafızadaki bir malzemede miktarı düşürünce \"90 g → 45 g için besin değerleri yeniden hesaplandı\" yazıyor.",
+        en: "When you changed an ingredient's amount in a template, nothing said whether the nutrition went with it. Now for an ingredient in memory it says \"Nutrition recalculated for 90 g → 45 g\".",
+      },
+      {
+        type: "improved",
+        tr: "Hafızada olmayan bir malzemede miktarı değiştirirsen artık uyarı çıkıyor: \"Bu malzeme hafızada yok — miktarı değiştirmek besin değerlerini değiştirmez.\" Böylece miktar girip sonucun değişmemesine şaşırmıyorsun.",
+        en: "Changing the amount of an ingredient that isn't in your memory now warns you: \"This ingredient isn't in memory — changing the amount won't change its nutrition.\" No more surprise when the numbers don't move.",
+      },
+      {
+        type: "improved",
+        tr: "Şablonun her malzemesinin kalorisi artık yanında yazıyor. Önceden sadece protein/karb/yağ/lif görünüyordu, kalori yoktu.",
+        en: "Every ingredient in a template now shows its calories alongside. You used to see only protein/carbs/fat/fiber.",
+      },
+      {
+        type: "improved",
+        tr: "Bugün ekranındaki şablonlar yan yana sıkışıp taşıyordu. Artık en çok kullandığın üç şablon kart olarak görünüyor ve kullandıkça listedeki yerleri değişiyorlar. Fazlası \"+N şablon daha\" arkasında.",
+        en: "The templates on Today used to squeeze into each other and overflow. Now your three most-used templates appear as cards and move up as you use them. The rest sit behind \"+N more templates\".",
+      },
+    ],
+    dev: [
+      "ÖLÇÜMLE DÜZELTILDI (tarayıcı): kullanıcı 'malzeme miktarını azaltamıyorum' dedi. İlk ölçüm yanlış yorumlandı: yapay `grams` kaydıyla test edildi, gerçek akış `mealToTemplate` -> `sources` yazıyor. Gercek `sources`'lu kalemde 90g->45g toplami 338->169 kcal dogru olcekleniyordu. Asil hata: hafizaya BAGLI OLMAYAN kalemde miktar degisiyor ama toplam sabit kaliyordu VE kullaniciya hicbir geri bildirim cikmiyordu (setDraftGrams alias'siz dali nutrition'a BILEREK dokunmuyor).",
+      "COZUM: setDraftGrams'in alias'siz dali DEGISTIRILMEDI — `preserved` satirlarda makro kayittan gelen gercek bir deger, gramajla iliskisi bilinmiyor, olcek uydurma olurdu. Degisiklik GORUNURLUKTE: draftGramHint saf fonksiyonu uc dal donuyor (scaled / notInMemory / unresolvableUnit) + kcal='inline'.",
+      "YENI sabit: MealPayload/MealItem'e `templateId` (kullanim sayacinin kaynagi). Sayac config'te DEGIL gun verisinden turuyor: updateConfig offline'ta throw ediyor (docs/operations/offline.md), sayac config'te olsaydi offline'da sablon uygulama yolu kirilirdi. DORT uc tasidi: api.ts parseDays, days.ts toPayload, offlineProjection.ts applyOperation, DayView.applyTemplate yazimi. Dordunden biri unutulursa sayac sessizce 0 — hepsine round-trip testi yazildi.",
+      "R9 (olculecek risk, ONLENDI): previewTemplate artik NESNE degil KIMLIK tutuyor. templates.list her render'da parseTemplatesConfig ile yeniden uretiliyor (memo'lu degil); nesne tutulsaydi TemplatePreview'in useEffect([template])'i sonsuz kurma dongusu kurardi.",
+      "YENI src/components/TemplateShelf.tsx: en cok kullanilan 3 sablon kart (grid-cols-1 sm:grid-cols-3), kalani Modal icinde. StatCardCarousel kopyalanmadi (3 durumlu karusel, bu 2 durumlu). PREF/usePersistedBool EKLENMEDI (YAGNI: acik/kapali modal mount/unmount'undan gelir).",
+      "AYNICA: `grams` alani da dort uca baglandi (DayView yazimi, days.ts toPayload, offlineProjection applyOperation, api.ts parseGrams). onceki surumde DayView.applyTemplate `it.grams`'i tasimiyordu — alias'siz kalemler sablon uygulandiginda gramajini kaybediyordu. NutritionSheet.mealDraftLines'in 'kaynaksiz ogun bolumu hic cizmez' kurali DEGISTIRILMEDI: kayit artik veriyi tasiyor, gosterim kurali oldugu gibi.",
+      "SABIT: RecipeBuilder'da 'Hafizadaki Besin' DUZ <select> idi — filtreleme, arama, siralama yoktu. Projede zaten AliasPicker vardi (MealForm, TemplatePreview) ve tetikleyicide ariyordu; tarif ekrani tek basina kalmisti. Artik tarifler de AliasPicker kullaniyor.",
+      "YENI nutrition.draftIngredientGrams/draftIngredientsTotalG: 'Pişmiş Toplam Ağırlık' alaninin otomatik dolmasi icin SAF hesap (recipe.test.ts, 4 yeni test). RecipeBuilder'da totalGTouched state'i: kullanici alana dokunmadiysa malzemeleri izler, dokunduysa KENDI degeri korunur (pisirme kaybi bilgisi kullanicida).",
+      "ÖLÇÜMLE YAKALANAN HATA: ilk yazimda draftIngredientGrams SILINMIS bir hafiza kaydina bagli satiri 50 g sayiyordu, ama kayit yolunda o satir eleniyor (RecipeBuilder parsedIngredients) — toplam gramda sayilip besin toplaminda sayilmayan malzeme 100g hesabini sessizce seyreltirdi. Test yazimi bu tutarsizligi yakaladi; fonksiyon kayit yoluyla hizalandi (alias yoksa 0).",
+      "YENI AliasPicker.showTriggers (varsayilan false — öğün formu degismedi). Eslesen tetikleyiciler rozet olarak, en fazla 3. '+N' yalnizca BOS sorguda anlamli: arama varken gosterilmeyenler eslesmeyen tetikleyiciler, onlari 'gizli' saymak yanlis toplam gosterirdi.",
+      "Elle satirlarda toplama yalnizca 'g' birimi katilir: 'ml' yogunluk bilinmez, 'adet' agirligi kisiye gore. Gram karsiligi bilinmeyen satir kullaniciya elle yazma alanini birakir.",
+      "ÖLÇÜMLE DÜZELTILDI (tarayıcı): kullanici 'malzeme miktarını azaltamıyorum' dedi. Ilk olcum YANLIŞ yorumlandi: yapay `grams` kaydiyla test edildi, gercek akis `mealToTemplate` -> `sources` yaziyor. Gercek `sources`'lu kalemde 90g->45g toplami 338->169 kcal DOGRU olcekleniyordu. Asil hata: hafizaya BAGLI OLMAYAN kalemde miktar degisiyor ama toplam sabit kaliyordu VE kullaniciya hicbir geri bildirim cikmiyordu. Ayrica silme dugmesi ve miktar alani KODDA ZATEN VARDI — kullanici bunlari gorememis.",
+      "COZUM: setDraftGrams'in alias'siz dali DEGISTIRILMEDI — `preserved` satirlarda makro kayittan gelen gercek bir deger, gramajla iliskisi bilinmiyor, olcek uydurma olurdu. Degisiklik GORUNURLUKTE: draftGramHint saf fonksiyonu uc dal donuyor (scaled / notInMemory / unresolvableUnit) + kcal='inline'.",
+      "YENI sabit: MealPayload/MealItem'e `templateId` (kullanim sayacinin kaynagi). Sayac config'te DEGIL gun verisinden turuyor: updateConfig offline'ta throw ediyor (docs/operations/offline.md), sayac config'te olsaydi offline'da sablon uygulama yolu kirilirdi. DORT uc tasidi: api.ts parseDays, days.ts toPayload, offlineProjection.ts applyOperation, DayView.applyTemplate yazimi. Dordunden biri unutulursa sayac sessizce 0 — hepsine round-trip testi yazildi.",
+      "Kapı: typecheck 0 · 1186/1186 test (77 dosya) · check:i18n 977x3 PARITY/KEYS/HARDCODED OK · build. Bu turda server/** dokunulmadi.",
+    ],
+  },
+  {
     version: "0.31.1",
     date: "2026-10-03",
     summary: {

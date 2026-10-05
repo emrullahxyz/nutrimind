@@ -49,6 +49,12 @@ export interface MealItem {
   sources?: MealSource[];
   loggedAt?: string;
   category?: MealCategory;
+  /** Hangi şablon uygulanarak yazıldı — şablon kullanım sayacının kaynağı.
+   *  Yoksa sayaç 0 sayılır (elle eklenen öğün, eski kayıt). */
+  templateId?: string;
+  /** Hafızaya bağlı olmayan kalemin gramajı (g). `sources` varsa yazılmaz —
+   *  miktar zaten kaynakta. */
+  grams?: number;
 }
 
 /** Backend'e gönderilen öğün biçimi (days[date] dizisindeki kayıt). */
@@ -58,6 +64,17 @@ export interface MealPayload {
   sources?: MealSource[];
   loggedAt?: string;
   category?: MealCategory;
+  /** Şablondan uygulandıysa kaynak şablonun id'si. Şablon kullanım indeksi
+   *  (`lib/templates.ts`) gün verisinden TÜRETİLİR — config'te sayaç tutulmaz,
+   *  çünkü config yazmak offline'ta kapalıdır (docs/operations/offline.md).
+   *  Bu alan dört uçta da taşınmalıdır: `api.ts` parse, `days.ts` `toPayload`,
+   *  `offlineProjection.ts` `applyOperation`. Biri unutursa sayaç sessizce 0. */
+  templateId?: string;
+  /** Hafızaya bağlı olmayan kalemin gramajı. `sources` YOKSA yazılır —
+   *  `sources` varsa miktar zaten `sources[].qty` içindedir ve iki kopyadan
+   *  biri eskir. `TemplateItem.grams`'ın karşılığıdır: şablondan uygulanan
+   *  alias'sız kalem gramajını bu alan olmadan kaybediyordu. */
+  grams?: number;
 }
 
 /** Faz 2: AI servisinin (Gemini veya NVIDIA NIM) serbest metin veya fotoğraftan ayrıştırdığı tek bir öğe. */
