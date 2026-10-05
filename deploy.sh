@@ -3,8 +3,8 @@
 # Kullanım (Git Bash):  bash deploy.sh   ya da   pnpm deploy
 set -e
 
-KEY="$HOME/Desktop/Projeler/.ssh/id_deploy"
-SERVER="nutri@<SERVER_IP>"
+KEY="$HOME/Desktop/Projeler/.ssh/id_oracle"
+SERVER="emrullah@92.5.42.0"
 WEBROOT="/var/www/nutri"
 
 echo "→ 1/3 build (tsc + vite)"
