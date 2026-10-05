@@ -9,7 +9,11 @@ import { formatNumber } from "../lib/format";
 import { scaleNutrition } from "../lib/nutrition";
 import { filterAliases } from "../lib/aliasFilter";
 import { useData } from "../lib/data";
-import { parseTemplatesConfig } from "../lib/templates";
+import { parseTemplatesConfig, newTemplateId } from "../lib/templates";
+import type { MealTemplate } from "../lib/templates";
+import { TemplatePreview } from "../components/TemplatePreview";
+import { draftLinesToItems } from "../lib/ingredientDraft";
+import type { DraftLine } from "../lib/ingredientDraft";
 import type { Alias } from "../types";
 import { usePressSpring } from "../hooks/usePressSpring";
 import { useTranslation } from "react-i18next";
@@ -27,6 +31,9 @@ export function AliasPage({
   const { aliases, removeAlias, config, updateConfig } = useData();
   const [editingAlias, setEditingAlias] = useState<Alias | null | undefined>(undefined);
   const [editingRecipe, setEditingRecipe] = useState<Alias | null | undefined>(undefined);
+  /** Yeni şablon taslağı — `name` boş olduğu için `TemplatePreview` boş kalem
+   *  listesiyle açılır (bkz. `TemplatePreview.isNew`). */
+  const [newTemplate, setNewTemplate] = useState<MealTemplate | null>(null);
   const [showScan, setShowScan] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
 
@@ -34,6 +41,7 @@ export function AliasPage({
     if (resetKey > 0) {
       setEditingAlias(undefined);
       setEditingRecipe(undefined);
+      setNewTemplate(null);
       setShowScan(false);
       setSearchQuery("");
     }
@@ -75,6 +83,25 @@ export function AliasPage({
     }
   }
 
+  /** Yeni çoklu kalemli şablon kaydeder. Ad `TemplatePreview` içindeki alandan
+   *  gelir; boş ad `FormActions` kapısında zaten engellenir. */
+  async function saveNewTemplate(name: string, lines: DraftLine[]) {
+    if (busy) return;
+    const trimmed = name.trim();
+    if (!trimmed) return;
+    setErr(null);
+    setBusy(true);
+    try {
+      await updateConfig("templates", {
+        list: [...templates.list, { id: newTemplateId(), name: trimmed, items: draftLinesToItems(lines) }],
+      });
+      setNewTemplate(null);
+    } catch (e) {
+      setErr(String((e as Error)?.message ?? e));
+      setBusy(false);
+    }
+  }
+
   return (
     <div className="flex flex-col gap-6 text-white w-full min-w-0 max-w-full overflow-hidden">
       {/* Header & Actions */}
@@ -86,7 +113,7 @@ export function AliasPage({
           </p>
         </div>
 
-        <div className="grid grid-cols-3 gap-2 w-full sm:flex sm:w-auto shrink-0">
+        <div className="grid grid-cols-4 gap-2 w-full sm:flex sm:w-auto shrink-0">
           <button
             type="button"
             onClick={() => setShowScan(true)}
@@ -102,6 +129,14 @@ export function AliasPage({
           >
             <Utensils className="w-3.5 h-3.5 text-memory shrink-0" />
             <span className="truncate">{t("aliasPage.recipe")}</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setNewTemplate({ id: "", name: "", items: [] })}
+            className="px-2.5 py-2 rounded-full border border-memory/40 bg-memory/15 hover:bg-memory/25 text-[11px] sm:text-xs font-bold text-memory transition active:scale-95 flex items-center justify-center gap-1.5 whitespace-nowrap"
+          >
+            <Utensils className="w-3.5 h-3.5 text-memory shrink-0" />
+            <span className="truncate">{t("aliasPage.newTemplate")}</span>
           </button>
           <button
             type="button"
@@ -270,6 +305,15 @@ export function AliasPage({
 
       {editingAlias !== undefined && <AliasForm initial={editingAlias} onClose={() => setEditingAlias(undefined)} />}
       {editingRecipe !== undefined && <RecipeBuilder initial={editingRecipe} onClose={() => setEditingRecipe(undefined)} />}
+      {newTemplate && (
+        <TemplatePreview
+          template={newTemplate}
+          aliases={aliases}
+          busy={busy}
+          onClose={() => setNewTemplate(null)}
+          onApply={(lines, _update, name) => void saveNewTemplate(name, lines)}
+        />
+      )}
       {showScan && (
         <ScanSheet
           onClose={() => setShowScan(false)}

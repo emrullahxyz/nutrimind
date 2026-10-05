@@ -53,7 +53,16 @@ function round1(value: number): number {
   return Math.round(value * 10) / 10;
 }
 
-function initialDraftLines(template: MealTemplate, aliases: Alias[]): DraftLine[] {
+function initialDraftLines(
+  template: MealTemplate,
+  aliases: Alias[],
+  isNew = false,
+): DraftLine[] {
+  // Yeni şablon: kullanıcı boş ekranla değil, HAFIZA PICKER'I AÇIK tek bir
+  // iskelet satırla başlar (addLine ile aynı deneyim). `blank: true` olduğu
+  // için `draftLinesToItems` onu düşürür — doldurulmadan kaydedilemez.
+  if (isNew) return [newDraftLine(undefined)];
+
   const byId = new Map(aliases.map((a) => [a.id, a]));
   const out: DraftLine[] = [];
   for (const [i, item] of template.items.entries()) {
@@ -109,15 +118,23 @@ export function TemplatePreview({
   onClose,
   onApply,
 }: {
+  /** `name` boş olan geçici şablon "yeni şablon" modudur: boş kalem listesiyle
+   *  açılır ve kullanıcı adını kendisi yazar. Gerçek şablonlarda `name`
+   *  doludur ve alan görünmez (ad kayıttan gelir). */
   template: MealTemplate;
   aliases: Alias[];
   busy: boolean;
   onClose: () => void;
-  /** lines: güncel kalem satırları, updateTemplate: tanıma da yazılsın mı. */
-  onApply: (lines: DraftLine[], updateTemplate: boolean) => void;
+  /** lines: güncel kalem satırları, updateTemplate: tanıma da yazılsın mı,
+   *  name: yeni şablonda kullanıcının yazdığı ad (kayıtlı şablonda `template.name`). */
+  onApply: (lines: DraftLine[], updateTemplate: boolean, name: string) => void;
 }) {
   const { t } = useTranslation();
-  const [lines, setLines] = useState<DraftLine[]>(() => initialDraftLines(template, aliases));
+  const isNew = template.name === "";
+  const [name, setName] = useState(template.name);
+  const [lines, setLines] = useState<DraftLine[]>(() =>
+    initialDraftLines(template, aliases, isNew),
+  );
   const [swapKey, setSwapKey] = useState<string | null>(null);
   const [updateTemplate, setUpdateTemplate] = useState(false);
   // AI: öğün ekleme ekranındaki sekmeyle AYNI akış (metin + kamera).
@@ -128,14 +145,21 @@ export function TemplatePreview({
   /** "Malzeme ekle" → AÇILAN İSKELE SATIRINA yönlendiren picker anahtarı.
    *  Seçim yapılmadan kapanırsa satır, ad + makro alanları açık elle satır
    *  olarak kalır. Açık satır yoksa (satır silinmiş) picker açılmaz. */
-  const [pickerFor, setPickerFor] = useState<string | null>(null);
+  const [pickerFor, setPickerFor] = useState<string | null>(() =>
+    isNew ? (lines[0]?.key ?? null) : null,
+  );
   /** Miktar değişikliğinin kullanıcıya gösterilecek sonucu. Satırın anahtarıyla
    *  tutulur — ipucu hangi satıra ait olmalı? */
   const [hint, setHint] = useState<{ key: string; hint: GramEditHint } | null>(null);
 
   // Farklı şablon açılırsa sıfırla (bileşen yeniden mount olmayabilir).
   useEffect(() => {
-    setLines(initialDraftLines(template, aliases));
+    const fresh = initialDraftLines(template, aliases, isNew);
+    setName(template.name);
+    setLines(fresh);
+    // Yeni şablonda ilk satır picker'AÇIK gelir: kullanıcı adı yazmadan
+    // besin aramaya başlar. Kayıtlı şablonda picker kapalıdır.
+    setPickerFor(isNew ? (fresh[0]?.key ?? null) : null);
     setSwapKey(null);
     setUpdateTemplate(false);
     setAiText("");
@@ -244,22 +268,33 @@ export function TemplatePreview({
 
   return (
     <Modal
-      title={template.name}
+      title={isNew ? t("aliasPage.newTemplate") : template.name}
       onClose={onClose}
       footer={
         <FormActions
           onCancel={onClose}
-          onSave={() => onApply(lines, updateTemplate)}
+          onSave={() => onApply(lines, updateTemplate, name.trim() || template.name)}
           saving={busy}
           // `lines.length` YETMEZ: satır var ama gramajı boşaltıldığı için
           // kaydedilemez durumda olabilir (`draftLinesToItems` onu düşürür).
           // O durumda düğme etkin görünür ve hiçbir şey yapmazdı.
-          disabled={busy || savableItems.length === 0}
-          saveLabel={t("day.addMeal")}
+          // Yeni şablonda AD da zorunlu — isimsiz şablon kaydedilmez.
+          disabled={busy || savableItems.length === 0 || (isNew && !name.trim())}
+          saveLabel={isNew ? t("templatePreview.saveTemplate") : t("day.addMeal")}
         />
       }
     >
       <div className="flex flex-col gap-3">
+        {/* Yeni şablonda ad alanı — kayıtlı şablonda ad kayıttan gelir, alan
+            gösterilmez. */}
+        {isNew && (
+          <TextField
+            label={t("aliasPage.templateNameLabel")}
+            value={name}
+            onChange={setName}
+            placeholder={t("aliasPage.templateNamePlaceholder")}
+          />
+        )}
         {/* NOT: boş-durum dalı BİLEREK YOK. Çöp kutusu yalnız
             `lines.length > 1` iken görünür, yani son satır silinemez ve
             `lines.length === 0` hiç oluşmaz. Son satırın silinememesi
@@ -560,15 +595,19 @@ export function TemplatePreview({
           className="rounded-chip border border-line bg-white/[0.03] p-3 font-mono text-xs text-accent"
         />
 
-        <label className="flex items-center gap-2 text-xs text-ink-secondary">
-          <input
-            type="checkbox"
-            checked={updateTemplate}
-            onChange={(e) => setUpdateTemplate(e.target.checked)}
-            className="h-4 w-4 rounded border-white/20 bg-white/10"
-          />
-          {t("templatePreview.updateTemplate")}
-        </label>
+        {/* Yeni şablonda "şablonu da güncelle" anlamsız — zaten şablon
+            oluşturuluyor, güncelleme değil. */}
+        {!isNew && (
+          <label className="flex items-center gap-2 text-xs text-ink-secondary">
+            <input
+              type="checkbox"
+              checked={updateTemplate}
+              onChange={(e) => setUpdateTemplate(e.target.checked)}
+              className="h-4 w-4 rounded border-white/20 bg-white/10"
+            />
+            {t("templatePreview.updateTemplate")}
+          </label>
+        )}
       </div>
     </Modal>
   );

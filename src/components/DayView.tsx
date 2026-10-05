@@ -31,7 +31,7 @@ import { afterHistoryBackSettles } from "../lib/backStack";
 import { effectiveGoal } from "../lib/goals";
 import { MACROS, MICROS } from "../lib/nutrients";
 import { coverage, dayTotal, mealsOf, sumMeals, toPayload } from "../lib/days";
-import { parseTemplatesConfig } from "../lib/templates";
+import { parseTemplatesConfig, newTemplateId } from "../lib/templates";
 import type { MealTemplate } from "../lib/templates";
 import { draftLinesToItems } from "../lib/ingredientDraft";
 import type { DraftLine } from "../lib/ingredientDraft";
@@ -206,6 +206,8 @@ export function DayView({
   } | null>(null);
   /** "Hafızaya tarif olarak kaydet" ön dolgusu — `RecipeBuilder` modalını açar. */
   const [recipePreset, setRecipePreset] = useState<RecipePreset | null>(null);
+  /** "Yeni Şablon" — boş kalem listesiyle şablon oluşturma taslağı. */
+  const [newTemplateDraft, setNewTemplateDraft] = useState<MealTemplate | null>(null);
 
   useEffect(() => {
     if (resetKey > 0) {
@@ -216,6 +218,7 @@ export function DayView({
       setMenuFor(null);
       setRecipePreset(null);
       setPreviewTemplateId(null);
+      setNewTemplateDraft(null);
     }
   }, [resetKey]);
   const [showScan, setShowScan] = useState(false);
@@ -297,6 +300,25 @@ export function DayView({
     () => templates.list.find((t) => t.id === previewTemplateId) ?? null,
     [templates.list, previewTemplateId],
   );
+
+  /** Sıfırdan çoklu kalemli şablon kaydeder. Yalnız şablon yazılır — bugüne
+   *  öğün EKLENMEZ (kullanıcı kararı); uygulama yolu ayrı: şablona dokun. */
+  async function saveNewTemplate(name: string, lines: DraftLine[]) {
+    const trimmed = name.trim();
+    if (busy || !trimmed) return;
+    setErr(null);
+    setBusy(true);
+    try {
+      await updateConfig("templates", {
+        list: [...templates.list, { id: newTemplateId(), name: trimmed, items: draftLinesToItems(lines) }],
+      });
+      setNewTemplateDraft(null);
+    } catch (e) {
+      setErr(String((e as Error)?.message ?? e));
+    } finally {
+      setBusy(false);
+    }
+  }
 
   async function applyTemplate(lines: DraftLine[], updateTemplate: boolean) {
     const t = previewTemplate;
@@ -526,13 +548,32 @@ export function DayView({
 
         {err && <ErrorText>{err}</ErrorText>}
 
-        {showTemplates && templates.list.length > 0 && (
-          <TemplateShelf
-            templates={templates.list}
-            usage={templateUsageIndex}
-            busy={busy}
-            onPick={(id) => setPreviewTemplateId(id)}
-          />
+        {showTemplates && (
+          <>
+            {/* Başlık + "Yeni Şablon": sıfırdan çoklu kalemli şablon kurmanın
+                yolu. Koşul `list.length > 0` DEĞİL: o zaman düğme tam olarak
+                şablonsuz durumda kaybolur ve ilk şablon yine kurulamaz.
+                Vurgulu da değil — şablonlar ikincil, gözü yormasın diye
+                `border-line` + `text-ink-secondary`. */}
+            <div className="flex items-center justify-between gap-3">
+              <h3 className="text-sm font-bold text-ink-secondary">{t("day.templates")}</h3>
+              <button
+                type="button"
+                onClick={() => setNewTemplateDraft({ id: "", name: "", items: [] })}
+                className="rounded-pill border border-line bg-white/[0.06] px-3 py-1.5 text-xs font-semibold text-ink-secondary transition hover:border-memory/40 hover:bg-white/[0.09] hover:text-ink-primary"
+              >
+                + {t("aliasPage.newTemplate")}
+              </button>
+            </div>
+            {templates.list.length > 0 && (
+              <TemplateShelf
+                templates={templates.list}
+                usage={templateUsageIndex}
+                busy={busy}
+                onPick={(id) => setPreviewTemplateId(id)}
+              />
+            )}
+          </>
         )}
 
         {hasData ? (
@@ -647,8 +688,17 @@ export function DayView({
         <RecipeBuilder initial={null} preset={recipePreset} onClose={() => setRecipePreset(null)} />
       )}
 
-      {previewTemplate && (
+      {newTemplateDraft && (
         <TemplatePreview
+          template={newTemplateDraft}
+          aliases={aliases}
+          busy={busy}
+          onClose={() => setNewTemplateDraft(null)}
+          onApply={(lines, _update, name) => void saveNewTemplate(name, lines)}
+        />
+      )}
+
+      {previewTemplate && (        <TemplatePreview
           template={previewTemplate}
           aliases={aliases}
           busy={busy}

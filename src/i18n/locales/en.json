@@ -84,6 +84,7 @@
     "addMeal": "Add meal",
     "other": "Other",
     "recentMeals": "Recently added",
+    "templates": "Templates",
     "templatesMore": "+{{n}} more templates",
     "templatesAll": "All Templates",
     "clearSelection": "Clear selection",
@@ -885,6 +886,7 @@
   },
   "templatePreview": {
     "updateTemplate": "Also update the template with these changes",
+    "saveTemplate": "Save Template",
     "aiCamera": "Add an ingredient with the camera"
   },
   "export": {
@@ -975,6 +977,9 @@
     "subtitle": "Learned phrases → specific foods & macros (e.g. \"yogurt\", \"protein powder\")",
     "scanBarcode": "Barcode",
     "recipe": "Recipe",
+    "newTemplate": "New Template",
+    "templateNameLabel": "Template Name",
+    "templateNamePlaceholder": "e.g. Breakfast",
     "newFood": "New Food",
     "searchPlaceholder": "Search food name, brand or phrase...",
     "templates": "Templates",

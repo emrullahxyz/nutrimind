@@ -84,6 +84,7 @@
     "addMeal": "Dodaj posiłek",
     "other": "Inne",
     "recentMeals": "Ostatnio dodane",
+    "templates": "Szablony",
     "templatesMore": "+{{n}} więcej szablonów",
     "templatesAll": "Wszystkie szablony",
     "clearSelection": "Wyczyść zaznaczenie",
@@ -885,6 +886,7 @@
   },
   "templatePreview": {
     "updateTemplate": "Zaktualizuj też szablon tymi zmianami",
+    "saveTemplate": "Zapisz szablon",
     "aiCamera": "Dodaj składnik aparatem"
   },
   "export": {
@@ -975,6 +977,9 @@
     "subtitle": "Nauczone frazy → konkretne produkty i makro (np. \"jogurt\", \"odżywka białkowa\")",
     "scanBarcode": "Kod kreskowy",
     "recipe": "Przepis",
+    "newTemplate": "Nowy szablon",
+    "templateNameLabel": "Nazwa szablonu",
+    "templateNamePlaceholder": "np. Śniadanie",
     "newFood": "Nowy produkt",
     "searchPlaceholder": "Szukaj nazwy produktu, marki lub frazy...",
     "templates": "Szablony",

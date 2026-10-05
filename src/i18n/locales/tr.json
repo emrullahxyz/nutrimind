@@ -84,6 +84,7 @@
     "addMeal": "Öğün ekle",
     "other": "Diğer",
     "recentMeals": "Son eklenen",
+    "templates": "Şablonlar",
     "templatesMore": "+{{n}} şablon daha",
     "templatesAll": "Tüm Şablonlar",
     "clearSelection": "Seçimi temizle",
@@ -885,6 +886,7 @@
   },
   "templatePreview": {
     "updateTemplate": "Şablonu da bu değişikliklerle güncelle",
+    "saveTemplate": "Şablonu Kaydet",
     "aiCamera": "Kamera ile malzeme ekle"
   },
   "export": {
@@ -975,6 +977,9 @@
     "subtitle": "Öğrenilmiş ifadeler → belirli besin & makrolar (örn. \"yoğurt\", \"protein tozu\")",
     "scanBarcode": "Barkod",
     "recipe": "Tarif",
+    "newTemplate": "Yeni Şablon",
+    "templateNameLabel": "Şablon Adı",
+    "templateNamePlaceholder": "örn. Sabah Kahvaltısı",
     "newFood": "Yeni Besin",
     "searchPlaceholder": "Besin adı, marka veya ifade ara...",
     "templates": "Şablonlar",
