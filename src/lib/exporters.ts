@@ -318,7 +318,6 @@ export function validateBackup(raw: unknown, t: TFunction): ValidationResult {
         : {}),
       ...(rec.barcode ? { barcode: String(rec.barcode) } : {}),
       ...(rec.off_id ? { off_id: String(rec.off_id) } : {}),
-      ...(rec.recipe ? { recipe: rec.recipe as Alias["recipe"] } : {}),
     });
   }
 

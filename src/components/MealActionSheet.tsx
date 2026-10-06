@@ -8,7 +8,6 @@ import {
   Pencil,
   SquareCheckBig,
   Trash2,
-  Utensils,
   X,
 } from "lucide-react";
 import { TextField } from "./FormBits";
@@ -29,7 +28,6 @@ const ICONS: Record<MealMenuActionId, typeof BookmarkPlus> = {
   duplicate: CopyPlus,
   edit: Pencil,
   select: SquareCheckBig,
-  recipe: Utensils,
   delete: Trash2,
 };
 
@@ -60,14 +58,12 @@ export function MealActionSheet({
   anchor,
   busy,
   offline,
-  recipeReady,
   isToday,
   onClose,
   onSaveTemplate,
   onDuplicate,
   onEdit,
   onSelect,
-  onSaveToMemory,
   onDelete,
 }: {
   meal: MealItem;
@@ -75,8 +71,6 @@ export function MealActionSheet({
   anchor: PanelAnchor;
   busy: boolean;
   offline: boolean;
-  /** Kaynakları çözülebilen öğünlerde tarif aksiyonu görünür. */
-  recipeReady: boolean;
   /** "Aynısını bugüne ekle" etiketi: bugüne bakarken "bir tane daha" olur. */
   isToday: boolean;
   onClose: () => void;
@@ -84,7 +78,6 @@ export function MealActionSheet({
   onDuplicate: () => void;
   onEdit: () => void;
   onSelect: () => void;
-  onSaveToMemory: () => void;
   onDelete: () => void;
 }) {
   const { t } = useTranslation();
@@ -210,7 +203,7 @@ export function MealActionSheet({
     };
   }, []);
 
-  const actions = mealMenuActions({ busy, offline, recipeReady });
+  const actions = mealMenuActions({ busy, offline });
   const mainActions = actions.filter((a) => a.id !== "delete");
   const deleteAction = actions.find((a) => a.id === "delete");
 
@@ -219,7 +212,6 @@ export function MealActionSheet({
     duplicate: isToday ? "mealMenu.duplicateAgain" : "mealMenu.duplicateToday",
     edit: "mealMenu.edit",
     select: "mealMenu.select",
-    recipe: "mealMenu.recipe",
     delete: "mealMenu.delete",
   };
 
@@ -235,7 +227,6 @@ export function MealActionSheet({
     if (id === "duplicate") onDuplicate();
     else if (id === "edit") onEdit();
     else if (id === "select") onSelect();
-    else if (id === "recipe") onSaveToMemory();
   }
 
   function choose(id: MealMenuActionId) {

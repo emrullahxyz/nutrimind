@@ -134,24 +134,6 @@ export interface AliasUnit {
   grams: number;
 }
 
-/** Tarifte bir malzeme. */
-export interface RecipeIngredient {
-  /** Hafızadaki besinden geldiyse id'si; elle girildiyse yok. */
-  aliasId?: string;
-  /** Görüntülenecek ad (alias silinse bile tarif okunabilir kalsın). */
-  name: string;
-  qty: number;
-  unit: string;
-  /** Bu malzemenin TOPLAM besin değeri (miktarına göre ölçeklenmiş hâli). */
-  nutrition: Nutrition;
-}
-
-export interface Recipe {
-  ingredients: RecipeIngredient[];
-  /** Pişmiş toplam ağırlık (g). Hesabın paydası. */
-  totalG: number;
-}
-
 /** Öğrenilmiş alias: kullanıcının ifadeleri -> belirli besin + makro (serving_g gram için). */
 export interface Alias {
   id: string;
@@ -171,8 +153,6 @@ export interface Alias {
    *  alan: ileride başka bir katalog (ör. USDA) eklenirse barkodu olmayan bir
    *  kaydın kimliği yine taşınabilsin. */
   off_id?: string;
-  /** Tarif detayı — Faz 7. Opsiyonel. */
-  recipe?: Recipe;
 }
 
 /** Bir gün tipinin hedefleri — "Antrenman", "Dinlenme", "Varsayılan"… */

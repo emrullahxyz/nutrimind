@@ -1,7 +1,6 @@
 import { useState, useEffect } from "react";
 import { Search, Camera, Plus, Utensils, BookOpen, X } from "lucide-react";
 import { AliasForm } from "../components/AliasForm";
-import { RecipeBuilder } from "../components/RecipeBuilder";
 import { ScanSheet } from "../components/ScanSheet";
 import type { AIParseItem } from "../types";
 import { ConfirmButton, ErrorText } from "../components/FormBits";
@@ -30,7 +29,6 @@ export function AliasPage({
   const { t } = useTranslation();
   const { aliases, removeAlias, config, updateConfig } = useData();
   const [editingAlias, setEditingAlias] = useState<Alias | null | undefined>(undefined);
-  const [editingRecipe, setEditingRecipe] = useState<Alias | null | undefined>(undefined);
   /** Yeni şablon taslağı — `name` boş olduğu için `TemplatePreview` boş kalem
    *  listesiyle açılır (bkz. `TemplatePreview.isNew`). */
   const [newTemplate, setNewTemplate] = useState<MealTemplate | null>(null);
@@ -40,7 +38,6 @@ export function AliasPage({
   useEffect(() => {
     if (resetKey > 0) {
       setEditingAlias(undefined);
-      setEditingRecipe(undefined);
       setNewTemplate(null);
       setShowScan(false);
       setSearchQuery("");
@@ -113,7 +110,7 @@ export function AliasPage({
           </p>
         </div>
 
-        <div className="grid grid-cols-4 gap-2 w-full sm:flex sm:w-auto shrink-0">
+        <div className="grid grid-cols-3 gap-2 w-full sm:flex sm:w-auto shrink-0">
           <button
             type="button"
             onClick={() => setShowScan(true)}
@@ -121,14 +118,6 @@ export function AliasPage({
           >
             <Camera className="w-3.5 h-3.5 text-sky-400 shrink-0" />
             <span className="truncate">{t("aliasPage.scanBarcode")}</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => setEditingRecipe(null)}
-            className="px-2.5 py-2 rounded-full border border-memory/40 bg-memory/15 hover:bg-memory/25 text-[11px] sm:text-xs font-bold text-memory transition active:scale-95 flex items-center justify-center gap-1.5 whitespace-nowrap"
-          >
-            <Utensils className="w-3.5 h-3.5 text-memory shrink-0" />
-            <span className="truncate">{t("aliasPage.recipe")}</span>
           </button>
           <button
             type="button"
@@ -195,10 +184,7 @@ export function AliasPage({
             return (
               <div
                 key={a.id}
-                onClick={() => {
-                  if (a.recipe) setEditingRecipe(a);
-                  else setEditingAlias(a);
-                }}
+                onClick={() => setEditingAlias(a)}
                 className="anim-fadeup rounded-[24px] bg-calCard p-3.5 sm:p-4 flex flex-col justify-between gap-3 transition-all hover:bg-cal-hover active:scale-[0.99] cursor-pointer shadow-card group w-full min-w-0 overflow-hidden spring-press"
                 style={{ animationDelay: `${i * 25}ms`, ...press.style }}
                 {...press.handlers}
@@ -211,11 +197,6 @@ export function AliasPage({
                         <h4 className="font-extrabold text-white text-sm sm:text-base truncate group-hover:text-carb transition-colors" title={a.name}>
                           {a.name}
                         </h4>
-                        {a.recipe && (
-                          <span className="shrink-0 px-2 py-0.5 rounded-full bg-memory/20 text-memory border border-memory/30 text-[9px] font-mono font-bold">
-                            {t("aliasPage.recipeBadge")}
-                          </span>
-                        )}
                       </div>
 
                       {a.brand && (
@@ -304,7 +285,6 @@ export function AliasPage({
       </div>
 
       {editingAlias !== undefined && <AliasForm initial={editingAlias} onClose={() => setEditingAlias(undefined)} />}
-      {editingRecipe !== undefined && <RecipeBuilder initial={editingRecipe} onClose={() => setEditingRecipe(undefined)} />}
       {newTemplate && (
         <TemplatePreview
           template={newTemplate}

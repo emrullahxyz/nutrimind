@@ -1,19 +1,15 @@
 import { describe, expect, it } from "vitest";
 import {
   MEAL_MENU_ACTIONS,
-  buildRecipePreset,
-  canSaveAsRecipe,
   duplicatePayload,
   mealMenuActions,
   mealSheetReducer,
   mealToTemplate,
   templateNameSuggestion,
-  triggerFromMealName,
 } from "./mealActions";
 import { parseTemplatesConfig } from "./templates";
 import { makeNutrition } from "./nutrients";
-import { scaleNutrition } from "./nutrition";
-import type { Alias, AppConfig, MealItem } from "../types";
+import type { AppConfig, MealItem } from "../types";
 
 function nutrition(over: Partial<Record<string, number>> = {}) {
   return makeNutrition({ kcal: 300, protein: 20, carbs: 30, fat: 10, fiber: 4, ...over });
@@ -21,18 +17,6 @@ function nutrition(over: Partial<Record<string, number>> = {}) {
 
 function meal(over: Partial<MealItem> = {}): MealItem {
   return { id: "m1", label: "Yoğurt + shake", computed: nutrition(), ...over };
-}
-
-function alias(over: Partial<Alias> = {}): Alias {
-  return {
-    id: "a1",
-    triggers: ["yogurt"],
-    name: "Yoğurt",
-    brand: null,
-    serving_g: 100,
-    nutrition: nutrition(),
-    ...over,
-  };
 }
 
 describe("mealToTemplate", () => {
@@ -94,59 +78,8 @@ describe("duplicatePayload", () => {
   });
 });
 
-describe("buildRecipePreset", () => {
-  it("kaynak yoksa tek elle kaleme düşer ve gram toplamını kullanıcıya bırakır", () => {
-    const preset = buildRecipePreset(meal(), []);
-    expect(preset.triggers).toEqual(["yoğurt + shake"]);
-    expect(preset.totalG).toBe(0);
-    expect(preset.ingredients).toEqual([
-      { name: "Yoğurt + shake", qty: 1, unit: "porsiyon", nutrition: nutrition() },
-    ]);
-  });
-
-  it("çözülen kaynaklardan gerçek tarif kalemleri + gram toplamı üretir", () => {
-    const a = alias({ serving_g: 100, nutrition: nutrition({ kcal: 60 }) });
-    const item = meal({ sources: [{ aliasId: "a1", qty: 200, unit: "g" }] });
-    const preset = buildRecipePreset(item, [a]);
-    expect(preset.totalG).toBe(200);
-    expect(preset.ingredients).toEqual([
-      {
-        aliasId: "a1",
-        name: "Yoğurt",
-        qty: 200,
-        unit: "g",
-        nutrition: scaleNutrition(a.nutrition, 100, 200),
-      },
-    ]);
-  });
-
-  it("özel birim grama çevrilir (2 adet × 50 g = 100 g)", () => {
-    const a = alias({ units: [{ name: "adet", grams: 50 }] });
-    const item = meal({ sources: [{ aliasId: "a1", qty: 2, unit: "adet" }] });
-    const preset = buildRecipePreset(item, [a]);
-    expect(preset.totalG).toBe(100);
-    expect(preset.ingredients[0]).toMatchObject({ qty: 2, unit: "adet" });
-    expect(preset.ingredients[0].nutrition).toEqual(scaleNutrition(a.nutrition, a.serving_g, 100));
-  });
-
-  it("bir kaynak silinmişse tamamı elle kaleme düşer (yarım tarif üretilmez)", () => {
-    const a = alias({ id: "a1" });
-    const item = meal({
-      sources: [
-        { aliasId: "a1", qty: 100, unit: "g" },
-        { aliasId: "silinmis", qty: 50, unit: "g" },
-      ],
-    });
-    const preset = buildRecipePreset(item, [a]);
-    expect(preset.totalG).toBe(0);
-    expect(preset.ingredients).toEqual([
-      { name: item.label, qty: 1, unit: "porsiyon", nutrition: item.computed },
-    ]);
-  });
-});
-
 describe("mealMenuActions", () => {
-  const base = { busy: false, offline: false, recipeReady: true };
+  const base = { busy: false, offline: false };
 
   it("çevrimdışıyken YALNIZCA şablon kaydetme kapanır (gün yazımları kuyruğa girebilir)", () => {
     const disabled = mealMenuActions({ ...base, offline: true })
@@ -164,24 +97,14 @@ describe("mealMenuActions", () => {
     expect(MEAL_MENU_ACTIONS[MEAL_MENU_ACTIONS.length - 1]).toBe("delete");
   });
 
-  it("kaynakları çözülemeyen öğünde tarif satırı PASİF değil, LİSTEDEN ÇIKAR", () => {
-    const ids = mealMenuActions({ ...base, recipeReady: false }).map((a) => a.id);
-    expect(ids).not.toContain("recipe");
-    expect(ids).toEqual(["template", "duplicate", "edit", "select", "delete"]);
-  });
-});
-
-describe("canSaveAsRecipe", () => {
-  it("kaynakları çözülebilen öğünde true", () => {
-    expect(canSaveAsRecipe(meal({ sources: [{ aliasId: "a1", qty: 100, unit: "g" }] }), [alias({ id: "a1" })])).toBe(true);
-  });
-
-  it("kaynaksız (elle girilmiş) öğünde false — 100 g paydası yok", () => {
-    expect(canSaveAsRecipe(meal({ sources: undefined }), [alias({ id: "a1" })])).toBe(false);
-  });
-
-  it("kaynağı hafızadan silinmişse false", () => {
-    expect(canSaveAsRecipe(meal({ sources: [{ aliasId: "yok", qty: 1, unit: "adet" }] }), [alias({ id: "a1" })])).toBe(false);
+  it("menüdeki eylem kümesi ve sırası sabittir (tarif eylemi artık yok)", () => {
+    expect(mealMenuActions(base).map((a) => a.id)).toEqual([
+      "template",
+      "duplicate",
+      "edit",
+      "select",
+      "delete",
+    ]);
   });
 });
 
@@ -192,7 +115,7 @@ describe("mealSheetReducer", () => {
   });
 
   it("adım değiştirmeyen aksiyonlar sheet'i kapatır (işi parent yapar)", () => {
-    for (const id of ["duplicate", "edit", "select", "recipe"] as const) {
+    for (const id of ["duplicate", "edit", "select"] as const) {
       expect(mealSheetReducer("menu", { type: "choose", id })).toBe("closed");
     }
   });
@@ -213,12 +136,5 @@ describe("mealSheetReducer", () => {
   it("aç/kapat olayları adımı sıfırlar", () => {
     expect(mealSheetReducer("confirmDelete", { type: "close" })).toBe("closed");
     expect(mealSheetReducer("closed", { type: "open" })).toBe("menu");
-  });
-});
-
-describe("triggerFromMealName", () => {
-  it("küçük harfe çevirir, kırpar ve 40 karakterle sınırlar", () => {
-    expect(triggerFromMealName("  Yoğurt + Shake ")).toBe("yoğurt + shake");
-    expect(triggerFromMealName("A".repeat(80))).toHaveLength(40);
   });
 });

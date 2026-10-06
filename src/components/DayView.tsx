@@ -20,7 +20,6 @@ import { WaterCard } from "./WaterCard";
 import { WeightCard } from "./WeightCard";
 import { MealRow } from "./MealRow";
 import { MealActionSheet } from "./MealActionSheet";
-import { RecipeBuilder } from "./RecipeBuilder";
 import { TemplatePreview } from "./TemplatePreview";
 import { ExerciseModal } from "./ExerciseModal";
 import { NutritionSheet } from "./NutritionSheet";
@@ -35,13 +34,7 @@ import { parseTemplatesConfig, newTemplateId, templateItemsToPayload } from "../
 import type { MealTemplate } from "../lib/templates";
 import { draftLinesToItems } from "../lib/ingredientDraft";
 import type { DraftLine } from "../lib/ingredientDraft";
-import {
-  buildRecipePreset,
-  canSaveAsRecipe,
-  duplicatePayload,
-  mealToTemplate,
-} from "../lib/mealActions";
-import type { RecipePreset } from "../lib/mealActions";
+import { duplicatePayload, mealToTemplate } from "../lib/mealActions";
 import type { PanelAnchor } from "../lib/anchor";
 import type { AIParseItem, Exercise, MealItem, MealPayload } from "../types";
 import { PREF } from "../lib/prefs";
@@ -204,8 +197,6 @@ export function DayView({
     index: number;
     anchor: PanelAnchor;
   } | null>(null);
-  /** "Hafızaya tarif olarak kaydet" ön dolgusu — `RecipeBuilder` modalını açar. */
-  const [recipePreset, setRecipePreset] = useState<RecipePreset | null>(null);
   /** "Yeni Şablon" — boş kalem listesiyle şablon oluşturma taslağı. */
   const [newTemplateDraft, setNewTemplateDraft] = useState<MealTemplate | null>(null);
 
@@ -216,7 +207,6 @@ export function DayView({
       setShowExerciseModal(false);
       setShowMergeModal(false);
       setMenuFor(null);
-      setRecipePreset(null);
       setPreviewTemplateId(null);
       setNewTemplateDraft(null);
     }
@@ -383,12 +373,6 @@ export function DayView({
   function openMealForm(index: number) {
     setMenuFor(null);
     afterHistoryBackSettles(() => setEditIndex(index));
-  }
-
-  function openRecipeFrom(meal: MealItem) {
-    setMenuFor(null);
-    const preset = buildRecipePreset(meal, aliases);
-    afterHistoryBackSettles(() => setRecipePreset(preset));
   }
 
   /** Menüden "Seç": mevcut seçim moduna girer, bu öğün işaretli gelir. */
@@ -649,7 +633,6 @@ export function DayView({
           anchor={menuFor.anchor}
           busy={busy}
           offline={offline}
-          recipeReady={canSaveAsRecipe(menuFor.meal, aliases)}
           isToday={date === todayISO()}
           onClose={() => setMenuFor(null)}
           onSaveTemplate={(name) => {
@@ -664,17 +647,12 @@ export function DayView({
           }}
           onEdit={() => openMealForm(menuFor.index)}
           onSelect={() => selectMeal(menuFor.index)}
-          onSaveToMemory={() => openRecipeFrom(menuFor.meal)}
           onDelete={() => {
             const index = menuFor.index;
             setMenuFor(null);
             void removeMeal(index);
           }}
         />
-      )}
-
-      {recipePreset && (
-        <RecipeBuilder initial={null} preset={recipePreset} onClose={() => setRecipePreset(null)} />
       )}
 
       {newTemplateDraft && (

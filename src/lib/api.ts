@@ -12,8 +12,6 @@ import type {
   MealPayload,
   MealSource,
   Nutrition,
-  Recipe,
-  RecipeIngredient,
 } from "../types";
 import { singleProfileConfig } from "./goals";
 import { NUTRIENT_KEYS, makeNutrition } from "./nutrients";
@@ -56,7 +54,6 @@ interface RawAlias {
   defaultUnit?: unknown;
   barcode?: string | null;
   off_id?: string | null;
-  recipe?: unknown;
 }
 
 /** Boş olmayan metin ya da `undefined`. Barkod/off_id için: backend'den `null`
@@ -104,45 +101,6 @@ export function parseSources(raw: unknown): MealSource[] | undefined {
     }
   }
   return valid.length > 0 ? valid : undefined;
-}
-
-/** Faz 7: Bozuk/eksik `recipe` verisini doğrular; `recipe` nesne değilse veya
- *  `totalG` <= 0 ise veya `ingredients` geçerli malzeme içermiyorsa undefined döner. */
-export function parseRecipe(raw: unknown): Recipe | undefined {
-  if (typeof raw !== "object" || raw === null) return undefined;
-  const totalGRaw = (raw as { totalG?: unknown }).totalG;
-  const totalG = typeof totalGRaw === "number" ? totalGRaw : parseNum(String(totalGRaw ?? ""));
-  if (typeof totalG !== "number" || totalG <= 0 || !Number.isFinite(totalG)) return undefined;
-
-  const ingredientsRaw = (raw as { ingredients?: unknown }).ingredients;
-  if (!Array.isArray(ingredientsRaw)) return undefined;
-
-  const valid: RecipeIngredient[] = [];
-  for (const ing of ingredientsRaw) {
-    if (typeof ing !== "object" || ing === null) continue;
-    const aliasId = optionalText((ing as { aliasId?: unknown }).aliasId);
-    const name =
-      typeof (ing as { name?: unknown }).name === "string"
-        ? (ing as { name: string }).name.trim()
-        : "";
-    const qtyRaw = (ing as { qty?: unknown }).qty;
-    const qty = typeof qtyRaw === "number" ? qtyRaw : parseNum(String(qtyRaw ?? ""));
-    const unitRaw = (ing as { unit?: unknown }).unit;
-    const unit = typeof unitRaw === "string" && unitRaw.trim().length > 0 ? unitRaw.trim() : "g";
-    const nutrition = fill((ing as { nutrition?: RawNutrition }).nutrition);
-
-    if (name.length > 0 && typeof qty === "number" && qty > 0 && Number.isFinite(qty)) {
-      valid.push({
-        ...(aliasId ? { aliasId } : {}),
-        name,
-        qty,
-        unit,
-        nutrition,
-      });
-    }
-  }
-
-  return valid.length > 0 ? { ingredients: valid, totalG } : undefined;
 }
 
 /** Faz 8: HEDEF ŞEKİL GÖÇÜ — v1 (düz `Nutrition`) → v2 (`GoalConfig`).
@@ -347,7 +305,6 @@ export async function fetchData(): Promise<AppData> {
     ...withOptional("defaultUnit", optionalText(a.defaultUnit)),
     ...withOptional("barcode", optionalText(a.barcode)),
     ...withOptional("off_id", optionalText(a.off_id)),
-    ...withOptional("recipe", parseRecipe(a.recipe)),
   }));
 
   return { goals: parseGoals(raw.goals), days, aliases, config: parseConfig(raw.config) };
@@ -372,7 +329,6 @@ export interface AliasPayload {
    *  Alanı GERÇEKTEN temizlemek için açıkça `null` gönderilmelidir. */
   barcode?: string | null;
   off_id?: string | null;
-  recipe?: Recipe;
 }
 
 /** Ortak yazma isteği: JSON gönderir, backend'in {error} mesajını yükseltir. */

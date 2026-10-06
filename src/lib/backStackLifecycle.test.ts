@@ -604,7 +604,7 @@ describe("Gecmis alt gorunumleri (HistoryPage)", () => {
 // ============================================================================
 // 4c) Ogun uzun-bas menusu (MealActionSheet) — menu TEK gecmis girdisidir
 //     (adim adim icerik ayni Modal icinde). Menu kapanisinden SONRA modal acan
-//     aksiyonlar (Duzenle → MealForm, Hafizaya tarif → RecipeBuilder)
+//     aksiyonlar (Duzenle → MealForm)
 //     afterHistoryBackSettles ile sarili; VERI yazan aksiyonlar (Sil/Cogalt/
 //     Sablona ekle) modal ACMAZ, yalnizca girdisini soker.
 // ============================================================================
@@ -625,9 +625,7 @@ describe("Ogun uzun-bas menusu (MealActionSheet)", () => {
     expect(appDecision()).not.toBe("evaluate-exit");
   });
 
-  it.each(["Duzenle (MealForm)", "Hafizaya tarif olarak kaydet (RecipeBuilder)"])(
-    "menu → %s: kapanis back()'i islenmeden yeni modal acilmaz (zombi girdi yok)",
-    () => {
+  it("menu → Duzenle (MealForm): kapanis back()'i islenmeden yeni modal acilmaz (zombi girdi yok)", () => {
       const { history, appDecision } = makeApp(DAILY_ROOT);
       const sheet = mountModal(history, () => undefined);
 
@@ -651,8 +649,7 @@ describe("Ogun uzun-bas menusu (MealActionSheet)", () => {
       newModal!.unmount();
       expectNoLeftover(history);
       expect(appDecision()).not.toBe("evaluate-exit");
-    },
-  );
+  });
 
   it("veri yazan aksiyon (Sil / Cogalt / Sablona ekle): menu kapanir, YENI girdi olmaz", () => {
     const { history, appDecision } = makeApp(DAILY_ROOT);

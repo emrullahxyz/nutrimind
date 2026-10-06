@@ -14,7 +14,6 @@ function aliasFromPayload(id: string, alias: AliasPayload): AppData["aliases"][n
     ...(alias.defaultUnit ? { defaultUnit: alias.defaultUnit } : {}),
     ...(alias.barcode ? { barcode: alias.barcode } : {}),
     ...(alias.off_id ? { off_id: alias.off_id } : {}),
-    ...(alias.recipe ? { recipe: alias.recipe } : {}),
   };
 }
 
