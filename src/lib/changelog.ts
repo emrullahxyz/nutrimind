@@ -13,6 +13,37 @@ export interface ChangeLogVersion {
 
 export const CHANGELOG: ChangeLogVersion[] = [
   {
+    version: "0.31.3",
+    date: "2026-10-06",
+    summary: {
+      tr: "Çok malzemeli bir şablonu uygulayınca artık tek öğün oluşuyor: öğünün adı malzemelerin adları, değeri toplamları. Öğün tek satır, altında tüm malzemeler düzenlenebilir duruyor.",
+      en: "Applying a multi-ingredient template now creates a single meal: the meal is named after its ingredients and holds their combined nutrition. One row instead of many, with every ingredient still editable underneath.",
+    },
+    items: [
+      {
+        type: "improved",
+        tr: "Üç malzemeli bir şablonu ekleyince önce üç ayrı öğün çıkıyordu. Artık tek öğün: adı \"Yulaf + Protein tozu + Süt\" gibi malzemelerin birleşimi, kalorisi toplamları.",
+        en: "Adding a three-ingredient template used to produce three separate meals. Now it's one: named after its ingredients (\"Oats + Protein powder + Milk\") with their combined calories.",
+      },
+      {
+        type: "fixed",
+        tr: "Şablondaki malzemelerden biri hafızada değilse, öğünde malzeme miktarını değiştirince o malzemenin besin değeri sessizce düşüyordu (örneğin 573 kcal 305'e iniyordu). Artık kalan değer korunuyor.",
+        en: "If one of the template's ingredients wasn't in your memory, changing an ingredient's amount would silently drop that ingredient's nutrition (573 kcal could become 305). The remainder is now kept.",
+      },
+    ],
+    dev: [
+      "YENI sabit: templates.templateItemsToPayload(items, templateId) — sablon uygulamanin YAZIMI. N kalem N MealPayload degil TEK payload: name = kalem adlarinin ' + ' birlestirimi (DayView:74 ve MealForm ayni ayristirmayi kullanir), nutrition = templateTotal, sources = flatMap, templateId tek yazimda. items bosken NULL (bosal ogun uydurma kayit, L21).",
+      "BILINCLI KAYIP: sources'ı OLMAYAN kalemin ADI tasinmaz — MealSource yalniz aliasId tutar, ogunun adi tek alandir. Degeri toplama karisir, gramaji `grams` yazilir.",
+      "Sozlesme DEGISTI: MealPayload/MealItem.grams artik `sources` VARKEN de yazilir (karmisik sablonda kaynaksiz kalemin gramaji dusmesin diye). Okuyucular kosulsuz kopyaliyordu (api.parseGrams, days.toPayload, offlineProjection), 4 uc dokunmadan gecti; api.test'e grams+sources round-trip eklendi. types.ts yorumlari guncellendi.",
+      "KRITIK DUSME (OLCULE YAKALANAN, IKINCI YOL): NutritionSheet.onCommit VE handleApplySave toplami yalniz satirlarin toplamindan kuriyordu. Birlestirilmis karmisik ogunde gramaj degistirmek kaynaksiz kalemin besinini SESSIZCE siliyordu (olculdu: 573.3 -> 305, duzeltme sonrasi 404.6). Iki kayit yolu da `remainder` ekliyor.",
+      "YENI lib/nutrition.ts: subtractNutrition(a, b) — addNutrition'in tersi. Mikro besinde ayni kural (iki tarafta da yoksa alan YOK, bilinmiyor != sifir); negatif SONUC KORUNUR cunku o bir 'kalan'dir, 0'a sikistirilsa toplam kaynaksiz kalemi yutardi. NutritionSheet.unattributedNutrition meal.computed - satirlar toplamini hesaplar; carpan ile birlikte olceklenir.",
+      "OLCUM (tarayici, gercek ekran): 3 kalemli sablon -> TEK ogun, ad 'Kupiec... + KFD... + Ev yapimi sos', sources 2 + grams 50 + templateId tek kayitta. 90 g -> 45 g: 573.3 -> 404.6 kcal, kaynaksiz kalemin 100 kcal'i KORUNDU, kaydet'e basinca DB ayni degeri tuttu (L20). Temizlendi: test gunu ve test sablonu silindi, konsol hatasiz.",
+      "KULLANIM SAYACI ETKISI: bir artik 1 ogun sayiyor (eski N kalem -> N ogun -> N sayim). 'En cok kullanilan 3' siralamasi daha onceki surumlerden farkli olabilir — bu dogru davranis, sayac gercek 'kac kez uygulandi' sorusunu soruyor.",
+      "BILINEN GORUNUR BOSLUK (bilincli): duzenleyicide 'Malzemeler' satir toplami ogun toplaminin altinda kalir (kaynaksiz kalemin satiri cizilemez, adi zaten tasinmiyor). Uydurma satir cizilmedi — ad kaybini kullanici 'toplama karissin' secenegiyle kabul etmisti.",
+      "GUNCELLEME: TemplateItem.grams yorumu hala 'sources varsa YAZILMAZ' — bu TemplateItem (kalem) icin GECERLI; ogun duzeyindeki MealPayload.grams farkli sozlesme. parseTemplatesConfig kurali DEGISTIRILMEDI.",
+    ],
+  },
+  {
     version: "0.31.2",
     date: "2026-10-05",
     summary: {

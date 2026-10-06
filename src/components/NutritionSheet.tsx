@@ -7,7 +7,7 @@ import { useBodyScrollLock } from "../hooks/useBodyScrollLock";
 import { useDialogFocus } from "../hooks/useDialogFocus";
 import { useModalHistory } from "../hooks/useModalHistory";
 import { useModalExit } from "../hooks/useModalExit";
-import { addNutrition, scaleMealSources } from "../lib/nutrition";
+import { addNutrition, scaleMealSources, subtractNutrition } from "../lib/nutrition";
 import {
   addDraftLine,
   draftLineFromAlias,
@@ -110,6 +110,24 @@ function mealDraftLines(meal: MealItem, aliases: Alias[]): DraftLine[] | null {
     out.push(line);
   }
   return out.length > 0 ? out : null;
+}
+
+/** Kaydın satırlara YORULAMAYAN kısmı — `sources`'ı olmayan kalemin payı.
+ *
+ *  Tek öğüne birleşen şablonda (`templateItemsToPayload`) kaynaksız bir kalem
+ *  yalnız toplama karışır: adı satır listesinde yer bulamaz. Satır
+ *  düzenlemesinin sonucu bu fark EKLENMEDEN yazılırsa o kalemin besini
+ *  sessizce düşer (gösterilen ≠ kaydedilen, L20) — kullanıcı gramaj
+ *  değiştirmeden öğünün kalorisi 100 kcal azalır.
+ *
+ *  Kaynaksız/çözülemez öğünde satır zaten çizilmez, dolayısıyla bu fark
+ *  hiç kullanılmaz: oran sıfır değil TANIMSIZ değil, sadece kullanılmayan. */
+function unattributedNutrition(meal: MealItem, aliases: Alias[]): Nutrition {
+  const lines = mealDraftLines(meal, aliases);
+  if (!lines) return { ...ZERO_NUTRITION };
+  let sum = { ...ZERO_NUTRITION };
+  for (const l of lines) sum = addNutrition(sum, l.nutrition);
+  return subtractNutrition(meal.computed, sum);
 }
 
 /** Kaydın çözülebilen kalem satırları + tam düzenleme (ekle/sil/gramaj/swap).
@@ -367,6 +385,13 @@ export function NutritionSheet({ isOpen, onClose, meal, onSave, onDelete }: Prop
   if (!isOpen || !meal) return null;
 
   const scaledSources = scaleMealSources(meal.sources, multiplier);
+  // Çarpan hem toplamı hem satırları aynı oranda büker → kalan da ölçeklenir.
+  const scaledMeal: MealItem = {
+    ...meal,
+    computed: scaleMealNutrition(meal.computed, multiplier),
+    sources: scaledSources,
+  };
+  const remainder = unattributedNutrition(scaledMeal, aliases);
 
   function updateField(key: keyof NutritionDraft, value: string) {
     setBasis("manual");
@@ -415,7 +440,9 @@ export function NutritionSheet({ isOpen, onClose, meal, onSave, onDelete }: Prop
         ...meal,
         label,
         category,
-        computed: roundNutrition(nutrition),
+        // `remainder` yoksa satır düzenlemesi kaynaksız kalemin besinini
+        // sessizce siler (yukarıdaki `unattributedNutrition`).
+        computed: roundNutrition(addNutrition(nutrition, remainder)),
         // `sources` DAİMA yazılır — koşullu yayılım (`collected.length > 0`)
         // yazılmayan durumda `...meal`'den gelen ESKİ kaynakları kayıtta
         // bırakırdı: kullanıcı malzemeleri silmiş olsa bile öğün eski
@@ -645,11 +672,7 @@ export function NutritionSheet({ isOpen, onClose, meal, onSave, onDelete }: Prop
             // bastığında `swappedLines` sıfırlanır: çarpan KAYITTAN türetilen
             // ölçümleri değiştirir, kullanıcının kalem düzenlemeleriyle
             // birleştirilemez — bu yüzden `handleStep` uyarı sorar.
-            meal={{
-              ...meal,
-              computed: scaleMealNutrition(meal.computed, multiplier),
-              sources: scaleMealSources(meal.sources, multiplier),
-            }}
+            meal={scaledMeal}
             aliases={aliases}
             resetKey={`${meal.id}:${multiplier}`}
             onCommit={(next) => {
@@ -661,7 +684,9 @@ export function NutritionSheet({ isOpen, onClose, meal, onSave, onDelete }: Prop
               let nutrition = { ...ZERO_NUTRITION };
               for (const item of items) nutrition = addNutrition(nutrition, item.nutrition);
               setBasis("quantity");
-              setDraft(toDraft(roundNutrition(nutrition)));
+              // Kaynaksız kalemin payı (`remainder`) eklenmezse satır
+              // düzenlemek o kalemin besinini sessizce siler.
+              setDraft(toDraft(roundNutrition(addNutrition(nutrition, remainder))));
             }}
           />
         )}

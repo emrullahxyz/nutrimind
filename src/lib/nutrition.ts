@@ -168,6 +168,23 @@ export function addNutrition(a: Nutrition, b: Nutrition): Nutrition {
   return makeNutrition(out);
 }
 
+/** `a - b` — `addNutrition`'in tersi, aynı mikro kuralıyla: iki tarafta da
+ *  tanımsızsa alan YOK kalır (bilinmiyor ≠ sıfır), yalnız birinde varsa eksik
+ *  taraf 0 sayılır.
+ *
+ *  Negatif sonuç BİLEREK korunur: bu bir "kalan"dır (kaynaksız kalemin payı),
+ *  0'a sıkıştırılırsa toplam onun besinini sessizce yutardı. */
+export function subtractNutrition(a: Nutrition, b: Nutrition): Nutrition {
+  const out: Partial<Record<NutrientKey, number>> = {};
+  for (const key of NUTRIENT_KEYS) {
+    const av = a[key];
+    const bv = b[key];
+    if (av === undefined && bv === undefined) continue;
+    out[key] = (av ?? 0) - (bv ?? 0);
+  }
+  return makeNutrition(out);
+}
+
 /** Malzemelerin besin değerlerini toplayıp toplam yemeğin besinini ve 100 g başına değerini hesaplar (Faz 7). */
 export function calculateRecipeTotals(
   ingredients: { nutrition: Nutrition }[],

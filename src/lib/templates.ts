@@ -1,4 +1,4 @@
-import type { AppConfig, MealSource, Nutrition } from "../types";
+import type { AppConfig, MealPayload, MealSource, Nutrition } from "../types";
 import { ZERO_NUTRITION } from "../types";
 import { datesDesc, mealsOf, type Days } from "./days";
 import { addNutrition } from "./nutrition";
@@ -113,6 +113,37 @@ export function templateTotal(items: TemplateItem[]): Nutrition {
     if (typeof v === "number") out[key] = Math.round(v * 10) / 10;
   }
   return out;
+}
+
+/** Şablon kalemlerini TEK öğün kaydına çevirir — `mealToTemplate`'in tersi.
+ *
+ *  N kalem N öğün olarak DEĞİL tek öğün olarak girer: öğün, malzemelerinin
+ *  toplamıdır. `sources` birleştirilir, besin değeri `templateTotal` ile
+ *  toplanır, ad kalem adlarının `" + "` birleşimidir (tek öğün tek ad
+ *  taşıyabilir — `MealForm`/`DayView` aynı birleşimi kullanır).
+ *
+ *  BİLİNÇLİ KAYIP: `sources`'ı OLMAYAN kalemin ADI taşınmaz — `MealSource`
+ *  yalnız `aliasId` tutar, öğünün adı ise tek alandır. Değeri toplama
+ *  karışır; gramajı `grams` yazar.
+ *
+ *  `items` boşsa `null` — boş öğün uydurma kayıttır (L21). */
+export function templateItemsToPayload(items: TemplateItem[], templateId: string): MealPayload | null {
+  if (items.length === 0) return null;
+  const sources = items.flatMap((it) => it.sources ?? []);
+  // Yalnız KAYNAKSIZ kalemlerin gramajı: kaynaklı kalemin miktarı zaten
+  // `sources[].qty` içinde (iki kopya → biri eskir). `sources` VARKEN de
+  // yazılır: karışık şablonda kaynaksız kalemin gramajının düşmemesi için.
+  const looseGrams = items.reduce((sum, it) => sum + (it.sources ? 0 : (it.grams ?? 0)), 0);
+  return {
+    name: items.map((it) => it.name).join(" + "),
+    nutrition: templateTotal(items),
+    ...(sources.length > 0 ? { sources } : {}),
+    // Şablon kullanım sayacının kaynağı: gün verisinden türetilen indeks
+    // ("en çok kullanılan 3 şablon") bu alandan beslenir. Yazılmazsa sayaç
+    // sessizce hep 0 kalır ve sıralama hiç değişmez.
+    templateId,
+    ...(looseGrams > 0 ? { grams: Math.round(looseGrams * 10) / 10 } : {}),
+  };
 }
 
 /** Şablon kullanım istatistiği. */

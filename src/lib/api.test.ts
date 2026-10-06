@@ -26,6 +26,23 @@ describe("parseDays", () => {
     expect(days["2026-10-05"][0].grams).toBe(150);
   });
 
+  it("sources VARKEN de gramaj korunur (birleştirilmiş şablon: kaynaksız kalem)", () => {
+    // `grams` artık yalnız kaynaksız öğüne yazılmıyor: tek öğüne birleşen
+    // şablonda kaynaklı + kaynaksız kalem bir arada durur.
+    const days = parseDays(
+      raw([
+        {
+          name: "Yulaf + Ev sosu",
+          nutrition: { kcal: 450 },
+          sources: [{ aliasId: "yulaf", qty: 90, unit: "g" }],
+          grams: 50,
+        },
+      ]),
+    );
+    expect(days["2026-10-05"][0].sources).toHaveLength(1);
+    expect(days["2026-10-05"][0].grams).toBe(50);
+  });
+
   it("grams yalnız pozitif ve sonlu kabul edilir (0/negatif/geçersiz = bilinmiyor)", () => {
     expect(parseDays(raw([{ name: "A", nutrition: { kcal: 1 }, grams: 0 }]))["2026-10-05"][0].grams)
       .toBeUndefined();

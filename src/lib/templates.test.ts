@@ -5,6 +5,7 @@ import {
   EMPTY_TEMPLATES,
   buildTemplateUsageIndex,
   rankTemplatesByUsage,
+  templateItemsToPayload,
   templateTotal,
 } from "./templates";
 import type { MealTemplate, TemplateUsageIndex } from "./templates";
@@ -173,6 +174,70 @@ describe("templateTotal", () => {
       { name: "Sebze", nutrition: { kcal: 30, protein: 1, carbs: 6, fat: 0, fiber: 2 } },
     ]);
     expect("sodium" in clean).toBe(false);
+  });
+});
+
+describe("templateItemsToPayload", () => {
+  const n = (kcal: number) => ({ kcal, protein: 0, carbs: 0, fat: 0, fiber: 0 });
+
+  it("kalemleri TEK öğüne birleştirir: ad birleşir, sources katlanır, besin toplanır", () => {
+    const payload = templateItemsToPayload(
+      [
+        { name: "Yulaf", nutrition: { ...n(350), protein: 10 }, sources: [{ aliasId: "a1", qty: 90, unit: "g" }] },
+        { name: "Protein tozu", nutrition: { ...n(120), protein: 24 }, sources: [{ aliasId: "a2", qty: 35, unit: "g" }] },
+        { name: "Süt", nutrition: { ...n(175), protein: 9 }, sources: [{ aliasId: "a3", qty: 175, unit: "ml" }] },
+      ],
+      "t_1",
+    );
+    expect(payload).toEqual({
+      name: "Yulaf + Protein tozu + Süt",
+      nutrition: { kcal: 645, protein: 43, carbs: 0, fat: 0, fiber: 0 },
+      sources: [
+        { aliasId: "a1", qty: 90, unit: "g" },
+        { aliasId: "a2", qty: 35, unit: "g" },
+        { aliasId: "a3", qty: 175, unit: "ml" },
+      ],
+      templateId: "t_1",
+    });
+  });
+
+  it("kaynaksız kalem tek öğünde kalır: grams yazılır, kaynaklı kalemin miktarı sayılmaz", () => {
+    const payload = templateItemsToPayload(
+      [
+        { name: "Yulaf", nutrition: n(350), sources: [{ aliasId: "a1", qty: 90, unit: "g" }] },
+        { name: "Ev yapımı sos", nutrition: n(100), grams: 50 },
+      ],
+      "t_1",
+    );
+    expect(payload?.sources).toEqual([{ aliasId: "a1", qty: 90, unit: "g" }]);
+    expect(payload?.grams).toBe(50);
+    expect(payload?.name).toBe("Yulaf + Ev yapımı sos");
+  });
+
+  it("hepsi kaynaksızsa sources alanı hiç oluşmaz, grams toplanır", () => {
+    const payload = templateItemsToPayload(
+      [
+        { name: "Ev yapımı sos", nutrition: n(100), grams: 50 },
+        { name: "Salata", nutrition: n(50), grams: 120 },
+      ],
+      "t_1",
+    );
+    expect(payload).not.toHaveProperty("sources");
+    expect(payload?.grams).toBe(170);
+    expect(payload?.nutrition.kcal).toBe(150);
+  });
+
+  it("tek kalem eski davranışı aynen korur (ad = kalem adı)", () => {
+    const payload = templateItemsToPayload(
+      [{ name: "Yulaf", nutrition: n(350), sources: [{ aliasId: "a1", qty: 90, unit: "g" }] }],
+      "t_1",
+    );
+    expect(payload?.name).toBe("Yulaf");
+    expect(payload?.sources).toHaveLength(1);
+  });
+
+  it("boş kalem listesi boş öğün yazmaz (null — L21)", () => {
+    expect(templateItemsToPayload([], "t_1")).toBeNull();
   });
 });
 

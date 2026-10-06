@@ -31,7 +31,7 @@ import { afterHistoryBackSettles } from "../lib/backStack";
 import { effectiveGoal } from "../lib/goals";
 import { MACROS, MICROS } from "../lib/nutrients";
 import { coverage, dayTotal, mealsOf, sumMeals, toPayload } from "../lib/days";
-import { parseTemplatesConfig, newTemplateId } from "../lib/templates";
+import { parseTemplatesConfig, newTemplateId, templateItemsToPayload } from "../lib/templates";
 import type { MealTemplate } from "../lib/templates";
 import { draftLinesToItems } from "../lib/ingredientDraft";
 import type { DraftLine } from "../lib/ingredientDraft";
@@ -326,22 +326,11 @@ export function DayView({
     setErr(null);
     setBusy(true);
     try {
+      // Kalemler TEK öğün olarak girer (`templateItemsToPayload`) — öğün,
+      // malzemelerinin toplamıdır; N kalem N satır değil.
       const items = draftLinesToItems(lines);
-      const newPayloads: MealPayload[] = items.map((it) => ({
-        name: it.name,
-        nutrition: it.nutrition,
-        ...(it.sources ? { sources: it.sources } : {}),
-        // Şablon kullanım sayacının kaynağı: gün verisinden türetilen indeks
-        // ("en çok kullanılan 3 şablon") bu alandan beslenir. Yazılmazsa
-        // sayaç sessizce hep 0 kalır ve sıralama hiç değişmez.
-        templateId: t.id,
-        // `grams` yalnız `sources` YOKSA yazılır (`TemplateItem` sözleşmesi):
-        // kaynak varsa miktar zaten `sources[].qty` içinde. Yazılmazsa
-        // alias'sız kalemler (ev yapımı sos) şablondan uygulandığında
-        // gramajını kaybeder.
-        ...(it.sources ? {} : it.grams !== undefined ? { grams: it.grams } : {}),
-      }));
-      await setDayMeals(date, [...toPayload(meals), ...newPayloads]);
+      const payload = templateItemsToPayload(items, t.id);
+      if (payload) await setDayMeals(date, [...toPayload(meals), payload]);
       if (updateTemplate) {
         await updateConfig("templates", {
           list: templates.list.map((x) => (x.id === t.id ? { ...x, items } : x)),

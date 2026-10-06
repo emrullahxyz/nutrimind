@@ -9,6 +9,7 @@ import {
   scaleMealSources,
   scaleNutrition,
   scaleNutritionByFactor,
+  subtractNutrition,
   toGrams,
   unitOptions,
 } from "./nutrition";
@@ -235,6 +236,35 @@ describe("addNutrition", () => {
   it("her iki taraftaki mikro besin toplanır", () => {
     const out = addNutrition({ ...BASE, sodium: 300 }, { ...BASE, sodium: 120 });
     expect(out.sodium).toBe(420);
+  });
+});
+
+describe("subtractNutrition", () => {
+  it("çekirdek alanları çıkarır", () => {
+    expect(subtractNutrition({ ...BASE, kcal: 250 }, BASE)).toEqual({
+      kcal: 150,
+      protein: 0,
+      carbs: 0,
+      fat: 0,
+      fiber: 0,
+    });
+  });
+
+  it("negatif KALAN korunur — 0'a sıkıştırılırsa toplam kaynaksız kalemi yutardı", () => {
+    const out = subtractNutrition(BASE, { ...BASE, kcal: 150 });
+    expect(out.kcal).toBe(-50);
+  });
+
+  it("mikro besinde 'bilinmiyor ≠ sıfır' kuralını sürdürür", () => {
+    expect("sodium" in subtractNutrition(BASE, BASE)).toBe(false);
+    expect(subtractNutrition({ ...BASE, sodium: 300 }, BASE).sodium).toBe(300);
+    expect(subtractNutrition(BASE, { ...BASE, sodium: 120 }).sodium).toBe(-120);
+  });
+
+  it("addNutrition ile geri döner (toplam = satırlar + kalan)", () => {
+    const meal = { ...BASE, sodium: 250 };
+    const lines = { kcal: 60, protein: 6, carbs: 12, fat: 3, fiber: 1 };
+    expect(addNutrition(lines, subtractNutrition(meal, lines))).toEqual(meal);
   });
 });
 

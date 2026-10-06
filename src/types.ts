@@ -52,8 +52,10 @@ export interface MealItem {
   /** Hangi şablon uygulanarak yazıldı — şablon kullanım sayacının kaynağı.
    *  Yoksa sayaç 0 sayılır (elle eklenen öğün, eski kayıt). */
   templateId?: string;
-  /** Hafızaya bağlı olmayan kalemin gramajı (g). `sources` varsa yazılmaz —
-   *  miktar zaten kaynakta. */
+  /** Hafızaya bağlı OLMAYAN kalemlerin gramaj toplamı (g). `sources` VARKEN de
+   *  yazılır: birleştirilmiş şablonda kaynaksız kalemin miktarı düşmesin
+   *  (`templateItemsToPayload`). Kaynaklı kalemin miktarı hâlâ yalnız
+   *  `sources[].qty`'dedir — bu alan o kalemleri SAYMAZ. */
   grams?: number;
 }
 
@@ -70,10 +72,9 @@ export interface MealPayload {
    *  Bu alan dört uçta da taşınmalıdır: `api.ts` parse, `days.ts` `toPayload`,
    *  `offlineProjection.ts` `applyOperation`. Biri unutursa sayaç sessizce 0. */
   templateId?: string;
-  /** Hafızaya bağlı olmayan kalemin gramajı. `sources` YOKSA yazılır —
-   *  `sources` varsa miktar zaten `sources[].qty` içindedir ve iki kopyadan
-   *  biri eskir. `TemplateItem.grams`'ın karşılığıdır: şablondan uygulanan
-   *  alias'sız kalem gramajını bu alan olmadan kaybediyordu. */
+  /** Hafızaya bağlı olmayan kalemlerin gramaj toplamı. `sources` VARKEN de
+   *  yazılır (bkz. `MealPayload.grams`): kaynaklı kalemlerin miktarı bu
+   *  sayıyı oluşturmayız. `TemplateItem.grams`'ın karşılığıdır. */
   grams?: number;
 }
 
