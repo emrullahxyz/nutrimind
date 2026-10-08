@@ -13,6 +13,32 @@ export interface ChangeLogVersion {
 
 export const CHANGELOG: ChangeLogVersion[] = [
   {
+    version: "0.31.5",
+    date: "2026-10-08",
+    summary: {
+      tr: "Öğünleri birleştirince malzemeler kaybolmuyor: 3 malzemeli bir öğünle 2 malzemeli bir öğünü birleştirince tek öğünde 5 malzeme duruyor.",
+      en: "Merging meals no longer loses their ingredients: combine a 3-ingredient meal with a 2-ingredient one and the single meal keeps all 5.",
+    },
+    items: [
+      {
+        type: "fixed",
+        tr: "İki öğünü birleştirince malzeme kayıtları sessizce gidiyordu — birleşik öğünde malzeme satırı hiç kalmıyordu ve Düzenle tek kalem gösteriyordu. Artık malzemeler birleşiyor: 3 + 2 = 5, tek kalemli iki öğün birleşince 2.",
+        en: "Merging two meals used to silently drop their ingredient records — the combined meal had no ingredient rows and Edit showed a single item. Ingredients now merge: 3 + 2 = 5, and two single-item meals give 2.",
+      },
+      {
+        type: "fixed",
+        tr: "Kaynaksız malzemelerin gramaj toplamı birleşince kaybolmuyor; artık ekleniyor.",
+        en: "The combined weight of ingredients that aren't in your memory is no longer dropped when merging — it's added up.",
+      },
+    ],
+    dev: [
+      "YENI lib/mealActions.ts mergePayloads(selected, name): sources KATLANIR (flatMap), grams TOPLANIR, templateId BILEREK tasinmaz (iki sablondan gelemez), loggedAt/category en erken kaydtaki. DayView.handleMergeConfirm artik bunu cagiriyor; eskiden elle kurulan entry'ye sources/grams hic yazilmiyordu — birlesik ogun 0 kaleme iniyordu.",
+      "grams sifira dusurse alan YAZILMAZ: 0, 'gramaj bilinmiyor' ile '0 gram'i ayirt etmez. Kaynaksiz ogun besini toplamda KALIR (sumMeals); mealToBasketSeed onu kalan olarak 'Ek Kalem' satiri yapar, yani kaybolma yok.",
+      "Olcum (tarayici): API ile 3 kaynakli + 2 kaynakli ogun yazildi, UI'dan Birleştir -> GET sources 5 (150,50,30,100,60), kcal 445; sol tikta 5 MİKTAR alani, Düzenle 'Ogun Kalemleri (5)'. Not: nutrition kaynaklarla tutarsiz girilirse fark 'Ek Kalem' olarak korulur (L20) — bu bilincli davranis, 6. kalem degil.",
+      "mealActions.test.ts: mergePayloads icin 9 senaryo (3+2=5, tek+tek=2, toplam, kaynaksiz, grams, templateId, en erken loggedAt, ad).",
+    ],
+  },
+  {
     version: "0.31.4",
     date: "2026-10-08",
     summary: {

@@ -6,6 +6,8 @@
 // olacak. Böylece davranış jsdom olmadan (projenin test kültürü) doğrulanabilir.
 // ============================================================================
 import type { MealItem, MealPayload } from "../types";
+import { sumMeals } from "./days";
+import { categoryForLoggedAt } from "./mealCategory";
 import { newTemplateId } from "./templates";
 import type { MealTemplate } from "./templates";
 
@@ -77,6 +79,43 @@ export function duplicatePayload(meal: MealItem): MealPayload {
     ...(meal.sources ? { sources: meal.sources } : {}),
     ...(meal.loggedAt ? { loggedAt: meal.loggedAt } : {}),
     ...(meal.category ? { category: meal.category } : {}),
+  };
+}
+
+/** Seçilen öğünleri TEK öğüne katlar.
+ *
+ *  `sources` KATLANIR — birleştirme kalem SAYISINI düşürmez: 3 kalemli öğün +
+ *  2 kalemli öğün → 5 kalem. Kalem yapısı yalnız `sources`'ta yaşadığı için
+ *  onu yazmamak, birleşik öğünü sıfır kaleme indirirdi (eskiden tam olarak
+ *  böyleydi): sol tıkta "Malzemeler" hiç çizilmez, Düzenle tek kalem gösterirdi.
+ *
+ *  `grams` TOPLANIR: o, `sources`'u OLMAYAN kalemlerin gramajıdır; iki öğünün
+ *  kaynaksız kalemleri birleşince de kaynaksız kalır. Sıfıra düşerse alan
+ *  YAZILMAZ — `0` "gramaj bilinmiyor" ile "0 gram"ı ayırt etmez.
+ *
+ *  `templateId` BİLEREK taşınmaz: birleşik öğün iki farklı şablondan gelemez,
+ *  hangisinin sayacağı belirsiz olurdu.
+ *
+ *  `loggedAt`/`category` en erken kaydınki (eskiden beri davranış): birleşik
+ *  öğün günün ilk yemeğinin saatine ve kategorisine oturur. */
+export function mergePayloads(selected: MealItem[], name: string): MealPayload {
+  const nutrition = sumMeals(selected);
+
+  const byLoggedAt = selected
+    .filter((m) => m.loggedAt)
+    .sort((a, b) => a.loggedAt!.localeCompare(b.loggedAt!));
+  const earliestLoggedAt = byLoggedAt[0]?.loggedAt;
+
+  const sources = selected.flatMap((m) => m.sources ?? []);
+  const grams = selected.reduce((sum, m) => sum + (m.grams ?? 0), 0);
+
+  return {
+    name,
+    nutrition,
+    ...(sources.length > 0 ? { sources } : {}),
+    ...(grams > 0 ? { grams } : {}),
+    ...(earliestLoggedAt ? { loggedAt: earliestLoggedAt } : {}),
+    ...(earliestLoggedAt ? { category: categoryForLoggedAt(earliestLoggedAt) } : {}),
   };
 }
 

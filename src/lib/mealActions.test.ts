@@ -5,9 +5,11 @@ import {
   mealMenuActions,
   mealSheetReducer,
   mealToTemplate,
+  mergePayloads,
   templateNameSuggestion,
 } from "./mealActions";
 import { parseTemplatesConfig } from "./templates";
+import { categoryForLoggedAt } from "./mealCategory";
 import { makeNutrition } from "./nutrients";
 import type { AppConfig, MealItem } from "../types";
 
@@ -136,5 +138,88 @@ describe("mealSheetReducer", () => {
   it("aç/kapat olayları adımı sıfırlar", () => {
     expect(mealSheetReducer("confirmDelete", { type: "close" })).toBe("closed");
     expect(mealSheetReducer("closed", { type: "open" })).toBe("menu");
+  });
+});
+
+describe("mergePayloads", () => {
+  const k3 = meal({
+    id: "a",
+    label: "Kahvaltı",
+    computed: nutrition({ kcal: 300, protein: 20, carbs: 30, fat: 10, fiber: 4 }),
+    sources: [
+      { aliasId: "x", qty: 100, unit: "g" },
+      { aliasId: "y", qty: 50, unit: "g" },
+      { aliasId: "z", qty: 25, unit: "g" },
+    ],
+  });
+  const k2 = meal({
+    id: "b",
+    label: "Ara öğün",
+    computed: nutrition({ kcal: 200, protein: 10, carbs: 20, fat: 5, fiber: 2 }),
+    sources: [
+      { aliasId: "x", qty: 60, unit: "g" },
+      { aliasId: "y", qty: 40, unit: "g" },
+    ],
+  });
+
+  // ASIL SÖZLEŞME: birleştirme kalem sayısını düşürmez.
+  it("3 kalemli + 2 kalemli öğün → 5 kalem", () => {
+    const merged = mergePayloads([k3, k2], "Birleşik");
+    expect(merged.sources).toHaveLength(5);
+    expect(merged.sources!.map((s) => s.qty)).toEqual([100, 50, 25, 60, 40]);
+  });
+
+  it("tek kalemli iki öğün → 2 kalem", () => {
+    const a = meal({ id: "a1", sources: [{ aliasId: "x", qty: 10, unit: "g" }] });
+    const b = meal({ id: "b1", sources: [{ aliasId: "y", qty: 20, unit: "g" }] });
+    expect(mergePayloads([a, b], "X").sources).toHaveLength(2);
+  });
+
+  it("besin değerleri toplanır", () => {
+    expect(mergePayloads([k3, k2], "Birleşik").nutrition).toMatchObject({
+      kcal: 500,
+      protein: 30,
+      carbs: 50,
+      fat: 15,
+      fiber: 6,
+    });
+  });
+
+  it("hiçbirinde kaynak yoksa `sources` alanı hiç yazılmaz", () => {
+    const merged = mergePayloads([meal(), meal({ id: "m2" })], "Elle giren");
+    expect("sources" in merged).toBe(false);
+    expect(merged.nutrition.kcal).toBe(600);
+  });
+
+  it("kaynaksız öğün besini toplamda KALIR (kalemi olmasa da kaybolmaz)", () => {
+    const manual = meal({ id: "m3", computed: nutrition({ kcal: 111 }) });
+    const merged = mergePayloads([k3, manual], "X");
+    expect(merged.sources).toHaveLength(3);
+    expect(merged.nutrition.kcal).toBe(411);
+  });
+
+  it("`grams` toplanır, sıfıra düşerse alan yazılmaz", () => {
+    expect(mergePayloads([meal({ grams: 120 }), meal({ id: "m2", grams: 80 })], "X").grams).toBe(200);
+    expect("grams" in mergePayloads([meal(), meal({ id: "m2" })], "X")).toBe(false);
+  });
+
+  it("iki farklı şablondan geldiği için `templateId` taşınmaz", () => {
+    const merged = mergePayloads(
+      [meal({ id: "a", templateId: "t_1" }), meal({ id: "b", templateId: "t_2" })],
+      "X",
+    );
+    expect("templateId" in merged).toBe(false);
+  });
+
+  it("en erken `loggedAt`'i alır, kategorisi ondan türer", () => {
+    const early = meal({ id: "e", loggedAt: "2026-10-08T07:00:00.000Z" });
+    const late = meal({ id: "l", loggedAt: "2026-10-08T13:00:00.000Z" });
+    const merged = mergePayloads([late, early], "X");
+    expect(merged.loggedAt).toBe("2026-10-08T07:00:00.000Z");
+    expect(merged.category).toBe(categoryForLoggedAt(merged.loggedAt!));
+  });
+
+  it("kullanıcının verdiği ad aynen kullanılır", () => {
+    expect(mergePayloads([k3, k2], "Kahvaltı").name).toBe("Kahvaltı");
   });
 });

@@ -34,12 +34,12 @@ import { parseTemplatesConfig, newTemplateId, templateItemsToPayload, templateLi
 import type { MealTemplate } from "../lib/templates";
 import { draftLinesToItems, hasUnnamedItem } from "../lib/ingredientDraft";
 import type { DraftLine } from "../lib/ingredientDraft";
-import { duplicatePayload, mealToTemplate } from "../lib/mealActions";
+import { duplicatePayload, mealToTemplate, mergePayloads } from "../lib/mealActions";
 import type { PanelAnchor } from "../lib/anchor";
 import type { AIParseItem, Exercise, MealItem, MealPayload } from "../types";
 import { PREF } from "../lib/prefs";
 import { usePersistedBool } from "../lib/usePersistedBool";
-import { categoryForLoggedAt, groupMealsByCategory } from "../lib/mealCategory";
+import { groupMealsByCategory } from "../lib/mealCategory";
 import type { MealCategory } from "../types";
 
 /** Kategori başlığı → i18n anahtarı. `mealCategory.ts` saf lib (useTranslation
@@ -393,20 +393,7 @@ export function DayView({
     setBusy(true);
     try {
       const selectedMeals = selectedIndices.map((i) => meals[i]);
-      const mergedNutrition = sumMeals(selectedMeals);
-
-      const withLoggedAt = selectedMeals
-        .filter((m) => m.loggedAt)
-        .sort((a, b) => a.loggedAt!.localeCompare(b.loggedAt!));
-      const earliestLoggedAt = withLoggedAt[0]?.loggedAt;
-      const mergedCategory = earliestLoggedAt ? categoryForLoggedAt(earliestLoggedAt) : undefined;
-
-      const mergedMeal: MealPayload = {
-        name: mergedName,
-        nutrition: mergedNutrition,
-        ...(earliestLoggedAt ? { loggedAt: earliestLoggedAt } : {}),
-        ...(mergedCategory ? { category: mergedCategory } : {}),
-      };
+      const mergedMeal: MealPayload = mergePayloads(selectedMeals, mergedName);
 
       const firstIndex = Math.min(...selectedIndices);
       const selectedSet = new Set(selectedIndices);
