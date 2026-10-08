@@ -5,6 +5,8 @@ import {
   draftGramHint,
   draftLineFromAlias,
   draftLinesToItems,
+  hasUnnamedItem,
+  mealToBasketSeed,
   newDraftLine,
   removeDraftLine,
   resolveDraftUnit,
@@ -12,7 +14,7 @@ import {
   swapDraftLine,
 } from "./ingredientDraft";
 import type { DraftLine } from "./ingredientDraft";
-import type { Alias, Nutrition } from "../types";
+import type { Alias, MealItem, Nutrition } from "../types";
 
 const tavuk: Alias = {
   id: "a1",
@@ -882,5 +884,112 @@ describe("AI kalemi (ölçülen makro + baseAmount)", () => {
     expect(giris.nutritionGrams).toBe(0); // hâlâ taban yok (AI satırı manualMeasured değil)
     // Uyarı: "besin değeri yok, gir" — ama makro ASLINDA var.
     expect(draftGramHint(giris, null, ai)).toEqual({ kind: "noNutrition" });
+  });
+});
+
+// ---------------------------------------------------------------------------
+// mealToBasketSeed — MealForm'un mevcut öğünü sepete açması (H1b / H4)
+// ---------------------------------------------------------------------------
+describe("mealToBasketSeed", () => {
+  const meal: MealItem = {
+    id: "m1",
+    label: "Tavuk + Tofu",
+    // `sources`tan TÜRENMİŞ toplamın KAYIT kesinliğindeki hali:
+    // tavuk 150g (247.5) + tofu 100g (76) + tofu 50g (38) = 361.5 → 362
+    computed: { kcal: 362, protein: 58.5, carbs: 2.9, fat: 12.6, fiber: 0.5 },
+    sources: [
+      { aliasId: "a1", qty: 150, unit: "g" },
+      { aliasId: "a2", qty: 100, unit: "g" },
+      { aliasId: "a2", qty: 50, unit: "g" },
+    ],
+  };
+  const aliases = [tavuk, tofu];
+
+  it("her sources girdisi AYRI bir kalem olur", () => {
+    const seeds = mealToBasketSeed(meal, aliases, "Kalan");
+    expect(seeds).toHaveLength(3);
+    expect(seeds[0]).toMatchObject({
+      name: "Tavuk",
+      sources: [{ aliasId: "a1", qty: 150, unit: "g" }],
+    });
+    expect(seeds[1].nutrition.kcal).toBe(76);
+    expect(seeds[2].nutrition.kcal).toBe(38);
+    // toplam kaynak makroya eşit → ek kalem YOK
+    expect(seeds.every((s) => s.name !== "Kalan")).toBe(true);
+  });
+
+  it("yuvarlama tozu hayalet kalem üretmez (açıldıkça şişme yok)", () => {
+    // satır toplamı 361.5; kayıt 362. Fark tamsa yuvarlama tozu.
+    const dust = mealToBasketSeed(meal, aliases, "Kalan");
+    expect(dust).toHaveLength(3);
+    // tohumlanmasa bile kayıt korunur: round(sum) === computed
+    expect(Math.round(361.5)).toBe(meal.computed.kcal);
+  });
+
+  it("satırlara sığmayan fark (elle eklenmiş kalem) KAYNAKSIZ kalem olarak gelir", () => {
+    const extra: MealItem = {
+      ...meal,
+      computed: { kcal: 862, protein: 58.5, carbs: 2.9, fat: 12.6, fiber: 0.5 },
+    };
+    const seeds = mealToBasketSeed(extra, aliases, "Kalan");
+    expect(seeds).toHaveLength(4);
+    const kalan = seeds[3];
+    expect(kalan.name).toBe("Kalan");
+    expect(kalan.sources).toBeUndefined();
+    // DEĞER ham kalmalı: sum + kalan === computed (çift yuvarlama olursa
+    // her aç/kapa ~1 kcal yukarı kayardı)
+    const sumKcal = seeds.slice(0, 3).reduce((a, s) => a + s.nutrition.kcal, 0);
+    expect(sumKcal + kalan.nutrition.kcal).toBeCloseTo(extra.computed.kcal, 6);
+  });
+
+  it("elle düşürülmüş toplam geri gelmez (malzemeler esas)", () => {
+    const lowered: MealItem = {
+      ...meal,
+      computed: { kcal: 200, protein: 58.5, carbs: 2.9, fat: 12.6, fiber: 0.5 },
+    };
+    const seeds = mealToBasketSeed(lowered, aliases, "Kalan");
+    expect(seeds).toHaveLength(3);
+    expect(seeds.some((s) => s.name === "Kalan")).toBe(false);
+  });
+
+  it("kaynaksız öğün tek kalem olarak girer", () => {
+    const duz: MealItem = {
+      id: "m2",
+      label: "Elle girilen",
+      computed: { kcal: 420, protein: 20, carbs: 40, fat: 15, fiber: 3 },
+    };
+    expect(mealToBasketSeed(duz, aliases, "Kalan")).toEqual([
+      { name: "Elle girilen", nutrition: duz.computed },
+    ]);
+  });
+
+  it("alias silinmişse (dangling) tek kalem — ya-hiç-ya-hiçbiri", () => {
+    const dangling: MealItem = {
+      ...meal,
+      sources: [
+        { aliasId: "a1", qty: 150, unit: "g" },
+        { aliasId: "yok-boyle-bir-alias", qty: 10, unit: "g" },
+      ],
+    };
+    const seeds = mealToBasketSeed(dangling, aliases, "Kalan");
+    expect(seeds).toHaveLength(1);
+    expect(seeds[0].name).toBe(meal.label);
+  });
+});
+
+describe("hasUnnamedItem", () => {
+  const n = { kcal: 100, protein: 5, carbs: 10, fat: 2, fiber: 1 };
+
+  it("adı boş kalem varsa true", () => {
+    expect(hasUnnamedItem([{ name: "", nutrition: n }, { name: "Elma", nutrition: n }])).toBe(true);
+  });
+
+  it("yalnız boşluk/sekme içeren ad da boş sayılır", () => {
+    expect(hasUnnamedItem([{ name: "   ", nutrition: n }])).toBe(true);
+  });
+
+  it("hepsi adlıysa false", () => {
+    expect(hasUnnamedItem([{ name: "Elma", nutrition: n }])).toBe(false);
+    expect(hasUnnamedItem([])).toBe(false);
   });
 });

@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   parseTemplatesConfig,
+  templateList,
   newTemplateId,
   EMPTY_TEMPLATES,
   buildTemplateUsageIndex,
@@ -289,3 +290,42 @@ describe("rankTemplatesByUsage", () => {
   });
 });
 
+
+// Yazma yolu `templateList` ile başlar, `parseTemplatesConfig` ile DEĞİL:
+// parser'ın düşürdüğü bir kayıt yazım listesinde yoksa, sonraki full-replace
+// onu sunucudan siler. İki fonksiyonun AYNI fixture üzerinde farklı davranması
+// tam olarak korunması gereken fark.
+describe("templateList", () => {
+  const adsizKalem = {
+    id: "t_ana",
+    name: "Boş kalemli",
+    items: [
+      { name: "", nutrition: { kcal: 100, protein: 5, carbs: 10, fat: 2, fiber: 1 } },
+      { name: "", nutrition: { kcal: 200, protein: 8, carbs: 20, fat: 4, fiber: 2 } },
+    ],
+  };
+  const gecerli = {
+    id: "t_ok",
+    name: "Sağlam",
+    items: [{ name: "Elma", nutrition: { kcal: 50, protein: 0, carbs: 10, fat: 0, fiber: 2 } }],
+  };
+
+  it("parser'ın düşürdüğü şablonu SAKLAR (kayıp yok)", () => {
+    const config: AppConfig = { templates: { list: [adsizKalem, gecerli] } };
+    // Aynı fixture: parser hepsini atar (0 geçerli kalem) ya da yarısını.
+    expect(parseTemplatesConfig(config).list.map((t) => t.id)).not.toContain(adsizKalem.id);
+    expect(templateList(config).map((t) => t.id)).toEqual([adsizKalem.id, gecerli.id]);
+  });
+
+  it("boş config ve yapısal olarak geçersiz alanlar için boş liste döner", () => {
+    expect(templateList({} as AppConfig)).toEqual([]);
+    expect(templateList({ templates: { list: "invalid" } as any })).toEqual([]);
+    expect(templateList({ templates: [1, 2] as any })).toEqual([]);
+  });
+
+  it("içeriği ELEMEZ — ne ad ne kalem kontrolü yapar", () => {
+    const config: AppConfig = { templates: { list: [adsizKalem] } };
+    expect(templateList(config)).toHaveLength(1);
+    expect(templateList(config)[0].items).toHaveLength(2);
+  });
+});

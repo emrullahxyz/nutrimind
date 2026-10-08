@@ -7,16 +7,18 @@ import { useBodyScrollLock } from "../hooks/useBodyScrollLock";
 import { useDialogFocus } from "../hooks/useDialogFocus";
 import { useModalHistory } from "../hooks/useModalHistory";
 import { useModalExit } from "../hooks/useModalExit";
-import { addNutrition, scaleMealSources, subtractNutrition } from "../lib/nutrition";
+import { addNutrition, scaleMealSources } from "../lib/nutrition";
 import {
   addDraftLine,
   draftLineFromAlias,
   draftLinesToItems,
+  mealDraftLines,
   newDraftLine,
   removeDraftLine,
   roundNutrition,
   setDraftGrams,
   swapDraftLine,
+  unattributedNutrition,
 } from "../lib/ingredientDraft";
 import type { DraftLine } from "../lib/ingredientDraft";
 import { EditableStat, toDraft, fromDraft } from "./FormBits";
@@ -67,67 +69,20 @@ export function scaleMealNutrition(computed: Nutrition | undefined, multiplier: 
  *  dolayısıyla kilidi kaldıran tek şey `alias`'ın gelmesidir. Bu koşul
  *  `TemplatePreview`'daki `disabled={line.preserved && !alias}` ile AYNIDIR.
  *
+ *  ŞU AN MÜMKÜN DEĞİL ve kilit kodunun kendisi de ölü: `mealDraftLines`'in
+ *  YA HİÇ ya da HİÇBİRİ kuralı yüzünden oraya ulaşan HER satırın alias'ı
+ *  canlıdır, dolayısıyla bu fonksiyon hep `false` döner ve miktar alanı hiç
+ *  kilitlenmez. Bu bir gizli varsayım değil, TÜM-ORA-HİÇBİRİ kuralının DOĞAL
+ *  SONUCUDUR. Kod yine de tutuluyor çünkü tek kurtarma yolu bu: kural
+ *  gevşetilirse kilitli alan, "girilebilir ama kaydedilemez" 2. tur hatasının
+ *  bir daha oluşmasını engeller. Silinirse tuzak sessizce yeniden açılır.
+ *  Bakım notu: kilidi kaldırırsanız `mealDraftLines`'in ya-hiç-ya-hiçbiri
+ *  kuralını da (`lib/ingredientDraft.ts`) gözden geçirin.
+ *
  *  JSX içine gömülü bırakılırsa test edilemez; bu yüzden dışa açıktır
  *  (`NutritionSheet.test.ts` — jsdom'suz, saf fonksiyon). */
 export function isAmountLocked(line: DraftLine, alias: Alias | undefined): boolean {
   return line.preserved && !alias;
-}
-
-/** Kaydın malzemelerini düzenlenebilir satırlara çevirir — YA HİÇ ya da HİÇBİRİ.
- *
- *  TÜM-ORA-HİÇBİRİ kuralı bilinçlidir: tek bir kaynak çözülemezse (alias
- *  silinmiş ya da birim artık tanınmıyor) bölümün TAMAMI çizilmez. Kısmi bir
- *  liste çizmek, kaydederken çözülmeyen malzemeyi kayıttan SİLMEK demektir —
- *  `normalizeMeals` gövdeyi geçirdiği için kayıt sessizce değişir. Ölçülmüş
- *  davranış: kaynaksız/çözülemez öğünde toplam ekranı aynen kalır.
- *
- *  Bu, aynı zamanda "silinmiş alias'a bağlı satır" (dangling aliasId) durumunu
- *  YAPISAL OLARAK IMKÂNSIZ kılar: o satır `alias` bulunamadığı için `null`
- *  döndürür ve bölüm hiç render edilmez.
- *
- *  ÖNEMLİ — `preserved` burada ŞU AN MÜMKÜN DEĞİL ve kilit kodunun kendisi de
- *  ölü: yukarıdaki YA HİÇ ya da HİÇBİRİ kuralı yüzünden buraya ulaşan HER
- *  satırın alias'ı canlıdır, dolayısıyla `isAmountLocked` hep `false` döner ve
- *  miktar alanı hiç kilitlenmez. Bu bir gizli varsayım değil, TÜM-ORA-HİÇBİRİ
- *  kuralının DOĞAL SONUCUDUR.
- *
- *  Kod YİNE DE TUTULUYOR, çünkü tek kurtarma yolu bu: bir öğün ileride
- *  çözülemeyen bir satırla buraya ulaşırsa (ör. `preserved` taşıyan bir kayıt,
- *  ya da bu kuralın gevşetilmesi), kilitli alan, "girilebilir ama kaydedilemez"
- *  2. tur hatasının bir daha oluşmasını engeller. Silinirse tuzak sessizce
- *  yeniden açılır. Bakım notu: kilidi burada kaldırırsanız, aynı zamanda
- *  `mealDraftLines`'in ya-hiç-ya-hiçbiri kuralını da gözden geçirin. */
-function mealDraftLines(meal: MealItem, aliases: Alias[]): DraftLine[] | null {
-  const sources = meal.sources;
-  if (!sources || sources.length === 0) return null;
-  const byId = new Map(aliases.map((a) => [a.id, a]));
-  const out: DraftLine[] = [];
-  for (const s of sources) {
-    const alias = byId.get(s.aliasId);
-    // Alias yoksa ya da birim çözülemiyorsa satır ÜRETİLMEZ → bölüm hiç çizilmez.
-    const line = alias ? draftLineFromAlias(alias, String(s.qty), s.unit) : null;
-    if (!line) return null;
-    out.push(line);
-  }
-  return out.length > 0 ? out : null;
-}
-
-/** Kaydın satırlara YORULAMAYAN kısmı — `sources`'ı olmayan kalemin payı.
- *
- *  Tek öğüne birleşen şablonda (`templateItemsToPayload`) kaynaksız bir kalem
- *  yalnız toplama karışır: adı satır listesinde yer bulamaz. Satır
- *  düzenlemesinin sonucu bu fark EKLENMEDEN yazılırsa o kalemin besini
- *  sessizce düşer (gösterilen ≠ kaydedilen, L20) — kullanıcı gramaj
- *  değiştirmeden öğünün kalorisi 100 kcal azalır.
- *
- *  Kaynaksız/çözülemez öğünde satır zaten çizilmez, dolayısıyla bu fark
- *  hiç kullanılmaz: oran sıfır değil TANIMSIZ değil, sadece kullanılmayan. */
-function unattributedNutrition(meal: MealItem, aliases: Alias[]): Nutrition {
-  const lines = mealDraftLines(meal, aliases);
-  if (!lines) return { ...ZERO_NUTRITION };
-  let sum = { ...ZERO_NUTRITION };
-  for (const l of lines) sum = addNutrition(sum, l.nutrition);
-  return subtractNutrition(meal.computed, sum);
 }
 
 /** Kaydın çözülebilen kalem satırları + tam düzenleme (ekle/sil/gramaj/swap).
@@ -274,7 +229,7 @@ function IngredientLines({
                 <div>
                   <NumField
                     label={t("nutrition.ingredientGrams")}
-                    suffix="g"
+                    suffix={line.unit}
                     value={line.qty}
                     onChange={(v) => patch(line.key, setDraftGrams(line, v, alias ?? null))}
                     disabled={locked}

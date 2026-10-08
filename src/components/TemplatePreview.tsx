@@ -22,6 +22,7 @@ import {
   draftGramHint,
   draftLineFromAlias,
   draftLinesToItems,
+  hasUnnamedItem,
   newDraftLine,
   removeDraftLine,
   roundNutrition,
@@ -178,6 +179,10 @@ export function TemplatePreview({
   // `NutritionSheet` aynı düzeltmeyi aldığında (b4a60ae) buraya yansımadı;
   // iki yüzey aynı kurallı olduğu için aynı toplamı kullanmalı.
   const savableItems = useMemo(() => draftLinesToItems(lines), [lines]);
+  // Adı boş kalem `templates.ts` parse'ında sessizce düşer ve şablonu
+  // listeden tamamen çıkarır — kaydet bu yüzden kapalı kalmalı (bkz.
+  // `hasUnnamedItem`).
+  const hasUnnamed = hasUnnamedItem(savableItems);
   const total = useMemo(
     () =>
       roundNutrition(
@@ -288,7 +293,9 @@ export function TemplatePreview({
           // kaydedilemez durumda olabilir (`draftLinesToItems` onu düşürür).
           // O durumda düğme etkin görünür ve hiçbir şey yapmazdı.
           // Yeni şablonda AD da zorunlu — isimsiz şablon kaydedilmez.
-          disabled={busy || savableItems.length === 0 || (isNew && !name.trim())}
+          // Adı boş MALZEME de kaydedilemez: parse onu düşürür, hepsi
+          // düşerse şablon listeden çıkar ve sonraki kayıt siler.
+          disabled={busy || savableItems.length === 0 || hasUnnamed || (isNew && !name.trim())}
           saveLabel={isNew ? t("templatePreview.saveTemplate") : t("day.addMeal")}
         />
       }
@@ -414,7 +421,7 @@ export function TemplatePreview({
                     <div>
                       <NumField
                         label={t("nutrition.ingredientGrams")}
-                        suffix="g"
+                        suffix={line.unit}
                         value={line.qty}
                         onChange={(v) => {
                           // Önceki satır GÖVDEDE okunur: `setHint` içinde
@@ -543,6 +550,10 @@ export function TemplatePreview({
         >
           <Plus className="h-3.5 w-3.5" /> {t("nutrition.ingredientAdd")}
         </button>
+
+        {hasUnnamed && (
+          <p className="text-[11px] text-danger">{t("nutrition.itemNameRequired")}</p>
+        )}
 
         {/* AI: öğün ekleme ekranındaki sekmeyle AYNI akış — serbest metin ya da
             kamera. Bulunan malzemeler doğrudan yukarıdaki satırlara düşer,

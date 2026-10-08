@@ -13,6 +13,46 @@ export interface ChangeLogVersion {
 
 export const CHANGELOG: ChangeLogVersion[] = [
   {
+    version: "0.31.4",
+    date: "2026-10-08",
+    summary: {
+      tr: "Sağ tık → Düzenle artık öğünün malzeme kayıtlarını ve şablon bağlantısını silmiyor; ayrıca düzenleme ekranında malzemeler tek tek listeleniyor.",
+      en: "Edit (from the meal menu) no longer wipes a meal's ingredient records or its template link, and the edit screen now lists each ingredient separately.",
+    },
+    items: [
+      {
+        type: "fixed",
+        tr: "Bir öğünü \"Düzenle\" ile açıp kaydettiğinde malzeme miktarları ve şablon bağlantısı sessizce siliniyordu. Sonradan öğüne tıklayınca malzeme satırları kaybolmuş oluyordu ve gramajı bir daha düzenleyemezdin. Artık kayıt bu alanları koruyor.",
+        en: "Opening a meal with Edit and saving used to silently drop its ingredient amounts and template link. Tapping the meal afterwards showed no ingredient rows, and you could never adjust the amounts again. The save now keeps those fields.",
+      },
+      {
+        type: "improved",
+        tr: "Düzenleme ekranında malzemeler tek tek listeleniyor. Önce tek satırdı ve yalnızca toplamı değiştirebiliyordun; artık her malzemenin miktarını ayrı ayrı düzenleyebiliyorsun.",
+        en: "The edit screen now lists each ingredient separately. It used to be a single row where you could only change the total; now you can adjust every ingredient's amount one by one.",
+      },
+      {
+        type: "fixed",
+        tr: "Malzeme adı boşken kaydedilen şablon listeden düşüyordu ve sonradan kaydettiğin başka bir şablon onu sunucudan siliyordu. Artık adı boş malzemeyle şablon kaydedilemiyor; kaydetme işlemi kayıtlı olanları olduğu gibi geri yazıyor.",
+        en: "A template saved with an unnamed ingredient used to disappear from the list, and the next template you saved would delete it from the server. You can no longer save a template with an unnamed ingredient, and saving now writes back everything already stored.",
+      },
+      {
+        type: "fixed",
+        tr: "Bir malzemeye özel birim (örneğin 150 g'lık 1 paket) ekleyip o birimle öğün girince miktar \"1 g\" görünüyordu. Artık kendi birimiyle görünüyor.",
+        en: "Adding a custom unit to an ingredient (say a 150 g pack) and logging a meal with it used to show \"1 g\". It now shows the unit you picked.",
+      },
+    ],
+    dev: [
+      "MealForm.save: elle kurulan `entry` yerine MealItem + toPayload([...])[0]. templateId/grams/sources/loggedAt artik tek yazim yolunda (NutritionSheet ile ayni); types.ts'deki 'dort uc' şartina MealForm da dahil oldu. `sources` bilerek DESTRUCTURE edilir — kosullu yayilim `undefined`'da eski kaynagi geri getirirdi (NutritionSheet'teki 'sources DAImA yazilir' yorumundaki tuzak).",
+      "TASINMA: mealDraftLines + unattributedNutrition NutritionSheet.tsx'ten lib/ingredientDraft.ts'e tasindi ve export edildi (MealForm da kullansin diye). isAmountLocked'in 'kilit kodu olu' bakim notu onun JSDoc'una tasindi.",
+      "YENI lib/ingredientDraft.ts mealToBasketSeed(meal, aliases, remainderName): sources[] -> kalem BASINA basket seed. Boylece resolveQuantityMode 'exact' moduna gecer ve kalem gramaji duzenlenebilir. Kaynaksiz/cozulemez ogun tek seed (NutritionSheet'in bolumu-cizme kuralinin aynisi).",
+      "KALINTI iki ayri karar: ESİK roundLikeSaved ile (kayit yuvarlandigi icin fark her acilista +-0.5 kcal / +-0.05 g toz uretir; esik yoksa her ac/kapa hayalet kalem ekler), DEGER ham (sum'dan tam cikarilir). Degeri de yuvarlamak CIFT yuvarlama olurdu: round(sum+kalan) === computed ihlal edilir ve toplam her ac/kapa ~1 kcal yukari kayardi. Negatif kalan (elle dusurulmus toplam) tohumlanmaz — 'malzemeler esas'.",
+      "YENI lib/templates.ts templateList(config): YAZMA tabani, parser'dan GECMEZ. 5 yazim yolu: DayView saveNewTemplate / applyTemplate(updateTemplate) / saveAsTemplate + AliasPage removeTemplate / saveNewTemplate. parseTemplatesConfig DEGISTIRILMEDI — goruntuleme ondan kalmaya devam eder. Boylece parser'in dusurdugu kayit full-replace ile silinemiyor.",
+      "YENI hasUnnamedItem(items): uc kayit kapisi (TemplatePreview disabled + DayView/AliasPage savunmaci) ortak kurali. draftLinesToItems icine KONMADI — oraya koymak satiri sessizce elemek olurdu (L20). tr/en/pl: nutrition.itemNameRequired.",
+      "H5 (gosterim): NutritionSheet.tsx + TemplatePreview.tsx NumField suffix='g' -> suffix={line.unit}. Veri zaten dogruydu (sources[].unit, draftLineFromAlias unit: u.name); ekranda sabit 'g' basiliyordu. Diger suffix='g' kullanimlari (AliasForm serving_g, WeightCard kg) meşru, dokunulmadi.",
+      "Temizlik: test gunu 2026-10-08 DELETE /api/day/2026-10-08, test sablonlari PUT /api/config/templates {list:[]}. server/data.db elle duzenlenmedi; baska tarihlere dokunulmadi.",
+    ],
+  },
+  {
     version: "0.31.3",
     date: "2026-10-06",
     summary: {

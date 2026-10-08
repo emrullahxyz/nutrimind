@@ -25,6 +25,7 @@ import { AiError, aiErrorMessage, parseWithAI } from "../lib/ai";
 import { useData } from "../lib/data";
 import { fetchData } from "../lib/api";
 import { mealsOf, toPayload } from "../lib/days";
+import { mealToBasketSeed } from "../lib/ingredientDraft";
 import {
   GRAM_UNIT,
   clampMinGrams,
@@ -39,7 +40,7 @@ import { formatKcal, todayISO, weekdayIndex } from "../lib/format";
 import { effectiveProfile } from "../lib/goals";
 import { rankAliases } from "../lib/aliasRank";
 import { categoryForHour, MEAL_CATEGORIES } from "../lib/mealCategory";
-import type { AIParseItem, Alias, MealCategory, MealPayload, MealSource, Nutrition } from "../types";
+import type { AIParseItem, Alias, MealCategory, MealItem, MealPayload, MealSource, Nutrition } from "../types";
 import { usualQuantity } from "../lib/quantity";
 import { AliasPicker } from "./AliasPicker";
 import { useBodyScrollLock } from "../hooks/useBodyScrollLock";
@@ -282,11 +283,22 @@ export function MealForm({
   const [aiLoading, setAiLoading] = useState(false);
   const [aiError, setAiError] = useState<string | null>(null);
 
+  /** Mevcut öğünü sepete açar: bir `sources` girdisi bir kalem, `computed` ile
+   *  satırlar toplamı arasındaki fark (elle eklenmiş kalem) ayrı kaynaksız
+   *  kalem. Kaynaksız/çözülemez öğün TEK kalem olarak girer — `NutritionSheet`
+   *  "bölümü hiç çizmez" kuralının aynısı. Böylece öğün açılırken tek kaleme
+   *  inmez, malzeme gramajı kalem kalem düzenlenebilir. */
+  function seedFromExisting(): BasketItem[] {
+    if (!existing) return [];
+    return mealToBasketSeed(existing, aliases, t("meal.defaultExtraItem")).map((s, i) => ({
+      id: `existing-${Date.now()}-${i}-${Math.random().toString(36).slice(2, 8)}`,
+      ...s,
+    }));
+  }
+
   const [basket, setBasket] = useState<BasketItem[]>(() => {
     if (existing) {
-      return [
-        { id: `existing-${Date.now()}`, name: existing.label, nutrition: existing.computed, sources: existing.sources },
-      ];
+      return seedFromExisting();
     }
     if (initialAIItems && initialAIItems.length > 0) {
       return initialAIItems.map((it, i) => ({
@@ -317,14 +329,7 @@ export function MealForm({
   function switchMode(newMode: Mode) {
     setMode(newMode);
     if (existing && basket.length === 0) {
-      setBasket([
-        {
-          id: `existing-${Date.now()}`,
-          name: existing.label,
-          nutrition: existing.computed,
-          sources: existing.sources,
-        },
-      ]);
+      setBasket(seedFromExisting());
     }
   }
 
@@ -477,14 +482,7 @@ export function MealForm({
 
     let currentBasket = basket;
     if (existing && currentBasket.length === 0) {
-      currentBasket = [
-        {
-          id: `existing-${Date.now()}`,
-          name: existing.label,
-          nutrition: existing.computed,
-          sources: existing.sources,
-        },
-      ];
+      currentBasket = seedFromExisting();
     }
 
     const newItem: BasketItem = {
@@ -509,14 +507,7 @@ export function MealForm({
 
     let currentBasket = basket;
     if (existing && currentBasket.length === 0) {
-      currentBasket = [
-        {
-          id: `existing-${Date.now()}`,
-          name: existing.label,
-          nutrition: existing.computed,
-          sources: existing.sources,
-        },
-      ];
+      currentBasket = seedFromExisting();
     }
 
     const itemName = manualItemName.trim() || (existing ? t("meal.defaultExtraItem") : t("meal.defaultNewItem"));
@@ -542,14 +533,7 @@ export function MealForm({
 
     let currentBasket = basket;
     if (existing && currentBasket.length === 0) {
-      currentBasket = [
-        {
-          id: `existing-${Date.now()}`,
-          name: existing.label,
-          nutrition: existing.computed,
-          sources: existing.sources,
-        },
-      ];
+      currentBasket = seedFromExisting();
     }
 
     const newItems: BasketItem[] = items.map((it, i) => ({
@@ -645,13 +629,26 @@ export function MealForm({
 
       const loggedAt = editIndex === null ? new Date().toISOString() : existing?.loggedAt;
 
-      const entry: MealPayload = {
-        name: finalName.slice(0, 100).trim(),
-        nutrition: cleanNutrition,
+      // `sources` bilerek DESTRUCTURE edilir: koşullu yayılım `entrySources`
+      // boşken `undefined` yazmadığı için `existing`'ten gelen eski kaynak
+      // kayıtta kalır ve "kullanıcı silmiş olsa bile öğün eski kaynaklarıyla
+      // gider" (NutritionSheet.tsx'teki `sources DAİMA yazılır` yorumundaki
+      // tuzak). Kalan alanlar (templateId, grams) `toPayload`'a bırakılır —
+      // MealForm ve NutritionSheet artık aynı yazım yolunu paylaşır.
+      const { sources: _prevSources, ...base } = existing ?? {
+        id: `meal-${Date.now()}`,
+        label: "",
+        computed: cleanNutrition,
+      };
+      const updated: MealItem = {
+        ...base,
+        label: finalName.slice(0, 100).trim(),
+        category,
+        computed: cleanNutrition,
         ...(entrySources && entrySources.length > 0 ? { sources: entrySources } : {}),
         ...(loggedAt ? { loggedAt } : {}),
-        category,
       };
+      const entry: MealPayload = toPayload([updated])[0];
 
       if (editIndex === null) next.push(entry);
       else next[editIndex] = entry;

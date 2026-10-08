@@ -8,10 +8,10 @@ import { formatNumber } from "../lib/format";
 import { scaleNutrition } from "../lib/nutrition";
 import { filterAliases } from "../lib/aliasFilter";
 import { useData } from "../lib/data";
-import { parseTemplatesConfig, newTemplateId } from "../lib/templates";
+import { parseTemplatesConfig, newTemplateId, templateList } from "../lib/templates";
 import type { MealTemplate } from "../lib/templates";
 import { TemplatePreview } from "../components/TemplatePreview";
-import { draftLinesToItems } from "../lib/ingredientDraft";
+import { draftLinesToItems, hasUnnamedItem } from "../lib/ingredientDraft";
 import type { DraftLine } from "../lib/ingredientDraft";
 import type { Alias } from "../types";
 import { usePressSpring } from "../hooks/usePressSpring";
@@ -71,7 +71,7 @@ export function AliasPage({
     setBusy(true);
     try {
       await updateConfig("templates", {
-        list: templates.list.filter((x) => x.id !== id),
+        list: templateList(config).filter((x) => x.id !== id),
       });
     } catch (e) {
       setErr(String((e as Error)?.message ?? e));
@@ -86,11 +86,15 @@ export function AliasPage({
     if (busy) return;
     const trimmed = name.trim();
     if (!trimmed) return;
+    // Adı boş malzeme parse'ta sessizce düşer, hepsi düşerse şablon silinir.
+    // Kapı `TemplatePreview`'de de var — burası savunmacı (bkz. hasUnnamedItem).
+    const items = draftLinesToItems(lines);
+    if (hasUnnamedItem(items)) return;
     setErr(null);
     setBusy(true);
     try {
       await updateConfig("templates", {
-        list: [...templates.list, { id: newTemplateId(), name: trimmed, items: draftLinesToItems(lines) }],
+        list: [...templateList(config), { id: newTemplateId(), name: trimmed, items }],
       });
       setNewTemplate(null);
     } catch (e) {

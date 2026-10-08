@@ -880,7 +880,8 @@
     "ingredientGrams": "Miktar",
     "ingredientAmountUnknown": "Miktar bilinmiyor",
     "ingredientRescaled": "{{from}} g → {{to}} g için besin değerleri yeniden hesaplandı",
-    "ingredientNoNutrition": "Bu kalemde besin değeri yok — önce protein/karb/yağ/lif'i gir, sonra miktarı yaz"
+    "ingredientNoNutrition": "Bu kalemde besin değeri yok — önce protein/karb/yağ/lif'i gir, sonra miktarı yaz",
+    "itemNameRequired": "Her malzemenin adı olmalı — adı boş kalemi sistem sessizce atar"
   },
   "templatePreview": {
     "updateTemplate": "Şablonu da bu değişikliklerle güncelle",

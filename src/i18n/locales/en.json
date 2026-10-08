@@ -880,7 +880,8 @@
     "ingredientGrams": "Amount",
     "ingredientAmountUnknown": "Amount unknown",
     "ingredientRescaled": "Nutrition recalculated for {{from}} g → {{to}} g",
-    "ingredientNoNutrition": "This item has no nutrition yet — enter protein/carbs/fat/fiber first, then the amount"
+    "ingredientNoNutrition": "This item has no nutrition yet — enter protein/carbs/fat/fiber first, then the amount",
+    "itemNameRequired": "Every ingredient needs a name — items without one are dropped silently"
   },
   "templatePreview": {
     "updateTemplate": "Also update the template with these changes",

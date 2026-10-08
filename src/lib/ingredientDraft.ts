@@ -23,14 +23,16 @@
 // şablonundan malzeme SİLMEK kaydetmenin sonucu olamaz (lessons.md L21).
 // Kullanıcı miktarı girip satır ölçülebilir hale gelince `preserved` düşer:
 // artık "korunan" değil, "ölçülen" bir satırdır.
-import type { Alias, AliasUnit, Nutrition } from "../types";
+import type { Alias, AliasUnit, MealItem, MealSource, Nutrition } from "../types";
 import { ZERO_NUTRITION } from "../types";
 import { NUTRIENT_KEYS } from "./nutrients";
 import {
+  addNutrition,
   defaultUnitForAlias,
   parseNum,
   scaleNutrition,
   scaleNutritionByFactor,
+  subtractNutrition,
   toGrams,
   unitOptions,
 } from "./nutrition";
@@ -519,4 +521,160 @@ export function draftLinesToItems(lines: DraftLine[]): TemplateItem[] {
     });
   }
   return items;
+}
+
+/** Kaydedilecek kalemler arasında ADI OLMAYAN var mı?
+ *
+ *  `lib/templates.ts` parse'ı adı boş kalemi sessizce düşürür; hepsi düşerse
+ *  şablon listeden tamamen çıkar ve sonraki şablon kaydı `config.templates`'i
+ *  baştan yazarken onu sunucudan siler. Bu yüzden kaydetmeden ÖNCE burada
+ *  durdurulur — üç kayıt kapısının (TemplatePreview, DayView, AliasPage)
+ *  ortak kuralı.
+ *
+ *  Doğrulama `draftLinesToItems`'ın İÇİNE KOYULMAZ: oraya koymak satırı
+ *  sessizce elemek olurdu — ekranda görünenle kaydedilenin farklı olması
+ *  (L20). Kapı bileşen yüzeyinde, kural burada. */
+export function hasUnnamedItem(items: TemplateItem[]): boolean {
+  return items.some((i) => !i.name.trim());
+}
+
+/** Kaydın malzemelerini düzenlenebilir satırlara çevirir — YA HİÇ ya da HİÇBİRİ.
+ *
+ *  TÜM-ORA-HİÇBİRİ kuralı bilinçlidir: tek bir kaynak çözülemezse (alias
+ *  silinmiş ya da birim artık tanınmıyor) bölümün TAMAMI çizilmez. Kısmi bir
+ *  liste çizmek, kaydederken çözülmeyen malzemeyi kayıttan SİLMEK demektir —
+ *  `normalizeMeals` gövdeyi geçirdiği için kayıt sessizce değişir. Ölçülmüş
+ *  davranış: kaynaksız/çözülemez öğünde toplam ekranı aynen kalır.
+ *
+ *  Bu, aynı zamanda "silinmiş alias'a bağlı satır" (dangling aliasId) durumunu
+ *  YAPISAL OLARAK IMKÂNSIZ kılar: o satır `alias` bulunamadığı için `null`
+ *  döndürür ve bölüm hiç render edilmez. */
+export function mealDraftLines(meal: MealItem, aliases: Alias[]): DraftLine[] | null {
+  const sources = meal.sources;
+  if (!sources || sources.length === 0) return null;
+  const byId = new Map(aliases.map((a) => [a.id, a]));
+  const out: DraftLine[] = [];
+  for (const s of sources) {
+    const alias = byId.get(s.aliasId);
+    // Alias yoksa ya da birim çözülemiyorsa satır ÜRETİLMEZ → bölüm hiç çizilmez.
+    const line = alias ? draftLineFromAlias(alias, String(s.qty), s.unit) : null;
+    if (!line) return null;
+    out.push(line);
+  }
+  return out.length > 0 ? out : null;
+}
+
+/** Kaydın satırlara YORULAMAYAN kısmı — `sources`'ı olmayan kalemin payı.
+ *
+ *  Tek öğüne birleşen şablonda (`templateItemsToPayload`) kaynaksız bir kalem
+ *  yalnız toplama karışır: adı satır listesinde yer bulamaz. Satır
+ *  düzenlemesinin sonucu bu fark EKLENMEDEN yazılırsa o kalemin besini
+ *  sessizce düşer (gösterilen ≠ kaydedilen, L20) — kullanıcı gramaj
+ *  değiştirmeden öğünün kalorisi 100 kcal azalır.
+ *
+ *  Kaynaksız/çözülemez öğünde satır zaten çizilmez, dolayısıyla bu fark
+ *  hiç kullanılmaz: oran sıfır değil TANIMSIZ değil, sadece kullanılmayan. */
+export function unattributedNutrition(meal: MealItem, aliases: Alias[]): Nutrition {
+  const lines = mealDraftLines(meal, aliases);
+  if (!lines) return { ...ZERO_NUTRITION };
+  let sum = { ...ZERO_NUTRITION };
+  for (const l of lines) sum = addNutrition(sum, l.nutrition);
+  return subtractNutrition(meal.computed, sum);
+}
+
+/** `MealForm` sepetinin mevcut öğünden tohumu. Bir satır = bir basket item. */
+export interface MealSeedItem {
+  name: string;
+  nutrition: Nutrition;
+  sources?: MealSource[];
+}
+
+/** Bir besin kümesini `MealForm.save`'in `cleanNutrition`'iyle AYNI kesinlikte
+ *  ve AYNI kıstakta hazırlar (kcal tamsayı, geri kalanı 1 ondalık, negatif 0).
+ *
+ *  YALNIZCA EŞİK İÇİN KULLANILIR — kalıntının kendisi bu fonksiyondan
+ *  geçirilmez (bkz. `mealToBasketSeed`): çift yuvarlama toplamı her aç/kapa
+ *  ~1 kcal yukarı kaydırırdı.
+ *
+ *  Eşik olarak iki işi birden yapar:
+ *   • Yuvarlama tozu (kayıt yuvarlanmış, satır toplamı yuvarlanmamış — fark
+ *     her açılışta ±0.5 kcal / ±0.05 g) bu kesinlikte sıfıra gider → hayalet
+ *     kalem üretilmez.
+ *   • Negatif fark (`computed < satır toplamı`, elle düşürülmüş toplam) 0'a
+ *     kıstırılır → tohum üretilmez. "Malzemeler esas" kuralının kendisi. */
+function roundLikeSaved(n: Nutrition): Nutrition {
+  const whole = (v: number) => Math.max(0, Math.round(v || 0));
+  const one = (v: number) => Math.max(0, Math.round((v || 0) * 10) / 10);
+  const optOne = (v: number | undefined) => (v === undefined ? undefined : one(v));
+  const optWhole = (v: number | undefined) => (v === undefined ? undefined : whole(v));
+  return {
+    kcal: whole(n.kcal),
+    protein: one(n.protein),
+    carbs: one(n.carbs),
+    fat: one(n.fat),
+    fiber: one(n.fiber),
+    sugar: optOne(n.sugar),
+    satFat: optOne(n.satFat),
+    sodium: optWhole(n.sodium),
+  };
+}
+
+function hasAnyNutrition(n: Nutrition): boolean {
+  return NUTRIENT_KEYS.some((k) => (n[k] ?? 0) > 0);
+}
+
+/** İki değer aynı KAYIT kesinliğinde aynı mı? `undefined` ile 0 eşdeğer sayılır
+ *  (ikisi de "0 kcal" yazar). */
+function sameAsSaved(a: Nutrition, b: Nutrition): boolean {
+  return NUTRIENT_KEYS.every((k) => (a[k] ?? 0) === (b[k] ?? 0));
+}
+
+/** Kaynakları `MealForm` sepetine açar: bir `sources` girdisi bir kalem.
+ *
+ *  `lines === null` (kaynak yok ya da biri çözülemez) → TEK seed, `computed`
+ *  ile: bugünün davranışı ve `NutritionSheet`'in "bölümü hiç çizme" kuralının
+ *  aynısı.
+ *
+ *  Kalıntı: `computed` ile satırlar toplamı arasındaki fark (elle eklenmiş
+ *  kalem, eski manuel toplam) **seed olarak eklenir** — L20 gereği kaybolamaz.
+ *  Gösterim adı çağıran tarafın işi (`lib/` i18n'e bağlanmaz), o yüzden
+ *  `remainderName` parametre olarak gelir. */
+export function mealToBasketSeed(
+  meal: MealItem,
+  aliases: Alias[],
+  remainderName: string,
+): MealSeedItem[] {
+  const lines = mealDraftLines(meal, aliases);
+  if (!lines) return [{ name: meal.label, nutrition: { ...meal.computed } }];
+
+  const seeds: MealSeedItem[] = [];
+  let sum: Nutrition = { ...ZERO_NUTRITION };
+  for (const l of lines) {
+    seeds.push({
+      name: l.name,
+      nutrition: l.nutrition,
+      ...(l.aliasId
+        ? { sources: [{ aliasId: l.aliasId, qty: parseNum(l.qty), unit: l.unit }] }
+        : {}),
+    });
+    sum = addNutrition(sum, l.nutrition);
+  }
+
+  // Kalıntı ancak ÖLÇÜLEBİLİR bir fark varsa tohumlanır. Kayıt `cleanNutrition`
+  // ile yuvarlandığı için `computed − satır toplamı` her açılışta ±0.5 kcal /
+  // ±0.05 g toz üretir; o tozu tohumlamak her aç/kapa hayaleti bir kalem ekler.
+  //
+  // İKİ AYRI KARAR, İKİ AYRI DEĞER — dikkat:
+  //   • EŞİK yuvarlanır (toz mu, gerçek fark mı diye bakılır).
+  //   • DEĞER yuvarlanmaz. Kalıntı `sum`'dan TAM çıkarılıp sepete ham olarak
+  //     eklenir ki `round(sum + kalan) === computed` OLSUN. Kalıntıyı da
+  //     yuvarlamak çift yuvarlama olurdu: her aç/kapa toplamı ~1 kcal yukarı
+  //     kaydırırdı.
+  if (!sameAsSaved(roundLikeSaved(meal.computed), roundLikeSaved(sum))) {
+    const remainder = subtractNutrition(meal.computed, sum);
+    if (hasAnyNutrition(roundLikeSaved(remainder))) {
+      seeds.push({ name: remainderName, nutrition: remainder });
+    }
+  }
+  return seeds;
 }

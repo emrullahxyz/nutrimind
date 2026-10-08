@@ -880,7 +880,8 @@
     "ingredientGrams": "Ilość",
     "ingredientAmountUnknown": "Ilość nieznana",
     "ingredientRescaled": "Wartości odżywcze przeliczone dla {{from}} g → {{to}} g",
-    "ingredientNoNutrition": "Ta pozycja nie ma jeszcze wartości odżywczych — wpisz białko/węglowodany/tłuszcz/błonnik, potem ilość"
+    "ingredientNoNutrition": "Ta pozycja nie ma jeszcze wartości odżywczych — wpisz białko/węglowodany/tłuszcz/błonnik, potem ilość",
+    "itemNameRequired": "Każdy składnik musi mieć nazwę — pozycje bez nazwy są po cichu pomijane"
   },
   "templatePreview": {
     "updateTemplate": "Zaktualizuj też szablon tymi zmianami",

@@ -30,9 +30,9 @@ import { afterHistoryBackSettles } from "../lib/backStack";
 import { effectiveGoal } from "../lib/goals";
 import { MACROS, MICROS } from "../lib/nutrients";
 import { coverage, dayTotal, mealsOf, sumMeals, toPayload } from "../lib/days";
-import { parseTemplatesConfig, newTemplateId, templateItemsToPayload } from "../lib/templates";
+import { parseTemplatesConfig, newTemplateId, templateItemsToPayload, templateList } from "../lib/templates";
 import type { MealTemplate } from "../lib/templates";
-import { draftLinesToItems } from "../lib/ingredientDraft";
+import { draftLinesToItems, hasUnnamedItem } from "../lib/ingredientDraft";
 import type { DraftLine } from "../lib/ingredientDraft";
 import { duplicatePayload, mealToTemplate } from "../lib/mealActions";
 import type { PanelAnchor } from "../lib/anchor";
@@ -296,11 +296,16 @@ export function DayView({
   async function saveNewTemplate(name: string, lines: DraftLine[]) {
     const trimmed = name.trim();
     if (busy || !trimmed) return;
+    // Adı boş malzeme `parseTemplatesConfig`'te sessizce düşer ve tüm
+    // şablonu listeden çıkarır; listede olmayan da sonraki full-replace ile
+    // sunucudan silinir. Kapı `TemplatePreview`'de de var — burası savunmacı.
+    const items = draftLinesToItems(lines);
+    if (hasUnnamedItem(items)) return;
     setErr(null);
     setBusy(true);
     try {
       await updateConfig("templates", {
-        list: [...templates.list, { id: newTemplateId(), name: trimmed, items: draftLinesToItems(lines) }],
+        list: [...templateList(config), { id: newTemplateId(), name: trimmed, items }],
       });
       setNewTemplateDraft(null);
     } catch (e) {
@@ -323,7 +328,7 @@ export function DayView({
       if (payload) await setDayMeals(date, [...toPayload(meals), payload]);
       if (updateTemplate) {
         await updateConfig("templates", {
-          list: templates.list.map((x) => (x.id === t.id ? { ...x, items } : x)),
+          list: templateList(config).map((x) => (x.id === t.id ? { ...x, items } : x)),
         });
       }
       setPreviewTemplateId(null);
@@ -341,7 +346,7 @@ export function DayView({
     setErr(null);
     setBusy(true);
     try {
-      await updateConfig("templates", { list: [...templates.list, mealToTemplate(meal, name)] });
+      await updateConfig("templates", { list: [...templateList(config), mealToTemplate(meal, name)] });
       showToast(t("mealMenu.templateSaved"), "success");
     } catch (e) {
       setErr(String((e as Error)?.message ?? e));

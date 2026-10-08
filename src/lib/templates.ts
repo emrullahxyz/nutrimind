@@ -35,6 +35,24 @@ export interface TemplatesConfig {
 
 export const EMPTY_TEMPLATES: TemplatesConfig = { list: [] };
 
+/** Yazma yolu için HAM şablon listesi — `parseTemplatesConfig`'ten GEÇMEZ.
+ *
+ *  `config.templates`'in `PUT /api/config/templates` ile full-replace edildiği
+ *  yerlerin TABANI bu olmalı. Parse edilmiş listeyi taban almak veri kaybıdır:
+ *  parser adı boş kalemi (`:70`) ve 0 geçerli kaleme inen şablonu (`:90`)
+ *  sessizce listeden çıkarır; kullanıcı görünmeyen o şablonu silemez ama
+ *  sonraki şablon kaydı listeyi baştan yazarken onu SUNUCUDAN siler.
+ *
+ *  Yalnız yapısal doğrulama var (alan yoksa `[]`), içerik elemez — eleme =
+ *  kayıp. Görüntüleme `parseTemplatesConfig` üzerinden kalmaya devam eder. */
+export function templateList(config: AppConfig): MealTemplate[] {
+  const raw = config.templates;
+  if (typeof raw !== "object" || raw === null || Array.isArray(raw)) return [];
+  const list = raw.list;
+  if (!Array.isArray(list)) return [];
+  return list as MealTemplate[];
+}
+
 /** `config.templates`'i doğrular. Savunmacı — bkz. `src/lib/waterSupplements.ts`'teki
  *  `parseWaterConfig`/`parseSupplementsConfig` deseni. Geçersiz şablon/kalem atlanır,
  *  hiçbiri tüm listeyi düşürmez. */
