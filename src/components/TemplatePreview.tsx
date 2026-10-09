@@ -13,10 +13,7 @@ import { AliasPicker } from "./AliasPicker";
 import { AiError, aiErrorMessage, parseWithAI } from "../lib/ai";
 import { FormActions, NutrientSummaryLine, NumField, NutritionFields, TextField, fromDraft, toDraft } from "./FormBits";
 import type { MealTemplate } from "../lib/templates";
-import type { AIParseItem, Alias, Nutrition } from "../types";
-import { addNutrition, parseNum } from "../lib/nutrition";
-import { NUTRIENT_KEYS } from "../lib/nutrients";
-import { ZERO_NUTRITION } from "../types";
+import type { AIParseItem, Alias } from "../types";
 import {
   addDraftLine,
   aliasOfLine,

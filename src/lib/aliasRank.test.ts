@@ -25,15 +25,6 @@ const aliasMuz: Alias = {
   nutrition: dummyNutrition,
 };
 
-const aliasProtein: Alias = {
-  id: "protein",
-  name: "Protein Tozu",
-  brand: "Hardline",
-  triggers: ["whey", "protein"],
-  serving_g: 30,
-  nutrition: dummyNutrition,
-};
-
 const aliasUnused: Alias = {
   id: "unused",
   name: "Kullanılmayan Besin",

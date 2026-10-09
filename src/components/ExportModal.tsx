@@ -14,7 +14,6 @@ import type { ValidationSuccess } from "../lib/exporters";
 import { todayISO } from "../lib/format";
 import { ErrorText, Label } from "./FormBits";
 import { Modal } from "./Modal";
-import { ReportView } from "./ReportView";
 
 type ActiveTab = "export" | "import";
 

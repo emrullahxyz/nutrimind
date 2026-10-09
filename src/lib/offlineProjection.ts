@@ -1,5 +1,4 @@
 import type { AppData, AliasPayload } from "./api";
-import type { MealPayload } from "../types";
 import type { OfflineOperation } from "./offlineCache";
 
 function aliasFromPayload(id: string, alias: AliasPayload): AppData["aliases"][number] {

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { Alias, MealItem } from "../types";
+import type { Alias } from "../types";
 import type { Days } from "./days";
 import { usualQuantity } from "./quantity";
 

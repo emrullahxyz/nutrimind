@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Check, Sparkles, Plus, Trash2, Calendar, Target, Award } from "lucide-react";
 import { Modal } from "./Modal";
-import { ErrorText, Label, NutritionFields, draftNum, fromDraft, toDraft } from "./FormBits";
+import { ErrorText, NutritionFields, draftNum, fromDraft, toDraft } from "./FormBits";
 import type { NutritionDraft } from "./FormBits";
 import { useData } from "../lib/data";
 import { weekdayShortList } from "../lib/format";

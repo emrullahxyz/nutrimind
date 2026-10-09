@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import { useData } from "../lib/data";
 import { effectiveGoal } from "../lib/goals";
 import { formatNumber, weekdayShort } from "../lib/format";
@@ -202,7 +202,7 @@ export function WeekBars({
         </div>
 
         <div className="mt-2 flex gap-2">
-          {week.days.map((d, i) => (
+          {week.days.map((d) => (
             <div
               key={d.date}
               className={`flex-1 text-center font-mono text-[10px] font-semibold ${

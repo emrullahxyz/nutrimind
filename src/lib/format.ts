@@ -127,7 +127,6 @@ export function weekdayShort(iso: string): string {
 export function formatRelativeDay(iso: string): string {
   const dateOnly = iso.slice(0, 10);
   const today = todayISO();
-  const locale = activeLocale();
   if (dateOnly === today) return i18n.t("relative.today");
   if (dateOnly === addDaysISO(today, -1)) return i18n.t("relative.yesterday");
   const diffMs =

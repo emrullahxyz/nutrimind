@@ -94,8 +94,6 @@ export function isStandalone(win?: Window): boolean {
 export function readViewportFacts(win?: Window, doc?: Document): ViewportFacts {
   const w = win ?? (typeof window === "undefined" ? null : window);
   const d = doc ?? (typeof document === "undefined" ? null : document);
-  const nav =
-    typeof navigator === "undefined" ? undefined : (navigator as Navigator & { standalone?: boolean });
   return {
     width: w?.innerWidth ?? 0,
     height: w?.innerHeight ?? 0,

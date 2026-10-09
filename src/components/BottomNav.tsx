@@ -57,7 +57,6 @@ function FabMenuItem({
 export function BottomNav({
   activeTab,
   onTabChange,
-  onOpenSettings,
   onAddMeal,
   onScan,
   onSavedFoods,

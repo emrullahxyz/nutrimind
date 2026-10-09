@@ -1,8 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { UtensilsCrossed } from "lucide-react";
 import { StatCardCarousel } from "./StatCardCarousel";
-import { MacroBar } from "./MacroBar";
-import { Card } from "./Card";
 import { DayTypeBadge } from "./DayTypeBadge";
 import { MealForm } from "./MealForm";
 import { TemplateShelf } from "./TemplateShelf";
@@ -28,8 +26,7 @@ import { formatKcal, todayISO } from "../lib/format";
 import { useData } from "../lib/data";
 import { afterHistoryBackSettles } from "../lib/backStack";
 import { effectiveGoal } from "../lib/goals";
-import { MACROS, MICROS } from "../lib/nutrients";
-import { coverage, dayTotal, mealsOf, sumMeals, toPayload } from "../lib/days";
+import { dayTotal, mealsOf, sumMeals, toPayload } from "../lib/days";
 import { parseTemplatesConfig, newTemplateId, templateItemsToPayload, templateList } from "../lib/templates";
 import type { MealTemplate } from "../lib/templates";
 import { draftLinesToItems, hasUnnamedItem } from "../lib/ingredientDraft";
@@ -38,8 +35,6 @@ import { duplicatePayload, mealToTemplate, mergePayloads } from "../lib/mealActi
 import type { PanelAnchor } from "../lib/anchor";
 import { EXERCISE_CONFIG_KEY, burnedKcalFor } from "../lib/exercise";
 import type { AIParseItem, MealItem, MealPayload } from "../types";
-import { PREF } from "../lib/prefs";
-import { usePersistedBool } from "../lib/usePersistedBool";
 import { groupMealsByCategory } from "../lib/mealCategory";
 import type { MealCategory } from "../types";
 
@@ -689,7 +684,7 @@ export function DayView({
             handleSaveFromNutritionSheet(updated, selectedMealForSheet.index);
           }
         }}
-        onDelete={(id) => {
+        onDelete={(_id) => {
           if (selectedMealForSheet) {
             removeMeal(selectedMealForSheet.index);
           }

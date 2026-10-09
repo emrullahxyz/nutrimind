@@ -3,7 +3,6 @@ import { ArrowLeft, Sparkles, Check, Plus, Trash2, Tag, Scale, Package } from "l
 import {
   EMPTY_DRAFT,
   ErrorText,
-  Label,
   NumField,
   NutritionFields,
   TextField,

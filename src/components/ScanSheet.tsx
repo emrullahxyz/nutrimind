@@ -67,7 +67,7 @@ import {
 import type { CameraFacing, ScanMode } from "../lib/camera";
 import { todayISO } from "../lib/format";
 import type { AIParseItem, MealPayload, MealSource, VisionMode } from "../types";
-import { AiError, grantAiConsent, hasAiConsent, parseMealImage } from "../lib/ai";
+import { AiError, grantAiConsent, parseMealImage } from "../lib/ai";
 import { useTranslation } from "react-i18next";
 import { captureVideoFrame, compressImageToBase64 } from "../lib/image";
 import { useBodyScrollLock } from "../hooks/useBodyScrollLock";
@@ -187,7 +187,6 @@ function AiConsentOverlay({
 
 export function ScanSheet({
   onClose,
-  onVisionResult,
 }: {
   onClose: () => void;
   /** ZORUNLU. Opsiyonelken iki çağıran (App'in FAB yolu ve AliasPage) bunu

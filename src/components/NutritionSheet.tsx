@@ -11,7 +11,6 @@ import { addNutrition, scaleMealSources } from "../lib/nutrition";
 import {
   addDraftLine,
   aliasOfLine,
-  draftLineFromAlias,
   draftLinesToItems,
   mealDraftLines,
   newDraftLine,
