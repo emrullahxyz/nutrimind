@@ -140,3 +140,15 @@ export function withExercises(
   else next[date] = list;
   return next;
 }
+
+/** Tek günün yakılan kalori toplamı. `DayView` ile `ExerciseModal` AYNI
+ *  config anahtarını okumak ZORUNDA: eskiden `DayView` eski
+ *  `exercise_${date}` anahtarını okuyordu, `ExerciseModal` ise tek
+ *  `exercise` anahtarına yazıyordu — göç yarı kalmıştı ve yakılan kalori
+ *  hedefe hiç yansımıyordu (burnedKcal daima 0). */
+export function burnedKcalFor(rawConfig: unknown, date: string): number {
+  return exercisesFor(parseExerciseEntries(rawConfig), date).reduce(
+    (acc, ex) => acc + ex.caloriesBurned,
+    0,
+  );
+}

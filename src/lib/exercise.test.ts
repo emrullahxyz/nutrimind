@@ -6,6 +6,7 @@ import {
   exercisesFor,
   parseExerciseEntries,
   withExercises,
+  burnedKcalFor,
 } from "./exercise";
 import type { ExerciseEntries } from "./exercise";
 import type { Exercise } from "../types";
@@ -189,5 +190,34 @@ describe("exercise entries", () => {
   it("boş liste o günü tamamen düşürür (blob'da boş dizi birikmesin)", () => {
     const before: ExerciseEntries = { "2026-08-05": [ex("a")] };
     expect(withExercises(before, "2026-08-05", [])).toEqual({});
+  });
+});
+
+describe("burnedKcalFor", () => {
+  const ex = (id: string): Exercise => ({
+    id,
+    name: "Koşu",
+    category: "run",
+    durationMinutes: 30,
+    caloriesBurned: 300,
+  });
+
+  it("bir günün yakılan kalorilerini toplar", () => {
+    const raw = {
+      entries: {
+        "2026-08-05": [ex("a"), { ...ex("b"), caloriesBurned: 120 }],
+      },
+    };
+    expect(burnedKcalFor(raw, "2026-08-05")).toBe(420); // 300 + 120
+  });
+
+  it("kayıtsız günde 0 döner", () => {
+    expect(burnedKcalFor({ entries: {} }, "2026-08-05")).toBe(0);
+    expect(burnedKcalFor(null, "2026-08-05")).toBe(0);
+  });
+
+  it("bozuk girdide 0 döner", () => {
+    expect(burnedKcalFor("bozuk", "2026-08-05")).toBe(0);
+    expect(burnedKcalFor({ entries: { "2026-08-05": [{ id: "x" }] } }, "2026-08-05")).toBe(0);
   });
 });

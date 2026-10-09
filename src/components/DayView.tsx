@@ -36,7 +36,8 @@ import { draftLinesToItems, hasUnnamedItem } from "../lib/ingredientDraft";
 import type { DraftLine } from "../lib/ingredientDraft";
 import { duplicatePayload, mealToTemplate, mergePayloads } from "../lib/mealActions";
 import type { PanelAnchor } from "../lib/anchor";
-import type { AIParseItem, Exercise, MealItem, MealPayload } from "../types";
+import { EXERCISE_CONFIG_KEY, burnedKcalFor } from "../lib/exercise";
+import type { AIParseItem, MealItem, MealPayload } from "../types";
 import { PREF } from "../lib/prefs";
 import { usePersistedBool } from "../lib/usePersistedBool";
 import { groupMealsByCategory } from "../lib/mealCategory";
@@ -173,11 +174,7 @@ export function DayView({
   const hasData = meals.length > 0;
   const templates = parseTemplatesConfig(config);
 
-  const exerciseData = (config[`exercise_${date}`] as { exercises?: Exercise[] }) ?? {
-    exercises: [],
-  };
-  const currentExercises: Exercise[] = exerciseData.exercises ?? [];
-  const burnedKcal = currentExercises.reduce((acc, curr) => acc + curr.caloriesBurned, 0);
+  const burnedKcal = burnedKcalFor(config[EXERCISE_CONFIG_KEY], date);
 
   const [showExerciseModal, setShowExerciseModal] = useState(false);
   const [selectedMealForSheet, setSelectedMealForSheet] = useState<{
