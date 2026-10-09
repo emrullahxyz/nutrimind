@@ -123,7 +123,7 @@ export function weekdayShort(iso: string): string {
   return weekdayShortList()[weekdayIndex(iso)] ?? "";
 }
 
-/** "bugün" / "dün" / "3g önce" / "22 Tem" — locale-aware. */
+/** "bugün" / "dün" / "3g önce" / "22 Tem" — i18n anahtarlarına bağlı (`relative.*`). */
 export function formatRelativeDay(iso: string): string {
   const dateOnly = iso.slice(0, 10);
   const today = todayISO();

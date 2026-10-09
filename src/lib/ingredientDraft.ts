@@ -629,16 +629,6 @@ function sameAsSaved(a: Nutrition, b: Nutrition): boolean {
   return NUTRIENT_KEYS.every((k) => (a[k] ?? 0) === (b[k] ?? 0));
 }
 
-/** Kaynakları `MealForm` sepetine açar: bir `sources` girdisi bir kalem.
- *
- *  `lines === null` (kaynak yok ya da biri çözülemez) → TEK seed, `computed`
- *  ile: bugünün davranışı ve `NutritionSheet`'in "bölümü hiç çizme" kuralının
- *  aynısı.
- *
- *  Kalıntı: `computed` ile satırlar toplamı arasındaki fark (elle eklenmiş
- *  kalem, eski manuel toplam) **seed olarak eklenir** — L20 gereği kaybolamaz.
- *  Gösterim adı çağıran tarafın işi (`lib/` i18n'e bağlanmaz), o yüzden
- *  `remainderName` parametre olarak gelir. */
 /** Satırın bağlı olduğu hafıza kaydı. İki yüzey (NutritionSheet,
  *  TemplatePreview) birebir aynı gövdeyi kopyalamıştı — tek kaynak. */
 export function aliasOfLine(aliases: Alias[], line: DraftLine): Alias | undefined {
@@ -656,6 +646,16 @@ export function sumLineNutrition(lines: readonly { nutrition: Nutrition }[]): Nu
   return lines.reduce<Nutrition>((acc, line) => addNutrition(acc, line.nutrition), { ...ZERO_NUTRITION });
 }
 
+/** Kaynakları `MealForm` sepetine açar: bir `sources` girdisi bir kalem.
+ *
+ *  `lines === null` (kaynak yok ya da biri çözülemez) → TEK seed, `computed`
+ *  ile: bugünün davranışı ve `NutritionSheet`'in "bölümü hiç çizme" kuralının
+ *  aynısı.
+ *
+ *  Kalıntı: `computed` ile satırlar toplamı arasındaki fark (elle eklenmiş
+ *  kalem, eski manuel toplam) **seed olarak eklenir** — L20 gereği kaybolamaz.
+ *  Gösterim adı çağıran tarafın işi (`lib/` i18n'e bağlanmaz), o yüzden
+ *  `remainderName` parametre olarak gelir. */
 export function mealToBasketSeed(
   meal: MealItem,
   aliases: Alias[],

@@ -634,8 +634,10 @@ export function ScanSheet({
     setSaving("dayOnly");
     setErr(null);
     try {
-      // Gün yazımı günün TÜM dizisini değiştirir → payload TAZE veriden
-      // türetilir (bkz. dosya başındaki çift yazma tuzağı notu).
+      // Gün yazımı günün TÜM dizisini değiştirir → payload bileşenin KENDİ
+      // `days` kapanışından değil, TAZE kaynaktan türetilir: `resolveWriteDays`
+      // online'da taze çeker, offline'da context'e düşer.
+      // Bkz. dosya başındaki çift yazma tuzağı notu.
       const date = todayISO();
       const baseDays = await resolveWriteDays(offline, () => fetchData().then((d) => d.days), days);
       const existing = toPayload(mealsOf(baseDays, date));
