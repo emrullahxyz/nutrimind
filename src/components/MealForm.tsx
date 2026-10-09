@@ -24,7 +24,7 @@ import { Skeleton } from "./Skeleton";
 import { AiError, aiErrorMessage, parseWithAI } from "../lib/ai";
 import { useData } from "../lib/data";
 import { fetchData } from "../lib/api";
-import { mealsOf, toPayload } from "../lib/days";
+import { mealsOf, resolveWriteDays, toPayload } from "../lib/days";
 import { mealToBasketSeed } from "../lib/ingredientDraft";
 import {
   GRAM_UNIT,
@@ -234,7 +234,7 @@ export function MealForm({
   });
 
   const { showToast } = useToast();
-  const { aliases, days, usageIndex, goals, setDayMeals } = useData();
+  const { aliases, days, usageIndex, goals, setDayMeals, offline } = useData();
   const existing = editIndex === null ? undefined : mealsOf(days, date)[editIndex];
 
   const mealIndex = editIndex !== null ? editIndex : mealsOf(days, date).length;
@@ -599,8 +599,8 @@ export function MealForm({
     setSaving(true);
     setErr(null);
     try {
-      const fresh = await fetchData();
-      const next: MealPayload[] = toPayload(mealsOf(fresh.days, date));
+      const baseDays = await resolveWriteDays(offline, () => fetchData().then((d) => d.days), days);
+      const next: MealPayload[] = toPayload(mealsOf(baseDays, date));
 
       const cleanNutrition: Nutrition = {
         kcal: Math.max(0, Math.round(finalNutrition.kcal || 0)),

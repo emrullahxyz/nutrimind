@@ -40,7 +40,7 @@ import { ErrorText, Label, NumField, NutrientSummaryLine, fieldCls } from "./For
 import { VisionReviewScreen } from "./VisionReview";
 import { useData } from "../lib/data";
 import { fetchData } from "../lib/api";
-import { mealsOf, toPayload } from "../lib/days";
+import { mealsOf, resolveWriteDays, toPayload } from "../lib/days";
 import {
   GRAM_UNIT,
   defaultQuantityForAlias,
@@ -197,7 +197,7 @@ export function ScanSheet({
 }) {
   useBodyScrollLock(true);
   const { t } = useTranslation();
-  const { aliases, upsertAlias, setDayMeals, offline } = useData();
+  const { aliases, upsertAlias, setDayMeals, offline, days } = useData();
 
   // --- Tarama adımı ---
   const [food, setFood] = useState<OffFood | null>(null);
@@ -638,8 +638,8 @@ export function ScanSheet({
       // Gün yazımı günün TÜM dizisini değiştirir → payload TAZE veriden
       // türetilir (bkz. dosya başındaki çift yazma tuzağı notu).
       const date = todayISO();
-      const fresh = await fetchData();
-      const existing = toPayload(mealsOf(fresh.days, date));
+      const baseDays = await resolveWriteDays(offline, () => fetchData().then((d) => d.days), days);
+      const existing = toPayload(mealsOf(baseDays, date));
       const entry: MealPayload = { name: food.name, nutrition: scaledNutrition };
       await setDayMeals(date, [...existing, entry]);
       onClose();
@@ -670,12 +670,13 @@ export function ScanSheet({
     }
 
     // ALIAS YAZILDI VE HAFIZA TAZELENDİ. Gün payload'ını burada, bileşenin
-    // KENDİ `days` kapanışından değil, TAZE bir `fetchData()`'dan türetiyoruz
-    // — bkz. dosya başındaki çift yazma tuzağı notu.
+    // KENDİ `days` kapanışından değil, TAZE bir sunucu okumasından türetiyoruz
+    // — `resolveWriteDays` online'da taze çeker, offline'da context'e düşer.
+    // Bkz. dosya başındaki çift yazma tuzağı notu.
     try {
       const date = todayISO();
-      const fresh = await fetchData();
-      const existing = toPayload(mealsOf(fresh.days, date));
+      const baseDays = await resolveWriteDays(offline, () => fetchData().then((d) => d.days), days);
+      const existing = toPayload(mealsOf(baseDays, date));
       const source: MealSource = { aliasId, qty: amountValue, unit: selectedUnit.name };
       const entry: MealPayload = { name: food.name, nutrition: scaledNutrition, sources: [source] };
       await setDayMeals(date, [...existing, entry]);

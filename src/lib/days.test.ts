@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { MealItem } from "../types";
-import { toPayload } from "./days";
+import { resolveWriteDays, toPayload } from "./days";
 
 describe("toPayload", () => {
   it("MealItem üzerindeki sources alanını MealPayload'a aktarmalı", () => {
@@ -52,5 +52,35 @@ describe("toPayload", () => {
       },
     ]);
     expect(payload[0].grams).toBe(150);
+  });
+});
+
+describe("resolveWriteDays", () => {
+  const ctx = { "2026-08-05": [] };
+
+  it("offline iken context'i döner ve fetch'i HİÇ çağırmaz", async () => {
+    let called = false;
+    const got = await resolveWriteDays(
+      true,
+      async () => {
+        called = true;
+        return {};
+      },
+      ctx,
+    );
+    expect(got).toBe(ctx);
+    expect(called).toBe(false);
+  });
+
+  it("online + başarılı fetch → taze günleri döner", async () => {
+    const fresh = { "2026-08-05": [] };
+    expect(await resolveWriteDays(false, async () => fresh, ctx)).toBe(fresh);
+  });
+
+  it("online + fetch fırlarsa context'e düşer (öğün kaybolmaz)", async () => {
+    const got = await resolveWriteDays(false, async () => {
+      throw new TypeError("Failed to fetch");
+    }, ctx);
+    expect(got).toBe(ctx);
   });
 });

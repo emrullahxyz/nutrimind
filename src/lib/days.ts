@@ -46,3 +46,23 @@ export function toPayload(meals: MealItem[]): MealPayload[] {
     ...(m.grams !== undefined ? { grams: m.grams } : {}),
   }));
 }
+
+/** Çevrimdışı yazım için taban günler. Online iken TAZE sunucu verisi
+ *  (çift-yazma tuzağı: bileşenin bayat `useData()` kapanışı yerine),
+ *  offline ya da fetch hatasında kullanıcının GÖRDÜĞÜ projeksiyon.
+ *
+ *  Eskiden çağıranlar (MealForm, ScanSheet) doğrudan `fetchData()` çağırıyordu;
+ *  offline'da fırlayınca `setDayMeals`'e (kuyruk yolu) hiç ulaşılmıyor ve öğün
+ *  kuyruğa girmeden kayboluyordu. */
+export async function resolveWriteDays(
+  offline: boolean,
+  fetchDays: () => Promise<Days>,
+  contextDays: Days,
+): Promise<Days> {
+  if (offline) return contextDays;
+  try {
+    return await fetchDays();
+  } catch {
+    return contextDays;
+  }
+}
