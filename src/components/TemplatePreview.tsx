@@ -19,6 +19,7 @@ import { NUTRIENT_KEYS } from "../lib/nutrients";
 import { ZERO_NUTRITION } from "../types";
 import {
   addDraftLine,
+  aliasOfLine,
   draftGramHint,
   draftLineFromAlias,
   draftLinesToItems,
@@ -27,6 +28,7 @@ import {
   removeDraftLine,
   roundNutrition,
   setDraftGrams,
+  sumLineNutrition,
   swapDraftLine,
 } from "../lib/ingredientDraft";
 import type { DraftLine, GramEditHint } from "../lib/ingredientDraft";
@@ -184,16 +186,9 @@ export function TemplatePreview({
   // `hasUnnamedItem`).
   const hasUnnamed = hasUnnamedItem(savableItems);
   const total = useMemo(
-    () =>
-      roundNutrition(
-        savableItems.reduce<Nutrition>((a, item) => addNutrition(a, item.nutrition), { ...ZERO_NUTRITION }),
-      ),
+    () => roundNutrition(sumLineNutrition(savableItems)),
     [savableItems],
   );
-
-  function aliasOf(line: DraftLine): Alias | undefined {
-    return line.aliasId ? aliases.find((a) => a.id === line.aliasId) : undefined;
-  }
 
   /** AI'nın bulduğu malzemeyi bir satıra çevirir.
    *
@@ -321,7 +316,7 @@ export function TemplatePreview({
             tek yapılacak koşulu gevşetmek; o zaman dal ve anahtar geri gelir. */}
         <ul className="space-y-2">
           {lines.map((line) => {
-              const alias = aliasOf(line);
+              const alias = aliasOfLine(aliases, line);
               // ELLE satırı: kullanıcı ad + makroyu kendi giriyor (hafızadan değil).
               //
               // "Elle satır mı" sorusu `aliasId === null` ile yanıtlanır —

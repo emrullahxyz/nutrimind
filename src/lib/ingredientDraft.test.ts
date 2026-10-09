@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   __setDraftFlag,
   addDraftLine,
+  aliasOfLine,
   draftGramHint,
   draftLineFromAlias,
   draftLinesToItems,
@@ -11,6 +12,7 @@ import {
   removeDraftLine,
   resolveDraftUnit,
   setDraftGrams,
+  sumLineNutrition,
   swapDraftLine,
 } from "./ingredientDraft";
 import type { DraftLine } from "./ingredientDraft";
@@ -991,5 +993,40 @@ describe("hasUnnamedItem", () => {
   it("hepsi adlıysa false", () => {
     expect(hasUnnamedItem([{ name: "Elma", nutrition: n }])).toBe(false);
     expect(hasUnnamedItem([])).toBe(false);
+  });
+});
+
+describe("aliasOfLine", () => {
+  const aliases = [
+    { id: "a1", name: "Yumurta", triggers: [], serving_g: 50, nutrition: { kcal: 78, protein: 6, carbs: 1, fat: 5, fiber: 0 } },
+  ] as unknown as Alias[];
+
+  it("aliasId'ye karşılık gelen alias'ı döner", () => {
+    const line = { aliasId: "a1" } as unknown as DraftLine;
+    expect(aliasOfLine(aliases, line)?.id).toBe("a1");
+  });
+
+  it("aliasId null ise undefined döner", () => {
+    const line = { aliasId: null } as unknown as DraftLine;
+    expect(aliasOfLine(aliases, line)).toBeUndefined();
+  });
+
+  it("eşleşme yoksa undefined döner", () => {
+    const line = { aliasId: "yok" } as unknown as DraftLine;
+    expect(aliasOfLine(aliases, line)).toBeUndefined();
+  });
+});
+
+describe("sumLineNutrition", () => {
+  it("satır makrolarını toplar", () => {
+    const lines = [
+      { nutrition: { kcal: 100, protein: 10, carbs: 5, fat: 2, fiber: 1 } },
+      { nutrition: { kcal: 50, protein: 3, carbs: 2, fat: 1, fiber: 0 } },
+    ] as unknown as DraftLine[];
+    expect(sumLineNutrition(lines)).toEqual({ kcal: 150, protein: 13, carbs: 7, fat: 3, fiber: 1 });
+  });
+
+  it("boş liste ZERO_NUTRITION-benzeri sıfır toplam döner", () => {
+    expect(sumLineNutrition([])).toEqual({ kcal: 0, protein: 0, carbs: 0, fat: 0, fiber: 0 });
   });
 });

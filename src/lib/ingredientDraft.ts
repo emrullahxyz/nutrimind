@@ -639,6 +639,23 @@ function sameAsSaved(a: Nutrition, b: Nutrition): boolean {
  *  kalem, eski manuel toplam) **seed olarak eklenir** — L20 gereği kaybolamaz.
  *  Gösterim adı çağıran tarafın işi (`lib/` i18n'e bağlanmaz), o yüzden
  *  `remainderName` parametre olarak gelir. */
+/** Satırın bağlı olduğu hafıza kaydı. İki yüzey (NutritionSheet,
+ *  TemplatePreview) birebir aynı gövdeyi kopyalamıştı — tek kaynak. */
+export function aliasOfLine(aliases: Alias[], line: DraftLine): Alias | undefined {
+  return line.aliasId ? aliases.find((a) => a.id === line.aliasId) : undefined;
+}
+
+/** Satır makrolarının toplamı. Kayıt yolu (`draftLinesToItems`) üzerinden
+ *  DEĞİL, ham `lines` üzerinden çağrılmaz — çağıranlar `draftLinesToItems`
+ *  sonucunu besler (bkz. L20).
+ *
+ *  Parametre yapısal (`{ nutrition }[]`), `DraftLine[]` DEĞİL: çağıranlar
+ *  kayıt yolu çıktısını (`TemplateItem[]`) besler ve o girdi DraftLine'ın öteki
+ *  alanlarını taşımaz. Yardımcı yalnız `nutrition`'a dokunur. */
+export function sumLineNutrition(lines: readonly { nutrition: Nutrition }[]): Nutrition {
+  return lines.reduce<Nutrition>((acc, line) => addNutrition(acc, line.nutrition), { ...ZERO_NUTRITION });
+}
+
 export function mealToBasketSeed(
   meal: MealItem,
   aliases: Alias[],

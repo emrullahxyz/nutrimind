@@ -10,6 +10,7 @@ import { useModalExit } from "../hooks/useModalExit";
 import { addNutrition, scaleMealSources } from "../lib/nutrition";
 import {
   addDraftLine,
+  aliasOfLine,
   draftLineFromAlias,
   draftLinesToItems,
   mealDraftLines,
@@ -17,6 +18,7 @@ import {
   removeDraftLine,
   roundNutrition,
   setDraftGrams,
+  sumLineNutrition,
   swapDraftLine,
   unattributedNutrition,
 } from "../lib/ingredientDraft";
@@ -116,10 +118,6 @@ function IngredientLines({
   // Kaynaksız/çözülemez öğün: kırılım yok, bölüm hiç çizilmez (ölçülmüş regresyon).
   if (!lines || lines.length === 0) return null;
 
-  function aliasOf(line: DraftLine): Alias | undefined {
-    return line.aliasId ? aliases.find((a) => a.id === line.aliasId) : undefined;
-  }
-
   /** Satırları hem yerel state'e yazar hem parent'a bildirir — ana kartın
    *  toplamı kaydedilenle aynı kalmalı (L20): yalnız kaydet anında değil,
    *  düzenleme ANINDA da eşitlenir.
@@ -164,12 +162,7 @@ function IngredientLines({
   // `draftLinesToItems` `roundNutrition`'ı KENDİ uygular, ama toplama
   // SONRASI da uygulanmalı: satır toplamının yuvarlanmamış hâli ekrana
   // (2 ondalık) kayda (1 ondalık) ayrışmasın diye.
-  const total = roundNutrition(
-    draftLinesToItems(lines).reduce<Nutrition>(
-      (acc, item) => addNutrition(acc, item.nutrition),
-      { ...ZERO_NUTRITION },
-    ),
-  );
+  const total = roundNutrition(sumLineNutrition(draftLinesToItems(lines)));
 
   return (
     <div className="space-y-2.5 pt-2">
@@ -179,7 +172,7 @@ function IngredientLines({
       </div>
       <ul className="space-y-2">
         {lines.map((line) => {
-          const alias = aliasOf(line);
+          const alias = aliasOfLine(aliases, line);
           const locked = isAmountLocked(line, alias);
           return (
             <li
@@ -384,8 +377,7 @@ export function NutritionSheet({ isOpen, onClose, meal, onSave, onDelete }: Prop
     // değiştirir; swap sonrası elle makro yazmak sources'u koparır).
     if (swappedLines && basis === "quantity") {
       const items = draftLinesToItems(swappedLines);
-      let nutrition = { ...ZERO_NUTRITION };
-      for (const item of items) nutrition = addNutrition(nutrition, item.nutrition);
+      const nutrition = sumLineNutrition(items);
       const collected = items.flatMap((i) => i.sources ?? []);
       const updated: MealItem = {
         ...meal,
@@ -632,8 +624,7 @@ export function NutritionSheet({ isOpen, onClose, meal, onSave, onDelete }: Prop
               // göstermeye devam ederse kullanıcı "225 → 175 gördüm ama
               // 418 yazıyor" diye kaydeder.
               const items = draftLinesToItems(next);
-              let nutrition = { ...ZERO_NUTRITION };
-              for (const item of items) nutrition = addNutrition(nutrition, item.nutrition);
+              const nutrition = sumLineNutrition(items);
               setBasis("quantity");
               // Kaynaksız kalemin payı (`remainder`) eklenmezse satır
               // düzenlemek o kalemin besinini sessizce siler.
