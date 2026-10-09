@@ -236,10 +236,10 @@ function IngredientLines({
                     </p>
                   )}
                 </div>
-                {alias && (
+                {alias && swapKey !== line.key && (
                   <button
                     type="button"
-                    onClick={() => setSwapKey(swapKey === line.key ? null : line.key)}
+                    onClick={() => setSwapKey(line.key)}
                     className="mb-1 rounded-pill border border-white/15 px-3 py-2 text-[11px] font-bold text-amber-300 transition hover:text-amber-200"
                   >
                     {t("nutrition.swapIngredient")}

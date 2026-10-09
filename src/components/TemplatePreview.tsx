@@ -477,7 +477,8 @@ export function TemplatePreview({
                           idi; yeni elle satırda (aliasId null, preserved false)
                           düğme YOKTU — hafızadaki domates bile elle yeniden
                           yazılıyordu, makroları sıfır kalıyordu. */}
-                      {(alias || (line.preserved && aliases.length > 0) || isManualRow) ? (
+                      {(alias || (line.preserved && aliases.length > 0) || isManualRow) &&
+                      swapKey !== line.key ? (
                         <button
                           type="button"
                           onClick={() => setSwapKey(line.key)}
