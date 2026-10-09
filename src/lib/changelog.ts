@@ -13,6 +13,32 @@ export interface ChangeLogVersion {
 
 export const CHANGELOG: ChangeLogVersion[] = [
   {
+    version: "0.31.6",
+    date: "2026-10-09",
+    summary: {
+      tr: "Malzemeyi değiştirirken artık hafızandaki besinleri arayabilirsin; ayrıca cam temada açılır liste arkadaki yazıyla karışmıyor.",
+      en: "You can now search your food memory when swapping an ingredient, and in the glass theme the dropdown no longer blends into the text behind it.",
+    },
+    items: [
+      {
+        type: "improved",
+        tr: "Bir malzemeyi değiştirmek için hafızadaki besinler artık tek tek kaydırmak yerine aranarak bulunuyor. İsim, marka veya takma adla arayabilir, klavyeyle (↑↓, Enter, Esc) seçebilirsin.",
+        en: "Swapping an ingredient no longer means scrolling through your whole memory — you can search it. Find by name, brand, or trigger and pick with the keyboard (↑↓, Enter, Esc).",
+      },
+      {
+        type: "fixed",
+        tr: "Cam (glass) temada malzeme seçme listesi arkadaki öğün satırlarıyla karışıyordu; menü artık okunur, koyu bir yüzeyde açılıyor.",
+        en: "In the glass theme the ingredient picker blended into the meal rows behind it; the menu now opens on a legible, darker surface.",
+      },
+    ],
+    dev: [
+      "Iki yuzeydeki (NutritionSheet, TemplatePreview) swap <select>'i AliasPicker ile degistirildi — arama ad+marka+tetikleyici uzerinde (filterAliases), sonuclar rankAliases ile kullanım sikligina gore. AliasPicker'a opsiyonel autoFocus + onDismiss prop'lari eklendi; mevcut cagiranlar (MealForm, TemplatePreview 'ekle' yolu) etkilenmedi.",
+      "Swap dugmesi picker ACIKKEN gizlenir (swapKey !== line.key) — toggle denemesi React olay sirasi yuzunden (mousedown dismiss -> re-render -> click yeni closure -> reac) yapisal olarak kirikti; vazgecme dis-tiklama/Escape onDismiss ile karsilaniyor.",
+      "GLASS popover: [data-theme=glass] --popover 255 255 255@0.06 -> 25 26 34@0.9. bg-popover/NN alfa soneki glass'ta ise yaramaz (withAlpha companion -a degerini carpar, 0.06*0.98=0.059); opaklik ancak ucgu/a degistirilerek yukselir. TrendChart tooltip de bg-elevated-2/95 -> bg-popover. Velvet ve prefers-reduced-transparency bloklari degismedi.",
+      "Kapi testi src/lib/themeSurfaces.test.ts: glass blogunda --popover koyu (r+g+b<200) + --popover-a>=0.5 oldugunu dogrular; beyaz-uclu+ dusuk-alfa regresyonunu engeller.",
+    ],
+  },
+  {
     version: "0.31.5",
     date: "2026-10-08",
     summary: {
