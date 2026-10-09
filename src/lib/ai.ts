@@ -226,9 +226,3 @@ export function grantAiConsent(): void {
     // private mode / kapalı storage → sessizce yok say; sonraki denemede tekrar sor
   }
 }
-
-export function revokeAiConsent(): void {
-  try {
-    localStorage.removeItem(CONSENT_KEY);
-  } catch {}
-}

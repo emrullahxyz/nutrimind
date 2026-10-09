@@ -59,8 +59,3 @@ export function longTaskSummary(): LongTaskSummary | null {
   if (!longTaskSupported()) return null;
   return summarizeLongTasks(durations);
 }
-
-/** Test/teşhis kolaylığı — gerçek akışta çağrılmaz. */
-export function resetLongTaskProbe(): void {
-  durations.length = 0;
-}

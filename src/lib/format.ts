@@ -22,10 +22,6 @@ export function formatKcal(value: number): string {
   return `${formatNumber(value)} kcal`;
 }
 
-export function formatGrams(value: number, digits = 0): string {
-  return `${formatNumber(value, digits)}g`;
-}
-
 /** Girilmemiş (`undefined`) bir mikro besin değeri "0g"/"0mg" gibi UYDURMA bir
  *  sayı olarak DEĞİL, "—" ("bilinmiyor") olarak gösterilmeli — projenin
  *  çekirdek kuralı ("Bilinmiyor ≠ sıfır"). Açıkça girilen `0` ise gerçek bir
@@ -34,11 +30,6 @@ export function formatGrams(value: number, digits = 0): string {
  *  aynı kuralın başka bir gösterimi). */
 export function formatMicroOrDash(value: number | undefined, unit: string): string {
   return value !== undefined ? `${value}${unit}` : "—";
-}
-
-/** ratio 0..1 -> "%96" */
-export function formatPercent(ratio: number): string {
-  return `%${Math.round(ratio * 100)}`;
 }
 
 export function todayISO(): string {
@@ -144,15 +135,4 @@ export function formatRelativeDay(iso: string): string {
   const days = Math.round(diffMs / 86_400_000);
   if (days > 0 && days < 14) return i18n.t("relative.daysAgo", { count: days });
   return formatShortDate(dateOnly);
-}
-
-function greetingForHour(hour: number): string {
-  if (hour < 6) return i18n.t("relative.goodNight");
-  if (hour < 12) return i18n.t("relative.goodMorning");
-  if (hour < 18) return i18n.t("relative.goodDay");
-  return i18n.t("relative.goodEvening");
-}
-
-export function currentGreeting(): string {
-  return greetingForHour(new Date().getHours());
 }
