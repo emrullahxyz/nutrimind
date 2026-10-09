@@ -374,23 +374,19 @@ export function TemplatePreview({
                         </button>
                       </div>
                     ) : swapKey === line.key ? (
-                      <select
-                        autoFocus
-                        aria-label={t("nutrition.swapIngredient")}
-                        className="w-full rounded-xl bg-field px-3 py-2 text-xs font-bold text-white focus:outline-none"
-                        value={line.aliasId ?? ""}
-                        onChange={(e) => {
-                          const next = aliases.find((a) => a.id === e.target.value);
-                          if (next) patch(line.key, swapDraftLine(line, next));
-                          setSwapKey(null);
-                        }}
-                      >
-                        {aliases.map((a) => (
-                          <option key={a.id} value={a.id} className="bg-field text-white">
-                            {a.name} · {a.nutrition.kcal} kcal/{a.serving_g}g
-                          </option>
-                        ))}
-                      </select>
+                      <div className="flex-1">
+                        <AliasPicker
+                          aliases={aliases}
+                          selectedAliasId={line.aliasId ?? ""}
+                          onSelectAlias={(id) => {
+                            const next = aliases.find((a) => a.id === id);
+                            if (next) patch(line.key, swapDraftLine(line, next));
+                            setSwapKey(null);
+                          }}
+                          onDismiss={() => setSwapKey(null)}
+                          autoFocus
+                        />
+                      </div>
                     ) : isManualRow && !swapKey ? (
                       <div className="flex-1">
                         <TextField

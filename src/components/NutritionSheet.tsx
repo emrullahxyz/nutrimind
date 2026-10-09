@@ -26,6 +26,7 @@ import type { NutritionDraft } from "./FormBits";
 import { NutrientSummaryLine, NumField } from "./FormBits";
 import { MEAL_CATEGORIES, categoryForHour } from "../lib/mealCategory";
 import { useData } from "../lib/data";
+import { AliasPicker } from "./AliasPicker";
 
 interface Props {
   isOpen: boolean;
@@ -187,24 +188,19 @@ function IngredientLines({
             >
               <div className="flex items-center justify-between gap-2">
                 {swapKey === line.key ? (
-                  <select
-                    autoFocus
-                    aria-label={t("nutrition.swapIngredient")}
-                    className="w-full rounded-xl bg-field px-3 py-2 text-xs font-bold text-white focus:outline-none"
-                    value={line.aliasId ?? ""}
-                    onBlur={() => setSwapKey(null)}
-                    onChange={(e) => {
-                      const next = aliases.find((a) => a.id === e.target.value);
-                      if (next) patch(line.key, swapDraftLine(line, next));
-                      setSwapKey(null);
-                    }}
-                  >
-                    {aliases.map((a) => (
-                      <option key={a.id} value={a.id} className="bg-field text-white">
-                        {a.name} · {a.nutrition.kcal} kcal/{a.serving_g}g
-                      </option>
-                    ))}
-                  </select>
+                  <div className="flex-1">
+                    <AliasPicker
+                      aliases={aliases}
+                      selectedAliasId={line.aliasId ?? ""}
+                      onSelectAlias={(id) => {
+                        const next = aliases.find((a) => a.id === id);
+                        if (next) patch(line.key, swapDraftLine(line, next));
+                        setSwapKey(null);
+                      }}
+                      onDismiss={() => setSwapKey(null)}
+                      autoFocus
+                    />
+                  </div>
                 ) : (
                   <>
                     <span className="min-w-0 flex-1 truncate font-semibold text-white/90">
@@ -243,7 +239,7 @@ function IngredientLines({
                 {alias && (
                   <button
                     type="button"
-                    onClick={() => setSwapKey(line.key)}
+                    onClick={() => setSwapKey(swapKey === line.key ? null : line.key)}
                     className="mb-1 rounded-pill border border-white/15 px-3 py-2 text-[11px] font-bold text-amber-300 transition hover:text-amber-200"
                   >
                     {t("nutrition.swapIngredient")}

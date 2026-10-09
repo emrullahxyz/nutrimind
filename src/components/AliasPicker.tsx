@@ -19,6 +19,12 @@ export interface AliasPickerProps {
    *  bildiği için tetikleyicisini bildiği ve "neden bu çıktı?" diye sorduğu
    *  ekranlarda (tarif oluşturma) açar; öğün formunda kapalı kalır. */
   showTriggers?: boolean;
+  /** Mount'ta girişi odakla. Eski `<select autoFocus>` karşılığı: swap
+   *  dalında picker açılınca kullanıcı doğrudan yazmaya başlar. */
+  autoFocus?: boolean;
+  /** Dropdown KAPANINCA (vazgeçme: dışarı tıklama / Escape) çağrılır.
+   *  Verilmezse davranış değişmez — mevcut çağıranlar etkilenmez. */
+  onDismiss?: () => void;
 }
 
 const MAX_TRIGGER_BADGES = 3;
@@ -44,6 +50,8 @@ export function AliasPicker({
   label,
   mealIndex = 0,
   showTriggers = false,
+  autoFocus = false,
+  onDismiss,
 }: AliasPickerProps) {
   const { t } = useTranslation();
   const effectiveLabel = label ?? t("meal.memorySelectLabel");
@@ -57,6 +65,17 @@ export function AliasPicker({
   const containerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const listRef = useRef<HTMLUListElement>(null);
+  // `onDismiss` her render'da değişebilir (inline arrow); click-outside
+  // dinleyicisi `[]` ile bir kez bağlandığı için taze hali ref üzerinden
+  // okunmalı — yoksa ilk render'ın kapanışı görülür (bayat closure).
+  const onDismissRef = useRef(onDismiss);
+  onDismissRef.current = onDismiss;
+
+  // Salt-mount odak: eski `<select autoFocus>` karşılığı. Focus zaten
+  // `onFocus`'u tetikler (dropdown açılır + metni seçer), ekstra gerek yok.
+  useEffect(() => {
+    if (autoFocus) inputRef.current?.focus();
+  }, []);
 
   // Seçili alias değiştiğinde veya menü kapalıyken kutuyu seçili besin adıyla senkronize et
   useEffect(() => {
@@ -97,6 +116,7 @@ export function AliasPicker({
     function handleClickOutside(e: MouseEvent | TouchEvent) {
       if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
         setIsOpen(false);
+        onDismissRef.current?.();
       }
     }
     document.addEventListener("mousedown", handleClickOutside);
@@ -137,6 +157,7 @@ export function AliasPicker({
       e.preventDefault();
       setIsOpen(false);
       setQuery(selectedAlias?.name ?? "");
+      onDismiss?.();
     }
   }
 
