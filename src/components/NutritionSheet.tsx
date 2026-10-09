@@ -239,9 +239,13 @@ function IngredientLines({
                 )}
               </div>
 
+              {/* `kcal="inline"` — kalori de gösterilir. Yalnız makrolar
+                  (P/K/Y/L) yazınca "besin değeri görünmüyor" gibi duruyordu;
+                  `TemplatePreview`'deki kalem satırıyla aynı gösterim. */}
               <NutrientSummaryLine
                 as="span"
                 nutrition={line.nutrition}
+                kcal="inline"
                 className="mt-2 block font-mono text-[11px] text-white/50"
               />
             </li>
