@@ -13,6 +13,38 @@ export interface ChangeLogVersion {
 
 export const CHANGELOG: ChangeLogVersion[] = [
   {
+    version: "0.31.7",
+    date: "2026-10-09",
+    summary: {
+      tr: "Öğün düzenleme ekranında artık her malzemenin kalorisi de görünüyor; ayrıca egzersizle yakılan kalori hedefe yansıyor ve çevrimdışıyken eklenen öğünler kaybolmuyor.",
+      en: "The meal edit screen now shows each ingredient's calories too; burned exercise calories count toward your target again, and meals added while offline are no longer lost.",
+    },
+    items: [
+      {
+        type: "fixed",
+        tr: "Bir öğeye tıklayınca açılan ekranda malzeme satırları yalnızca makroları (P/K/Y) gösteriyordu; artık her malzemenin kalorisi de yazıyor.",
+        en: "In the screen that opens when you tap a meal, each ingredient row showed only macros (P/C/F); it now also shows the ingredient's calories.",
+      },
+      {
+        type: "fixed",
+        tr: "Egzersizle yakılan kalori günlük hedefe hiç yansımıyordu — kaydettiğin egzersizler görünmez kalıyordu. Artık yakılan kalori hedefinden düşülüyor.",
+        en: "Burned exercise calories never counted toward your daily target — saved workouts were invisible. Burned calories are now subtracted from your target.",
+      },
+      {
+        type: "fixed",
+        tr: "Çevrimdışıyken (internet yokken) eklediğin bir öğün kaydedilmiyor, sessizce kayboluyordu. Artık kuyruğa alınıyor ve bağlantı gelince otomatik gönderiliyor.",
+        en: "A meal you added while offline (no internet) wasn't saved and silently disappeared. It's now queued and sent automatically when you're back online.",
+      },
+    ],
+    dev: [
+      "BUG A1 (egzersiz kalorisi): DayView eski gun-basi anahtari (`exercise_${date}`) okurken ExerciseModal tek `exercise` anahtarina (`{entries}`) yaziyordu — goc yari kalmisti, burnedKcal daima 0. Yeni saf helper lib/exercise.ts burnedKcalFor(rawConfig, date) → parseExerciseEntries + exercisesFor; DayView ona baglandi.",
+      "BUG A2 (offline ogun): MealForm/ScanSheet `setDayMeals`'ten ONCE ham fetchData() cagiriyordu; offline'da fetch firlayinca setDayMeals'e (offline-aware kuyruk yolu, data.tsx) hic ulasilmiyordu. Yeni saf helper lib/days.ts resolveWriteDays(offline, fetchDays, contextDays): offline -> context, online -> taze fetch, fetch hatasi -> context (cift-yazma tuzagi korunur).",
+      "UI: NutritionSheet kalem satirindaki NutrientSummaryLine'a kcal=\"inline\" eklendi (TemplatePreview kalem satiriyla ayni gosterim).",
+      "Temizlik (kullaniciya gorunmez): noUnusedLocals/noUnusedParameters tsconfig'e acildi (~15 dosyada olu import/degisken). Olu modul/fonksiyon silindi: Collapsible.tsx, mealBreakdown.ts(+test), format.ts->formatGrams/formatPercent/currentGreeting/greetingForHour, perfProbe.ts->resetLongTaskProbe, ai.ts->revokeAiConsent. Iki-yuzey tekrari lib/ingredientDraft.ts'e indirildi: aliasOfLine + sumLineNutrition (NutritionSheet + TemplatePreview kopyalari).",
+      "Ertelenen (follow-up): animasyon hook konsolidasyonu (useValueSpring/useAnimatedValue/useAnimatedNumber uc uygulama, useSpring tek cagiranli). server/index.js guard'siz JSON.parse (getDays/getAliases) DONMUS dosya — ayrica bildirildi.",
+    ],
+  },
+  {
     version: "0.31.6",
     date: "2026-10-09",
     summary: {
