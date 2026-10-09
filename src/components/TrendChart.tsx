@@ -392,7 +392,7 @@ export function TrendChart({
               transform: flip ? "translateX(calc(-100% - 8px))" : "translateX(8px)",
             }}
           >
-            <div className="w-max rounded-xl border border-line bg-elevated-2/95 px-2.5 py-1.5 shadow-card backdrop-blur-md">
+            <div className="w-max rounded-xl border border-line bg-popover px-2.5 py-1.5 shadow-card backdrop-blur-md">
               <div className="font-mono text-[10px] font-semibold text-ink-tertiary">
                 {weekdayShort(act.date)} · {formatShortDate(act.date)}
               </div>
