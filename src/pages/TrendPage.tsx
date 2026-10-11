@@ -22,7 +22,7 @@ import { NUTRIENTS, nutrientOf } from "../lib/nutrients";
 import type { NutrientDef, NutrientKey } from "../lib/nutrients";
 import { buildTrend, formatNutrientValue, trendStats } from "../lib/trend";
 import type { TrendRange } from "../lib/trend";
-import { formatTargetHitRate } from "../lib/trendFormat";
+import { formatHitRatePct } from "../lib/trendFormat";
 import { useTranslation } from "react-i18next";
 
 /** Seçici çipi — App.tsx'teki TabButton'ın küçük kardeşi (aynı aktif durumu). */
@@ -99,7 +99,7 @@ export function TrendPage() {
   );
 
   const gaps = series.points.length - series.dataCount;
-  const hitRate = formatTargetHitRate(stats);
+  const hitRate = formatHitRatePct(stats.onTargetDays, stats.ratedDays);
 
   return (
     <div className="flex flex-col gap-4">

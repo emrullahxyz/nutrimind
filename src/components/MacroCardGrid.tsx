@@ -2,7 +2,8 @@ import { Beef, Wheat, Droplet } from "lucide-react";
 import type { ComponentType } from "react";
 import { formatNumber } from "../lib/format";
 import type { Nutrition } from "../types";
-import { useAnimatedNumber } from "../hooks/useAnimatedNumber";
+import { useAnimatedValue } from "../lib/useAnimatedValue";
+import { easeOutExpo } from "../lib/animation";
 import { usePressSpring } from "../hooks/usePressSpring";
 import { DirectionalTextSwap, type SwapMode } from "./DirectionalTextSwap";
 import { useTranslation } from "react-i18next";
@@ -72,8 +73,9 @@ function MacroCardItem({
 
   // Animate numbers
   const rawDisplay = item.target > 0 ? remaining : item.consumed;
-  const animVal = useAnimatedNumber(showRatio ? item.consumed : rawDisplay, 650);
-  const animTarget = useAnimatedNumber(item.target, 650);
+  const numAnim = { durationMs: 650, ease: easeOutExpo, round: "none" as const };
+  const animVal = useAnimatedValue(showRatio ? item.consumed : rawDisplay, numAnim);
+  const animTarget = useAnimatedValue(item.target, numAnim);
 
   const press = usePressSpring({ pressScale: 0.97 });
 

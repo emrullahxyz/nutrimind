@@ -13,7 +13,7 @@ import { effectiveGoal, weeklyAverageGoal } from "../lib/goals";
 import { nutrientOf } from "../lib/nutrients";
 import { buildTrend, trendStats } from "../lib/trend";
 import type { TrendGoal, TrendRange } from "../lib/trend";
-import { formatTargetHitRate } from "../lib/trendFormat";
+import { formatHitRatePct } from "../lib/trendFormat";
 import { RangePicker } from "./RangePicker";
 import { TrendChart } from "./TrendChart";
 import { useTranslation } from "react-i18next";
@@ -164,7 +164,7 @@ export function ReportView({ data }: { data: AppData }) {
             {t("report.hitRate")}
           </span>
           <div className="mt-1 font-mono text-lg font-extrabold text-protein print-text-dark">
-            {formatTargetHitRate(stats)}
+            {formatHitRatePct(stats.onTargetDays, stats.ratedDays)}
             <span className="ml-1 text-xs font-normal text-ink-tertiary">
               ({stats.onTargetDays}/{stats.ratedDays} {t("report.days")})
             </span>

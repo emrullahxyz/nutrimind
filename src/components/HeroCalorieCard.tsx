@@ -2,7 +2,8 @@ import { Flame, Dumbbell } from "lucide-react";
 import { CalorieRing } from "./CalorieRing";
 import { ringState } from "../lib/ring";
 import { formatNumber } from "../lib/format";
-import { useAnimatedNumber } from "../hooks/useAnimatedNumber";
+import { useAnimatedValue } from "../lib/useAnimatedValue";
+import { easeOutExpo } from "../lib/animation";
 import { usePressSpring } from "../hooks/usePressSpring";
 import { DirectionalTextSwap, type SwapMode } from "./DirectionalTextSwap";
 import { useTranslation } from "react-i18next";
@@ -28,10 +29,11 @@ export function HeroCalorieCard({
   const adjustedTarget = target + burnedKcal;
   const state = ringState(consumed, adjustedTarget);
 
-  const animConsumed = useAnimatedNumber(consumed, 700);
-  const animTarget = useAnimatedNumber(adjustedTarget, 700);
-  const animRemaining = useAnimatedNumber(Math.max(0, adjustedTarget - consumed), 700);
-  const animOver = useAnimatedNumber(Math.max(0, consumed - adjustedTarget), 700);
+  const numAnim = { durationMs: 700, ease: easeOutExpo, round: "none" as const };
+  const animConsumed = useAnimatedValue(consumed, numAnim);
+  const animTarget = useAnimatedValue(adjustedTarget, numAnim);
+  const animRemaining = useAnimatedValue(Math.max(0, adjustedTarget - consumed), numAnim);
+  const animOver = useAnimatedValue(Math.max(0, consumed - adjustedTarget), numAnim);
 
   const press = usePressSpring({ pressScale: 0.98 });
 

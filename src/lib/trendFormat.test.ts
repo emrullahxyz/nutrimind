@@ -1,14 +1,13 @@
 import { describe, expect, it } from "vitest";
-import { formatHitRatePct, formatTargetHitRate } from "./trendFormat";
+import { formatHitRatePct } from "./trendFormat";
 import { RANGE_OPTIONS, formatRangeLabel } from "../components/RangePicker";
 
 describe("trendFormat & RangePicker helpers", () => {
-  describe("formatHitRatePct & formatTargetHitRate", () => {
+  describe("formatHitRatePct", () => {
     it("returns '—' when ratedDays is 0", () => {
       expect(formatHitRatePct(0, 0)).toBe("—");
       expect(formatHitRatePct(5, 0)).toBe("—");
       expect(formatHitRatePct(0, -1)).toBe("—");
-      expect(formatTargetHitRate({ onTargetDays: 0, ratedDays: 0 })).toBe("—");
     });
 
     it("calculates rounded percentage when ratedDays > 0", () => {
@@ -16,7 +15,6 @@ describe("trendFormat & RangePicker helpers", () => {
       expect(formatHitRatePct(1, 3)).toBe("%33");
       expect(formatHitRatePct(2, 3)).toBe("%67");
       expect(formatHitRatePct(7, 7)).toBe("%100");
-      expect(formatTargetHitRate({ onTargetDays: 5, ratedDays: 10 })).toBe("%50");
     });
   });
 

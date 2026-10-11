@@ -4,6 +4,10 @@ export type RoundMode = "round" | "floor" | "none";
 // Cubic ease-out: 1 - (1-t)^3
 export const easeOutCubic: Easing = (t) => 1 - Math.pow(1 - t, 3);
 
+// Expo ease-out: 1 - 2^(-10t). HeroCalorieCard'in sayı animasyonu bunu kullanır
+// (eski `useAnimatedNumber`'dan birebir kopya — birleştirmede davranış korunur).
+export const easeOutExpo: Easing = (t) => (t === 1 ? 1 : 1 - Math.pow(2, -10 * t));
+
 // WeekBars'ın MEVCUT eğrisi — birebir kopyala, değiştirme:
 // t < 0.25: lineer 0 → 0.7
 // t >= 0.25: kalan %75 üzerinde 1-(1-x)^2.5 ile 0.7 → 1.0

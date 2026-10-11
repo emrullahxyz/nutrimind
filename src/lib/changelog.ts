@@ -76,7 +76,8 @@ export const CHANGELOG: ChangeLogVersion[] = [
       "BUG A2 (offline ogun): MealForm/ScanSheet `setDayMeals`'ten ONCE ham fetchData() cagiriyordu; offline'da fetch firlayinca setDayMeals'e (offline-aware kuyruk yolu, data.tsx) hic ulasilmiyordu. Yeni saf helper lib/days.ts resolveWriteDays(offline, fetchDays, contextDays): offline -> context, online -> taze fetch, fetch hatasi -> context (cift-yazma tuzagi korunur).",
       "UI: NutritionSheet kalem satirindaki NutrientSummaryLine'a kcal=\"inline\" eklendi (TemplatePreview kalem satiriyla ayni gosterim).",
       "Temizlik (kullaniciya gorunmez): noUnusedLocals/noUnusedParameters tsconfig'e acildi (~15 dosyada olu import/degisken). Olu modul/fonksiyon silindi: Collapsible.tsx, mealBreakdown.ts(+test), format.ts->formatGrams/formatPercent/currentGreeting/greetingForHour, perfProbe.ts->resetLongTaskProbe, ai.ts->revokeAiConsent. Iki-yuzey tekrari lib/ingredientDraft.ts'e indirildi: aliasOfLine + sumLineNutrition (NutritionSheet + TemplatePreview kopyalari).",
-      "Ertelenen (follow-up): animasyon hook konsolidasyonu (useValueSpring/useAnimatedValue/useAnimatedNumber uc uygulama, useSpring tek cagiranli). server/index.js guard'siz JSON.parse (getDays/getAliases) DONMUS dosya — ayrica bildirildi.",
+      "Temizlik (kullaniciya gorunmez, ek): sayi animasyon hook'lari birlestirildi — useAnimatedNumber silindi, tek uygulama lib/useAnimatedValue (ease parametresiyle; HeroCalorieCard'in expo egrisi animation.ts'e easeOutExpo olarak tasindi). Kok tasarim prototipleri (support.js + iki .dc.html) docs/archive/prototypes'e tasindi. Tek-cagiranli formatTargetHitRate sarmalayicisi silindi (cagiranlar formatHitRatePct'e bagli).",
+      "Ertelenen (follow-up): useSpring tek cagiranli (usePressSpring) — ayri primitif olarak birakildi. server/index.js guard'siz JSON.parse (getDays/getAliases) DONMUS dosya — ayrica bildirildi.",
     ],
   },
   {

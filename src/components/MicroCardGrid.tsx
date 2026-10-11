@@ -3,7 +3,8 @@ import type { ComponentType } from "react";
 import { formatNumber } from "../lib/format";
 import { nutrientOf } from "../lib/nutrients";
 import type { Nutrition } from "../types";
-import { useAnimatedNumber } from "../hooks/useAnimatedNumber";
+import { useAnimatedValue } from "../lib/useAnimatedValue";
+import { easeOutExpo } from "../lib/animation";
 import { DirectionalTextSwap, type SwapMode } from "./DirectionalTextSwap";
 import { useTranslation } from "react-i18next";
 
@@ -70,8 +71,9 @@ function MicroCard({ item, showRatio, onToggleRatio }: { item: MicroItem; showRa
   const pct = !isUndefined && target > 0 ? consumed / target : 0;
 
   const rawDisplay = target > 0 ? remaining : consumed;
-  const animVal = useAnimatedNumber(showRatio ? consumed : rawDisplay, 650);
-  const animTarget = useAnimatedNumber(target, 650);
+  const numAnim = { durationMs: 650, ease: easeOutExpo, round: "none" as const };
+  const animVal = useAnimatedValue(showRatio ? consumed : rawDisplay, numAnim);
+  const animTarget = useAnimatedValue(target, numAnim);
 
   const mode: SwapMode = showRatio ? "EATEN" : "LEFT";
 
