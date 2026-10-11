@@ -13,6 +13,41 @@ export interface ChangeLogVersion {
 
 export const CHANGELOG: ChangeLogVersion[] = [
   {
+    version: "0.31.8",
+    date: "2026-10-11",
+    summary: {
+      tr: "AI ile eklediğin öğünler artık kalem kalem kaydediliyor; kaydedilen öğüne dokununca malzemeler satır satır görünüyor ve düzenlenebiliyor. Fotoğrafla eklenen öğünler için de aynı.",
+      en: "Meals you add with AI are now saved item by item; tap a saved meal and its ingredients show up line by line, editable. Same for photo-added meals.",
+    },
+    items: [
+      {
+        type: "fixed",
+        tr: "AI çoklu besin döndürdüğünde ekranda kalem kalem görünüyordu ama kaydedilince tek kaleme (toplama) iniyordu. Artık kaydedilen öğüne dokununca malzemeler satır satır görünüyor ve düzenlenebiliyor.",
+        en: "When AI returned several foods, they showed item by item on screen but collapsed into a single (summed) item once saved. Now tapping a saved meal shows its ingredients line by line, editable.",
+      },
+      {
+        type: "improved",
+        tr: "Fotoğrafla (Yemek modu) eklenen öğünler de kalem kalem kaydediliyor; onayladığın her kalem kayıtta korunuyor.",
+        en: "Photo-added meals (Food mode) are saved item by item too; every item you confirm is preserved in the record.",
+      },
+      {
+        type: "fixed",
+        tr: "Bir şablon uygulandığında hafızanda olmayan kalemin adı kayboluyordu; artık adı korunuyor.",
+        en: "Applying a template used to lose the name of any ingredient not in your memory; the name is now kept.",
+      },
+      {
+        type: "improved",
+        tr: "Günün toplam kalorisi ve makroları değişmiyor — yalnızca öğünün kalem kırılımı ekleniyor.",
+        en: "Your day's total calories and macros stay the same — only the meal's item breakdown is added.",
+      },
+    ],
+    dev: [
+      "AI (serbest metin + fotoğraf) ogunleri artik MealPayload.items uzerinden kalem kalem saklaniyor; onceden UI'da kalem kalem gorunup kayitta tek toplama iniyordu. Kaydedilen ogun (NutritionSheet) items dalini satir satir gosterip duzenliyor.",
+      "Sablon uygulaninca hafizada olmayan kalemin adi items yolu ile korunuyor; toplama dusme kaybi giderildi.",
+      "Gun toplamlari (kcal/makro) items yolundan onceki ile ayni; yalnizca kirilim degisti.",
+    ],
+  },
+  {
     version: "0.31.7",
     date: "2026-10-09",
     summary: {
