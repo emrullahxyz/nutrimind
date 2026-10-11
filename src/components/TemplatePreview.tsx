@@ -18,9 +18,9 @@ import {
   addDraftLine,
   aliasOfLine,
   draftGramHint,
-  draftLineFromAlias,
   draftLinesToItems,
   hasUnnamedItem,
+  itemsToDraftLines,
   newDraftLine,
   removeDraftLine,
   roundNutrition,
@@ -62,57 +62,11 @@ function initialDraftLines(
   // iskelet satırla başlar (addLine ile aynı deneyim). `blank: true` olduğu
   // için `draftLinesToItems` onu düşürür — doldurulmadan kaydedilemez.
   if (isNew) return [newDraftLine(undefined)];
-
-  const byId = new Map(aliases.map((a) => [a.id, a]));
-  const out: DraftLine[] = [];
-  for (const [i, item] of template.items.entries()) {
-    const sources = item.sources ?? [];
-    const src = sources[0];
-    const alias = src ? byId.get(src.aliasId) : undefined;
-    const measured = src && alias ? draftLineFromAlias(alias, String(src.qty), src.unit, item.nutrition) : null;
-
-    if (measured && sources.length === 1) {
-      out.push(measured);
-      continue;
-    }
-
-    // Kalem tek kaynaklı DEĞİLSE ya da kaynağı çözülemiyorsa, olduğu gibi
-    // korunur: miktarı bilinmeyen, kayda alınan bir elle satır.
-    //
-    // Çok kaynaklı kalemde neden ölçülen pay kullanılmıyor: `mealToTemplate`
-    // (`lib/mealActions.ts`) kalemin `nutrition`'ı olarak öğünün TOPLAM'ını
-    // ve TÜM `sources`'ını kopyalar. Yalnız `sources[0]` ölçülürse ikinci
-    // kalemin makroları ekrandan VE kayıttan düşer — "Şablonu da güncelle"
-    // işaretliyse şablon kalıcı olarak tek kaleme düşer (sessiz, geri
-    // alınamaz). Toplamı kaynak sayısına bölmek de çözüm değil: uydurma
-    // dağılım. `NutritionSheet.mealDraftLines` tüm kaynakları gezdiği için
-    // iki yüzey burada ayrışıyordu.
-    out.push({
-      key: `draft-manual-${i}-${item.name}`,
-      aliasId: null,
-      name: item.name,
-      // `item.grams`: `sources`ı olmayan kalemin gramajı. Miktar alanında
-      // GÖSTERİLMEDEN önce buraya konduğu için `preserved` doğru: miktar
-      // ölçülebilir değil (alias yok), ama kayıttan geldiği için korunur.
-      qty: item.grams !== undefined ? String(item.grams) : "",
-      unit: "g",
-      grams: item.grams ?? 0,
-      nutrition: item.nutrition,
-      // `item.grams` doluysa kayıttaki makro O gramaja aittir — miktar
-      // değişince oranlama tabanı bu. `grams` yoksa 0: gramaj bilinmiyor,
-      // ölçekleme yapılamaz (eskiden davranış).
-      nutritionGrams: item.grams ?? 0,
-      preserved: true,
-      manualMeasured: false,
-      blank: false, // kayıttan gelen kalem: iskelet değil, kayda girer
-      // `fromRecord`: bu satır ŞABLONDAN geldi. Gramaj yazılınca `preserved`
-      // düşer ama satır hâlâ kayıttandır — elle alanları açılmaz. (ÖLÇÜLEN
-      // HATA: iki kaynaklı kaleme gramaj yazılınca satır elle satıra döndü ve
-      // kullanıcının girmediği kayıt adı elle alana düştü.)
-      fromRecord: true,
-    });
-  }
-  return out;
+  // Kalem → düzenlenebilir satır kuralı TEK kaynakta (`lib/ingredientDraft.ts`
+  // `itemsToDraftLines`): şablon yüzeyi ile gün öğünü (NutritionSheet) AYNI
+  // kurallarla çizilsin. Alias'sız / çok-kaynaklı kalem `preserved` kalır,
+  // SİLİNMEZ (bkz. lessons.md L21).
+  return itemsToDraftLines(template.items, aliases);
 }
 
 export function TemplatePreview({

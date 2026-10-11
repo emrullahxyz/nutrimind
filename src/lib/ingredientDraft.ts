@@ -613,8 +613,9 @@ export function itemsToDraftLines(items: TemplateItem[], aliases: Alias[]): Draf
  *     döner ve bölüm hiç render edilmez. */
 export function mealDraftLines(meal: MealItem, aliases: Alias[]): DraftLine[] | null {
   if (meal.items && meal.items.length > 0) {
-    const lines = itemsToDraftLines(meal.items, aliases);
-    return lines.length > 0 ? lines : null;
+    // `itemsToDraftLines` her kaleme bir satır üretir ve `items` burada boş
+    // değil → sonuç hiç `null` olmaz; kalem bölümü DAİMA çizilir.
+    return itemsToDraftLines(meal.items, aliases);
   }
   const sources = meal.sources;
   if (!sources || sources.length === 0) return null;
