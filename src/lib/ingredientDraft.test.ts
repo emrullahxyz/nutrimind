@@ -7,6 +7,9 @@ import {
   draftLineFromAlias,
   draftLinesToItems,
   hasUnnamedItem,
+  itemsToDraftLines,
+  mealDraftLines,
+  mealSources,
   mealToBasketSeed,
   newDraftLine,
   removeDraftLine,
@@ -16,7 +19,7 @@ import {
   swapDraftLine,
 } from "./ingredientDraft";
 import type { DraftLine } from "./ingredientDraft";
-import type { Alias, MealItem, Nutrition } from "../types";
+import type { Alias, MealItem, Nutrition, TemplateItem } from "../types";
 
 const tavuk: Alias = {
   id: "a1",
@@ -976,6 +979,234 @@ describe("mealToBasketSeed", () => {
     const seeds = mealToBasketSeed(dangling, aliases, "Kalan");
     expect(seeds).toHaveLength(1);
     expect(seeds[0].name).toBe(meal.label);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// items yolu — mealSources / itemsToDraftLines / mealDraftLines(items)
+// ---------------------------------------------------------------------------
+describe("mealSources", () => {
+  const base: MealItem = { id: "m", label: "L", computed: { kcal: 0, protein: 0, carbs: 0, fat: 0, fiber: 0 } };
+
+  it("yalnız sources", () => {
+    const m: MealItem = { ...base, sources: [{ aliasId: "a1", qty: 100, unit: "g" }] };
+    expect(mealSources(m)).toEqual([{ aliasId: "a1", qty: 100, unit: "g" }]);
+  });
+
+  it("yalnız items[].sources", () => {
+    const m: MealItem = {
+      ...base,
+      items: [{ name: "Tofu", nutrition: tofu.nutrition, sources: [{ aliasId: "a2", qty: 50, unit: "g" }] }],
+    };
+    expect(mealSources(m)).toEqual([{ aliasId: "a2", qty: 50, unit: "g" }]);
+  });
+
+  it("ikisi — sources önce, items sonra birleşir", () => {
+    const m: MealItem = {
+      ...base,
+      sources: [{ aliasId: "a1", qty: 100, unit: "g" }],
+      items: [{ name: "Tofu", nutrition: tofu.nutrition, sources: [{ aliasId: "a2", qty: 50, unit: "g" }] }],
+    };
+    expect(mealSources(m)).toEqual([
+      { aliasId: "a1", qty: 100, unit: "g" },
+      { aliasId: "a2", qty: 50, unit: "g" },
+    ]);
+  });
+
+  it("hiçbiri — boş dizi", () => {
+    expect(mealSources(base)).toEqual([]);
+  });
+
+  it("sources'sız kalem atlanır (kalem kaynaksız olabilir)", () => {
+    const m: MealItem = {
+      ...base,
+      items: [{ name: "Kayısı", nutrition: tofu.nutrition }],
+    };
+    expect(mealSources(m)).toEqual([]);
+  });
+});
+
+describe("itemsToDraftLines", () => {
+  const aliases = [tavuk, tofu];
+
+  it("alias'lı tek-kaynak kalem ÖLÇÜLEN satıra dönüşür (grams > 0)", () => {
+    const items: TemplateItem[] = [
+      { name: "Tavuk", nutrition: tavuk.nutrition, sources: [{ aliasId: "a1", qty: 150, unit: "g" }] },
+    ];
+    const [l] = itemsToDraftLines(items, aliases);
+    expect(l.aliasId).toBe("a1");
+    expect(l.grams).toBe(150);
+    expect(l.nutrition.kcal).toBe(247.5);
+    expect(l.preserved).toBe(false);
+  });
+
+  it("alias'sız kalem preserved olur, ad ve makro AYNEN korunur", () => {
+    const kayisi: Nutrition = { kcal: 50, protein: 1, carbs: 12, fat: 0.3, fiber: 2 };
+    const [l] = itemsToDraftLines([{ name: "Kayısı", nutrition: kayisi }], aliases);
+    expect(l.preserved).toBe(true);
+    expect(l.name).toBe("Kayısı");
+    expect(l.nutrition).toEqual(kayisi);
+    expect(l.aliasId).toBeNull();
+    expect(l.fromRecord).toBe(true);
+    expect(l.blank).toBe(false);
+  });
+
+  it("grams'lı alias'sız kalem: qty dolu ve preserved && grams > 0", () => {
+    const [l] = itemsToDraftLines([{ name: "Kayısı", nutrition: tofu.nutrition, grams: 40 }], aliases);
+    expect(l.qty).toBe("40");
+    expect(l.grams).toBe(40);
+    expect(l.preserved).toBe(true);
+    expect(l.nutritionGrams).toBe(40);
+  });
+
+  it("çok-kaynaklı kalem preserved olur (ölçülen pay kullanılmaz)", () => {
+    const toplam: Nutrition = { kcal: 323, protein: 54, carbs: 2, fat: 10, fiber: 0 };
+    const [l] = itemsToDraftLines(
+      [
+        {
+          name: "Tavuk + Tofu",
+          nutrition: toplam,
+          sources: [
+            { aliasId: "a1", qty: 150, unit: "g" },
+            { aliasId: "a2", qty: 100, unit: "g" },
+          ],
+        },
+      ],
+      aliases,
+    );
+    expect(l.preserved).toBe(true);
+    expect(l.name).toBe("Tavuk + Tofu");
+    expect(l.nutrition).toEqual(toplam);
+    expect(l.aliasId).toBeNull();
+  });
+
+  it("bozuk (silinmiş) alias'lı tek-kaynak kalem preserved olur, silinmez", () => {
+    const [l] = itemsToDraftLines(
+      [{ name: "Kayıp", nutrition: tofu.nutrition, sources: [{ aliasId: "yok", qty: 10, unit: "g" }] }],
+      aliases,
+    );
+    expect(l.preserved).toBe(true);
+    expect(l.name).toBe("Kayıp");
+  });
+});
+
+describe("mealDraftLines — items dalı", () => {
+  it("items varsa items yolundan satır döner (null DÖNMEZ)", () => {
+    const meal: MealItem = {
+      id: "m",
+      label: "Çok kalemli",
+      computed: { kcal: 247.5, protein: 46.5, carbs: 0, fat: 5.4, fiber: 0 },
+      items: [{ name: "Tavuk", nutrition: tavuk.nutrition, sources: [{ aliasId: "a1", qty: 150, unit: "g" }] }],
+    };
+    const lines = mealDraftLines(meal, [tavuk]);
+    expect(lines).not.toBeNull();
+    expect(lines).toHaveLength(1);
+    expect(lines![0].aliasId).toBe("a1");
+  });
+
+  it("bozuk alias'lı kalem bile satır verir (null dönmez — L21)", () => {
+    const meal: MealItem = {
+      id: "m",
+      label: "Bozuk",
+      computed: { kcal: 76, protein: 8, carbs: 1.9, fat: 4.8, fiber: 0.3 },
+      items: [{ name: "Kayıp", nutrition: tofu.nutrition, sources: [{ aliasId: "yok", qty: 10, unit: "g" }] }],
+    };
+    const lines = mealDraftLines(meal, [tavuk]);
+    expect(lines).not.toBeNull();
+    expect(lines).toHaveLength(1);
+    expect(lines![0].preserved).toBe(true);
+    expect(lines![0].name).toBe("Kayıp");
+  });
+
+  it("items yoksa eski sources yolu: dangling source → null (ya-hiç-ya-hiçbiri)", () => {
+    const meal: MealItem = {
+      id: "m",
+      label: "Eski",
+      computed: { kcal: 100, protein: 5, carbs: 0, fat: 2, fiber: 0 },
+      sources: [
+        { aliasId: "a1", qty: 100, unit: "g" },
+        { aliasId: "yok", qty: 10, unit: "g" },
+      ],
+    };
+    expect(mealDraftLines(meal, [tavuk])).toBeNull();
+  });
+
+  it("boş items dizisi eski sources yoluna düşer", () => {
+    const meal: MealItem = {
+      id: "m",
+      label: "Boş items",
+      computed: { kcal: 165, protein: 31, carbs: 0, fat: 3.6, fiber: 0 },
+      items: [],
+      sources: [{ aliasId: "a1", qty: 100, unit: "g" }],
+    };
+    const lines = mealDraftLines(meal, [tavuk]);
+    expect(lines).toHaveLength(1);
+    expect(lines![0].aliasId).toBe("a1");
+  });
+});
+
+describe("items round-trip", () => {
+  it("alias'lı tek-kaynak kalem → satır → kalem: ad + sources korunur", () => {
+    const items: TemplateItem[] = [
+      { name: "Tavuk", nutrition: tavuk.nutrition, sources: [{ aliasId: "a1", qty: 150, unit: "g" }] },
+    ];
+    const back = draftLinesToItems(itemsToDraftLines(items, [tavuk]));
+    expect(back).toHaveLength(1);
+    expect(back[0].name).toBe("Tavuk");
+    expect(back[0].sources).toEqual([{ aliasId: "a1", qty: 150, unit: "g" }]);
+  });
+
+  it("grams'lı alias'sız kalem → satır → kalem: ad + nutrition + grams korunur", () => {
+    const kayisi: Nutrition = { kcal: 50, protein: 1, carbs: 12, fat: 0.3, fiber: 2 };
+    const items: TemplateItem[] = [{ name: "Kayısı", nutrition: kayisi, grams: 40 }];
+    const back = draftLinesToItems(itemsToDraftLines(items, []));
+    expect(back).toHaveLength(1);
+    expect(back[0].name).toBe("Kayısı");
+    expect(back[0].nutrition).toEqual(kayisi);
+    expect(back[0].grams).toBe(40);
+    expect(back[0].sources).toBeUndefined();
+  });
+
+  it("grams'sız alias'sız kalem → satır → kalem: ad + nutrition korunur (grams yazılmaz)", () => {
+    const kayisi: Nutrition = { kcal: 50, protein: 1, carbs: 12, fat: 0.3, fiber: 2 };
+    const back = draftLinesToItems(itemsToDraftLines([{ name: "Kayısı", nutrition: kayisi }], []));
+    expect(back).toHaveLength(1);
+    expect(back[0].name).toBe("Kayısı");
+    expect(back[0].nutrition).toEqual(kayisi);
+    expect(back[0].grams).toBeUndefined();
+  });
+});
+
+describe("mealToBasketSeed — items öğü", () => {
+  // Tavuk 150g (247.5) + Tofu 100g (76) = 323.5 kcal → kayıt kesinliğinde 324.
+  const meal: MealItem = {
+    id: "m",
+    label: "Tavuk + Tofu",
+    computed: { kcal: 324, protein: 54.5, carbs: 1.9, fat: 10.2, fiber: 0.3 },
+    items: [
+      { name: "Tavuk", nutrition: tavuk.nutrition, sources: [{ aliasId: "a1", qty: 150, unit: "g" }] },
+      { name: "Tofu", nutrition: tofu.nutrition, sources: [{ aliasId: "a2", qty: 100, unit: "g" }] },
+    ],
+  };
+
+  it("items öğü kalem kalem seed üretir, hayalet kalem YOK", () => {
+    const seeds = mealToBasketSeed(meal, [tavuk, tofu], "Kalan");
+    expect(seeds).toHaveLength(2);
+    expect(seeds[0]).toMatchObject({ name: "Tavuk", sources: [{ aliasId: "a1", qty: 150, unit: "g" }] });
+    expect(seeds[1].nutrition.kcal).toBe(76);
+    // toz eşiği: round(sum) === computed → kalıntı tohumlanmaz
+    expect(seeds.some((s) => s.name === "Kalan")).toBe(false);
+  });
+
+  it("kalemlere sığmayan gerçek fark KAYNAKSIZ kalem olarak gelir", () => {
+    const extra: MealItem = {
+      ...meal,
+      computed: { ...meal.computed, kcal: 424 },
+    };
+    const seeds = mealToBasketSeed(extra, [tavuk, tofu], "Kalan");
+    expect(seeds).toHaveLength(3);
+    expect(seeds[2].name).toBe("Kalan");
+    expect(seeds[2].sources).toBeUndefined();
   });
 });
 

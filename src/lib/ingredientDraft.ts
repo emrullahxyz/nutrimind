@@ -538,18 +538,76 @@ export function hasUnnamedItem(items: TemplateItem[]): boolean {
   return items.some((i) => !i.name.trim());
 }
 
-/** Kaydın malzemelerini düzenlenebilir satırlara çevirir — YA HİÇ ya da HİÇBİRİ.
+/** Öğünün HEM `sources`'ını HEM `items[].sources`'ını tek listede toplar.
  *
- *  TÜM-ORA-HİÇBİRİ kuralı bilinçlidir: tek bir kaynak çözülemezse (alias
- *  silinmiş ya da birim artık tanınmıyor) bölümün TAMAMI çizilmez. Kısmi bir
- *  liste çizmek, kaydederken çözülmeyen malzemeyi kayıttan SİLMEK demektir —
- *  `normalizeMeals` gövdeyi geçirdiği için kayıt sessizce değişir. Ölçülmüş
- *  davranış: kaynaksız/çözülemez öğünde toplam ekranı aynen kalır.
+ *  Öğün artık iki yoldan kaynak taşıyabilir: eski düz `sources` ve yeni kalem
+ *  kırılımı (`items`). İki yol bir arada bulunabilir; kaynağın tamamını görmek
+ *  isteyen çağıran (link ikonu, dangling tespiti) burada birleşik listeyi alır. */
+export function mealSources(meal: MealItem): MealSource[] {
+  return [...(meal.sources ?? []), ...(meal.items ?? []).flatMap((it) => it.sources ?? [])];
+}
+
+/** Şablon/öğün kalemlerini düzenlenebilir satırlara çevirir.
  *
- *  Bu, aynı zamanda "silinmiş alias'a bağlı satır" (dangling aliasId) durumunu
- *  YAPISAL OLARAK IMKÂNSIZ kılar: o satır `alias` bulunamadığı için `null`
- *  döndürür ve bölüm hiç render edilmez. */
+ *  `TemplatePreview.initialDraftLines` ile AYNI kurallar — iki yüzey tek
+ *  kaynaktan beslenmeli. Hafızada çözülebilen tek-kaynaklı kalem alias'a
+ *  bağlanır (gramaj/swap açılır); çözülemeyen ya da ÇOK KAYNAKLI kalem
+ *  SİLİNMEZ: kayıttaki adı ve makrosu `preserved` satırda korunur, hafıza
+ *  bağlantısı kesilir (bkz. lessons.md L21).
+ *
+ *  Çok kaynaklı kalemde neden ölçülen pay kullanılmıyor: kalemin `nutrition`'ı
+ *  TÜM kaynakların toplamıdır; yalnız `sources[0]` ölçülürse ikinci kaynağın
+ *  makroları ekrandan VE kayıttan düşer. `isNew`/`newDraftLine` yok: items
+ *  kayıttan gelir, iskelet satır üretilmez. */
+export function itemsToDraftLines(items: TemplateItem[], aliases: Alias[]): DraftLine[] {
+  const byId = new Map(aliases.map((a) => [a.id, a]));
+  const out: DraftLine[] = [];
+  for (const [i, item] of items.entries()) {
+    const sources = item.sources ?? [];
+    const src = sources[0];
+    const alias = src ? byId.get(src.aliasId) : undefined;
+    const measured = src && alias ? draftLineFromAlias(alias, String(src.qty), src.unit, item.nutrition) : null;
+    if (measured && sources.length === 1) {
+      out.push(measured);
+      continue;
+    }
+    out.push({
+      key: `draft-item-${i}-${item.name}`,
+      aliasId: null,
+      name: item.name,
+      qty: item.grams !== undefined ? String(item.grams) : "",
+      unit: "g",
+      grams: item.grams ?? 0,
+      nutrition: item.nutrition,
+      nutritionGrams: item.grams ?? 0,
+      preserved: true,
+      manualMeasured: false,
+      blank: false,
+      fromRecord: true,
+    });
+  }
+  return out;
+}
+
+/** Kaydın malzemelerini düzenlenebilir satırlara çevirir.
+ *
+ *  İKİ YOL, İKİ FARKLI KURAL:
+ *   • `items` DOLUYSA kalem kırılımı vardır. Kalem ad taşıdığı için bölüm
+ *     HER ZAMAN çizilir: "ya hiç ya hiçbiri" BURADA UYGULANMAZ. Çözülemeyen
+ *     ya da çok-kaynaklı kalem `preserved` satır olur, SİLİNMEZ (bkz.
+ *     `itemsToDraftLines`, L21). Bozuk alias'lı kalem bile satır verir.
+ *   • `items` YOKSA eski `sources` yolu: YA HİÇ ya da HİÇBİRİ. Tek bir kaynak
+ *     çözülemezse (alias silinmiş ya da birim tanınmıyor) bölümün TAMAMI
+ *     çizilmez. Kısmi liste çizmek, kaydederken çözülmeyen malzemeyi kayıttan
+ *     SİLMEK demektir — `normalizeMeals` gövdeyi geçirdiği için kayıt sessizce
+ *     değişir. Bu, "silinmiş alias'a bağlı satır" (dangling aliasId) durumunu
+ *     YAPISAL OLARAK IMKÂNSIZ kılar: satır `alias` bulunamadığı için `null`
+ *     döner ve bölüm hiç render edilmez. */
 export function mealDraftLines(meal: MealItem, aliases: Alias[]): DraftLine[] | null {
+  if (meal.items && meal.items.length > 0) {
+    const lines = itemsToDraftLines(meal.items, aliases);
+    return lines.length > 0 ? lines : null;
+  }
   const sources = meal.sources;
   if (!sources || sources.length === 0) return null;
   const byId = new Map(aliases.map((a) => [a.id, a]));
