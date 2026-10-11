@@ -109,16 +109,16 @@ export function templateTotal(items: TemplateItem[]): Nutrition {
  *  olduğu gibi yazılır. Önceden `sources`'ı OLMAYAN kalemin ADI kayıptı —
  *  `MealSource` yalnız `aliasId` tutar, öğünün adı ise tek alandır; kalem
  *  adı `items`'a yazılınca artık korunur (L21). Değer yine toplama karışır,
- *  gramajı `grams` de taşır.
+ *  gramajı her kalemin `items[].grams`'ında yaşar.
+ *
+ *  meal-flat `grams` YAZILMAZ: şablon çıktısı DAİMA `items` içerdiği için
+ *  gram miktarı `items[].grams`'ta tutulur — aynı sayının ikinci kopyası
+ *  (`sources`'un türevi olduğu gibi) er geç eskir.
  *
  *  `items` boşsa `null` — boş öğün uydurma kayıttır (L21). */
 export function templateItemsToPayload(items: TemplateItem[], templateId: string): MealPayload | null {
   if (items.length === 0) return null;
   const sources = items.flatMap((it) => it.sources ?? []);
-  // Yalnız KAYNAKSIZ kalemlerin gramajı: kaynaklı kalemin miktarı zaten
-  // `sources[].qty` içinde (iki kopya → biri eskir). `sources` VARKEN de
-  // yazılır: karışık şablonda kaynaksız kalemin gramajının düşmemesi için.
-  const looseGrams = items.reduce((sum, it) => sum + (it.sources ? 0 : (it.grams ?? 0)), 0);
   return {
     name: items.map((it) => it.name).join(" + "),
     nutrition: templateTotal(items),
@@ -128,7 +128,6 @@ export function templateItemsToPayload(items: TemplateItem[], templateId: string
     // ("en çok kullanılan 3 şablon") bu alandan beslenir. Yazılmazsa sayaç
     // sessizce hep 0 kalır ve sıralama hiç değişmez.
     templateId,
-    ...(looseGrams > 0 ? { grams: Math.round(looseGrams * 10) / 10 } : {}),
   };
 }
 

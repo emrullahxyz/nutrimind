@@ -252,7 +252,7 @@ describe("templateItemsToPayload", () => {
     expect(payload?.sources).toEqual([{ aliasId: "a1", qty: 90, unit: "g" }]);
   });
 
-  it("kaynaksız kalem tek öğünde kalır: grams yazılır, kaynaklı kalemin miktarı sayılmaz", () => {
+  it("kaynaksız kalemin gramajı items[].grams'ta yaşar; meal-flat grams YAZILMAZ", () => {
     const payload = templateItemsToPayload(
       [
         { name: "Yulaf", nutrition: n(350), sources: [{ aliasId: "a1", qty: 90, unit: "g" }] },
@@ -261,11 +261,13 @@ describe("templateItemsToPayload", () => {
       "t_1",
     );
     expect(payload?.sources).toEqual([{ aliasId: "a1", qty: 90, unit: "g" }]);
-    expect(payload?.grams).toBe(50);
+    // Çift kopya yok: gram items'ta, öğün-düz `grams` alanı hiç yazılmaz.
+    expect(payload).not.toHaveProperty("grams");
+    expect(payload?.items?.[1]?.grams).toBe(50);
     expect(payload?.name).toBe("Yulaf + Ev yapımı sos");
   });
 
-  it("hepsi kaynaksızsa sources alanı hiç oluşmaz, grams toplanır", () => {
+  it("hepsi kaynaksızsa sources alanı hiç oluşmaz; her kalemin grams'ı korunur", () => {
     const payload = templateItemsToPayload(
       [
         { name: "Ev yapımı sos", nutrition: n(100), grams: 50 },
@@ -274,7 +276,8 @@ describe("templateItemsToPayload", () => {
       "t_1",
     );
     expect(payload).not.toHaveProperty("sources");
-    expect(payload?.grams).toBe(170);
+    expect(payload).not.toHaveProperty("grams");
+    expect(payload?.items?.map((i) => i.grams)).toEqual([50, 120]);
     expect(payload?.nutrition.kcal).toBe(150);
   });
 

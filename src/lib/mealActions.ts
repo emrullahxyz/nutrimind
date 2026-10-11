@@ -5,7 +5,7 @@
 // aksiyon kapalı, hangi adımda hangi içerik, şablon/kopya ön dolgusu ne
 // olacak. Böylece davranış jsdom olmadan (projenin test kültürü) doğrulanabilir.
 // ============================================================================
-import type { MealItem, MealPayload } from "../types";
+import type { MealItem, MealPayload, TemplateItem } from "../types";
 import { sumMeals } from "./days";
 import { categoryForLoggedAt } from "./mealCategory";
 import { newTemplateId } from "./templates";
@@ -90,14 +90,20 @@ export function duplicatePayload(meal: MealItem): MealPayload {
 
 /** Seçilen öğünleri TEK öğüne katlar.
  *
- *  `sources` KATLANIR — birleştirme kalem SAYISINI düşürmez: 3 kalemli öğün +
- *  2 kalemli öğün → 5 kalem. Kalem yapısı yalnız `sources`'ta yaşadığı için
- *  onu yazmamak, birleşik öğünü sıfır kaleme indirirdi (eskiden tam olarak
- *  böyleydi): sol tıkta "Malzemeler" hiç çizilmez, Düzenle tek kalem gösterirdi.
+ *  `items` — öğünlerden BİRİ bile kalem kırılımı taşıyorsa, birleşik öğün de
+ *  kalem taşır ve `items` SEÇİLEN HER ÖĞÜNÜ kapsar: items'sız öğünün yemeği
+ *  kayda (compute'a) girer ama kalem listesinde görünmezse gösterilen ≠
+ *  kaydedilen olurdu (L20); ayrıca `mealSources` items varken YALNIZ
+ *  `items[].sources` okuduğu için items'sız öğünün alias linki sessizce
+ *  düşerdi. items'sız öğün için SENTETİK kalem üretilir (ad = öğün etiketi,
+ *  besin = öğün toplamı, kaynak/gramaj bağlantısı varsa taşınır). Böylece
+ *  `sources` = `items.flatMap(it.sources)` değişmezi korunur. items yolunda
+ *  meal-flat `grams` YAZILMAZ (çift kopya; gram sentetik kalemin `grams`'ında).
  *
- *  `grams` TOPLANIR: o, `sources`'u OLMAYAN kalemlerin gramajıdır; iki öğünün
- *  kaynaksız kalemleri birleşince de kaynaksız kalır. Sıfıra düşerse alan
- *  YAZILMAZ — `0` "gramaj bilinmiyor" ile "0 gram"ı ayırt etmez.
+ *  Hiçbir öğün kalem taşımıyorsa (eski kayıtlar) MEVCUT davranış aynen kalır:
+ *  `sources` KATLANIR (kalem SAYISI düşmez), `grams` TOPLANIR (`sources`'u
+ *  OLMAYAN kalemlerin gramajı; sıfıra düşerse alan YAZILMAZ — `0` "gramaj
+ *  bilinmiyor" ile "0 gram"ı ayırt etmez).
  *
  *  `templateId` BİLEREK taşınmaz: birleşik öğün iki farklı şablondan gelemez,
  *  hangisinin sayacağı belirsiz olurdu.
@@ -112,15 +118,37 @@ export function mergePayloads(selected: MealItem[], name: string): MealPayload {
     .sort((a, b) => a.loggedAt!.localeCompare(b.loggedAt!));
   const earliestLoggedAt = byLoggedAt[0]?.loggedAt;
 
-  const sources = selected.flatMap((m) => m.sources ?? []);
-  const items = selected.flatMap((m) => m.items ?? []);
-  const grams = selected.reduce((sum, m) => sum + (m.grams ?? 0), 0);
+  // Öğünlerden biri kalem kırılımı (`items`) taşıyorsa, birleşik öğün de kalem
+  // taşımalı ve `items` SEÇİLEN HER ÖĞÜNÜ kapsamalı (yukarıdaki nota bak).
+  if (selected.some((m) => m.items && m.items.length > 0)) {
+    const items: TemplateItem[] = selected.flatMap((m) =>
+      m.items && m.items.length > 0
+        ? m.items
+        : [{
+            name: m.label,
+            nutrition: m.computed,
+            ...(m.sources && m.sources.length > 0 ? { sources: m.sources } : {}),
+            ...(m.grams !== undefined && m.grams > 0 ? { grams: m.grams } : {}),
+          }],
+    );
+    const sources = items.flatMap((it) => it.sources ?? []);
+    return {
+      name,
+      nutrition,
+      ...(items.length > 0 ? { items } : {}),
+      ...(sources.length > 0 ? { sources } : {}),
+      ...(earliestLoggedAt ? { loggedAt: earliestLoggedAt } : {}),
+      ...(earliestLoggedAt ? { category: categoryForLoggedAt(earliestLoggedAt) } : {}),
+    };
+  }
 
+  // Hiçbir öğün kalem taşımıyor (eski kayıtlar): mevcut davranış aynen.
+  const sources = selected.flatMap((m) => m.sources ?? []);
+  const grams = selected.reduce((sum, m) => sum + (m.grams ?? 0), 0);
   return {
     name,
     nutrition,
     ...(sources.length > 0 ? { sources } : {}),
-    ...(items.length > 0 ? { items } : {}),
     ...(grams > 0 ? { grams } : {}),
     ...(earliestLoggedAt ? { loggedAt: earliestLoggedAt } : {}),
     ...(earliestLoggedAt ? { category: categoryForLoggedAt(earliestLoggedAt) } : {}),

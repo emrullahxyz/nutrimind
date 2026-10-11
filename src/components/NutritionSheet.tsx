@@ -382,8 +382,13 @@ export function NutritionSheet({ isOpen, onClose, meal, onSave, onDelete }: Prop
       const items = draftLinesToItems(swappedLines);
       const nutrition = sumLineNutrition(items);
       const collected = items.flatMap((i) => i.sources ?? []);
+      // `sources`/`items` bilerek DESTRUCTURE edilir: `...meal` yayılımı ESKİ
+      // `items`'ı getirir; koşullu yayılım (`items.length > 0 ? …`) items
+      // boşken override ETMEZ ve eski kırılım kayıtta kalırdı (kaynaklar için
+      // aşağıdaki tuzağın items kopyası). İkisi de burada taze yazılır.
+      const { sources: _prevSources, items: _prevItems, ...mealBase } = meal;
       const updated: MealItem = {
-        ...meal,
+        ...mealBase,
         label,
         category,
         // `remainder` yoksa satır düzenlemesi kaynaksız kalemin besinini

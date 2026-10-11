@@ -9,6 +9,7 @@ import {
   templateNameSuggestion,
 } from "./mealActions";
 import { parseTemplatesConfig } from "./templates";
+import { mealSources } from "./ingredientDraft";
 import { categoryForLoggedAt } from "./mealCategory";
 import { makeNutrition } from "./nutrients";
 import type { AppConfig, MealItem, TemplateItem } from "../types";
@@ -261,5 +262,49 @@ describe("mergePayloads", () => {
 
   it("hiçbirinde items yoksa alan hiç yazılmaz", () => {
     expect("items" in mergePayloads([meal(), meal({ id: "m2" })], "X")).toBe(false);
+  });
+
+  it("KARIŞIK birleştirme: items'lı + sources'lu öğün → items TÜM öğünleri kapsar (L20)", () => {
+    const aiMeal = meal({
+      id: "ai",
+      label: "AI öğünü",
+      computed: nutrition({ kcal: 400 }),
+      items: [
+        { name: "Tavuk", nutrition: nutrition({ kcal: 300 }), sources: [{ aliasId: "a1", qty: 150, unit: "g" }] },
+        { name: "Pilav", nutrition: nutrition({ kcal: 100 }) },
+      ],
+    });
+    const aliasMeal = meal({
+      id: "al",
+      label: "Normal öğün",
+      computed: nutrition({ kcal: 200 }),
+      sources: [{ aliasId: "a2", qty: 80, unit: "g" }],
+    });
+
+    const merged = mergePayloads([aiMeal, aliasMeal], "Birleşik");
+
+    // items SEÇİLEN HER ÖĞÜNÜ kapsar: AI kalemleri + alias öğünü sentetik kalemi.
+    expect(merged.items!.map((i) => i.name)).toEqual(["Tavuk", "Pilav", "Normal öğün"]);
+    // Sentetik kalem öğünün toplamını ve alias linkini taşır.
+    const synthetic = merged.items![2];
+    expect(synthetic.nutrition).toEqual(aliasMeal.computed);
+    expect(synthetic.sources).toEqual([{ aliasId: "a2", qty: 80, unit: "g" }]);
+    // Değişmez: sources = items.flatMap(sources).
+    expect(merged.sources).toEqual(merged.items!.flatMap((i) => i.sources ?? []));
+    expect(merged.nutrition.kcal).toBe(600);
+    // `mealSources` çift saymaz: items varken yalnız items[].sources okur.
+    expect(mealSources(merged as unknown as MealItem)).toHaveLength(2);
+    // items yolunda meal-flat grams YAZILMAZ.
+    expect("grams" in merged).toBe(false);
+  });
+
+  it("karışık birleştirmede kaynaksız itemless öğün sentetik kalem olur (computed korunur)", () => {
+    const withItems = meal({ id: "a", items: [{ name: "Tavuk", nutrition: nutrition() }] });
+    const bare = meal({ id: "b", label: "Elle giren", computed: nutrition({ kcal: 111 }) });
+    const merged = mergePayloads([withItems, bare], "X");
+    expect(merged.items!.map((i) => i.name)).toEqual(["Tavuk", "Elle giren"]);
+    expect(merged.items![1].nutrition).toEqual(bare.computed);
+    expect("sources" in merged.items![1]).toBe(false);
+    expect("sources" in merged).toBe(false);
   });
 });
