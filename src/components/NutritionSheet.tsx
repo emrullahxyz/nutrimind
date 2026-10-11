@@ -389,6 +389,9 @@ export function NutritionSheet({ isOpen, onClose, meal, onSave, onDelete }: Prop
         // `remainder` yoksa satır düzenlemesi kaynaksız kalemin besinini
         // sessizce siler (yukarıdaki `unattributedNutrition`).
         computed: roundNutrition(addNutrition(nutrition, remainder)),
+        // Kalemler silinip hepsi giderse `items` YAZILMAZ (boş kırılım = öğün
+        // kalemsiz). Kalan kalemler kimliği taşır.
+        ...(items.length > 0 ? { items } : {}),
         // `sources` DAİMA yazılır — koşullu yayılım (`collected.length > 0`)
         // yazılmayan durumda `...meal`'den gelen ESKİ kaynakları kayıtta
         // bırakırdı: kullanıcı malzemeleri silmiş olsa bile öğün eski

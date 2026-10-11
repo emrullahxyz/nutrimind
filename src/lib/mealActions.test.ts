@@ -11,7 +11,7 @@ import {
 import { parseTemplatesConfig } from "./templates";
 import { categoryForLoggedAt } from "./mealCategory";
 import { makeNutrition } from "./nutrients";
-import type { AppConfig, MealItem } from "../types";
+import type { AppConfig, MealItem, TemplateItem } from "../types";
 
 function nutrition(over: Partial<Record<string, number>> = {}) {
   return makeNutrition({ kcal: 300, protein: 20, carbs: 30, fat: 10, fiber: 4, ...over });
@@ -54,6 +54,15 @@ describe("mealToTemplate", () => {
   it("ad önerisi öğünün kendi etiketidir", () => {
     expect(templateNameSuggestion(meal())).toBe("Yoğurt + shake");
   });
+
+  it("öğünde kalem kırılımı (items) varsa ONU taşır (kalem sayısı korunur)", () => {
+    const items: TemplateItem[] = [
+      { name: "Tavuk", nutrition: nutrition({ kcal: 200 }), sources: [{ aliasId: "a1", qty: 150, unit: "g" }] },
+      { name: "Ev yapımı sos", nutrition: nutrition({ kcal: 100 }) },
+    ];
+    const tpl = mealToTemplate(meal({ items }), "Antrenman");
+    expect(tpl.items).toEqual(items);
+  });
 });
 
 describe("duplicatePayload", () => {
@@ -77,6 +86,16 @@ describe("duplicatePayload", () => {
     expect(payload).toEqual({ name: "Yoğurt + shake", nutrition: nutrition() });
     expect("sources" in payload).toBe(false);
     expect("loggedAt" in payload).toBe(false);
+  });
+
+  it("kalem kırılımı (items) kopyaya taşınır", () => {
+    const items: TemplateItem[] = [{ name: "Kayısı", nutrition: nutrition({ kcal: 50 }) }];
+    const payload = duplicatePayload(meal({ items }));
+    expect(payload.items).toEqual(items);
+  });
+
+  it("items yoksa alan hiç yazılmaz", () => {
+    expect("items" in duplicatePayload(meal())).toBe(false);
   });
 });
 
@@ -221,5 +240,26 @@ describe("mergePayloads", () => {
 
   it("kullanıcının verdiği ad aynen kullanılır", () => {
     expect(mergePayloads([k3, k2], "Kahvaltı").name).toBe("Kahvaltı");
+  });
+
+  it("items KATLANIR — birleştirme kalem sayısını düşürmez", () => {
+    const a = meal({
+      id: "a",
+      items: [
+        { name: "Tavuk", nutrition: nutrition() },
+        { name: "Pilav", nutrition: nutrition() },
+      ],
+    });
+    const b = meal({
+      id: "b",
+      items: [{ name: "Yoğurt", nutrition: nutrition() }],
+    });
+    const merged = mergePayloads([a, b], "X");
+    expect(merged.items).toHaveLength(3);
+    expect(merged.items!.map((i) => i.name)).toEqual(["Tavuk", "Pilav", "Yoğurt"]);
+  });
+
+  it("hiçbirinde items yoksa alan hiç yazılmaz", () => {
+    expect("items" in mergePayloads([meal(), meal({ id: "m2" })], "X")).toBe(false);
   });
 });

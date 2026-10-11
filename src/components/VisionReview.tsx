@@ -371,8 +371,10 @@ export function VisionReviewScreen({
     .join(" + ");
   const canAddMeal = rows.length > 0;
 
-  /** `sources` bilerek YOK: kalemler birleşip tek bir kalem olduğu için tek bir
-   *  alias'a işaret edemez; v1'de kalem-bazlı hafıza kaydı da yok. */
+  /** `sources` bilerek YOK: AI gram/porsiyon ölçümü taşımaz (bkz. dosya başı),
+   *  kalem-bazlı hafıza kaydı da yok. Kalemler `items` olarak yazılır — ad +
+   *  makro. `grams` YAZILMAZ (L21): AI gram vermiyor, uydurma miktar olurdu;
+   *  kalemler `preserved` kalır. */
   async function addCombinedMeal() {
     if (!canAddMeal || saving) return;
     setSavingState("add");
@@ -381,11 +383,16 @@ export function VisionReviewScreen({
       const date = todayISO();
       const fresh = await fetchData();
       const existing = toPayload(mealsOf(fresh.days, date));
+      const items = rows.map((r) => ({
+        name: r.name.trim(),
+        nutrition: fromDraft(r.draft),
+      }));
       // Insan tarafından görülebilen son çare ad — kaydedilen VERİ olduğu için
       // aktif dilde üretilir ve kullanıcı düzenleyebilir.
       const entry: MealPayload = {
         name: combinedName || i18n.t("vision.untitledMeal"),
         nutrition: combinedNutrition,
+        ...(items.length > 0 ? { items } : {}),
       };
       await setDayMeals(date, [...existing, entry]);
       onClose();

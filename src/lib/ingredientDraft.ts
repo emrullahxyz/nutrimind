@@ -538,13 +538,21 @@ export function hasUnnamedItem(items: TemplateItem[]): boolean {
   return items.some((i) => !i.name.trim());
 }
 
-/** Öğünün HEM `sources`'ını HEM `items[].sources`'ını tek listede toplar.
+/** Öğünün kaynaklarını TEK listede verir.
  *
- *  Öğün artık iki yoldan kaynak taşıyabilir: eski düz `sources` ve yeni kalem
- *  kırılımı (`items`). İki yol bir arada bulunabilir; kaynağın tamamını görmek
- *  isteyen çağıran (link ikonu, dangling tespiti) burada birleşik listeyi alır. */
+ *  `items` VARKEN yalnız `items[].sources` döner; öğün-düz `sources` YOKSAYILIR.
+ *  Neden: yazma yolları (`templateItemsToPayload`, `MealForm.save`) hem `items`
+ *  hem öğün-düz `sources`'u BİRLİKTE yazar ve o an öğün-düz `sources`, `items[].
+ *  sources`'un TÜREV kopyasıdır. İkisini birleştirmek aynı alias linkini ÇİFT
+ *  sayar → `aliasRank` ("en çok kullanılan besin") ve geçmişe dayalı miktar
+ *  tahmini (`usualQuantity`) bozulur.
+ *
+ *  `items` YOKSA öğün-düz `sources` okunur (eski kayıtlar, kalem kırılımı öncesi). */
 export function mealSources(meal: MealItem): MealSource[] {
-  return [...(meal.sources ?? []), ...(meal.items ?? []).flatMap((it) => it.sources ?? [])];
+  if (meal.items && meal.items.length > 0) {
+    return meal.items.flatMap((it) => it.sources ?? []);
+  }
+  return meal.sources ?? [];
 }
 
 /** Şablon/öğün kalemlerini düzenlenebilir satırlara çevirir.

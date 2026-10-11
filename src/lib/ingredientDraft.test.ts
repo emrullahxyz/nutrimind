@@ -1001,16 +1001,15 @@ describe("mealSources", () => {
     expect(mealSources(m)).toEqual([{ aliasId: "a2", qty: 50, unit: "g" }]);
   });
 
-  it("ikisi — sources önce, items sonra birleşir", () => {
+  it("items varken öğün-düz sources YOKSAYILIR (türev kopya — çift sayım yok)", () => {
     const m: MealItem = {
       ...base,
       sources: [{ aliasId: "a1", qty: 100, unit: "g" }],
       items: [{ name: "Tofu", nutrition: tofu.nutrition, sources: [{ aliasId: "a2", qty: 50, unit: "g" }] }],
     };
-    expect(mealSources(m)).toEqual([
-      { aliasId: "a1", qty: 100, unit: "g" },
-      { aliasId: "a2", qty: 50, unit: "g" },
-    ]);
+    // items tam kırılımdır; öğün-düz sources o zaman items[].sources'un
+    // TÜREV kopyasıdır. İkisini birleştirmek alias linkini ÇİFT sayardı.
+    expect(mealSources(m)).toEqual([{ aliasId: "a2", qty: 50, unit: "g" }]);
   });
 
   it("hiçbiri — boş dizi", () => {

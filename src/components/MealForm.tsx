@@ -40,7 +40,7 @@ import { formatKcal, todayISO, weekdayIndex } from "../lib/format";
 import { effectiveProfile } from "../lib/goals";
 import { rankAliases } from "../lib/aliasRank";
 import { categoryForHour, MEAL_CATEGORIES } from "../lib/mealCategory";
-import type { AIParseItem, Alias, MealCategory, MealItem, MealPayload, MealSource, Nutrition } from "../types";
+import type { AIParseItem, Alias, MealCategory, MealItem, MealPayload, MealSource, Nutrition, TemplateItem } from "../types";
 import { usualQuantity } from "../lib/quantity";
 import { AliasPicker } from "./AliasPicker";
 import { useBodyScrollLock } from "../hooks/useBodyScrollLock";
@@ -614,9 +614,28 @@ export function MealForm({
       };
 
       let entrySources: MealSource[] | undefined;
+      let entryItems: TemplateItem[] | undefined;
       if (basket.length > 0) {
-        const collected = basket.flatMap((b) => b.sources ?? []);
-        if (collected.length > 0) entrySources = collected;
+        const items: TemplateItem[] = basket.map((b) => ({
+          name: b.name,
+          nutrition: b.nutrition,
+          ...(b.sources ? { sources: b.sources } : {}),
+        }));
+        // Alias'sız kalem varsa KİMLİĞİ yalnız `items` taşır (öğün-düz
+        // `sources` bir aliasId ister). Saf-alias sepet ise `items` gerekmez:
+        // kırılım kaynaklardan birebir türetilir — o yüzden eski yol korunur.
+        const hasUnlinkedItem = basket.some((b) => !b.sources || b.sources.length === 0);
+        if (hasUnlinkedItem) {
+          entryItems = items;
+          // Alias'lı kalemin linki korunsun: öğün-düz `sources` items'ın
+          // flatMap'i olur (türev kopya). Tüketiciler (`mealSources`) items
+          // varken yalnız items[].sources okur → çift sayım yok.
+          const collected = items.flatMap((it) => it.sources ?? []);
+          if (collected.length > 0) entrySources = collected;
+        } else {
+          const collected = basket.flatMap((b) => b.sources ?? []);
+          if (collected.length > 0) entrySources = collected;
+        }
       } else if (mode === "alias" && alias && scaled && parseNum(grams) > 0) {
         entrySources = [
           {
@@ -629,13 +648,13 @@ export function MealForm({
 
       const loggedAt = editIndex === null ? new Date().toISOString() : existing?.loggedAt;
 
-      // `sources` bilerek DESTRUCTURE edilir: koşullu yayılım `entrySources`
-      // boşken `undefined` yazmadığı için `existing`'ten gelen eski kaynak
-      // kayıtta kalır ve "kullanıcı silmiş olsa bile öğün eski kaynaklarıyla
-      // gider" (NutritionSheet.tsx'teki `sources DAİMA yazılır` yorumundaki
-      // tuzak). Kalan alanlar (templateId, grams) `toPayload`'a bırakılır —
-      // MealForm ve NutritionSheet artık aynı yazım yolunu paylaşır.
-      const { sources: _prevSources, ...base } = existing ?? {
+      // `sources`/`items` bilerek DESTRUCTURE edilir: koşullu yayılım boşken
+      // `undefined` yazmadığı için `existing`'ten gelen ESKİ değerler kayıtta
+      // kalır ("kullanıcı silmiş olsa bile eski değerleriyle gider" tuzağı).
+      // Bu iki alan her kayıtta buradan taze yazılır. Kalan alanlar
+      // (templateId, grams) `toPayload`'a bırakılır — MealForm ve
+      // NutritionSheet artık aynı yazım yolunu paylaşır.
+      const { sources: _prevSources, items: _prevItems, ...base } = existing ?? {
         id: `meal-${Date.now()}`,
         label: "",
         computed: cleanNutrition,
@@ -645,6 +664,7 @@ export function MealForm({
         label: finalName.slice(0, 100).trim(),
         category,
         computed: cleanNutrition,
+        ...(entryItems && entryItems.length > 0 ? { items: entryItems } : {}),
         ...(entrySources && entrySources.length > 0 ? { sources: entrySources } : {}),
         ...(loggedAt ? { loggedAt } : {}),
       };

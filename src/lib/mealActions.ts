@@ -59,13 +59,18 @@ export function mealToTemplate(meal: MealItem, name: string): MealTemplate {
   return {
     id: newTemplateId(),
     name: name.trim() || templateNameSuggestion(meal),
-    items: [
-      {
-        name: meal.label,
-        nutrition: meal.computed,
-        ...(meal.sources ? { sources: meal.sources } : {}),
-      },
-    ],
+    // Kalem kırılımı varsa onu TAŞI (kalem sayısı korunur); yoksa mevcut
+    // tek-kalem üretimi (öğünün toplamı + hafıza bağlantısı).
+    items:
+      meal.items && meal.items.length > 0
+        ? meal.items
+        : [
+            {
+              name: meal.label,
+              nutrition: meal.computed,
+              ...(meal.sources ? { sources: meal.sources } : {}),
+            },
+          ],
   };
 }
 
@@ -77,6 +82,7 @@ export function duplicatePayload(meal: MealItem): MealPayload {
     name: meal.label,
     nutrition: meal.computed,
     ...(meal.sources ? { sources: meal.sources } : {}),
+    ...(meal.items ? { items: meal.items } : {}),
     ...(meal.loggedAt ? { loggedAt: meal.loggedAt } : {}),
     ...(meal.category ? { category: meal.category } : {}),
   };
@@ -107,12 +113,14 @@ export function mergePayloads(selected: MealItem[], name: string): MealPayload {
   const earliestLoggedAt = byLoggedAt[0]?.loggedAt;
 
   const sources = selected.flatMap((m) => m.sources ?? []);
+  const items = selected.flatMap((m) => m.items ?? []);
   const grams = selected.reduce((sum, m) => sum + (m.grams ?? 0), 0);
 
   return {
     name,
     nutrition,
     ...(sources.length > 0 ? { sources } : {}),
+    ...(items.length > 0 ? { items } : {}),
     ...(grams > 0 ? { grams } : {}),
     ...(earliestLoggedAt ? { loggedAt: earliestLoggedAt } : {}),
     ...(earliestLoggedAt ? { category: categoryForLoggedAt(earliestLoggedAt) } : {}),
