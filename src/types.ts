@@ -28,6 +28,28 @@ export interface MealSource {
   unit: string;
 }
 
+/** Şablon kalemi — bir öğünün tek malzemesi (ad + besin + isteğe bağlı hafıza/
+ *  gramaj bağlantısı). `templates.ts` yerine burada yaşıyor: hem `MealItem`
+ *  hem `MealPayload` bu tipe (`items`) bağlanınca kaynak `templates.ts` olsa
+ *  `api.ts ↔ templates.ts` döngüsel import'u oluşurdu. */
+export interface TemplateItem {
+  name: string;
+  nutrition: Nutrition;
+  sources?: MealSource[];
+  /** `sources`'ı OLMAYAN kalemlerin gramajı (gram).
+   *
+   *  Gramaj normalde `sources[].qty` içinde saklanır — ama `sources` bir
+   *  `aliasId` gerektirir, ve kullanıcının ELLE girdiği ya da AI'ın döndüğü
+   *  besin hafızada olmayabilir. O satırlarda miktar alanı görünür ama
+   *  kayda giremezdi: kullanıcı 100 g yazıp kaydediyor, şablonu açtığında
+   *  "Miktar bilinmiyor" yazıyordu (gösterilen ≠ kaydedilen, L20).
+   *
+   *  `sources` varsa bu alan YAZILMAZ — kaynak zaten miktarı taşıyor, iki
+   *  yerde aynı sayının iki kopyası ise birinin güncellenip diğerinin
+   *  eskimesi demektir. */
+  grams?: number;
+}
+
 export type MealCategory = "breakfast" | "lunch" | "dinner" | "snack";
 
 export type ExerciseCategory = "run" | "weights" | "walk" | "swim" | "cycle" | "custom";
@@ -47,6 +69,9 @@ export interface MealItem {
   label: string;
   computed: Nutrition;
   sources?: MealSource[];
+  /** Çok kalemli öğünün kırılımı — AI/manuel/şablon kalemleri. `sources` YALNIZ
+   *  alias linkidir; `items` kalemdir. */
+  items?: TemplateItem[];
   loggedAt?: string;
   category?: MealCategory;
   /** Hangi şablon uygulanarak yazıldı — şablon kullanım sayacının kaynağı.
@@ -55,7 +80,8 @@ export interface MealItem {
   /** Hafızaya bağlı OLMAYAN kalemlerin gramaj toplamı (g). `sources` VARKEN de
    *  yazılır: birleştirilmiş şablonda kaynaksız kalemin miktarı düşmesin
    *  (`templateItemsToPayload`). Kaynaklı kalemin miktarı hâlâ yalnız
-   *  `sources[].qty`'dedir — bu alan o kalemleri SAYMAZ. */
+   *  `sources[].qty`'dedir — bu alan o kalemleri SAYMAZ.
+   *  `items` VARKEN YAZILMAZ: gramaj her kalemin `items[].grams`'ında yaşar. */
   grams?: number;
 }
 
@@ -64,6 +90,9 @@ export interface MealPayload {
   name: string;
   nutrition: Nutrition;
   sources?: MealSource[];
+  /** Çok kalemli öğünün kırılımı — AI/manuel/şablon kalemleri. `sources` YALNIZ
+   *  alias linkidir; `items` kalemdir. */
+  items?: TemplateItem[];
   loggedAt?: string;
   category?: MealCategory;
   /** Şablondan uygulandıysa kaynak şablonun id'si. Şablon kullanım indeksi
@@ -74,7 +103,8 @@ export interface MealPayload {
   templateId?: string;
   /** Hafızaya bağlı olmayan kalemlerin gramaj toplamı. `sources` VARKEN de
    *  yazılır (bkz. `MealPayload.grams`): kaynaklı kalemlerin miktarı bu
-   *  sayıyı oluşturmayız. `TemplateItem.grams`'ın karşılığıdır. */
+   *  sayıyı oluşturmayız. `TemplateItem.grams`'ın karşılığıdır.
+   *  `items` VARKEN YAZILMAZ: gramaj her kalemin `items[].grams`'ında yaşar. */
   grams?: number;
 }
 

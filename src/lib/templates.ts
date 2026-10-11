@@ -1,27 +1,14 @@
-import type { AppConfig, MealPayload, MealSource, Nutrition } from "../types";
+import type { AppConfig, MealPayload, Nutrition, TemplateItem } from "../types";
 import { ZERO_NUTRITION } from "../types";
 import { datesDesc, mealsOf, type Days } from "./days";
 import { addNutrition } from "./nutrition";
 import { NUTRIENT_KEYS } from "./nutrients";
-import { fill, parseSources } from "./api";
+import { parseTemplateItems } from "./api";
 
-export interface TemplateItem {
-  name: string;
-  nutrition: Nutrition;
-  sources?: MealSource[];
-  /** `sources`'ı OLMAYAN kalemlerin gramajı (gram).
-   *
-   *  Gramaj normalde `sources[].qty` içinde saklanır — ama `sources` bir
-   *  `aliasId` gerektirir, ve kullanıcının ELLE girdiği ya da AI'ın döndüğü
-   *  besin hafızada olmayabilir. O satırlarda miktar alanı görünür ama
-   *  kayda giremezdi: kullanıcı 100 g yazıp kaydediyor, şablonu açtığında
-   *  "Miktar bilinmiyor" yazıyordu (gösterilen ≠ kaydedilen, L20).
-   *
-   *  `sources` varsa bu alan YAZILMAZ — kaynak zaten miktarı taşıyor, iki
-   *  yerde aynı sayının iki kopyası ise birinin güncellenip diğerinin
-   *  eskimesi demektir. */
-  grams?: number;
-}
+// `TemplateItem` artık `types.ts`'te yaşıyor (bkz. oradaki not) — buradan
+// yeniden dışa açılır ki mevcut tüketiciler (`ingredientDraft.ts` vb.)
+// yollarını değiştirmek zorunda kalmasın.
+export type { TemplateItem };
 
 export interface MealTemplate {
   id: string;
@@ -81,29 +68,7 @@ export function parseTemplatesConfig(config: AppConfig): TemplatesConfig {
 
     if (!Array.isArray(rec.items)) continue;
 
-    const validItems: TemplateItem[] = [];
-    for (const rawItem of rec.items) {
-      if (typeof rawItem !== "object" || rawItem === null || Array.isArray(rawItem)) continue;
-      const itemRec = rawItem as Record<string, unknown>;
-      const itemName = typeof itemRec.name === "string" ? itemRec.name.trim() : "";
-      if (!itemName) continue;
-
-      const nutrition = fill(itemRec.nutrition as Partial<Record<string, number | null>> | undefined);
-      const sources = parseSources(itemRec.sources);
-      // Yalnız POZİTİF ve sonlu gramaj: 0 "ölçtüm, sıfır gram" anlamına gelir,
-      // kayıttaki belirsizliği çözmez. `sources` varsa alan yok sayılır —
-      // miktar zaten orada taşınıyor.
-      const rawGrams = itemRec.grams;
-      const grams =
-        !sources && typeof rawGrams === "number" && Number.isFinite(rawGrams) && rawGrams > 0 ? rawGrams : undefined;
-
-      validItems.push({
-        name: itemName,
-        nutrition,
-        ...(sources ? { sources } : {}),
-        ...(grams !== undefined ? { grams } : {}),
-      });
-    }
+    const validItems = parseTemplateItems(rec.items);
 
     if (validItems.length > 0) {
       list.push({ id, name, items: validItems });
@@ -140,9 +105,11 @@ export function templateTotal(items: TemplateItem[]): Nutrition {
  *  toplanır, ad kalem adlarının `" + "` birleşimidir (tek öğün tek ad
  *  taşıyabilir — `MealForm`/`DayView` aynı birleşimi kullanır).
  *
- *  BİLİNÇLİ KAYIP: `sources`'ı OLMAYAN kalemin ADI taşınmaz — `MealSource`
- *  yalnız `aliasId` tutar, öğünün adı ise tek alandır. Değeri toplama
- *  karışır; gramajı `grams` yazar.
+ *  `items` KORUNUR: kalem kırılımı (ad + besin + hafıza/gramaj bağlantısı)
+ *  olduğu gibi yazılır. Önceden `sources`'ı OLMAYAN kalemin ADI kayıptı —
+ *  `MealSource` yalnız `aliasId` tutar, öğünün adı ise tek alandır; kalem
+ *  adı `items`'a yazılınca artık korunur (L21). Değer yine toplama karışır,
+ *  gramajı `grams` de taşır.
  *
  *  `items` boşsa `null` — boş öğün uydurma kayıttır (L21). */
 export function templateItemsToPayload(items: TemplateItem[], templateId: string): MealPayload | null {
@@ -156,6 +123,7 @@ export function templateItemsToPayload(items: TemplateItem[], templateId: string
     name: items.map((it) => it.name).join(" + "),
     nutrition: templateTotal(items),
     ...(sources.length > 0 ? { sources } : {}),
+    items,
     // Şablon kullanım sayacının kaynağı: gün verisinden türetilen indeks
     // ("en çok kullanılan 3 şablon") bu alandan beslenir. Yazılmazsa sayaç
     // sessizce hep 0 kalır ve sıralama hiç değişmez.

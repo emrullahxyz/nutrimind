@@ -9,6 +9,7 @@ import {
   templateItemsToPayload,
   templateTotal,
 } from "./templates";
+import { parseTemplateItems } from "./api";
 import type { MealTemplate, TemplateUsageIndex } from "./templates";
 import type { AppConfig } from "../types";
 import type { Days } from "./days";
@@ -142,6 +143,38 @@ describe("parseTemplatesConfig", () => {
   });
 });
 
+describe("parseTemplateItems", () => {
+  it("dizi değilse boş döner", () => {
+    expect(parseTemplateItems(undefined)).toEqual([]);
+    expect(parseTemplateItems("nope")).toEqual([]);
+    expect(parseTemplateItems({ not: "array" })).toEqual([]);
+  });
+
+  it("bozuk kalemi atar, geçerli alias'lı/alias'sız kalemi korur", () => {
+    const parsed = parseTemplateItems([
+      { name: "   ", nutrition: { kcal: 10, protein: 1, carbs: 1, fat: 1, fiber: 0 } }, // boş ad → atılır
+      null, // bozuk satır → atılır
+      "metin", // dizi elemanı dizi/nesne değil → atılır
+      // grams: 0 → atılır (pozitif değil)
+      { name: "Sıfır gram", nutrition: { kcal: 100, protein: 5, carbs: 10, fat: 2, fiber: 1 }, grams: 0 },
+      // sources VARSA grams YOK SAYILIR (miktar zaten sources'ta)
+      {
+        name: "Yulaf",
+        nutrition: { kcal: 350, protein: 15, carbs: 55, fat: 7, fiber: 6 },
+        sources: [{ aliasId: "yulaf_1", qty: 50, unit: "g" }],
+        grams: 100,
+      },
+      // geçerli alias'sız kalem (grams'ı korunur)
+      { name: "Ev sosu", nutrition: { kcal: 200, protein: 2, carbs: 4, fat: 12, fiber: 0 }, grams: 100 },
+    ]);
+    expect(parsed.map((it) => it.name)).toEqual(["Sıfır gram", "Yulaf", "Ev sosu"]);
+    expect(parsed[0].grams).toBeUndefined();
+    expect(parsed[1].sources).toEqual([{ aliasId: "yulaf_1", qty: 50, unit: "g" }]);
+    expect(parsed[1].grams).toBeUndefined();
+    expect(parsed[2].grams).toBe(100);
+  });
+});
+
 describe("newTemplateId", () => {
   it("t_ öneki ile benzersiz kimlik üretir", () => {
     const id1 = newTemplateId();
@@ -182,14 +215,12 @@ describe("templateItemsToPayload", () => {
   const n = (kcal: number) => ({ kcal, protein: 0, carbs: 0, fat: 0, fiber: 0 });
 
   it("kalemleri TEK öğüne birleştirir: ad birleşir, sources katlanır, besin toplanır", () => {
-    const payload = templateItemsToPayload(
-      [
-        { name: "Yulaf", nutrition: { ...n(350), protein: 10 }, sources: [{ aliasId: "a1", qty: 90, unit: "g" }] },
-        { name: "Protein tozu", nutrition: { ...n(120), protein: 24 }, sources: [{ aliasId: "a2", qty: 35, unit: "g" }] },
-        { name: "Süt", nutrition: { ...n(175), protein: 9 }, sources: [{ aliasId: "a3", qty: 175, unit: "ml" }] },
-      ],
-      "t_1",
-    );
+    const input = [
+      { name: "Yulaf", nutrition: { ...n(350), protein: 10 }, sources: [{ aliasId: "a1", qty: 90, unit: "g" }] },
+      { name: "Protein tozu", nutrition: { ...n(120), protein: 24 }, sources: [{ aliasId: "a2", qty: 35, unit: "g" }] },
+      { name: "Süt", nutrition: { ...n(175), protein: 9 }, sources: [{ aliasId: "a3", qty: 175, unit: "ml" }] },
+    ];
+    const payload = templateItemsToPayload(input, "t_1");
     expect(payload).toEqual({
       name: "Yulaf + Protein tozu + Süt",
       nutrition: { kcal: 645, protein: 43, carbs: 0, fat: 0, fiber: 0 },
@@ -198,8 +229,27 @@ describe("templateItemsToPayload", () => {
         { aliasId: "a2", qty: 35, unit: "g" },
         { aliasId: "a3", qty: 175, unit: "ml" },
       ],
+      // Item kırılımı olduğu gibi taşınır — kalem ADI burada korunur (L21).
+      items: input,
       templateId: "t_1",
     });
+  });
+
+  it("alias'sız kalemin ADI items'ta korunur (önceden kayıptı)", () => {
+    const payload = templateItemsToPayload(
+      [
+        { name: "Yulaf", nutrition: n(350), sources: [{ aliasId: "a1", qty: 90, unit: "g" }] },
+        { name: "Ev yapımı sos", nutrition: n(100), grams: 50 },
+      ],
+      "t_1",
+    );
+    expect(payload?.items).toEqual([
+      { name: "Yulaf", nutrition: n(350), sources: [{ aliasId: "a1", qty: 90, unit: "g" }] },
+      { name: "Ev yapımı sos", nutrition: n(100), grams: 50 },
+    ]);
+    // `name` birleşimi ve `sources` katlanması değişmedi.
+    expect(payload?.name).toBe("Yulaf + Ev yapımı sos");
+    expect(payload?.sources).toEqual([{ aliasId: "a1", qty: 90, unit: "g" }]);
   });
 
   it("kaynaksız kalem tek öğünde kalır: grams yazılır, kaynaklı kalemin miktarı sayılmaz", () => {

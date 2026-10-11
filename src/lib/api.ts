@@ -12,6 +12,7 @@ import type {
   MealPayload,
   MealSource,
   Nutrition,
+  TemplateItem,
 } from "../types";
 import { singleProfileConfig } from "./goals";
 import { NUTRIENT_KEYS, makeNutrition } from "./nutrients";
@@ -101,6 +102,36 @@ export function parseSources(raw: unknown): MealSource[] | undefined {
     }
   }
   return valid.length > 0 ? valid : undefined;
+}
+
+/** Ham şablon kalemi dizisini doğrular — `parseTemplatesConfig` (`templates.ts`)
+ *  ve şablon uygulama yolu bunu paylaşır. Savunmacı: adı boş kalem, geçersiz
+ *  `sources` ve `sources`'lı satırdaki `grams` atılır/ele alınır (bkz.
+ *  `parseTemplatesConfig` "geçersiz kalem tüm listeyi düşürmez" deseni). */
+export function parseTemplateItems(raw: unknown): TemplateItem[] {
+  if (!Array.isArray(raw)) return [];
+  const validItems: TemplateItem[] = [];
+  for (const rawItem of raw) {
+    if (typeof rawItem !== "object" || rawItem === null || Array.isArray(rawItem)) continue;
+    const itemRec = rawItem as Record<string, unknown>;
+    const itemName = typeof itemRec.name === "string" ? itemRec.name.trim() : "";
+    if (!itemName) continue;
+    const nutrition = fill(itemRec.nutrition as Partial<Record<string, number | null>> | undefined);
+    const sources = parseSources(itemRec.sources);
+    // Yalnız POZİTİF ve sonlu gramaj: 0 "ölçtüm, sıfır gram" anlamına gelir,
+    // kayıttaki belirsizliği çözmez. `sources` varsa alan yok sayılır —
+    // miktar zaten orada taşınıyor.
+    const rawGrams = itemRec.grams;
+    const grams =
+      !sources && typeof rawGrams === "number" && Number.isFinite(rawGrams) && rawGrams > 0 ? rawGrams : undefined;
+    validItems.push({
+      name: itemName,
+      nutrition,
+      ...(sources ? { sources } : {}),
+      ...(grams !== undefined ? { grams } : {}),
+    });
+  }
+  return validItems;
 }
 
 /** Faz 8: HEDEF ŞEKİL GÖÇÜ — v1 (düz `Nutrition`) → v2 (`GoalConfig`).
