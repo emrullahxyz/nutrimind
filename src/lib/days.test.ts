@@ -53,6 +53,48 @@ describe("toPayload", () => {
     ]);
     expect(payload[0].grams).toBe(150);
   });
+
+  it("items'ı MealPayload'a taşır (kalem kırılımı kaybolmaz)", () => {
+    const items = [
+      { name: "Yulaf", nutrition: { kcal: 200, protein: 5, carbs: 30, fat: 4, fiber: 3 } },
+    ];
+    const payload = toPayload([
+      {
+        id: "1",
+        label: "Yulaf + Sos",
+        computed: { kcal: 300, protein: 6, carbs: 32, fat: 10, fiber: 3 },
+        items,
+      },
+    ]);
+    expect(payload[0].items).toEqual(items);
+  });
+
+  it("items VARKEN grams yazılmaz (çift kopya: gramaj items[].grams'ta yaşar)", () => {
+    const payload = toPayload([
+      {
+        id: "1",
+        label: "Yulaf + Sos",
+        computed: { kcal: 300, protein: 6, carbs: 32, fat: 10, fiber: 3 },
+        items: [{ name: "Yulaf", nutrition: { kcal: 300, protein: 6, carbs: 32, fat: 10, fiber: 3 }, grams: 80 }],
+        grams: 80,
+      },
+    ]);
+    expect("grams" in payload[0]).toBe(false);
+  });
+
+  it("items boş dizi ise grams yine de yazılır (items yok sayılır)", () => {
+    const payload = toPayload([
+      {
+        id: "1",
+        label: "Elle",
+        computed: { kcal: 100, protein: 1, carbs: 1, fat: 1, fiber: 1 },
+        items: [],
+        grams: 50,
+      },
+    ]);
+    expect(payload[0].grams).toBe(50);
+    expect("items" in payload[0]).toBe(false);
+  });
 });
 
 describe("resolveWriteDays", () => {

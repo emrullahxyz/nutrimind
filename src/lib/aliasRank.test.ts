@@ -121,6 +121,34 @@ describe("buildUsageIndex", () => {
     const index = buildUsageIndex(days, defaultGoals);
     expect(index.size).toBe(0);
   });
+
+  it("items[].sources alias linkini sayar (öğün-düz sources olmadan)", () => {
+    const days: Days = {
+      "2026-08-01": [
+        {
+          id: "m1",
+          label: "Kahvaltı",
+          computed: dummyNutrition,
+          items: [
+            {
+              name: "Yulaf",
+              nutrition: dummyNutrition,
+              sources: [{ aliasId: "yulaf", qty: 100, unit: "g" }],
+            },
+            {
+              name: "Muz",
+              nutrition: dummyNutrition,
+              sources: [{ aliasId: "muz", qty: 1, unit: "adet" }],
+            },
+          ],
+        },
+      ],
+    };
+
+    const index = buildUsageIndex(days, defaultGoals);
+    expect(index.get("yulaf")?.count).toBe(1);
+    expect(index.get("muz")?.count).toBe(1);
+  });
 });
 
 describe("rankAliases", () => {

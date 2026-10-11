@@ -4,6 +4,7 @@
 import type { Alias } from "../types";
 import type { Days } from "./days";
 import { datesDesc } from "./days";
+import { mealSources } from "./ingredientDraft";
 import { parseNum } from "./nutrition";
 
 export interface QuantityEstimate {
@@ -80,9 +81,12 @@ export function usualQuantity(
     for (const meal of meals) {
       if (samples.length >= 10) break;
 
-      if (Array.isArray(meal.sources)) {
-        // Yapısal veri mevcut: `sources` dizisini kontrol et
-        for (const s of meal.sources) {
+      // Öğün iki yoldan kaynak taşır (düz `sources` ve `items[].sources`);
+      // ikisini birleşik görmek için `mealSources`. Yapısal kaynak VARSA
+      // (items dâhil) regex yedeğine DÜŞÜLMEZ.
+      const sources = mealSources(meal);
+      if (sources.length > 0) {
+        for (const s of sources) {
           if (samples.length >= 10) break;
           if (
             s.aliasId === aliasId &&

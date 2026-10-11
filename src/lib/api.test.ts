@@ -52,6 +52,41 @@ describe("parseDays", () => {
       parseDays(raw([{ name: "A", nutrition: { kcal: 1 }, grams: "150" }]))["2026-10-05"][0].grams,
     ).toBeUndefined();
   });
+
+  it("items'ı MealItem'a taşır (kalem kırılımı sunucu gidiş-dönüşünde kaybolmaz)", () => {
+    const days = parseDays(
+      raw([
+        {
+          name: "Kahvaltı",
+          nutrition: { kcal: 300 },
+          items: [
+            { name: "Yulaf", nutrition: { kcal: 200 }, sources: [{ aliasId: "yulaf", qty: 90, unit: "g" }] },
+            { name: "Ev sosu", nutrition: { kcal: 100 }, grams: 40 },
+          ],
+        },
+      ]),
+    );
+    const items = days["2026-10-05"][0].items;
+    expect(items).toHaveLength(2);
+    expect(items?.[0]).toEqual({
+      name: "Yulaf",
+      nutrition: expect.objectContaining({ kcal: 200 }),
+      sources: [{ aliasId: "yulaf", qty: 90, unit: "g" }],
+    });
+    expect(items?.[1]).toEqual({
+      name: "Ev sosu",
+      nutrition: expect.objectContaining({ kcal: 100 }),
+      grams: 40,
+    });
+  });
+
+  it("bozuk items boş/atılır — items yoksa alan hiç yazılmaz", () => {
+    // namesiz kalem + dizi olmayan items → boş sonuç → alan YAZILMAZ.
+    const days = parseDays(
+      raw([{ name: "X", nutrition: { kcal: 1 }, items: [{ nutrition: { kcal: 1 } }, "çöp"] }]),
+    );
+    expect("items" in days["2026-10-05"][0]).toBe(false);
+  });
 });
 
 describe("parseSources", () => {

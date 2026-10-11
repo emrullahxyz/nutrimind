@@ -213,6 +213,7 @@ interface RawMeal {
   name: string;
   nutrition: RawNutrition;
   sources?: unknown;
+  items?: unknown;
   loggedAt?: unknown;
   category?: unknown;
   templateId?: unknown;
@@ -294,6 +295,7 @@ export function parseDays(raw: RawData): Record<string, MealItem[]> {
   for (const [date, meals] of Object.entries(raw.days ?? {})) {
     days[date] = (meals ?? []).map((m, i) => {
       const parsedSources = parseSources(m.sources);
+      const items = parseTemplateItems(m.items);
       const loggedAt = parseLoggedAt(m.loggedAt);
       const category = parseMealCategory(m.category);
       const templateId = parseTemplateId(m.templateId);
@@ -303,6 +305,7 @@ export function parseDays(raw: RawData): Record<string, MealItem[]> {
         label: m.name,
         computed: fill(m.nutrition),
         ...(parsedSources ? { sources: parsedSources } : {}),
+        ...(items.length > 0 ? { items } : {}),
         ...(loggedAt ? { loggedAt } : {}),
         ...(category ? { category } : {}),
         ...(templateId ? { templateId } : {}),

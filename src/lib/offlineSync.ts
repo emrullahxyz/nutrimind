@@ -249,16 +249,37 @@ function classifyOperation(
   }
 }
 
-/** Öğün dizisindeki `sources[].aliasId` değerlerini `aliasMap` üzerinden gerçek
- *  id'lere çevirir; eşleşen kaynak YOKSA diziyi AYNEN döndürür (referans
- *  korunur — gereksiz kuyruk yazımı olmaz). İki kullanım yeri: sync akışında
- *  biriktirilen `aliasMap` ve kuyruk yeniden yazımında tek girişli map. */
+/** Öğün dizisindeki `sources[].aliasId` (ve `items[].sources[].aliasId`)
+ *  değerlerini `aliasMap` üzerinden gerçek id'lere çevirir; eşleşen kaynak
+ *  YOKSA diziyi AYNEN döndürür (referans korunur — gereksiz kuyruk yazımı
+ *  olmaz). İki kullanım yeri: sync akışında biriktirilen `aliasMap` ve kuyruk
+ *  yeniden yazımında tek girişli map. */
 function remapMeals(meals: MealPayload[], aliasMap: Map<string, string>): MealPayload[] {
-  if (!meals.some((m) => m.sources?.some((s) => aliasMap.has(s.aliasId)))) return meals;
+  if (
+    !meals.some((m) => m.sources?.some((s) => aliasMap.has(s.aliasId))) &&
+    !meals.some((m) => m.items?.some((it) => it.sources?.some((s) => aliasMap.has(s.aliasId))))
+  ) {
+    return meals;
+  }
   return meals.map((m) => ({
     ...m,
     ...(m.sources
       ? { sources: m.sources.map((s) => ({ ...s, aliasId: aliasMap.get(s.aliasId) ?? s.aliasId })) }
+      : {}),
+    ...(m.items
+      ? {
+          items: m.items.map((it) =>
+            it.sources
+              ? {
+                  ...it,
+                  sources: it.sources.map((s) => ({
+                    ...s,
+                    aliasId: aliasMap.get(s.aliasId) ?? s.aliasId,
+                  })),
+                }
+              : it,
+          ),
+        }
       : {}),
   }));
 }

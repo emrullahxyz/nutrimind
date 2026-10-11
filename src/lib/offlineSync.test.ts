@@ -506,6 +506,78 @@ describe("syncPending — alias yerel id eşlemesi", () => {
     expect(result.synced).toBe(2);
   });
 
+  it("items[].sources içindeki local id de gerçek id'ye çevrilir (kalem kırılımı)", async () => {
+    apiMocks.saveAlias.mockResolvedValue({ ok: true, id: "a_real" });
+    apiMocks.saveDay.mockResolvedValue({ ok: true });
+    queue = [
+      op({
+        id: "op1",
+        kind: "save-alias",
+        alias: localAlias,
+        localId: "local:a",
+        base: makeData({}, [{ id: "local:a", triggers: ["x"], name: "X", brand: null, serving_g: 100, nutrition: MEAL }]),
+      }),
+      op({
+        id: "op2",
+        kind: "save-day",
+        date: "2026-08-28",
+        meals: [
+          {
+            name: "X öğünü",
+            nutrition: MEAL,
+            items: [
+              { name: "X", nutrition: MEAL, sources: [{ aliasId: "local:a", qty: 1, unit: "adet" }] },
+            ],
+          },
+        ],
+        base: makeData({}, [{ id: "local:a", triggers: ["x"], name: "X", brand: null, serving_g: 100, nutrition: MEAL }]),
+      }),
+    ];
+
+    const result = await syncPending();
+
+    expect(apiMocks.saveDay).toHaveBeenCalledWith("2026-08-28", [
+      {
+        name: "X öğünü",
+        nutrition: MEAL,
+        items: [{ name: "X", nutrition: MEAL, sources: [{ aliasId: "a_real", qty: 1, unit: "adet" }] }],
+      },
+    ]);
+    expect(result.synced).toBe(2);
+  });
+
+  it("eşleşen kaynak yoksa gün kaydı kuyruğa AYNEN yazılmaz (gereksiz update yok)", async () => {
+    // Yeni yerel alias oluşturuluyor ama day kaydı BAŞKA bir alias'a
+    // referans veriyor — remapMeals eşleşme bulmaz, referans korunur ve
+    // kuyruk yeniden YAZILMAZ (persistLocalIdRemap updateOperation çağırmaz).
+    apiMocks.saveAlias.mockResolvedValue({ ok: true, id: "a_real" });
+    apiMocks.saveDay.mockRejectedValue(new TypeError("Failed to fetch")); // sync yarıda kalsın
+    queue = [
+      op({
+        id: "op1",
+        kind: "save-alias",
+        alias: localAlias,
+        localId: "local:a",
+        base: makeData({}, [{ id: "local:a", triggers: ["x"], name: "X", brand: null, serving_g: 100, nutrition: MEAL }]),
+      }),
+      op({
+        id: "op2",
+        kind: "save-day",
+        date: "2026-08-28",
+        meals: [{ name: "Y", nutrition: MEAL, sources: [{ aliasId: "baska_alias", qty: 1, unit: "g" }] }],
+        base: makeData({}, [{ id: "local:a", triggers: ["x"], name: "X", brand: null, serving_g: 100, nutrition: MEAL }]),
+      }),
+    ];
+
+    await syncPending();
+
+    // Gün kaydı başka alias'a bağlı — kuyruktaki meals değişmemeli.
+    const stored = queue.find((o) => o.id === "op2");
+    expect(
+      stored && stored.kind === "save-day" ? stored.meals[0].sources?.[0].aliasId : undefined,
+    ).toBe("baska_alias");
+  });
+
   it("alias+day aynı kuyrukta, day gönderilemeden sync kesilirse day kaydı kuyruğa gerçek id ile yazılır", async () => {
     // Alias gönderilir (a_real), day kaydı ise AĞ HATASI nedeniyle sync
     // yarıda kesilmeden önce gönderilemez. persistLocalIdRemap day kaydının

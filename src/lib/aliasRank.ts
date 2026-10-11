@@ -6,6 +6,7 @@ import { normalizeTr } from "./aliasFilter";
 import { datesDesc, mealsOf, type Days } from "./days";
 import { weekdayIndex } from "./format";
 import { effectiveProfile } from "./goals";
+import { mealSources } from "./ingredientDraft";
 
 export interface AliasUsageStats {
   count: number;
@@ -40,9 +41,12 @@ export function buildUsageIndex(days: Days, goals: GoalConfig): UsageIndex {
 
     for (let mealIdx = 0; mealIdx < meals.length; mealIdx++) {
       const meal = meals[mealIdx];
-      if (!meal.sources || meal.sources.length === 0) continue;
+      // Öğün iki yoldan kaynak taşır (düz `sources` ve `items[].sources`);
+      // ikisini birleşik görmek için `mealSources` (bkz. ingredientDraft).
+      const sources = mealSources(meal);
+      if (sources.length === 0) continue;
 
-      for (const source of meal.sources) {
+      for (const source of sources) {
         const aliasId = source.aliasId;
         if (!aliasId) continue;
 

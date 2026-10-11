@@ -28,10 +28,14 @@ export function applyOperation(data: AppData, operation: OfflineOperation): AppD
             label: meal.name,
             computed: meal.nutrition,
             ...(meal.sources ? { sources: meal.sources } : {}),
+            ...(meal.items && meal.items.length > 0 ? { items: meal.items } : {}),
             ...(meal.loggedAt ? { loggedAt: meal.loggedAt } : {}),
             ...(meal.category ? { category: meal.category } : {}),
             ...(meal.templateId ? { templateId: meal.templateId } : {}),
-            ...(meal.grams !== undefined ? { grams: meal.grams } : {}),
+            // items varken grams YAZILMAZ — çift kopya kuralı (bkz. days.toPayload).
+            ...(meal.grams !== undefined && !(meal.items && meal.items.length > 0)
+              ? { grams: meal.grams }
+              : {}),
           })),
         },
       };

@@ -242,4 +242,32 @@ describe("usualQuantity", () => {
     const yogurtResult = usualQuantity(days, "yogurt", "g", mockAliases);
     expect(yogurtResult).toEqual({ value: 200, sampleCount: 2 }); // (150 + 250)/2 = 200
   });
+
+  it("items[].sources alias linkinden miktar okur (yapısal items, öğün-düz sources yok)", () => {
+    const days: Days = {
+      "2026-07-30": [
+        {
+          id: "1",
+          label: "Kahvaltı",
+          computed: { kcal: 90, protein: 4.5, carbs: 6, fat: 4.5, fiber: 0 },
+          items: [
+            { name: "Yoğurt", nutrition: { kcal: 90, protein: 4.5, carbs: 6, fat: 4.5, fiber: 0 }, sources: [{ aliasId: "yogurt", qty: 150, unit: "g" }] },
+          ],
+        },
+      ],
+      "2026-07-29": [
+        {
+          id: "2",
+          label: "Kahvaltı",
+          computed: { kcal: 60, protein: 3, carbs: 4, fat: 3, fiber: 0 },
+          items: [
+            { name: "Yoğurt", nutrition: { kcal: 60, protein: 3, carbs: 4, fat: 3, fiber: 0 }, sources: [{ aliasId: "yogurt", qty: 100, unit: "g" }] },
+          ],
+        },
+      ],
+    };
+
+    // 100, 150 → medyan 125. Regex yedeğine düşülmez (etiket "Kahvaltı").
+    expect(usualQuantity(days, "yogurt", "g", mockAliases)).toEqual({ value: 125, sampleCount: 2 });
+  });
 });

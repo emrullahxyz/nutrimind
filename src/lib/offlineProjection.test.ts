@@ -67,6 +67,48 @@ describe("offline projection", () => {
     expect(applyOperation(base, operation).days["2026-08-28"][0].grams).toBe(150);
   });
 
+  it("save-day items'ı projeksiyona taşır (offline'da kalem kırılımı kaybolmaz)", () => {
+    const items = [{ name: "Yulaf", nutrition: { kcal: 200, protein: 5, carbs: 30, fat: 4, fiber: 3 } }];
+    const operation: OfflineOperation = {
+      id: "1",
+      kind: "save-day",
+      date: "2026-08-28",
+      meals: [
+        {
+          name: "Yulaf + Sos",
+          nutrition: { kcal: 300, protein: 6, carbs: 32, fat: 10, fiber: 3 },
+          items,
+        },
+      ],
+      base,
+      createdAt: "2026-08-28T10:00:00Z",
+      retryCount: 0,
+      status: "pending",
+    };
+    expect(applyOperation(base, operation).days["2026-08-28"][0].items).toEqual(items);
+  });
+
+  it("save-day items VARKEN grams yazılmaz (çift kopya)", () => {
+    const operation: OfflineOperation = {
+      id: "1",
+      kind: "save-day",
+      date: "2026-08-28",
+      meals: [
+        {
+          name: "Yulaf + Sos",
+          nutrition: { kcal: 300, protein: 6, carbs: 32, fat: 10, fiber: 3 },
+          items: [{ name: "Yulaf", nutrition: { kcal: 300, protein: 6, carbs: 32, fat: 10, fiber: 3 }, grams: 80 }],
+          grams: 80,
+        },
+      ],
+      base,
+      createdAt: "2026-08-28T10:00:00Z",
+      retryCount: 0,
+      status: "pending",
+    };
+    expect("grams" in applyOperation(base, operation).days["2026-08-28"][0]).toBe(false);
+  });
+
   it("projects alias create and update", () => {
     const operation: OfflineOperation = {
       id: "1",

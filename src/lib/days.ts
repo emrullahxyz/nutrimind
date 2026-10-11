@@ -40,10 +40,13 @@ export function toPayload(meals: MealItem[]): MealPayload[] {
     name: m.label,
     nutrition: m.computed,
     ...(m.sources && m.sources.length > 0 ? { sources: m.sources } : {}),
+    ...(m.items && m.items.length > 0 ? { items: m.items } : {}),
     ...(m.loggedAt ? { loggedAt: m.loggedAt } : {}),
     ...(m.category ? { category: m.category } : {}),
     ...(m.templateId ? { templateId: m.templateId } : {}),
-    ...(m.grams !== undefined ? { grams: m.grams } : {}),
+    // items varken grams YAZILMAZ — gramaj her kalemin `items[].grams`'ında
+    // yaşar; öğün-düzeyi ikinci kopya birinin eskimesi demektir.
+    ...(m.grams !== undefined && !(m.items && m.items.length > 0) ? { grams: m.grams } : {}),
   }));
 }
 
