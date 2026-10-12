@@ -627,16 +627,21 @@ export function itemsToDraftLines(items: TemplateItem[], aliases: Alias[]): Draf
       out.push(measured);
       continue;
     }
+    // Taban SEED anında çözülür: `item.grams` (kayıtlı) > isimdeki "(500g)" >
+    // yok. AI/metin akışı gramı isme yazar (server baseAmount'u items'a
+    // taşımaz); bu yüzden isimden okumak zorunlu, yoksa taban 0 kalır ve
+    // kullanıcı gram yazınca ölçeklenecek referans bulunmaz.
+    const base = resolveBaseGrams(item.name, item.grams);
     out.push({
       key: `draft-item-${i}-${item.name}`,
       aliasId: null,
       name: item.name,
-      qty: item.grams !== undefined ? String(item.grams) : "",
+      qty: base > 0 ? String(base) : "",
       unit: "g",
-      grams: item.grams ?? 0,
+      grams: base,
       nutrition: item.nutrition,
-      nutritionGrams: item.grams ?? 0,
-      preserved: (item.grams ?? 0) <= 0,
+      nutritionGrams: base,
+      preserved: base <= 0,
       manualMeasured: false,
       blank: false,
       fromRecord: true,

@@ -1173,6 +1173,33 @@ describe("itemsToDraftLines", () => {
     expect(l.preserved).toBe(true);
     expect(l.name).toBe("Kayıp");
   });
+
+  it("grams'sız AMA isminde (500g) olan kalem: taban isimden gelir, ölçülebilir", () => {
+    const items: TemplateItem[] = [
+      {
+        name: "Mantarlı Tagliatelle (500g)",
+        nutrition: { kcal: 950, protein: 30, carbs: 90, fat: 40, fiber: 4 },
+      },
+    ];
+    const [l] = itemsToDraftLines(items, []);
+    expect(l.grams).toBe(500);
+    expect(l.nutritionGrams).toBe(500);
+    expect(l.qty).toBe("500");
+    expect(l.preserved).toBe(false);
+  });
+
+  it("ne grams ne isimde gram olan kalem: preserved (kilit adayı)", () => {
+    const items: TemplateItem[] = [
+      {
+        name: "Bilinmeyen yemek",
+        nutrition: { kcal: 400, protein: 20, carbs: 40, fat: 15, fiber: 3 },
+      },
+    ];
+    const [l] = itemsToDraftLines(items, []);
+    expect(l.grams).toBe(0);
+    expect(l.nutritionGrams).toBe(0);
+    expect(l.preserved).toBe(true);
+  });
 });
 
 describe("mealDraftLines — items dalı", () => {
