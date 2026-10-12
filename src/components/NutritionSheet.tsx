@@ -57,41 +57,6 @@ export function scaleMealNutrition(computed: Nutrition | undefined, multiplier: 
   };
 }
 
-/** Miktar alanı KİLİTLİ mi?
- *
- *  Kilit gerekçesi `fromRecord` koşuludur: yalnız KAYITTAN gelip ölçülemeyen
- *  (çözülmeyen) satır kilitlenir. İki koşul daha vardır:
- *   • `preserved`   — bu satırın miktarı BİLİNMIYOR (kayıttan geldi, ölçülemedi).
- *   • `!alias`      — ölçecek bir taban yok (`MealItem.sources` miktarı ancak
- *     bir `aliasId` ile saklar; alias yoksa yazılan sayı kayda giremezdi).
- *
- *  `fromRecord` olmayan bilinmeyen gramaj AÇIKTIR. Özellikle AI kalemi
- *  (gramajsız baseAmount): miktarı bilinmiyor AMA kullanıcı gramı yazabilmeli
- *  (Task 4 — ilk gram taban olur, `setDraftGrams` kurar ve makro korunur).
- *  Kayıttan gelen bilinmeyen → kilit: besine bağlanmamış kayıt kaleminde
- *  `preserved` düşürülemez (bayrak düşseydi kayıttan gelen gerçek miktar
- *  uydurulurdu), `alias` da yok, dolayısıyla yazılan gramaj kayda giremezdi —
- *  "girilebilir ama kaydedilemez" 2. tur hatası kilitlenir. <— BEKLENEN KILIT.
- *
- *  Kilit kodunun kendisi eskiden "ölü" sayılıyordu (`mealDraftLines`'in
- *  ya-hiç-ya-hiçbiri kuralı alias'sız satırı çizmeyebiliyordu); Task 3
- *  (2026-10-11) kırılımlı `items` yolunu açınca yukarıdaki korunmuş kayıt
- *  kalemi artık GERCEKLEŞEBİLİR hale geldi ve `fromRecord` onu netler —
- *  AI'dan gelen aynı şekildeki korunmuş satır DIŞARIDA kalır.
- *
- *  JSX içine gömülü bırakılırsa test edilemez; bu yüzden dışa açıktır
- *  (`NutritionSheet.test.ts` — jsdom'suz, saf fonksiyon). */
-export function isAmountLocked(line: DraftLine, alias: Alias | undefined): boolean {
-  // Kilit, "miktarı hiç yazılamaz" ayrıcalığıdır ve yalnızca GERÇEKTEN
-  // bilinmeyen miktarda geçerli. AI kalemi (gramajsız baseAmount) bilinmiyor
-  // AMA kullanıcı gramı yazabilmeli (Task 4'te taban kurulur); kayıttan
-  // gelen kalemin de gramajı düzenlenebilir olmalı — makro line.grams
-  // oranıyla ölçeklenir, kayıt bozulmaz (L20). Kilit, yalnız "elle girilen
-  // ad + makro" ile klavye savaşını önlemek üzere reserved değildir; bu
-  // koşul AI'e uygulanmaz (AI makrosu gerçektir, elle değildir).
-  return line.preserved && !alias && line.fromRecord;
-}
-
 /** Kaydın çözülebilen kalem satırları + tam düzenleme (ekle/sil/gramaj/swap).
  *  Saf kurallar `lib/ingredientDraft.ts`'te. */
 function IngredientLines({
@@ -177,7 +142,6 @@ function IngredientLines({
       <ul className="space-y-2">
         {lines.map((line) => {
           const alias = aliasOfLine(aliases, line);
-          const locked = isAmountLocked(line, alias);
           return (
             <li
               key={line.key}
@@ -225,9 +189,8 @@ function IngredientLines({
                     suffix={line.unit}
                     value={line.qty}
                     onChange={(v) => patch(line.key, setDraftGrams(line, v, alias ?? null))}
-                    disabled={locked}
                   />
-                  {locked && (
+                  {line.preserved && line.grams <= 0 && (
                     <p className="mt-1 text-[11px] text-amber-300">
                       {t("nutrition.ingredientAmountUnknown")}
                     </p>

@@ -60,7 +60,12 @@ export interface DraftLine {
    *  Taban bir kez kurulur ve ÖLÇEKLEME sırasında DEĞİŞMEZ: kullanıcı
    *  100 g/225 kcal yazdıktan sonra 50'ye indirip tekrar 100'e çıkarırsa
    *  225 kcal'ye döner. `sources`'lı (ölçülebilir) satırlarda kullanılmaz —
-   *  onlarda taban alias'ın `serving_g`'sidir ve `draftLineFromAlias` yazar. */
+   *  onlarda taban alias'ın `serving_g`'sidir ve `draftLineFromAlias` yazar.
+   *
+   *  TEK İSTİSNA — gram alanı TEMİZLENİNCE (`grams <= 0`) taban, o an
+   *  `nutrition`'ın ait olduğu son ölçülen gramaja demirlenir. Böylece
+   *  "sil → yeniden yaz" eski tabanı EZMEZ: temizlemeden sonra yazılan yeni
+   *  gram yine bu tabana oranlanır (L20). */
   nutritionGrams: number;
   /** true = bu kalem kayıttan geldi ama gramajı ÇÖZÜLEMEDİ; `grams` 0'dır ve
    *  ölçüm değildir. Kayıtta KORUNUR (bkz. `draftLinesToItems`), `sources`
@@ -315,20 +320,29 @@ export function setDraftGrams(line: DraftLine, gramsText: string, alias: Alias |
       line.nutritionGrams > 0 ||
       line.nutrition.kcal > 0 ||
       line.nutrition.protein > 0;
-    return { ...line, qty: gramsText, unit: "g", grams: 0, preserved };
+    return {
+      ...line,
+      qty: gramsText,
+      unit: "g",
+      grams: 0,
+      // `nutrition` en son ÖLÇÜLEN gramaja ait; temizleme anında demiri
+      // güncelle ki yeniden yazım o noktadan oranlasın (L20).
+      nutritionGrams: line.grams > 0 ? line.grams : line.nutritionGrams,
+      preserved,
+    };
   }
 
   const base = line.nutritionGrams;
-  if (base > 0 && line.grams > 0) {
-    // Taban belliyse oranla. `line.nutrition` `line.grams` içindir; taban
-    // `base` gramaja ait. Yeni miktar bu ikisinin oranıyla gelir:
-    // taban 100 g, mevcut 50 g, yeni 25 g → 0,25.
+  if (base > 0) {
+    // Referans: ölçülen gram varsa o (`nutrition` ona ait), yoksa temizleme
+    // anında demirlenen taban. Böylece "sil → yeniden yaz" eski tabanı ezmez.
+    const ref = line.grams > 0 ? line.grams : base;
     return {
       ...line,
       qty: gramsText,
       unit: "g",
       grams,
-      nutrition: scaleNutritionByFactor(line.nutrition, grams / line.grams),
+      nutrition: scaleNutritionByFactor(line.nutrition, grams / ref),
       preserved: false,
     };
   }

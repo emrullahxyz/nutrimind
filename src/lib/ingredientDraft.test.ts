@@ -803,6 +803,22 @@ describe("hafızada olmayan kalemde grama göre ölçekleme", () => {
     expect(sonraki.nutrition.fat).toBe(10);
   });
 
+  it("gram temizlenip yeniden yazılınca TABAN kaymaz: 100g/225kcal → sil → 200 = 450 kcal (L20)", () => {
+    const satir = kayitliKalem(); // 100 g / 225 kcal, nutritionGrams 100
+    const bos = setDraftGrams(satir, "", null);
+    const yeniden = setDraftGrams(bos, "200", null);
+    expect(yeniden.nutrition.kcal).toBe(450);
+    expect(yeniden.nutritionGrams).toBe(100); // taban ezilmedi
+  });
+
+  it("kademeli yazım da doğru oranlar: sil → 2 → 20 → 200 = 450 kcal", () => {
+    let l = setDraftGrams(kayitliKalem(), "", null);
+    l = setDraftGrams(l, "2", null);
+    l = setDraftGrams(l, "20", null);
+    l = setDraftGrams(l, "200", null);
+    expect(l.nutrition.kcal).toBe(450);
+  });
+
   it("taban KORUNUR: 50'ye inip 100'e dönünce değerler geri gelir", () => {
     const yarisi = setDraftGrams(kayitliKalem(), "50", null);
     const tamami = setDraftGrams(yarisi, "100", null);

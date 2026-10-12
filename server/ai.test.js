@@ -552,13 +552,35 @@ describe("baseAmount — metin/fotoğraf istemleri", () => {
       NUTRIMIND_LLM_PROVIDER: "gemini",
       GEMINI_API_KEY: "test_gemini_key",
     });
+    // Her dilin KENDİ porsiyon-gramaj cümlesi — dil başına ayrı doğrulanır ki
+    // bir isteme yanlış dilin kuralı sızarsa test kırmızıya dönsün.
+    const needleOf = { en: "portion size in GRAMS", tr: "porsiyon gramajını", pl: "wagę porcji" };
     for (const lang of ["tr", "en", "pl"]) {
+      // (i) METİN istemi
       const mock = vi.fn().mockResolvedValue(makeGeminiOkResponse());
       vi.stubGlobal("fetch", mock);
       await parseMealText({ text: "1 elma", aliases: [], lang });
       const textPrompt = JSON.parse(mock.mock.calls[0][1].body).contents[0].parts[0].text;
       expect(textPrompt).toContain("baseAmount");
+      expect(textPrompt).toContain(needleOf[lang]);
       expect(textPrompt).not.toContain("otherwise write 0");
+      vi.unstubAllGlobals();
+      vi.resetAllMocks();
+
+      // (ii) YEMEK-FOTOĞRAFI istemi — aynı porsiyon kuralını taşımalı.
+      const imgMock = vi.fn().mockResolvedValue(makeGeminiOkResponse());
+      vi.stubGlobal("fetch", imgMock);
+      await parseMealImage({
+        imageBase64: "x",
+        mimeType: "image/jpeg",
+        mode: "food_photo",
+        aliases: [],
+        lang,
+      });
+      const photoPrompt = JSON.parse(imgMock.mock.calls[0][1].body).contents[0].parts[0].text;
+      expect(photoPrompt).toContain("baseAmount");
+      expect(photoPrompt).toContain(needleOf[lang]);
+      vi.unstubAllGlobals();
       vi.resetAllMocks();
     }
   });
