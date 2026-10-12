@@ -307,8 +307,7 @@ export function setDraftGrams(line: DraftLine, gramsText: string, alias: Alias |
   const parsed = parseNum(gramsText);
   const grams = parsed > 0 ? parsed : 0;
 
-  // Geçersiz/boş gramaj: değerler ESKİ kalır (titreme olmaz), kullanıcının
-  // sildiği miktar kayda giremez — `draftLinesToItems` satırı düşürür.
+  // Geçersiz/boş gramaj: değerler ESKİ kalır (titreme olmaz).
   if (grams <= 0) {
     // Makroya dokunma (titreme yok). `fromRecord` ya da gerçek makro
     // (AI/kayıt) satırı korur: kullanıcının SİLDİĞİ miktar `draftLinesToItems`
@@ -347,21 +346,10 @@ export function setDraftGrams(line: DraftLine, gramsText: string, alias: Alias |
     };
   }
 
-  // Taban yok: kullanıcı makroyu kendi yazdıysa bu miktar onun da tabanı olur.
-  if (line.manualMeasured) {
-    return {
-      ...line,
-      qty: gramsText,
-      unit: "g",
-      grams,
-      nutritionGrams: grams,
-      preserved: false,
-    };
-  }
-  // Makro GERÇEK ama taban yok (baseAmount'suz AI kalemi): ilk gram taban
-  // olur, makro O miktara aittir (L20 — tek oranlama noktası). Sonraki
-  // çağrılar `base>0` dalından `yeniGram/eskiGram` oranlar.
-  if (line.nutrition.kcal > 0 || line.nutrition.protein > 0) {
+  // Taban yok ama makro GERÇEK (elle yazılmış ya da baseAmount'suz AI kalemi):
+  // ilk gram taban olur, makro O miktara aittir (L20). Sonraki çağrılar
+  // `base>0` dalından oranlar.
+  if (line.manualMeasured || line.nutrition.kcal > 0 || line.nutrition.protein > 0) {
     return {
       ...line,
       qty: gramsText,

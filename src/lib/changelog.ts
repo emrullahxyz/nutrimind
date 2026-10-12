@@ -13,7 +13,7 @@ export interface ChangeLogVersion {
 
 export const CHANGELOG: ChangeLogVersion[] = [
   {
-    version: "0.32.0",
+    version: "0.31.9",
     date: "2026-10-12",
     summary: {
       tr: "AI ile eklediğin kalemlerde miktar (gramaj) artık düzenlenebilir; miktarı değiştirince kalori ve besin değerleri o miktara göre yeniden hesaplanıyor. Fotoğrafla eklenen öğünlerde porsiyon tahmini otomatik geliyor.",
