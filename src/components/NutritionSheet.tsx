@@ -11,6 +11,7 @@ import { addNutrition, scaleMealSources } from "../lib/nutrition";
 import {
   addDraftLine,
   aliasOfLine,
+  canEditGrams,
   draftLinesToItems,
   mealDraftLines,
   newDraftLine,
@@ -188,6 +189,7 @@ function IngredientLines({
                     label={t("nutrition.ingredientGrams")}
                     suffix={line.unit}
                     value={line.qty}
+                    disabled={!canEditGrams(line)}
                     onChange={(v) => patch(line.key, setDraftGrams(line, v, alias ?? null))}
                   />
                   {line.preserved && line.grams <= 0 && (

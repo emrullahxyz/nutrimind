@@ -445,6 +445,21 @@ export function addDraftLine(lines: DraftLine[], line: DraftLine): DraftLine[] {
   return [...lines, line];
 }
 
+/** Gram alanı düzenlenebilir mi? Taban (`nutritionGrams`) yoksa ölçekleme
+ *  YAPILAMAZ — kullanıcının yazdığı miktarı makroya oranlayamayız (L20). Bu
+ *  yüzden miktarı BİLİNMEYEN korunmuş kalemde alan KİLİTLİDİR (kullanıcı
+ *  kararı: "isimde gram veya base gramaj alınacak kaynak yoksa gramaj
+ *  değiştirme mümkün olmasın").
+ *
+ *  Kilit AÇIK olan iki durum:
+ *   • `nutritionGrams > 0` — taban var (baseAmount, kayıtlı gram ya da
+ *     isimdeki "(500g)"), ölçeklenebilir.
+ *   • `!preserved` — taze/elle satır (kullanıcı yeni kalem kuruyor): burada
+ *     gram yazmak ÖLÇÜM üretir, taban ilk gramdan kurulur (manualMeasured). */
+export function canEditGrams(line: DraftLine): boolean {
+  return line.nutritionGrams > 0 || !line.preserved;
+}
+
 /** Miktar alanı değiştirilince kullanıcıya gösterilecek geri bildirim.
  *
  *  ÖLÇÜLEN HATA (tarayıcı): hafızaya bağlı olmayan bir kalemde 90 g → 45 g

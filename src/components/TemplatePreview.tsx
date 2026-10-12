@@ -17,6 +17,7 @@ import type { AIParseItem, Alias } from "../types";
 import {
   addDraftLine,
   aliasOfLine,
+  canEditGrams,
   draftGramHint,
   draftLinesToItems,
   hasUnnamedItem,
@@ -365,6 +366,7 @@ export function TemplatePreview({
                         label={t("nutrition.ingredientGrams")}
                         suffix={line.unit}
                         value={line.qty}
+                        disabled={!canEditGrams(line)}
                         onChange={(v) => {
                           // Önceki satır GÖVDEDE okunur: `setHint` içinde
                           // state updater'ı kullanmak StrictMode'da iki kez
@@ -375,25 +377,18 @@ export function TemplatePreview({
                           patch(line.key, sonraki);
                         }}
                       />
-                      {/* Korunan kalem: gramajı kayıttan geldiği için varsa gösterilir,
-                          yoksa BİLİNMİYOR (0 g değil) — makrosu gerçek.
-                          Alan KİLİTLİ DEĞİLDİR: `TemplateItem.grams` gramajı
-                          alias olmadan da saklar.
-
-                          DIKKAT — alias'sız satırda gramaj ÖLÇEK değildir.
-                          `setDraftGrams`'ın elle dalı makroyu BİLEREK
-                          değiştirmez: kullanıcının yazdığı 200 kcal, "100 g'da
-                          kaç kalori var" bilgisinin karşılığı değildir —
-                          ölçeklemek uydurma bir dönüşüm olurdu. İkisi
-                          bağımsız gerçeklerdir: makro ne kadar, gramaj ne kadar.
-
-                          ALIAS'ı OLAN korunmuş satırda: `swapDraftLine`
-                          korunmuş bir satıra besin bağladığında `aliasId` dolar ve
-                          ölçülebilir bir taban (`serving_g`) gelir. `swapDraftLine`
-                          bayrağı koruduğu için bayrak tek başına kilitli görünür;
-                          kilidin kalkması için BİRİKİMİ olması gerekir. Aksi halde
-                          korunmuş satır kalıcı olarak yalnızca silinebilir olurdu:
-                          ne ölçülebilir ne düzeltilebilir. */}
+                      {/* Taban varsa (`nutritionGrams > 0` — baseAmount, kayıtlı
+                          gram ya da isimdeki "(500g)") gramaj DÜZENLENEBİLİR:
+                          yazılan miktar tabana göre oranlar (`setDraftGrams`
+                          `base>0` dalı). Taban YOKSA alan KİLİTLİDİR
+                          (`canEditGrams`): oranlanacak referans olmadan
+                          gramaj yazmak makroyu uydurmaya (kısmi-tuş patlaması)
+                          ya da sessiz tutarsızlığa yol açardı — kullanıcı
+                          kararı: "kaynak yoksa gramaj değiştirme mümkün
+                          olmasın". Kalem yine de SİLİNEBİLİR ya da "besine
+                          bağla" ile hafızaya bağlanıp ölçülebilir hale
+                          getirilebilir (`swapDraftLine` alias'lı satırda
+                          ölçülebilir taban kurar). */}
                       {/* "Miktar bilinmiyor" YALNIZCA gramaj gerçekten yokken. Kayıttan
                           `item.grams` ile gelen satırda miktar BİLİNİYOR
                           (100 g), ama gramajı ölçülemediği için `preserved`
@@ -405,15 +400,12 @@ export function TemplatePreview({
                       )}
                     </div>
                     <div className="flex items-end justify-end">
-                      {/* Hafızaya bağlı satır (alias'lı) VE korunmuş satır aynı
-                          çıkış yolunu sunar: besine bağla. Bu, alias'ı OLMAYAN
-                          korunmuş satırın çıkış yoludur — miktar alanı
-                          `preserved && !alias` yüzünden kilitlidir ve yalnız
-                          `alias` gelince açılır. `swapDraftLine` bayrağı
-                          KORUR (düşürseydi kayıttan gelen gerçek miktarı
-                          uydurmuş olurdu); alanı açılan şey bayrak değil,
-                          bağlanan besindir. Alanı açıp ölçülebilir hale getiren
-                          tek eylem, miktarı YAZMAKTIR. */}
+                      {/* Hafızaya bağlama "besine bağla" düğmesi: tabansız
+                          kilitli satırın ÇIKIŞ YOLUDUR. Alias gelince
+                          `swapDraftLine` ölçülebilir taban (`serving_g`)
+                          kurar ve alan açılır. Kalem ayrıca silinebilir;
+                          kilit veri kaybı değil, "ölçemiyoruz" demenin
+                          görünür hâlidir. */}
                       {/* Hafızaya bağlama düğmesi HER SATIRDA görünür —
                           korunmuş satırda çıkış yoludur; YENİ elle satırda
                           da çıkış yoludur: kullanıcı "Malzeme ekle" dedi,

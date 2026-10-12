@@ -3,6 +3,7 @@ import {
   __setDraftFlag,
   addDraftLine,
   aliasOfLine,
+  canEditGrams,
   draftGramHint,
   draftLineFromAlias,
   draftLinesToItems,
@@ -1427,4 +1428,29 @@ describe("resolveBaseGrams", () => {
   it("baseAmount 0/negatifse isimden okur", () => {
     expect(resolveBaseGrams("Yemek (500g)", 0)).toBe(500);
   });
+});
+
+describe("canEditGrams", () => {
+  const mk = (p: Partial<DraftLine>): DraftLine => ({
+    key: "k",
+    aliasId: null,
+    name: "x",
+    qty: "",
+    unit: "g",
+    grams: 0,
+    nutrition: { kcal: 0, protein: 0, carbs: 0, fat: 0, fiber: 0 },
+    nutritionGrams: 0,
+    preserved: false,
+    manualMeasured: false,
+    blank: false,
+    fromRecord: false,
+    ...p,
+  });
+  it("taban varsa düzenlenebilir", () =>
+    expect(canEditGrams(mk({ nutritionGrams: 500, preserved: false }))).toBe(true));
+  it("tabansız korunmuş kalem kilitli", () => expect(canEditGrams(mk({ preserved: true }))).toBe(false));
+  it("taze/elle satır (korunmuş değil) düzenlenebilir", () =>
+    expect(canEditGrams(mk({ preserved: false }))).toBe(true));
+  it("temizlenmiş ama tabanı demirli satır düzenlenebilir", () =>
+    expect(canEditGrams(mk({ preserved: true, nutritionGrams: 500 }))).toBe(true));
 });
