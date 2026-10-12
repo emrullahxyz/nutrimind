@@ -16,14 +16,16 @@ export const CHANGELOG: ChangeLogVersion[] = [
     version: "0.31.9",
     date: "2026-10-12",
     summary: {
-      tr: "AI ile eklediğin kalemlerde miktar (gramaj) artık düzenlenebilir; miktarı değiştirince kalori ve besin değerleri o miktara göre yeniden hesaplanıyor. Fotoğrafla eklenen öğünlerde porsiyon tahmini otomatik geliyor.",
-      en: "Quantity (grams) is now editable on AI-added ingredients; changing it recalculates calories and macros proportionally. Photo-added meals now include the AI's portion estimate automatically.",
+      tr: "AI ile eklediğin kalemlerde miktar (gramaj) düzenlenebilir; miktarı değiştirince kalori ve besin değerleri o kalemin TABAN gramajına göre doğru oranlanıyor (ör. isimde 500g yazıyorsa 380 g girince 380/500). Taban gramaj alınamayan kalemlerde miktar alanı kilitli kalır. Fotoğrafla eklenen öğünlerde porsiyon tahmini otomatik geliyor.",
+      en: "Quantity (grams) is editable on AI-added ingredients; changing it scales calories and macros correctly against the item's BASE grams (e.g. 380 g on a 500 g item = 380/500). When no base grams can be derived the amount field stays locked. Photo-added meals now include the AI's portion estimate automatically.",
     },
     items: [
       { type: "improved", tr: "AI ile eklenen kalemin gramajı düzenlenebilir — yazdığın miktara göre kalori/makrolar oranlanır.", en: "AI-added ingredient grams are editable — calories/macros scale with the amount you enter." },
+      { type: "fixed", tr: "AI ile eklenen kalemde gramajı değiştirince kalori/makrolar absürt çıkıyordu (100 yazınca ~19000 kcal). Artık kalemin taban gramajına göre oranlanıyor.", en: "Changing grams on an AI-added ingredient produced absurd calories/macros (typing 100 gave ~19000 kcal). Now it scales against the item's base grams." },
+      { type: "improved", tr: "Taban gramaj AI'ın porsiyon tahmininden ya da kalem adındaki '(500g)' gibi ifadeden alınır; ikisi de yoksa miktar alanı kilitli kalır.", en: "The base grams come from the AI's portion estimate or a '(500g)' note in the item name; if neither exists the amount field stays locked." },
       { type: "fixed", tr: "Fotoğrafla (Yemek modu) eklenen kalemlerde miktar 'bilinmiyor' kilitli kalıyordu; artık porsiyon tahmini geliyor, değer düzenlenebilir.", en: "Photo-added (Food mode) ingredients used to stay locked as 'unknown amount'; the portion estimate now comes through and is editable." },
     ],
-    dev: ["server/ai.js metin/fotoğraf istemlerine baseAmount porsiyon kuralı eklendi; itemsToDraftLines grams>0 icin preserved=false; isAmountLocked AI/kayit kaleminde acik; setDraftGrams tabansiz gercek-makrolu kalemde ilk grami taban yapar."],
+    dev: ["server/ai.js metin/fotoğraf istemlerine baseAmount porsiyon kuralı eklendi; itemsToDraftLines tabani isimden cozer (parseGramFromName/resolveBaseGrams); grams>0 icin preserved=false; canEditGrams taban yoksa alani kilitler; setDraftGrams tabansiz dal artik taban UYDURMAZ (kismi-tus patlamasi cozuldu); MealForm baseAmount/grams'i items'a tasir."],
   },
   {
     version: "0.31.8",
