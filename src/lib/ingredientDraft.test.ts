@@ -723,7 +723,7 @@ describe("draftGramHint", () => {
     });
   });
 
-  it("elle girilen kalemde 'hafızada yok' uyarısı verir", () => {
+  it("makrolu tabansız satırda miktar değişince ilk gram TABAN kurulur (scaled ipucu)", () => {
     const onceki: DraftLine = {
       key: "k",
       aliasId: null,
@@ -739,12 +739,14 @@ describe("draftGramHint", () => {
       fromRecord: false,
     };
     const sonraki = setDraftGrams(onceki, "45", null);
-    // Makro BİLEREK değişmez (ölçeklemek uydurma olurdu) — ipucu bunu söyler.
+    // Task 4: ilk gram TABAN kurar, makro O miktara aittir (bu çağrıda oranlanmaz).
+    expect(sonraki.nutritionGrams).toBe(45);
     expect(sonraki.nutrition.kcal).toBe(225);
-    expect(draftGramHint(sonraki, null, onceki)).toEqual({ kind: "noNutrition" });
+    // Makro GERÇEK olduğundan "besin değerini gir" DEĞİL, ölçekleme ipucu gelir.
+    expect(draftGramHint(sonraki, null, onceki)).toEqual({ kind: "scaled", fromGrams: 90, toGrams: 45 });
   });
 
-  it("kayıttan gelip çözülemeyen satırda 'birim tanınmıyor' uyarısı verir", () => {
+  it("real makrolu kayıt satırında miktar değişince TABAN KURULUR (scaled ipucu)", () => {
     const onceki: DraftLine = {
       key: "k",
       aliasId: null,
@@ -759,8 +761,12 @@ describe("draftGramHint", () => {
       blank: false,
       fromRecord: true,
     };
-    expect(draftGramHint(setDraftGrams(onceki, "45", null), null, onceki)).toEqual({
-      kind: "noNutrition",
+    const sonraki = setDraftGrams(onceki, "45", null);
+    expect(sonraki.nutritionGrams).toBe(45);
+    expect(draftGramHint(sonraki, null, onceki)).toEqual({
+      kind: "scaled",
+      fromGrams: 90,
+      toGrams: 45,
     });
   });
 
@@ -821,15 +827,26 @@ describe("hafızada olmayan kalemde grama göre ölçekleme", () => {
     expect(ikiYuz.nutrition.kcal).toBe(450);
   });
 
-  it("geçersiz gramajda değerler ESKİ kalır (titreme olmaz), satır kayda giremez", () => {
+  it("geçersiz gramajda değerler ESKİ kalır (titreme olmaz)", () => {
     const satir = kayitliKalem();
-    for (const bozuk of ["", "abc", "-5"]) {
-      const sonraki = setDraftGrams(satir, bozuk, null);
-      expect(sonraki.grams).toBe(0);
-      expect(sonraki.nutrition.kcal).toBe(225);
-      // Kullanıcının sildiği miktar kayda GİREMEZ.
-      expect(draftLinesToItems([sonraki])).toEqual([]);
-    }
+    const bosluk = setDraftGrams(satir, "", null);
+    expect(bosluk.grams).toBe(0);
+    expect(bosluk.nutritionGrams).toBe(100);
+    expect(bosluk.nutrition.kcal).toBe(225);
+    // fromRecord / real-makrolu satır sildikten sonra KORUNUR — L21.
+    expect(bosluk.preserved).toBe(true);
+  });
+
+  it("makrosuz elle sıfırlanmış satır kayda GİREMEZ (kullanıcı sildi, koruyacak gerçek yok)", () => {
+    const makrosuz: DraftLine = {
+      ...kayitliKalem(),
+      nutrition: { kcal: 0, protein: 0, carbs: 0, fat: 0, fiber: 0 },
+      nutritionGrams: 0, // makro silinince taban da silinir
+      preserved: false,
+      fromRecord: false, // elle — kayda korumayı geç indirmez (L21)
+    };
+    const sonraki = setDraftGrams(makrosuz, "", null);
+    expect(draftLinesToItems([sonraki])).toEqual([]);
   });
 
   it("makrosu olmayan elle satırda gramaj taban kurmaz", () => {
@@ -881,14 +898,55 @@ describe("AI kalemi (ölçülen makro + baseAmount)", () => {
     });
   });
 
-  it("gramaj gelmediyse makro korunur, miktar girilince ilk miktar taban olur", () => {
+  it("gramaj gelmediyse makro korunur, miktar girilince ilk miktar TABAN olur (Task 4)", () => {
     const ai = aiSatiri(0, { kcal: 375, protein: 12, carbs: 66, fat: 7, fiber: 10 });
-    // Gramaj yokken makro dokunulmaz (ölçekleme nereye göre bilinmiyor).
+    // Real makrolu tabansız AI kalemi: ilk gram TABAN KURAR, makro O miktara aittir.
     const giris = setDraftGrams(ai, "100", null);
-    expect(giris.nutrition.kcal).toBe(375); // kendi değeri
-    expect(giris.nutritionGrams).toBe(0); // hâlâ taban yok (AI satırı manualMeasured değil)
-    // Uyarı: "besin değeri yok, gir" — ama makro ASLINDA var.
-    expect(draftGramHint(giris, null, ai)).toEqual({ kind: "noNutrition" });
+    expect(giris.nutritionGrams).toBe(100); // taban kuruldu
+    expect(giris.nutrition.kcal).toBe(375); // bu çağrıda oranlanmaz (birebir)
+    expect(giris.preserved).toBe(false);
+    // Sonraki çağrılar tabandan oranlar: 100 → 50 → 187,5.
+    const elli = setDraftGrams(giris, "50", null);
+    expect(elli.nutrition.kcal).toBe(187.5);
+    // Makro GERÇEK olduğundan "besin değerini gir" DEĞİL, ölçekleme ipucu gelir.
+    expect(draftGramHint(giris, null, ai)).toEqual({ kind: "scaled", fromGrams: 0, toGrams: 100 });
+  });
+
+  it("baseAmount'suz AI kalemi: ilk gram Taban olur, makro korunur, sonrası oranlanır", () => {
+    const ai = aiSatiri(0, {
+      kcal: 720,
+      protein: 24,
+      carbs: 144,
+      fat: 4,
+      fiber: 6,
+    }); // makarna 450g
+    const ilk = setDraftGrams(ai, "450", null);
+    expect(ilk.grams).toBe(450);
+    expect(ilk.nutritionGrams).toBe(450); // taban kuruldu
+    expect(ilk.nutrition.kcal).toBe(720); // 450 g'a ait değer birebir
+    expect(ilk.preserved).toBe(false);    // artık ölçülmüş
+
+    const ikiYuz = setDraftGrams(ilk, "490", null);
+    expect(ikiYuz.nutrition.kcal).toBe(784); // 720 × 490/450 = 784
+  });
+
+  it("gramı silinen AI kalemi KAYBA Gitmez: preserved geri gelir (L21)", () => {
+    const ai = {
+      ...aiSatiri(450, {
+        kcal: 720,
+        protein: 24,
+        carbs: 144,
+        fat: 4,
+        fiber: 6,
+      }),
+      nutritionGrams: 450,
+    };
+    const bos = setDraftGrams(ai, "", null);
+    expect(bos.grams).toBe(0);
+    const items = draftLinesToItems([bos]);
+    expect(items).toHaveLength(1); // kalem korunur
+    expect(items[0].name).toBe("Yulaf");
+    expect(items[0].nutrition.kcal).toBe(720);
   });
 });
 

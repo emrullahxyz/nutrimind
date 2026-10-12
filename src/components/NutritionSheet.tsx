@@ -59,27 +59,25 @@ export function scaleMealNutrition(computed: Nutrition | undefined, multiplier: 
 
 /** Miktar alanı KİLİTLİ mi?
  *
- *  İki AYRI iddia birleşiyor:
- *   • `preserved` — bu satırın miktarı BİLİNMIYOR (kayıttan geldi, ölçülemedi).
- *   • `!alias`   — ölçecek bir taban yok (`MealItem.sources` miktarı ancak bir
- *     `aliasId` ile saklar; alias yoksa yazılan sayı kayda giremezdi).
+ *  Kilit gerekçesi `fromRecord` koşuludur: yalnız KAYITTAN gelip ölçülemeyen
+ *  (çözülmeyen) satır kilitlenir. İki koşul daha vardır:
+ *   • `preserved`   — bu satırın miktarı BİLİNMIYOR (kayıttan geldi, ölçülemedi).
+ *   • `!alias`      — ölçecek bir taban yok (`MealItem.sources` miktarı ancak
+ *     bir `aliasId` ile saklar; alias yoksa yazılan sayı kayda giremezdi).
  *
- *  İkisi birden gerekir. Yalnız `preserved`'a bakmak, besine BAĞLANMIŞ ama
- *  miktarı hâlâ bilinmeyen satırı kilitli bırakır ve kullanıcı hiçbir işlem
- *  yapamadan satırı yalnızca silebilir — `swapDraftLine` korunmuş bir satırda
- *  bayrağı DÜŞÜRMEZ (bayrak düşseydi kayıttan gelen gerçek miktar uydurulurdu),
- *  dolayısıyla kilidi kaldıran tek şey `alias`'ın gelmesidir. Bu koşul
- *  `TemplatePreview`'daki `disabled={line.preserved && !alias}` ile AYNIDIR.
+ *  `fromRecord` olmayan bilinmeyen gramaj AÇIKTIR. Özellikle AI kalemi
+ *  (gramajsız baseAmount): miktarı bilinmiyor AMA kullanıcı gramı yazabilmeli
+ *  (Task 4 — ilk gram taban olur, `setDraftGrams` kurar ve makro korunur).
+ *  Kayıttan gelen bilinmeyen → kilit: besine bağlanmamış kayıt kaleminde
+ *  `preserved` düşürülemez (bayrak düşseydi kayıttan gelen gerçek miktar
+ *  uydurulurdu), `alias` da yok, dolayısıyla yazılan gramaj kayda giremezdi —
+ *  "girilebilir ama kaydedilemez" 2. tur hatası kilitlenir. <— BEKLENEN KILIT.
  *
- *  ŞU AN MÜMKÜN DEĞİL ve kilit kodunun kendisi de ölü: `mealDraftLines`'in
- *  YA HİÇ ya da HİÇBİRİ kuralı yüzünden oraya ulaşan HER satırın alias'ı
- *  canlıdır, dolayısıyla bu fonksiyon hep `false` döner ve miktar alanı hiç
- *  kilitlenmez. Bu bir gizli varsayım değil, TÜM-ORA-HİÇBİRİ kuralının DOĞAL
- *  SONUCUDUR. Kod yine de tutuluyor çünkü tek kurtarma yolu bu: kural
- *  gevşetilirse kilitli alan, "girilebilir ama kaydedilemez" 2. tur hatasının
- *  bir daha oluşmasını engeller. Silinirse tuzak sessizce yeniden açılır.
- *  Bakım notu: kilidi kaldırırsanız `mealDraftLines`'in ya-hiç-ya-hiçbiri
- *  kuralını da (`lib/ingredientDraft.ts`) gözden geçirin.
+ *  Kilit kodunun kendisi eskiden "ölü" sayılıyordu (`mealDraftLines`'in
+ *  ya-hiç-ya-hiçbiri kuralı alias'sız satırı çizmeyebiliyordu); Task 3
+ *  (2026-10-11) kırılımlı `items` yolunu açınca yukarıdaki korunmuş kayıt
+ *  kalemi artık GERCEKLEŞEBİLİR hale geldi ve `fromRecord` onu netler —
+ *  AI'dan gelen aynı şekildeki korunmuş satır DIŞARIDA kalır.
  *
  *  JSX içine gömülü bırakılırsa test edilemez; bu yüzden dışa açıktır
  *  (`NutritionSheet.test.ts` — jsdom'suz, saf fonksiyon). */
