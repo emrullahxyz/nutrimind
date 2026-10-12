@@ -13,6 +13,19 @@ export interface ChangeLogVersion {
 
 export const CHANGELOG: ChangeLogVersion[] = [
   {
+    version: "0.32.0",
+    date: "2026-10-12",
+    summary: {
+      tr: "AI ile eklediğin kalemlerde miktar (gramaj) artık düzenlenebilir; miktarı değiştirince kalori ve besin değerleri o miktara göre yeniden hesaplanıyor. Fotoğrafla eklenen öğünlerde porsiyon tahmini otomatik geliyor.",
+      en: "Quantity (grams) is now editable on AI-added ingredients; changing it recalculates calories and macros proportionally. Photo-added meals now include the AI's portion estimate automatically.",
+    },
+    items: [
+      { type: "improved", tr: "AI ile eklenen kalemin gramajı düzenlenebilir — yazdığın miktara göre kalori/makrolar oranlanır.", en: "AI-added ingredient grams are editable — calories/macros scale with the amount you enter." },
+      { type: "fixed", tr: "Fotoğrafla (Yemek modu) eklenen kalemlerde miktar 'bilinmiyor' kilitli kalıyordu; artık porsiyon tahmini geliyor, değer düzenlenebilir.", en: "Photo-added (Food mode) ingredients used to stay locked as 'unknown amount'; the portion estimate now comes through and is editable." },
+    ],
+    dev: ["server/ai.js metin/fotoğraf istemlerine baseAmount porsiyon kuralı eklendi; itemsToDraftLines grams>0 icin preserved=false; isAmountLocked AI/kayit kaleminde acik; setDraftGrams tabansiz gercek-makrolu kalemde ilk grami taban yapar."],
+  },
+  {
     version: "0.31.8",
     date: "2026-10-11",
     summary: {
