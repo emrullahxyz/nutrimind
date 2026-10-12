@@ -84,7 +84,14 @@ export function scaleMealNutrition(computed: Nutrition | undefined, multiplier: 
  *  JSX içine gömülü bırakılırsa test edilemez; bu yüzden dışa açıktır
  *  (`NutritionSheet.test.ts` — jsdom'suz, saf fonksiyon). */
 export function isAmountLocked(line: DraftLine, alias: Alias | undefined): boolean {
-  return line.preserved && !alias;
+  // Kilit, "miktarı hiç yazılamaz" ayrıcalığıdır ve yalnızca GERÇEKTEN
+  // bilinmeyen miktarda geçerli. AI kalemi (gramajsız baseAmount) bilinmiyor
+  // AMA kullanıcı gramı yazabilmeli (Task 4'te taban kurulur); kayıttan
+  // gelen kalemin de gramajı düzenlenebilir olmalı — makro line.grams
+  // oranıyla ölçeklenir, kayıt bozulmaz (L20). Kilit, yalnız "elle girilen
+  // ad + makro" ile klavye savaşını önlemek üzere reserved değildir; bu
+  // koşul AI'e uygulanmaz (AI makrosu gerçektir, elle değildir).
+  return line.preserved && !alias && line.fromRecord;
 }
 
 /** Kaydın çözülebilen kalem satırları + tam düzenleme (ekle/sil/gramaj/swap).

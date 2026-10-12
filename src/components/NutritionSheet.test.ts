@@ -63,8 +63,22 @@ describe("isAmountLocked — miktar alanı kilidi", () => {
     expect(isAmountLocked(satir({ preserved: true }), tavuk)).toBe(false);
   });
 
-  it("korunmuş + alias YOK → kilitli (ölçecek taban yok, sayı kayda giremez)", () => {
-    expect(isAmountLocked(satir({ preserved: true, aliasId: null }), undefined)).toBe(true);
+  it("gramajsız AI kalemi (preserved, fromRecord:false) KİLİTLİ DEĞİLDİR — gram yazılıp taban kurulabilir", () => {
+    expect(
+      isAmountLocked(
+        satir({ preserved: true, fromRecord: false, aliasId: null }),
+        undefined,
+      ),
+    ).toBe(false);
+  });
+
+  it("korunmuş + alias YOK + kayıttan geldi → kilitli (bilinmeyen miktar)", () => {
+    expect(
+      isAmountLocked(
+        satir({ preserved: true, aliasId: null, fromRecord: true }),
+        undefined,
+      ),
+    ).toBe(true);
   });
 
   it("ÖLÇÜLMÜŞ satır → kilitli değil (alias olsa da olmasa da)", () => {
