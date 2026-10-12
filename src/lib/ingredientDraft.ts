@@ -588,7 +588,7 @@ export function itemsToDraftLines(items: TemplateItem[], aliases: Alias[]): Draf
       grams: item.grams ?? 0,
       nutrition: item.nutrition,
       nutritionGrams: item.grams ?? 0,
-      preserved: true,
+      preserved: (item.grams ?? 0) <= 0,
       manualMeasured: false,
       blank: false,
       fromRecord: true,

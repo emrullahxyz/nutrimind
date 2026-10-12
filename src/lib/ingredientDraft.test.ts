@@ -1054,8 +1054,18 @@ describe("itemsToDraftLines", () => {
     const [l] = itemsToDraftLines([{ name: "Kayısı", nutrition: tofu.nutrition, grams: 40 }], aliases);
     expect(l.qty).toBe("40");
     expect(l.grams).toBe(40);
-    expect(l.preserved).toBe(true);
+    expect(l.preserved).toBe(false);
     expect(l.nutritionGrams).toBe(40);
+  });
+
+  it("grams'lı alias'sız kalem PRESERVED DEĞİLDİR — gramaj ölçümdür, bilinmiyor değil", () => {
+    const [l] = itemsToDraftLines(
+      [{ name: "Makarna", nutrition: tofu.nutrition, grams: 450 }],
+      [],
+    );
+    expect(l.preserved).toBe(false);
+    expect(l.grams).toBe(450);
+    expect(l.aliasId).toBeNull();
   });
 
   it("çok-kaynaklı kalem preserved olur (ölçülen pay kullanılmaz)", () => {
