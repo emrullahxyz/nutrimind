@@ -25,7 +25,7 @@ import { AiError, aiErrorMessage, parseWithAI } from "../lib/ai";
 import { useData } from "../lib/data";
 import { fetchData } from "../lib/api";
 import { mealsOf, resolveWriteDays, toPayload } from "../lib/days";
-import { mealToBasketSeed } from "../lib/ingredientDraft";
+import { mealToBasketSeed, resolveBaseGrams } from "../lib/ingredientDraft";
 import {
   GRAM_UNIT,
   clampMinGrams,
@@ -58,6 +58,9 @@ interface BasketItem {
   name: string;
   nutrition: Nutrition;
   sources?: MealSource[];
+  /** Alias'sız kalemin ölçülen gramı (AI `baseAmount` ya da isimdeki "(500g)").
+   *  Kaydet'te `TemplateItem.grams`'a yazılır; `sources` varsa YAZILMAZ. */
+  grams?: number;
   needsReview?: boolean;
 }
 
@@ -301,12 +304,16 @@ export function MealForm({
       return seedFromExisting();
     }
     if (initialAIItems && initialAIItems.length > 0) {
-      return initialAIItems.map((it, i) => ({
-        id: `vision-${Date.now()}-${i}-${Math.random()}`,
-        name: it.name,
-        nutrition: it.nutrition,
-        ...(it.needsReview ? { needsReview: true } : {}),
-      }));
+      return initialAIItems.map((it, i) => {
+        const g = resolveBaseGrams(it.name, it.baseAmount);
+        return {
+          id: `vision-${Date.now()}-${i}-${Math.random()}`,
+          name: it.name,
+          nutrition: it.nutrition,
+          ...(g > 0 ? { grams: g } : {}),
+          ...(it.needsReview ? { needsReview: true } : {}),
+        };
+      });
     }
     return [];
   });
@@ -536,12 +543,16 @@ export function MealForm({
       currentBasket = seedFromExisting();
     }
 
-    const newItems: BasketItem[] = items.map((it, i) => ({
-      id: `ai-${Date.now()}-${i}-${Math.random()}`,
-      name: it.name,
-      nutrition: it.nutrition,
-      ...(it.needsReview ? { needsReview: true } : {}),
-    }));
+    const newItems: BasketItem[] = items.map((it, i) => {
+      const g = resolveBaseGrams(it.name, it.baseAmount);
+      return {
+        id: `ai-${Date.now()}-${i}-${Math.random()}`,
+        name: it.name,
+        nutrition: it.nutrition,
+        ...(g > 0 ? { grams: g } : {}),
+        ...(it.needsReview ? { needsReview: true } : {}),
+      };
+    });
 
     const nextBasket = [...currentBasket, ...newItems];
     setBasket(nextBasket);
@@ -620,6 +631,7 @@ export function MealForm({
           name: b.name,
           nutrition: b.nutrition,
           ...(b.sources ? { sources: b.sources } : {}),
+          ...(b.grams && b.grams > 0 && !(b.sources && b.sources.length) ? { grams: b.grams } : {}),
         }));
         // Alias'sız kalem varsa KİMLİĞİ yalnız `items` taşır (öğün-düz
         // `sources` bir aliasId ister). Saf-alias sepet ise `items` gerekmez:

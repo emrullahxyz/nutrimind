@@ -727,6 +727,9 @@ export interface MealSeedItem {
   name: string;
   nutrition: Nutrition;
   sources?: MealSource[];
+  /** Alias'sız kalemin ölçülen gramı (`TemplateItem.grams`). Alias'lı kalemde
+   *  gram `sources[].qty` içindedir — burada YAZILMAZ (çift kayıt tuzağı). */
+  grams?: number;
 }
 
 /** Bir besin kümesini `MealForm.save`'in `cleanNutrition`'iyle AYNI kesinlikte
@@ -812,7 +815,7 @@ export function mealToBasketSeed(
       nutrition: l.nutrition,
       ...(l.aliasId
         ? { sources: [{ aliasId: l.aliasId, qty: parseNum(l.qty), unit: l.unit }] }
-        : {}),
+        : { ...(l.nutritionGrams > 0 ? { grams: l.nutritionGrams } : {}) }),
     });
     sum = addNutrition(sum, l.nutrition);
   }

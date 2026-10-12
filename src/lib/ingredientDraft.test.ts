@@ -1078,6 +1078,22 @@ describe("mealToBasketSeed", () => {
     expect(seeds).toHaveLength(1);
     expect(seeds[0].name).toBe(meal.label);
   });
+
+  it("non-alias kalem grams'ı seed'e taşır (isimde 500g → 500)", () => {
+    const m: MealItem = {
+      ...meal,
+      sources: undefined,
+      items: [
+        {
+          name: "Yemek (500g)",
+          nutrition: { kcal: 950, protein: 30, carbs: 90, fat: 40, fiber: 4 },
+        },
+      ],
+    };
+    const [s] = mealToBasketSeed(m, aliases, "Kalan");
+    expect(s.name).toBe("Yemek (500g)");
+    expect(s.grams).toBe(500);
+  });
 });
 
 // ---------------------------------------------------------------------------
