@@ -115,6 +115,23 @@ function nextKey(): string {
   return `draft-${Date.now()}-${seq}`;
 }
 
+/** Kalem ADINDAN gramaj okur: "(500g)", "(500 gr)", "(1,5 g)", "(30g dilim)".
+ *  Yalnız parantez içi, sonu g/gr/gram ile biten kalıp. "(200 ml)",
+ *  "(2 porsiyon)", "(500mg)" eşleşmez → miktar bilinmiyor sayılır. */
+export function parseGramFromName(name: string): number | null {
+  const m = /\(\s*(\d+(?:[.,]\d+)?)\s*g(?:r(?:am)?)?\b[^)]*\)/i.exec(name);
+  if (!m) return null;
+  const n = parseNum(m[1]);
+  return n > 0 ? n : null;
+}
+
+/** Kalemin TABAN gramajı: `explicit` (baseAmount / kayıtlı grams) > isimdeki
+ *  "(500g)" > 0. Taban 0 ise ölçekleme YAPILAMAZ (bkz. `canEditGrams`). */
+export function resolveBaseGrams(name: string, explicit?: number): number {
+  if (typeof explicit === "number" && explicit > 0) return explicit;
+  return parseGramFromName(name) ?? 0;
+}
+
 /** 0,1 hassasiyet + sodyum tam sayı — `addNutrition` kayan nokta artığı
  *  bırakır ve bu artık girdi alanında olduğu gibi görünür (L20 kardeşi). */
 export function roundNutrition(n: Nutrition): Nutrition {

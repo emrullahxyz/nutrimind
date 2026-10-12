@@ -12,7 +12,9 @@ import {
   mealSources,
   mealToBasketSeed,
   newDraftLine,
+  parseGramFromName,
   removeDraftLine,
+  resolveBaseGrams,
   resolveDraftUnit,
   setDraftGrams,
   sumLineNutrition,
@@ -1342,5 +1344,39 @@ describe("sumLineNutrition", () => {
 
   it("boş liste ZERO_NUTRITION-benzeri sıfır toplam döner", () => {
     expect(sumLineNutrition([])).toEqual({ kcal: 0, protein: 0, carbs: 0, fat: 0, fiber: 0 });
+  });
+});
+
+describe("parseGramFromName", () => {
+  it.each([
+    ["Mantarlı Tagliatelle (500g)", 500],
+    ["Salata (150 gr)", 150],
+    ["Süt (1,5 g)", 1.5],
+    ["Kaşar (30g dilim)", 30],
+    ["Ekmek (1.500g)", 1500],
+  ])("%s → %sw", (name, expected) => {
+    expect(parseGramFromName(name)).toBe(expected);
+  });
+
+  it.each([["Su (200 ml)"], ["Tavuk (2 porsiyon)"], ["Vitamin D3 1000 IU"], ["Yumurta"]])(
+    "%s → null (gram yok)",
+    (name) => {
+      expect(parseGramFromName(name)).toBeNull();
+    },
+  );
+});
+
+describe("resolveBaseGrams", () => {
+  it("baseAmount varsa onu kullanır (isimden önce)", () => {
+    expect(resolveBaseGrams("Yemek (500g)", 450)).toBe(450);
+  });
+  it("baseAmount yoksa isimden okur", () => {
+    expect(resolveBaseGrams("Yemek (500g)")).toBe(500);
+  });
+  it("hiçbiri yoksa 0", () => {
+    expect(resolveBaseGrams("Yumurta")).toBe(0);
+  });
+  it("baseAmount 0/negatifse isimden okur", () => {
+    expect(resolveBaseGrams("Yemek (500g)", 0)).toBe(500);
   });
 });
