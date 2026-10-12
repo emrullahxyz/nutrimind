@@ -546,6 +546,24 @@ describe("etiket tabanı (baseAmount) — canlıdan depoya taşındı", () => {
   });
 });
 
+describe("baseAmount — metin/fotoğraf istemleri", () => {
+  it("metin ve yemek-fotoğrafı istemleri porsiyon gramajını baseAmount'a yazma kuralını içerir (üç dilde)", async () => {
+    const { parseMealText, parseMealImage } = await loadAi({
+      NUTRIMIND_LLM_PROVIDER: "gemini",
+      GEMINI_API_KEY: "test_gemini_key",
+    });
+    for (const lang of ["tr", "en", "pl"]) {
+      const mock = vi.fn().mockResolvedValue(makeGeminiOkResponse());
+      vi.stubGlobal("fetch", mock);
+      await parseMealText({ text: "1 elma", aliases: [], lang });
+      const textPrompt = JSON.parse(mock.mock.calls[0][1].body).contents[0].parts[0].text;
+      expect(textPrompt).toContain("baseAmount");
+      expect(textPrompt).not.toContain("otherwise write 0");
+      vi.resetAllMocks();
+    }
+  });
+});
+
 describe("AI gözlem katmanı (server/aiLog.js kayıtları)", () => {
   it("başarılı zincir çağrısı tek kayıt bırakır: provider, model, endpoint ve latency dolu", async () => {
     const mockFetch = vi.fn().mockResolvedValue(makeGeminiOkResponse());

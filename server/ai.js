@@ -362,6 +362,7 @@ const PROMPTS = {
     textRules: [
       "List every food item separately.",
       'Estimate the portion size in grams and state it in the name (e.g. "Chicken Breast (200g)").',
+      'Write the estimated portion size in GRAMS into the "baseAmount" field as a NUMBER too (e.g. 450 if you estimated 450 g).',
       "Calculate the nutrition values (kcal, protein, carbs, fat, fiber).",
       "Recognise Turkish and Polish dishes correctly.",
       'For every item give a "confidence" value between 0 and 1 (how sure you are).',
@@ -370,6 +371,7 @@ const PROMPTS = {
     photoRules: [
       "List every food item in the photo separately.",
       "Estimate the portion in grams from visual cues (plate size, comparative scale) and state it in the name.",
+      'Write the estimated portion size in GRAMS into the "baseAmount" field as a NUMBER too (e.g. 450 if you estimated 450 g).',
       "Calculate the nutrition values (kcal, protein, carbs, fat, fiber).",
       "Recognise Turkish and Polish dishes correctly.",
       'For every item give a "confidence" value between 0 and 1.',
@@ -393,6 +395,7 @@ const PROMPTS = {
     textRules: [
       "Her yemek öğesini ayrı ayrı listele.",
       'Porsiyon boyutunu gram cinsinden tahmin et, isimde belirt (ör. "Tavuk Göğsü (200g)").',
+      'Tahmin ettiğin porsiyon gramajını SAYI olarak "baseAmount" alanına da yaz (ör. 450 g tahmin ettiysen 450).',
       "Besin değerlerini (kcal, protein, carbs, fat, fiber) hesapla.",
       "Türk ve Polonya yemeklerini doğru tanı.",
       'Her öğe için 0 ile 1 arasında bir "confidence" (ne kadar eminsin) değeri ver.',
@@ -401,6 +404,7 @@ const PROMPTS = {
     photoRules: [
       "Fotoğraftaki her yemek öğesini ayrı ayrı listele.",
       "Görsel ipuçlarından (tabak boyutu, karşılaştırmalı ölçek) porsiyon miktarını gram cinsinden tahmin et, isimde belirt.",
+      'Tahmin ettiğin porsiyon gramajını SAYI olarak "baseAmount" alanına da yaz (ör. 450 g tahmin ettiysen 450).',
       "Besin değerlerini (kcal, protein, carbs, fat, fiber) hesapla.",
       "Türk ve Polonya yemeklerini doğru tanı.",
       'Her öğe için 0 ile 1 arasında bir "confidence" değeri ver.',
@@ -424,6 +428,7 @@ const PROMPTS = {
     textRules: [
       "Wypisz każdy produkt osobno.",
       'Oszacuj porcję w gramach i podaj ją w nazwie (np. "Pierś z kurczaka (200g)").',
+      'Zapisz oszacowaną wagę porcji również jako LICZBĘ w polu "baseAmount" (np. 450, jeśli oszacowałeś 450 g).',
       "Oblicz wartości odżywcze (kcal, białko, węglowodany, tłuszcz, błonnik).",
       "Rozpoznawaj tureckie i polskie potrawy poprawnie.",
       'Dla każdego produktu podaj wartość "confidence" od 0 do 1 (jak bardzo jesteś pewien).',
@@ -432,6 +437,7 @@ const PROMPTS = {
     photoRules: [
       "Wypisz każdy produkt na zdjęciu osobno.",
       "Oszacuj porcję w gramach na podstawie wskazówek wizualnych (rozmiar talerza, skala) i podaj ją w nazwie.",
+      'Zapisz oszacowaną wagę porcji również jako LICZBĘ w polu "baseAmount" (np. 450, jeśli oszacowałeś 450 g).',
       "Oblicz wartości odżywcze (kcal, białko, węglowodany, tłuszcz, błonnik).",
       "Rozpoznawaj tureckie i polskie potrawy poprawnie.",
       'Dla każdego produktu podaj wartość "confidence" od 0 do 1.',
@@ -494,8 +500,10 @@ Reply ONLY with JSON in the shape below. Do NOT add any other text, explanation 
 code block (\`\`\`) — the ENTIRE reply must be valid JSON:
 {"items":[{"name":"string","kcal":number,"protein":number,"carbs":number,"fat":number,"fiber":number,"confidence":number,"baseAmount":number}]}
 
-ALWAYS include the "confidence" field (0 to 1, how sure you are). Fill "baseAmount" only when you
-are reading a nutrition label (the gram/ml amount the values are based on), otherwise write 0.`,
+ALWAYS include the "confidence" field (0 to 1, how sure you are). Fill "baseAmount" with the gram
+amount the values are based on: 100 for "per 100 g", the serving size for a serving (e.g. 30), or your
+ESTIMATED portion in grams for a text/photo meal. If unsure, write 100. Do not write 0 when you made
+an estimate.`,
   tr: `
 
 SADECE aşağıdaki JSON şekline uygun yanıt ver. Başka hiçbir metin, açıklama veya markdown
@@ -503,16 +511,19 @@ kod bloğu (\`\`\`) EKLEME — yanıtın TAMAMI geçerli JSON olmalı:
 {"items":[{"name":"string","kcal":number,"protein":number,"carbs":number,"fat":number,"fiber":number,"confidence":number,"baseAmount":number}]}
 
 "confidence" alanını HER ZAMAN dahil et (0 ile 1 arası, ne kadar eminsin). "baseAmount" alanını
-yalnızca bir besin etiketi okuyorsan (değerlerin dayandığı gram/ml miktarı) doldur, değilse 0 yaz.`,
+değerlerin dayandığı gram miktarıyla doldur: "100g başına" ise 100, porsiyon ise porsiyon miktarı
+(ör. 30), metin/fotoğraf öğününde ise TAHMİN ETTİĞİN porsiyon gramajı. Emin değilsen 100 yaz.
+Tahmin yaptıysan 0 yazma.`,
   pl: `
 
 Odpowiedz WYŁĄCZNIE w formacie JSON jak poniżej. NIE dodawaj żadnego innego tekstu, wyjaśnienia ani
 bloku kodu markdown (\`\`\`) — CAŁA odpowiedź musi być poprawnym JSON-em:
 {"items":[{"name":"string","kcal":number,"protein":number,"carbs":number,"fat":number,"fiber":number,"confidence":number,"baseAmount":number}]}
 
-ZAWSZE podawaj pole "confidence" (od 0 do 1, jak pewny jesteś). Pole "baseAmount" wypełniaj tylko
-gdy czytasz etykietę wartości odżywczych (ilość w gramach/ml, na której opierają się wartości),
-w przeciwnym razie wpisz 0.`,
+ZAWSZE podawaj pole "confidence" (od 0 do 1, jak pewny jesteś). Pole "baseAmount" wypełnij ilością
+w gramach, na której opierają się wartości: 100 dla "na 100 g", wielkością porcji dla porcji (np. 30),
+lub OSZACOWANĄ wagą porcji dla posiłku z tekstu/zdjęcia. Jeśli nie jesteś pewien, wpisz 100. Nie wpisuj
+0, gdy dokonałeś oszacowania.`,
 };
 
 function buildJsonModePrompt(basePrompt, lang) {
