@@ -363,10 +363,16 @@ export function setDraftGrams(line: DraftLine, gramsText: string, alias: Alias |
     };
   }
 
-  // Taban yok ama makro GERÇEK (elle yazılmış ya da baseAmount'suz AI kalemi):
-  // ilk gram taban olur, makro O miktara aittir (L20). Sonraki çağrılar
-  // `base>0` dalından oranlar.
-  if (line.manualMeasured || line.nutrition.kcal > 0 || line.nutrition.protein > 0) {
+  // Taban yok. ELLE ölçülen satırda ilk geçerli gram taban OLUR (kullanıcı
+  // makroyu kendi yazdı, o miktar için). KORUNMUŞ/AI satırında taban
+  // UYDURULMAZ: miktar bilinmiyorsa oranlanacak referans yok — alan zaten
+  // kilitli (`canEditGrams`), buraya yalnız savunma olarak düşer; makro ve
+  // `nutritionGrams` DOKUNULMADAN kalır (L20: gösterilen = kaydedilen).
+  //
+  // NOT: eskiden bu dal "makro gerçekse ilk tuş taban olur" diyordu. Tuş-
+  // başına `onChange` yüzünden kısmi sayı ("1", "10", "100") taban sanılıp
+  // makroyu 1×→10×→100× patlatıyordu (canlı bug: 100 yazınca ~19000 kcal).
+  if (line.manualMeasured) {
     return {
       ...line,
       qty: gramsText,
@@ -376,8 +382,7 @@ export function setDraftGrams(line: DraftLine, gramsText: string, alias: Alias |
       preserved: false,
     };
   }
-  // Makro da yok — gramaj yazmak tek başına değer üretmez.
-  return { ...line, qty: gramsText, unit: "g", grams, preserved: false };
+  return { ...line, qty: gramsText, unit: "g", grams };
 }
 
 /** Swap: gram korunur, miktar hedef alias'ın varsayılan birimine çevrilir.

@@ -314,6 +314,52 @@ describe("setDraftGrams", () => {
     expect(l.grams).toBe(0);
     expect(l.nutrition).toEqual(onceki);
   });
+
+  // Kısmi tuş koruması: taban yoksa TAHMİN edilmez (canlı bug).
+  it("tabansız korunmuş kalem (AI/kayıt): gram yazmak taban UYDURMAZ, makro sabit", () => {
+    const rec: DraftLine = {
+      key: "k",
+      aliasId: null,
+      name: "Bilinmeyen",
+      qty: "",
+      unit: "g",
+      grams: 0,
+      nutrition: { kcal: 400, protein: 20, carbs: 40, fat: 15, fiber: 3 },
+      nutritionGrams: 0,
+      preserved: true,
+      manualMeasured: false,
+      blank: false,
+      fromRecord: true,
+    };
+    const after = setDraftGrams(rec, "100", null);
+    expect(after.nutritionGrams).toBe(0); // taban uydurulmaz
+    expect(after.nutrition.kcal).toBe(400); // makro sabit
+    expect(after.grams).toBe(100);
+  });
+
+  // Kademeli yazım: "3" → "38" → "380", taban 500 sabit kalır, ilk tuş
+  // taban sanılmaz → patlama yok.
+  it("isimde (500g) olan kalem: kademeli yazım 380'de 380/500 ölçekler", () => {
+    const base: DraftLine = {
+      key: "k",
+      aliasId: null,
+      name: "Yemek (500g)",
+      qty: "500",
+      unit: "g",
+      grams: 500,
+      nutrition: { kcal: 950, protein: 30, carbs: 90, fat: 40, fiber: 4 },
+      nutritionGrams: 500,
+      preserved: false,
+      manualMeasured: false,
+      blank: false,
+      fromRecord: true,
+    };
+    const a1 = setDraftGrams(base, "3", null);
+    const a2 = setDraftGrams(a1, "38", null);
+    const a3 = setDraftGrams(a2, "380", null);
+    expect(Math.round(a3.nutrition.kcal)).toBe(Math.round((950 * 380) / 500)); // 722
+    expect(a3.nutritionGrams).toBe(500);
+  });
 });
 
 describe("swapDraftLine", () => {
@@ -486,11 +532,14 @@ describe("preserved", () => {
     expect(items[0].name).toBe("Kayısı");
   });
 
-  it("ölçülebilir hale gelince preserved DÜŞER (artık korunan değil, ölçülen)", () => {
-    const olculen = setDraftGrams(korunmus(), "200", null);
-    expect(olculen.preserved).toBe(false);
-    expect(olculen.grams).toBe(200);
-    expect(olculen.qty).toBe("200");
+  it("taban yoksa gram yazmak ölçüm ÜRETMEZ: preserved KORUNUR (alan kilitli)", () => {
+    // `korunmus()` nutritionGrams:0 → oranlanacak taban yok. Kullanıcı alanı
+    // düzenleyemez (`canEditGrams` false); savunma olarak setDraftGrams
+    // çağrılsa bile makro/taban dokunulmaz, preserved düşmez.
+    const savunma = setDraftGrams(korunmus(), "200", null);
+    expect(savunma.preserved).toBe(true);
+    expect(savunma.nutritionGrams).toBe(0);
+    expect(savunma.grams).toBe(200);
   });
 
   // ---- fromRecord: ölçülen hata (2026-10-03 tarayıcı ölçümü) ----
@@ -499,8 +548,11 @@ describe("preserved", () => {
   // düşer. `fromRecord` YAZILMAZSA satır `aliasId: null` + `preserved: false`
   // olur ve `TemplatePreview` onu ELLE sayar: kullanıcının girmediği kayıt
   // adı "MALZEME ADI" alanına düşer, beş makro alanı açılır. Miktar kaybolur.
-  it("korunmuş satır gramaj alınca fromRecord KALIR (elle satıra dönmez)", () => {
-    const olculen = setDraftGrams(korunmus(), "250", null);
+  it("korunmuş satır (tabanlı) gramaj alınca fromRecord KALIR (elle satıra dönmez)", () => {
+    // Taban (`nutritionGrams`) OLAN korunmuş satır: ölçeklenebilir, gramaj
+    // yazınca preserved düşer — ama fromRecord kayıttan geldiği için kalır.
+    const tabanli = { ...korunmus(), qty: "100", grams: 100, nutritionGrams: 100 };
+    const olculen = setDraftGrams(tabanli, "250", null);
     expect(olculen.fromRecord).toBe(true);
     expect(olculen.preserved).toBe(false);
     expect(olculen.grams).toBe(250);
@@ -725,30 +777,7 @@ describe("draftGramHint", () => {
     });
   });
 
-  it("makrolu tabansız satırda miktar değişince ilk gram TABAN kurulur (scaled ipucu)", () => {
-    const onceki: DraftLine = {
-      key: "k",
-      aliasId: null,
-      name: "Ev yapımı sos",
-      qty: "90",
-      unit: "g",
-      grams: 90,
-      nutrition: { kcal: 225, protein: 1, carbs: 8, fat: 20, fiber: 1 },
-      nutritionGrams: 0,
-      preserved: false,
-      manualMeasured: false,
-      blank: false,
-      fromRecord: false,
-    };
-    const sonraki = setDraftGrams(onceki, "45", null);
-    // Task 4: ilk gram TABAN kurar, makro O miktara aittir (bu çağrıda oranlanmaz).
-    expect(sonraki.nutritionGrams).toBe(45);
-    expect(sonraki.nutrition.kcal).toBe(225);
-    // Makro GERÇEK olduğundan "besin değerini gir" DEĞİL, ölçekleme ipucu gelir.
-    expect(draftGramHint(sonraki, null, onceki)).toEqual({ kind: "scaled", fromGrams: 90, toGrams: 45 });
-  });
-
-  it("real makrolu kayıt satırında miktar değişince TABAN KURULUR (scaled ipucu)", () => {
+  it("tabanlı (nutritionGrams>0) makrolu kayıt satırında miktar değişince ölçeklenir (scaled ipucu)", () => {
     const onceki: DraftLine = {
       key: "k",
       aliasId: null,
@@ -757,14 +786,15 @@ describe("draftGramHint", () => {
       unit: "g",
       grams: 90,
       nutrition: { kcal: 100, protein: 5, carbs: 10, fat: 2, fiber: 1 },
-      nutritionGrams: 0,
+      nutritionGrams: 90,
       preserved: false,
       manualMeasured: false,
       blank: false,
       fromRecord: true,
     };
     const sonraki = setDraftGrams(onceki, "45", null);
-    expect(sonraki.nutritionGrams).toBe(45);
+    expect(sonraki.nutritionGrams).toBe(90); // taban ezilmedi
+    expect(sonraki.nutrition.kcal).toBe(50); // 100 × 45/90
     expect(draftGramHint(sonraki, null, onceki)).toEqual({
       kind: "scaled",
       fromGrams: 90,
@@ -916,36 +946,27 @@ describe("AI kalemi (ölçülen makro + baseAmount)", () => {
     });
   });
 
-  it("gramaj gelmediyse makro korunur, miktar girilince ilk miktar TABAN olur (Task 4)", () => {
+  it("gramaj gelmediyse (taban yok) makro korunur, gram yazmak taban UYDURMAZ", () => {
     const ai = aiSatiri(0, { kcal: 375, protein: 12, carbs: 66, fat: 7, fiber: 10 });
-    // Real makrolu tabansız AI kalemi: ilk gram TABAN KURAR, makro O miktara aittir.
+    // Taban yok → alan kilitli (`canEditGrams` false). Savunma olarak çağrılsa
+    // bile makro ve taban DOKUNULMAZ (kısmi-tuş patlaması yok).
     const giris = setDraftGrams(ai, "100", null);
-    expect(giris.nutritionGrams).toBe(100); // taban kuruldu
-    expect(giris.nutrition.kcal).toBe(375); // bu çağrıda oranlanmaz (birebir)
-    expect(giris.preserved).toBe(false);
-    // Sonraki çağrılar tabandan oranlar: 100 → 50 → 187,5.
-    const elli = setDraftGrams(giris, "50", null);
-    expect(elli.nutrition.kcal).toBe(187.5);
-    // Makro GERÇEK olduğundan "besin değerini gir" DEĞİL, ölçekleme ipucu gelir.
-    expect(draftGramHint(giris, null, ai)).toEqual({ kind: "scaled", fromGrams: 0, toGrams: 100 });
+    expect(giris.nutritionGrams).toBe(0); // taban UYDURULMAZ
+    expect(giris.nutrition.kcal).toBe(375); // makro korunur
+    expect(giris.grams).toBe(100);
   });
 
-  it("baseAmount'suz AI kalemi: ilk gram Taban olur, makro korunur, sonrası oranlanır", () => {
-    const ai = aiSatiri(0, {
-      kcal: 720,
-      protein: 24,
-      carbs: 144,
-      fat: 4,
-      fiber: 6,
-    }); // makarna 450g
-    const ilk = setDraftGrams(ai, "450", null);
-    expect(ilk.grams).toBe(450);
-    expect(ilk.nutritionGrams).toBe(450); // taban kuruldu
-    expect(ilk.nutrition.kcal).toBe(720); // 450 g'a ait değer birebir
-    expect(ilk.preserved).toBe(false);    // artık ölçülmüş
-
-    const ikiYuz = setDraftGrams(ilk, "490", null);
-    expect(ikiYuz.nutrition.kcal).toBe(784); // 720 × 490/450 = 784
+  it("isimde (500g) olan tabanlı AI kalemi: gram yazınca oranlanır, kademeli patlamaz", () => {
+    // itemsToDraftLines isimden tabanı çözer (500), kullanıcı 490 yazar.
+    const ai: DraftLine = {
+      ...aiSatiri(500, { kcal: 720, protein: 24, carbs: 144, fat: 4, fiber: 6 }),
+      name: "Makarna (500g)",
+      qty: "500",
+    };
+    const ilk = setDraftGrams(ai, "490", null);
+    expect(ilk.nutritionGrams).toBe(500); // taban ezilmedi
+    expect(ilk.nutrition.kcal).toBe(705.6); // 720 × 490/500
+    expect(ilk.preserved).toBe(false);
   });
 
   it("gramı silinen AI kalemi KAYBA Gitmez: preserved geri gelir (L21)", () => {
