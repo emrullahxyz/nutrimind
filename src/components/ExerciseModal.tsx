@@ -90,6 +90,21 @@ export const DURATION_CHIPS = [15, 30, 45, 60] as const;
 /** Kayda girmeden önceki egzersiz — `id`/`caloriesBurned` sonradan eklenir. */
 export type DraftExercise = Omit<Exercise, "id" | "caloriesBurned">;
 
+/** Gömülü presetlerin DİL-BAĞIMSIZ kimlikleri. Kayda yazılan `name` budur. */
+const PRESET_NAME_KEYS = new Set(EXERCISE_PRESETS.map((p) => p.nameKey));
+
+/** Kaydın görünen adı.
+ *
+ *  NEDEN çeviri burada, kayıtta değil: `Exercise.name` dolu olmak zorunda
+ *  (`parseExerciseItem` adsız kaydı düşürür), ama içine `t()` ile çevrilmiş
+ *  metin yazılırsa hesabın dili değişince kayıt DONDURULMUŞ yabancı dilde
+ *  kalır — canlı veride "Ağırlık Antrenmanı" → "Trening siłowy" bozulması tam
+ *  olarak buydu. Kayda anahtar yazılır, görünen ad KULLANICININ GÜNCEL diline
+ *  burada çözülür. Kullanıcının kendi yazdığı ad olduğu gibi gösterilir. */
+export function displayExerciseName(name: string, t: (key: string) => string): string {
+  return PRESET_NAME_KEYS.has(name) ? t(name) : name;
+}
+
 /** Kayda girecek kalori: kullanıcının elle yazdığı gerçek ÖNCE gelir.
  *
  *  L20 (ekranda ne yazıyorsa kayda o girer) — kullanıcının bildiği gerçek,
@@ -454,7 +469,7 @@ export function ExerciseModal({ isOpen, onClose, date, onOpenExerciseSettings }:
                     disabled={busy || pendingMinutes <= 0}
                     onClick={() =>
                       handleSaveExercise({
-                        name: t(pendingPreset.nameKey),
+                        name: pendingPreset.nameKey,
                         category: pendingPreset.category,
                         durationMinutes: Number(pendingMinutes) || 0,
                       })
@@ -570,7 +585,9 @@ export function ExerciseModal({ isOpen, onClose, date, onOpenExerciseSettings }:
                         🔥
                       </div>
                       <div>
-                        <div className="text-xs font-semibold text-white">{ex.name}</div>
+                        <div className="text-xs font-semibold text-white">
+                          {displayExerciseName(ex.name, t)}
+                        </div>
                         <div className="text-[10px] text-white/40">
                           {ex.durationMinutes} {t("exercise.minutes")} • {ex.loggedAt || date}
                         </div>

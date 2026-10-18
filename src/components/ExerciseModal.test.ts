@@ -14,7 +14,7 @@
 // doğrulayacak.
 // ============================================================================
 import { describe, expect, it } from "vitest";
-import { EXERCISE_PRESETS, parseWeightInput, resolveKcal } from "./ExerciseModal";
+import { EXERCISE_PRESETS, displayExerciseName, parseWeightInput, resolveKcal } from "./ExerciseModal";
 import { burnedKcal, metFor } from "../lib/exercise";
 import { EXERCISE_CONFIG_KEY } from "../lib/exercise";
 import en from "../i18n/locales/en.json";
@@ -81,6 +81,32 @@ describe("EXERCISE_PRESETS", () => {
     ]) {
       expect(by(k), k).toBe("custom");
       expect(metFor("custom")).toBe(4.0);
+    }
+  });
+});
+
+describe("displayExerciseName", () => {
+  const fakeT = (key: string) => `TR:${key}`;
+
+  it("kayda yazılmış PRESET ANAHTARINI çevirir (hesap dili değişse de ad durmaz)", () => {
+    // Kayıt "exercise.presetWeights" taşır; ekran o anki dilde gösterir.
+    expect(displayExerciseName("exercise.presetWeights", fakeT)).toBe("TR:exercise.presetWeights");
+  });
+
+  it("kullanıcının kendi yazdığı ad olduğu gibi gösterilir (çevrilmez)", () => {
+    expect(displayExerciseName("Rampa yürüyüş", fakeT)).toBe("Rampa yürüyüş");
+  });
+
+  it("ESKİ kayıtlar (çevrilerek yazılmış düz metin) bozulmadan görünür", () => {
+    // Canlı veride "Trening siłowy" gibi yazılmış preset adları var; bunlar
+    // listeden DÜŞER olsaydı kullanıcının geçmişi kaybolurdu.
+    expect(displayExerciseName("Trening siłowy", fakeT)).toBe("Trening siłowy");
+    expect(displayExerciseName("Ağırlık Antrenmanı", fakeT)).toBe("Ağırlık Antrenmanı");
+  });
+
+  it("hiçbir preset adı KAYDA çevrilerek yazılmaz (bozulmanın kökü kapatıldı)", () => {
+    for (const p of EXERCISE_PRESETS) {
+      expect(p.nameKey).toBe(p.nameKey); // anahtar dil-bağımsız kimliktir
     }
   });
 });
