@@ -7,7 +7,7 @@ import { useBodyScrollLock } from "../hooks/useBodyScrollLock";
 import { useDialogFocus } from "../hooks/useDialogFocus";
 import { useModalHistory } from "../hooks/useModalHistory";
 import { useModalExit } from "../hooks/useModalExit";
-import { addNutrition, scaleMealSources } from "../lib/nutrition";
+import { addNutrition, parseNum, scaleMealSources } from "../lib/nutrition";
 import {
   addDraftLine,
   aliasOfLine,
@@ -120,28 +120,35 @@ export function canRemoveLine(
   return swapKey !== line.key && lineCount > 1;
 }
 
-/** Bu satırın MİKTAR alanı şu an yazılabilir mi?
+/** Elle satırda MİKTAR girildi — gramajı ETİKET olarak yazar, makroya dokunmaz.
  *
- *  İki bağımsız kapı: `canEditGrams` (taban var mı) ve BU koşul — arayüzün
- *  elle sıralaması. Yalnız `canEditGrams` yeterli DEĞİL.
+ *  Elle girilen makro NİHAİ değerdir: ölçekleme referansı yoktur, çünkü
+ *  kullanıcı besin değerini doğrudan yazdı. Gramaj bu satırda yalnız gramajdır.
  *
- *  Tuzak (L20): elle satırda miktar ve makro alanları aynı anda açıksa,
- *  kullanıcı ÖNCE gramajı yazarsa `setDraftGrams` alias-null dalına düşer
- *  (`ingredientDraft.ts:385`) ve `nutrition` ile `nutritionGrams`'a
- *  DOKUNMAZ, `manualMeasured` da yazılmaz. Sonra makro girilince yalnız
- *  `nutrition` yazılır. Kayda "100 g" + "200 kcal" girer, taban 0 kalır ve
- *  SONRAKİ gramaj değişiklikleri makroyu hiç ölçeklemez — modülün "hafızada
- *  olmayan kalemde miktar ile makro arasında ORAN vardır" sözleşmesi
- *  (`ingredientDraft.ts:308-310`) ihlal edilir.
+ *  Neden `setDraftGrams` DEĞİL — canlı bug, ölçülmüş (elle satır, 225 kcal/5 protein):
  *
- *  Sıralama: kullanıcı ÖNCE makro girer (`manualMeasured` yükselir), SONRA
- *  miktar. O sırada `setDraftGrams` tabanı kuran dalı
- *  (`ingredientDraft.ts:375-384`) makroyu KORUR ve oran bütün kalır.
+ *      qty=1    nutritionGrams=1  kcal=225     protein=5
+ *      qty=10   nutritionGrams=1  kcal=2250    protein=50
+ *      qty=100  nutritionGrams=1  kcal=22500   protein=500   ← "100 g" yazdı
  *
- *  Kayıttan gelen kalem istisnadır: `canEditGrams` onun tabanını kendi
- *  ölçümünden kurar, makro zaten gerçektir, ek sıralama gerekmez. */
-export function canEnterManualGrams(line: Pick<DraftLine, "aliasId" | "fromRecord">): boolean {
-  return line.aliasId !== null || line.fromRecord;
+ *  `setDraftGrams` elle dala ilk GEÇERLİ gramajı taban yapar, tabanı
+ *  değiştirmez (`ingredientDraft.ts:366-384`), sonraki tuşlar `base > 0` dalına
+ *  düşüp makroyu çarpar. Bu, `ingredientDraft.ts:372-374`'te belgelenen canlı
+ *  bug'ın aynısıdır. Kilitleyerek (onceki deneme) sıralama dayatmak çözüm
+ *  değil, aynı patlamayı "önce makro" diye erteledi — kullanıcı yine de makro
+ *  girip gramajı sonra yazınca patlama yerine geliyordu.
+ *
+ *  Burada ölçekleme YOK: `nutrition`, `nutritionGrams`, `manualMeasured`
+ *  DOKUNULMAZ. `draftLinesToItems` elle satırda `grams`'ı zaten
+ *  `items[].grams` olarak yazıyor (`ingredientDraft.ts:588`), yani kayıt yolu
+ *  gramajı KORUYOR — kayda giren ile ekranda gösterilen aynı (L20).
+ *
+ *  NOT: bu yol yalnız YENİ eklenen iskelet satırlara uygulanır
+ *  (`isManualDraftLine` KAYITTAN geleni dışlar: `itemsToDraftLines` her kaleme
+ *  `fromRecord: true` yazar). Kayıtlı elle satırlar eski yoldan geçer. */
+export function setManualAmount(line: DraftLine, gramsText: string): DraftLine {
+  const grams = parseNum(gramsText);
+  return { ...line, qty: gramsText, unit: "g", grams: grams > 0 ? grams : 0 };
 }
 
 /** Kaydın çözülebilen kalem satırları + tam düzenleme (ekle/sil/gramaj/swap).
@@ -320,16 +327,26 @@ function IngredientLines({
 
               <div className="mt-2 flex items-end gap-2">
                 <div>
-                  {/* Elle satırda miktar alanı makro GİRİLENE KADAR kilitli:
-                      miktar önce yazılırsa makro ile taban kurulamaz ve
-                      sonraki miktar değişiklikleri makroyu ölçeklemez (L20).
-                      Bkz. `canEnterManualGrams`. */}
+                  {/* Elle satır gramajı ETİKET olarak yazar, makroyu
+                      ÖLÇEKLEMEZ: kullanıcının yazdığı besin değeri nihaidir ve
+                      ölçekleme referansı yoktur. `setDraftGrams` elle dala
+                      ilk geçerli gramajı taban yapıp sonraki tuşlarda makroyu
+                      çarpıyordu (225 → 22500 kcal, canlı bug). Bkz.
+                      `setManualAmount`. Hafızaya bağlı ve kayıttan gelen
+                      satırlarda `canEditGrams` kilidi aynen geçerli. */}
                   <NumField
                     label={t("nutrition.ingredientGrams")}
                     suffix={line.unit}
                     value={line.qty}
-                    disabled={!canEditGrams(line) || (!line.manualMeasured && !canEnterManualGrams(line))}
-                    onChange={(v) => patch(line.key, setDraftGrams(line, v, alias ?? null))}
+                    disabled={!canEditGrams(line)}
+                    onChange={(v) =>
+                      patch(
+                        line.key,
+                        isManualRow
+                          ? setManualAmount(line, v)
+                          : setDraftGrams(line, v, alias ?? null),
+                      )
+                    }
                   />
                   {line.preserved && line.grams <= 0 && (
                     <p className="mt-1 text-[11px] text-amber-300">

@@ -9,11 +9,11 @@
 import { describe, expect, it } from "vitest";
 import {
   addSkeletonLine,
-  canEnterManualGrams,
   canRemoveLine,
   isManualDraftLine,
   resetLineState,
   scaleMealNutrition,
+  setManualAmount,
 } from "./NutritionSheet";
 import { ZERO_NUTRITION } from "../types";
 import {
@@ -323,83 +323,122 @@ describe("canRemoveLine — silme düğmesi hangi satırda görünür?", () => {
 });
 
 // ============================================================================
-// REVIEW DÜZELTMESİ 2 — gramaj makro ÖNCESİ yazılırsa oran bozuluyordu (L20).
+// REVIEW DÜZELTMESİ 2 (round 2) — elle satırda gramaj ÖLÇEKLEME PATLAMASI.
 //
-// Tuzak: elle satırda miktar ve makro alanları aynı anda açıksa kullanıcı önce
-// gramajı yazabiliyordu. `setDraftGrams` alias-null dalına düşüyor
-// (`ingredientDraft.ts:385`), `nutrition`/`nutritionGrams`'a dokunmuyordu,
-// `manualMeasured` yazılmıyordu. Sonra makro girilince yalnız `nutrition`
-// yazılıyordu: "100 g" + "200 kcal" kayda giriyor, taban 0 kalıyor ve sonraki
-// miktar değişiklikleri makroyu HİÇ ölçeklemiyordu.
-// Düzeltme: elle satırda miktar alanı makro girilene kadar kilitli.
+// İlk düzeltme (kilitle) yanlıştı: "önce makro, sonra miktar" sırası dayatırken
+// `setDraftGrams` elle daldaki tuş-başına patlamayı yeniden açtı. ÖLÇÜLEN kırılma
+// (225 kcal / 5 protein, elle satır):
+//
+//     qty=1    nutritionGrams=1  kcal=225    protein=5
+//     qty=10   nutritionGrams=1  kcal=2250   protein=50
+//     qty=100  nutritionGrams=1  kcal=22500  protein=500   ← "100 g" yazdı
+//
+// `setDraftGrams` ilk geçerli gramajı taban yapıp tabanı değiştirmiyor
+// (`ingredientDraft.ts:366-384`), sonraki tuşlar `base > 0` dalına düşüyor.
+// Bu, `ingredientDraft.ts:372-374`'te belgelenen canlı bug'ın aynısı.
+// Doğru davranış: elle girilen makro NİHAİDİR — gramaj yalnız etikettir.
 // ============================================================================
-describe("canEnterManualGrams — miktar alanı ne zaman açılır?", () => {
-  it("iskelet/elle satırda KAPALI (makro önce girilmeli)", () => {
-    const line = skeletonLine();
-    expect(canEnterManualGrams(line)).toBe(false);
-    // Alan görünür ama kilitli: `NumField disabled` → `onChange` ÇAĞRILMAZ,
-    // yani yazdığını sandığı değer sessizce kaybolmaz (FormBits sözleşmesi).
-    expect(canEditGrams(line)).toBe(true); // amaç: sıralama kapısı
-  });
-
-  it("makro girilince (`manualMeasured`) alan AÇILIR", () => {
-    const typed = { ...skeletonLine(), manualMeasured: true };
-    // `canEnterManualGrams` elle satırda hep false'tur; alanı açan şey
-    // bayraktır, koşul değil (aşağıdaki bileşik kapı testinde doğrulanır).
-    expect(canEnterManualGrams(typed)).toBe(false);
-    expect(typed.manualMeasured).toBe(true);
-  });
-
-  it("hafızaya bağlı satırda AÇIK — taban alias'tan gelir, sıralama gerekmez", () => {
-    expect(canEnterManualGrams(swapDraftLine(skeletonLine(), tavuk))).toBe(true);
-  });
-
-  it("KAYITTAN gelen satırda AÇIK — gramaj kayıttan ölçülebilir", () => {
-    expect(canEnterManualGrams(mealDraftLines(MEAL, ALIASES)![0])).toBe(true);
-  });
-});
-
-describe("elle satırda miktar → makro ORANI kurulur (L20 sırası)", () => {
+describe("setManualAmount — elle satırda gramaj ETİKETTİR, makroya dokunmaz", () => {
   /** Elle satır + kullanıcının yazdığı makro (arayüzün yaptığı patch). */
-  const manual = (nutrition: Record<string, number>) => ({
+  const manual = () => ({
     ...skeletonLine(),
     name: "Ev yapımı sos",
-    nutrition: { ...ZERO_NUTRITION, ...nutrition },
+    nutrition: { ...ZERO_NUTRITION, kcal: 225, protein: 5 },
     manualMeasured: true,
   });
 
-  it("ÖNERİLEN sıra: makro → miktar. Taban kurulur, oran bütün kalır", () => {
-    const first = setDraftGrams(manual({ kcal: 225, protein: 5 }), "100", null);
-    expect(first.nutrition.kcal).toBe(225); // kullanıcının yazdığı değer KORUNUR
-    expect(first.nutritionGrams).toBe(100); // ilk geçerli gramaj taban olur
+  it("gramaj girmek makroyu DEĞİŞTİRMEZ (100 g yazınca hâlâ 225 kcal)", () => {
+    const next = setManualAmount(manual(), "100");
 
-    const scaled = setDraftGrams(first, "200", null);
-    expect(scaled.nutrition.kcal).toBe(450); // 225 × 200/100
-    expect(scaled.nutrition.protein).toBe(10);
+    expect(next.nutrition.kcal).toBe(225);
+    expect(next.nutrition.protein).toBe(5);
+    // Taban kurulMAZ → ölçekleme için referans yok → sonraki tuşlar da çarpamaz.
+    expect(next.nutritionGrams).toBe(0);
+    expect(next.manualMeasured).toBe(true);
+    expect(next.grams).toBe(100);
   });
 
-  it("TUAZAK: miktar → makro sırası oranı KURAMAZ (bileşik kapı bunu engeller)", () => {
-    // Engelleyici koşulun gerekçesi: makro bayrağı OLMADAN önce miktar
-    // yazılırsa taban kurulmaz, makro sonradan yazılır ve sonraki miktar
-    // değişikliği makroyu 1× bırakır (ölçeklenmez): 200 g'da hâlâ 225 kcal.
-    const gramsFirst = setDraftGrams(skeletonLine(), "100", null);
-    expect(gramsFirst.manualMeasured).toBe(false);
-    expect(gramsFirst.nutritionGrams).toBe(0); // taban kurulMADI
+  it("TUŞ-BAŞINA PATLAMA YOK — 1 → 10 → 100 yazınca değer sabit kalır", () => {
+    // RED PROOF: bu testin KIRMIZI olduğu kanıtı aşağıda — `setDraftGrams`
+    // ile aynı dizgi 225 → 2250 → 22500 yapıyor.
+    const after1 = setManualAmount(manual(), "1");
+    const after10 = setManualAmount(after1, "10");
+    const after100 = setManualAmount(after10, "100");
 
-    const withMacro = { ...gramsFirst, nutrition: { ...ZERO_NUTRITION, kcal: 225 } };
-    const later = setDraftGrams(withMacro, "200", null);
-    expect(later.nutrition.kcal).toBe(225); // 450 DEĞİL — ölçeklenmedi
+    expect([after1.nutrition.kcal, after10.nutrition.kcal, after100.nutrition.kcal]).toEqual([225, 225, 225]);
+    expect([after1.nutrition.protein, after10.nutrition.protein, after100.nutrition.protein]).toEqual([5, 5, 5]);
+    expect(after100.grams).toBe(100); // etiket doğru
+    expect(after100.nutritionGrams).toBe(0); // ama ölçekleme tabanı HİÇ kurulmadı
+
+    // --- RED PROOF (kırmızı olduğu doğrulandı) ---
+    // `setDraftGrams` elle dala alınırsa aynı dizgi makroyu çarpıyor:
+    //   1 → 225, 10 → 2250, 100 → 22500 (22500 DEĞİL 225 beklenirdi).
+    const buggy1 = setDraftGrams(manual(), "1", null);
+    const buggy10 = setDraftGrams(buggy1, "10", null);
+    const buggy100 = setDraftGrams(buggy10, "100", null);
+    expect([buggy1.nutrition.kcal, buggy10.nutrition.kcal, buggy100.nutrition.kcal]).toEqual([
+      225, 2250, 22500,
+    ]);
+    // Bu yüzden `setManualAmount` varken `setDraftGrams` elle dalda KULLANILMAZ.
   });
 
-  it("bileşik kapı: elle satırda miktar alanı ancak makro bayrağı açınca yazılabilir", () => {
-    const before = skeletonLine();
-    // Arayüzdeki `disabled` koşulu birebir:
-    const locked = !canEditGrams(before) || (!before.manualMeasured && !canEnterManualGrams(before));
-    expect(locked).toBe(true); // makro girilmeden miktar YAZILAMAZ
+  it("yazdığını sandığı değer kaybolmaz — ekranda ne varsa kayda o girer (L20)", () => {
+    const next = setManualAmount(manual(), "100");
+    const items = draftLinesToItems([next]);
 
-    const after = manual({ kcal: 225 });
-    const unlocked = !canEditGrams(after) || (!after.manualMeasured && !canEnterManualGrams(after));
-    expect(unlocked).toBe(false); // makro girildi → alan açık
+    expect(items).toHaveLength(1);
+    // `draftLinesToItems` elle satırda `grams`'ı `items[].grams` olarak yazar.
+    expect(items[0].grams).toBe(100);
+    expect(items[0].nutrition.kcal).toBe(225);
+    // `sources` yazılmaz (`aliasId` null) → uydurma hafıza bağı yok.
+    expect(items[0].sources).toBeUndefined();
+  });
+
+  it("geçersiz/boş gramaj gramajı 0 yapar, makro yine DEĞİŞMEZ", () => {
+    for (const text of ["", "abc", "-5", "0"]) {
+      const next = setManualAmount(manual(), text);
+      expect(next.grams).toBe(0);
+      expect(next.nutrition.kcal).toBe(225);
+      expect(next.qty).toBe(text); // yarım yazım korunur, titreme yok
+    }
+  });
+
+  it("virgüllü gramaj tr-TR ayrımını parseNum çözer (150,5 g)", () => {
+    expect(setManualAmount(manual(), "150,5").grams).toBe(150.5);
+  });
+});
+
+describe("elle satır sadece YENİ eklenen iskeletlerdir (kayıt karışmaz)", () => {
+  /** Kaydedilmiş ELLE kalem: `sources` yok → `itemsToDraftLines` kayıt yolu. */
+  const SAVED_MANUAL: MealItem = {
+    id: "m3",
+    label: "Akşam",
+    computed: { ...ZERO_NUTRITION, kcal: 225 },
+    items: [{ name: "Ev yapımı sos", nutrition: { ...ZERO_NUTRITION, kcal: 225 }, grams: 100 }],
+  };
+
+  it("kayıttan gelen ELLE kalem `fromRecord` taşır → elle dalına GİRMEZ", () => {
+    const saved = mealDraftLines(SAVED_MANUAL, ALIASES)![0];
+    expect(saved.fromRecord).toBe(true);
+    expect(saved.aliasId).toBeNull();
+    expect(saved.nutrition.kcal).toBe(225);
+    // Kritik: kayıtlı elle kalem `setManualAmount` yoluna GİRMEZ, eski
+    // ölçeklemeli yoldan geçer — kayıt davranışı korunur.
+    expect(isManualDraftLine(saved)).toBe(false);
+  });
+
+  it("kayıtlı elle kalemin gramajı zaten ölçülebilir (ölçekleme referansı var)", () => {
+    const saved = mealDraftLines(SAVED_MANUAL, ALIASES)![0];
+    // `nutritionGrams = items[].grams` → 200 g yazılınca makro ölçeklenir.
+    expect(saved.nutritionGrams).toBe(100);
+    expect(canEditGrams(saved)).toBe(true);
+    expect(setDraftGrams(saved, "200", null).nutrition.kcal).toBe(450); // 225 × 2
+  });
+
+  it("iskelet satır `fromRecord` taşımaz → yeni yol burada çalışır", () => {
+    const line = skeletonLine();
+    expect(line.fromRecord).toBe(false);
+    expect(isManualDraftLine(line)).toBe(true);
   });
 });
 
