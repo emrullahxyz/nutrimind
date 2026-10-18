@@ -501,7 +501,7 @@ export function draftGramHint(
   // tek başına yeterli değil (AI satırında makro her zaman doludur, elle
   // iskelet satırda hep sıfırdır).
   //
-  // `manualMeasured` BURAYA GİRMEZ (v0.32.1 düzeltmesi): o bayrak tek
+  // `manualMeasured` BURAYA GİRMEZ (v0.32.0 düzeltmesi): o bayrak tek
   // başına "ölçeklendi" diyordu, ama taze ELLE satır gramajı artık
   // `setManualAmount` ile ETİKET olarak yazıyor — makro hiç ÖLÇEKLENMİYOR
   // (bkz. `NutritionSheet.setManualAmount`: 225 kcal elle satır, 100 g yazılınca
