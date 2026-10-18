@@ -250,6 +250,17 @@ function MainContent() {
     handleTabChange("settings");
   };
 
+  /** Egzersiz Kütüphanesi'nden "Bitti"/geri: Ayarlar'da KALMA, egzersiz
+   *  kaydetme modalına dön. Yalnız "+ Egzersiz ekle" yolundan gelindiğinde
+   *  bağlanır (`settingsTarget === "exercise"`). `handleTabChange` modalları
+   *  kapatıp sekmeyi değiştirir; ardından global egzersiz modalı açılır —
+   *  sıra önemli, `handleTabChange` `setGlobalExerciseOpen(false)` yapıyor. */
+  const closeExerciseLibrary = () => {
+    setSettingsTarget(null);
+    handleTabChange("daily");
+    setGlobalExerciseOpen(true);
+  };
+
   const tabRef = useRef(tab);
   tabRef.current = tab;
 
@@ -415,6 +426,9 @@ function MainContent() {
             embedded
             resetKey={tabResetKey.settings}
             initialSubView={settingsTarget as any}
+            /* Yalnız "+ Egzersiz ekle" yolundan gelindiyse (hedef "exercise")
+               dönüş davranışı bağlanır: Geri/Bitti egzersiz modalına döndürür. */
+            onExitExerciseLibrary={settingsTarget === "exercise" ? closeExerciseLibrary : undefined}
             /* Rehber günlük ekrandaki hedefleri vurguladığı için önce o sekmeye
                dönülür, sonra rehber açılır — ters sırada ilk adımın hedefi
                ekranda olmazdı. */

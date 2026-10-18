@@ -159,6 +159,7 @@ export function SettingsSheet({
   resetKey = 0,
   initialSubView = null,
   onReplayGuide,
+  onExitExerciseLibrary,
 }: {
   onClose: () => void;
   embedded?: boolean;
@@ -168,6 +169,11 @@ export function SettingsSheet({
    *  rehberi zorla aç). Verilmezse satır HİÇ gösterilmez — bileşen rehberden
    *  habersiz kalabilsin diye opsiyonel. */
   onReplayGuide?: () => void;
+  /** Egzersiz Kütüphanesi'nden çıkış (Geri tuşu / "Bitti"). Yalnız egzersiz
+   *  kaydetme modalındaki "+ Egzersiz ekle" yolundan gelindiğinde verilir;
+   *  o zaman çıkış Ayarlar'da KALMAZ, egzersiz modalına döner. Verilmezse
+   *  normal `goBack`/`onClose` davranışı korunur (su/takviye dişlileri vb.). */
+  onExitExerciseLibrary?: () => void;
 }) {
   const [subView, setSubView] = useState<SubView>(null);
 
@@ -189,6 +195,15 @@ export function SettingsSheet({
       setSubView(initialSubView);
     }
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // "+ Egzersiz ekle" yolundan gelindiğinde: Egzersiz Kütüphanesi'nden çıkış
+  // Ayarlar'da KALMAZ, egzersiz kaydetme modalına döner. Aşağıdaki popstate
+  // dinleyicisi `[]` bağımlılıklı (stale closure) — güncel değerler ref'ten
+  // okunur. Ref yoksa ilk render'daki (o an da doğru olan) değere takılı kalırdı.
+  const subViewRef = useRef<SubView>(subView);
+  subViewRef.current = subView;
+  const exitLibraryRef = useRef(onExitExerciseLibrary);
+  exitLibraryRef.current = onExitExerciseLibrary;
   const [cacheStatus, setCacheStatus] = useState<string | null>(null);
   const [deleteStep, setDeleteStep] = useState<0 | 1 | 2>(0);
   const [deletePassword, setDeletePassword] = useState("");
@@ -222,6 +237,17 @@ export function SettingsSheet({
     const handlePopState = (e: PopStateEvent) => {
       const state = e.state;
       if (state?.isModal) return;
+
+      // "+ Egzersiz ekle" yolundan geldiyse ve şu an Egzersiz Kütüphanesi
+      // açıksa: Ayarlar köküne inmek YERİNE egzersiz kaydetme modalına dön.
+      // `subViewRef` pop ÖNCESİ değeri taşır ("exercise") — aşağıdaki
+      // `setSubView` çalışmadan buradan dönüyoruz. Hem donanım geri tuşu hem
+      // "Bitti"/"Geri" düğmeleri tek `history.back()` yolundan buraya düşer,
+      // böylece geçmişte sarkan girdi kalmaz.
+      if (subViewRef.current === "exercise" && exitLibraryRef.current) {
+        exitLibraryRef.current();
+        return;
+      }
 
       if (state && state.tab === "settings") {
         setSubView(state.subView || null);
@@ -720,6 +746,18 @@ export function SettingsSheet({
               {subView === "language" && t("settings.language")}
               {subView === "changelog" && t("settings.subviewChangelog")}
             </h3>
+            {/* "+ Egzersiz ekle" yolundan gelindiyse sağda birincil "Bitti" —
+                Geri ile AYNI `goBack` (history.back) yolunu kullanır, çıkış
+                popstate'te egzersiz modalına döner (bkz. handlePopState). */}
+            {subView === "exercise" && onExitExerciseLibrary && (
+              <button
+                type="button"
+                onClick={goBack}
+                className="ml-auto rounded-xl bg-accent px-3 py-1.5 text-xs font-bold text-accent-ink transition hover:bg-accent/90 active:scale-95"
+              >
+                {t("common.done")}
+              </button>
+            )}
           </div>
 
           {/* 1. HEDEFLER */}
