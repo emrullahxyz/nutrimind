@@ -581,7 +581,10 @@
     "catalogNameRequired": "Nazwa ćwiczenia jest wymagana.",
     "categoryLabel": "Kategoria",
     "metLabel": "MET (wysiłek)",
-    "metHint": "Zostaw puste — policzy średnią (≈{{estimate}})"
+    "metHint": "Zostaw puste — policzy średnią (≈{{estimate}})",
+    "removePreset": "Usuń",
+    "restoreTitle": "Usunięte szablony",
+    "restorePreset": "Przywróć"
   },
   "offline": {
     "banner": "Jesteś offline. Zmiany są zapisywane na tym urządzeniu i zsynchronizują się po powrocie do sieci. Ostatnie dane: {{time}}.",

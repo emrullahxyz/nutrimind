@@ -581,7 +581,10 @@
     "catalogNameRequired": "Egzersiz adı zorunludur.",
     "categoryLabel": "Kategori",
     "metLabel": "MET (şiddet)",
-    "metHint": "Boş bırakırsan ortalamaya göre hesaplanır (≈{{estimate}})"
+    "metHint": "Boş bırakırsan ortalamaya göre hesaplanır (≈{{estimate}})",
+    "removePreset": "Kaldır",
+    "restoreTitle": "Kaldırılan şablonlar",
+    "restorePreset": "Geri getir"
   },
   "offline": {
     "banner": "Çevrimdışısınız. Değişiklikler cihaza kaydedilir, bağlantı gelince senkronize edilir. Son veri: {{time}}.",

@@ -35,11 +35,13 @@ import {
   exercisesFor,
   parseCatalog,
   parseExerciseEntries,
+  parseHiddenPresets,
   withExercises,
 } from "../lib/exercise";
 import { parseWeightConfig, seedEntry } from "../lib/weight";
 import { formatNumber, todayISO } from "../lib/format";
 import { afterHistoryBackSettles } from "../lib/backStack";
+import { ConfirmButton } from "./FormBits";
 
 /** `config.weight` — kilo ölçümlerinin config anahtarı. `ExerciseModal` kilo
  *  sorusunu buraya yazar; egzersiz kaydı ise `EXERCISE_CONFIG_KEY`'e. İki
@@ -227,6 +229,9 @@ export function ExerciseModal({ isOpen, onClose, date, onOpenExerciseSettings }:
    *  `{catalog}` yazan bir okuma `{entries}`'i göremezdi — ikisi aynı
    *  nesnede yaşar (bkz. `existingExerciseConfig`). */
   const catalog = parseCatalog(config[EXERCISE_CONFIG_KEY]);
+  /** Kullanıcının gizlediği gömülü şablon anahtarları. Boş = hepsi görünür.
+   *  Ayarlar → Egzersiz Kütüphanesi'nden geri getirilebilir. */
+  const hiddenPresets = parseHiddenPresets(config[EXERCISE_CONFIG_KEY]);
 
   const [name, setName] = useState("");
   const [category, setCategory] = useState<ExerciseCategory>("run");
@@ -341,6 +346,23 @@ export function ExerciseModal({ isOpen, onClose, date, onOpenExerciseSettings }:
     }
   };
 
+  /** Gömülü şablonu listeden gizler — preset KODDA kalır, yalnız anahtarı
+   *  `hiddenPresets`'e eklenir (geri getirilebilir). `...base` şart: sunucu
+   *  satırın tamamını değiştiriyor, `entries`/`catalog` korunmalı. */
+  const handleHidePreset = async (nameKey: string) => {
+    if (busy) return;
+    setBusy(true);
+    try {
+      await updateConfig(EXERCISE_CONFIG_KEY, {
+        ...existingExerciseConfig(config),
+        hiddenPresets: [...hiddenPresets, nameKey],
+      });
+      setPendingPick(null);
+    } finally {
+      setBusy(false);
+    }
+  };
+
   const handleCustomSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!name.trim() || duration <= 0) return;
@@ -407,37 +429,48 @@ export function ExerciseModal({ isOpen, onClose, date, onOpenExerciseSettings }:
               {t("exercise.quickPresets")}
             </span>
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-              {EXERCISE_PRESETS.map((p) => {
+              {EXERCISE_PRESETS.filter((p) => !hiddenPresets.includes(p.nameKey)).map((p) => {
                 const Icon = p.icon;
                 return (
-                  <button
-                    key={p.nameKey}
-                    disabled={busy}
-                    onClick={() => {
-                      if (theme === "glass") haptic("light");
-                      // Kalori artık preset'te SABİT DEĞİL; süre + kilo seçilir.
-                      // Önceki formdan kalan elle yazılmış kilo taşmasın.
-                      setKcalOverride(null);
-                      setPendingMinutes(p.durationMinutes);
-                      setPendingPick({
-                        name: p.nameKey,
-                        category: p.category,
-                      });
-                    }}
-                    className="flex items-center gap-2.5 p-3 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/5 hover:border-orange-500/30 text-left transition-all group active:scale-95 spring-press disabled:opacity-40"
-                  >
-                    <div className="w-8 h-8 rounded-xl bg-orange-500/10 group-hover:bg-orange-500/20 text-orange-400 flex items-center justify-center shrink-0">
-                      <Icon className="w-4 h-4" />
-                    </div>
-                    <div className="min-w-0">
-                      <div className="text-xs font-semibold truncate group-hover:text-orange-300">
-                        {t(p.nameKey)}
+                  <div key={p.nameKey} className="relative">
+                    <button
+                      disabled={busy}
+                      onClick={() => {
+                        if (theme === "glass") haptic("light");
+                        // Kalori artık preset'te SABİT DEĞİL; süre + kilo seçilir.
+                        // Önceki formdan kalan elle yazılmış kilo taşmasın.
+                        setKcalOverride(null);
+                        setPendingMinutes(p.durationMinutes);
+                        setPendingPick({
+                          name: p.nameKey,
+                          category: p.category,
+                        });
+                      }}
+                      className="w-full flex items-center gap-2.5 p-3 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/5 hover:border-orange-500/30 text-left transition-all group active:scale-95 spring-press disabled:opacity-40"
+                    >
+                      <div className="w-8 h-8 rounded-xl bg-orange-500/10 group-hover:bg-orange-500/20 text-orange-400 flex items-center justify-center shrink-0">
+                        <Icon className="w-4 h-4" />
                       </div>
-                      <div className="text-[10px] text-white/40">
-                        {p.durationMinutes} {t("exercise.minutes")}
+                      <div className="min-w-0">
+                        <div className="text-xs font-semibold truncate group-hover:text-orange-300">
+                          {t(p.nameKey)}
+                        </div>
+                        <div className="text-[10px] text-white/40">
+                          {p.durationMinutes} {t("exercise.minutes")}
+                        </div>
                       </div>
-                    </div>
-                  </button>
+                    </button>
+                    {/* Kaldırma ✕ — kart bir `button`, içine buton koymak
+                        geçersiz HTML olurdu; mutlak konumlu kardeş olarak
+                        durur. Kazara dokunmaya karşı `ConfirmButton` iki
+                        adımlı onay ister ("Emin misin?"). */}
+                    <ConfirmButton
+                      onConfirm={() => handleHidePreset(p.nameKey)}
+                      disabled={busy}
+                      label={t("exercise.removePreset")}
+                      className="absolute top-1.5 right-1.5 !px-1.5 !py-0.5"
+                    />
+                  </div>
                 );
               })}
             </div>

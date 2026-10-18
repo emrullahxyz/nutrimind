@@ -25,11 +25,12 @@ import {
   metFor,
   newCatalogId,
   parseCatalog,
+  parseHiddenPresets,
 } from "../lib/exercise";
 import type { CatalogEntry } from "../lib/exercise";
 import type { ExerciseCategory } from "../types";
 import { formatNumber } from "../lib/format";
-import { existingExerciseConfig } from "./ExerciseModal";
+import { EXERCISE_PRESETS, existingExerciseConfig } from "./ExerciseModal";
 
 /** `ExerciseCategory`'nin TAMAMENİ — genişletilmedi. Kategori yalnız MET
  *  tablosunun (ve kullanıcının bir sonraki seansta hangi tahmini alacağının)
@@ -104,6 +105,10 @@ export function ExerciseSettings() {
   const { t } = useTranslation();
   const { config, updateConfig } = useData();
   const catalog = parseCatalog(config[EXERCISE_CONFIG_KEY]);
+  /** Kullanıcının Egzersiz ekranından kaldırdığı gömülü şablonlar. Burada
+   *  listelenir ve geri getirilebilir. */
+  const hiddenPresets = parseHiddenPresets(config[EXERCISE_CONFIG_KEY]);
+  const hiddenList = EXERCISE_PRESETS.filter((p) => hiddenPresets.includes(p.nameKey));
 
   const [name, setName] = useState("");
   const [category, setCategory] = useState<ExerciseCategory>("custom");
@@ -115,6 +120,24 @@ export function ExerciseSettings() {
    *  unutan bir eklenti yazmak için. */
   async function write(next: CatalogEntry[]) {
     await updateConfig(EXERCISE_CONFIG_KEY, catalogWrite(config, next));
+  }
+
+  /** Gizlenen listeden çıkarır — şablon Egzersiz ekranına geri döner. Ayrı
+   *  bir `catalogWrite` yolu: `hiddenPresets` yazarken `catalog` de korunur. */
+  async function handleRestore(nameKey: string) {
+    if (busy) return;
+    setBusy(true);
+    setErr(null);
+    try {
+      await updateConfig(EXERCISE_CONFIG_KEY, {
+        ...existingExerciseConfig(config),
+        hiddenPresets: hiddenPresets.filter((k) => k !== nameKey),
+      });
+    } catch (e) {
+      setErr(String((e as Error)?.message ?? e));
+    } finally {
+      setBusy(false);
+    }
   }
 
   async function handleAdd() {
@@ -189,6 +212,33 @@ export function ExerciseSettings() {
           </ul>
         )}
       </div>
+
+      {/* --- Kaldırılan gömülü şablonlar --- */}
+      {hiddenList.length > 0 && (
+        <div className="flex flex-col gap-2.5 border-t border-line pt-4">
+          <h4 className="font-mono text-[11px] uppercase tracking-mono text-ink-tertiary">
+            {t("exercise.restoreTitle")}
+          </h4>
+          <ul className="flex flex-col gap-2">
+            {hiddenList.map((p) => (
+              <li
+                key={p.nameKey}
+                className="flex items-center justify-between gap-3 rounded-chip border border-line bg-white/[0.03] p-3 text-sm"
+              >
+                <span className="font-semibold text-ink-primary">{t(p.nameKey)}</span>
+                <button
+                  type="button"
+                  onClick={() => handleRestore(p.nameKey)}
+                  disabled={busy}
+                  className="rounded-pill bg-accent px-3 py-1 text-[11px] font-semibold text-accent-ink transition disabled:opacity-40"
+                >
+                  {t("exercise.restorePreset")}
+                </button>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
 
       {/* --- Yeni egzersiz ekleme --- */}
       <div className="flex flex-col gap-3 border-t border-line pt-4">

@@ -34,6 +34,7 @@ import {
   parseCatalog,
   parseExerciseItem,
   parseExerciseEntries,
+  parseHiddenPresets,
   withCatalog,
   withExercises,
 } from "../lib/exercise";
@@ -357,5 +358,51 @@ describe("katalog modalda OKUNUYOR (yazılıyordu, hiç okunmuyordu)", () => {
       caloriesBurned: kcal,
     };
     expect(parseExerciseItem(saved)).toEqual(saved);
+  });
+});
+
+// ============================================================================
+// GÖMÜLÜ ŞABLON GİZLEME — kullanıcı kullanmadığı hızlı şablonu kaldırabilir
+// ve Ayarlar'dan geri getirebilir. Preset KODDA kalır; yalnız anahtarı
+// `hiddenPresets` listesine girer. Gizleme `entries`/`catalog`'u silmemeli.
+// ============================================================================
+describe("gömülü şablon gizleme", () => {
+  it("`parseHiddenPresets` yalnız dizi metinlerini alır, bozuğu yutar", () => {
+    // Girdi `config[EXERCISE_CONFIG_KEY]` — yani `exercise` değerinin KENDİSİ
+    // (`parseCatalog` ile aynı imza disiplini).
+    expect(parseHiddenPresets({ hiddenPresets: ["exercise.presetRun"] })).toEqual([
+      "exercise.presetRun",
+    ]);
+    expect(parseHiddenPresets({ hiddenPresets: [] })).toEqual([]);
+    expect(parseHiddenPresets({})).toEqual([]);
+    expect(parseHiddenPresets(null)).toEqual([]);
+    expect(parseHiddenPresets({ hiddenPresets: "bozuk" })).toEqual([]);
+    // Bozuk satırlar tek tek düşer, geçerliler kalır (katalog parser'ıyla aynı disiplin).
+    expect(
+      parseHiddenPresets({ hiddenPresets: ["exercise.presetRun", 42, "", null, "exercise.presetYoga"] }),
+    ).toEqual(["exercise.presetRun", "exercise.presetYoga"]);
+  });
+
+  it("gizleme yalnız `hiddenPresets`'i yazar — `entries` ve `catalog` KORUNUR", () => {
+    // Sunucu config satırının TAMAMINI değiştirir: `...base` yayılımı şart.
+    const base = existingExerciseConfig({
+      exercise: {
+        entries: { "2026-10-18": [{ id: "ex_1" }] },
+        catalog: [{ id: "ec_1", name: "Futbol maçı", category: "custom", met: 7 }],
+      },
+    });
+    const next: Record<string, unknown> = { ...base, hiddenPresets: ["exercise.presetRun"] };
+    expect(next.entries).toEqual({ "2026-10-18": [{ id: "ex_1" }] });
+    expect(parseCatalog(next)).toHaveLength(1);
+    expect(parseHiddenPresets(next)).toEqual(["exercise.presetRun"]);
+  });
+
+  it("modal gizlenen şablonu SÜZER (kart listeden düşer)", () => {
+    // Kaynak taraması: filtrenin varlığı + `hiddenPresets`'e bağlılığı.
+    expect(EXERCISE_MODAL_SRC).toMatch(/EXERCISE_PRESETS\.filter\(/);
+    expect(EXERCISE_MODAL_SRC).toMatch(/hiddenPresets\.includes\(p\.nameKey\)/);
+    // ✕ butonu iki adımlı onay ister (kazara kaldırmaya karşı).
+    expect(EXERCISE_MODAL_SRC).toContain("handleHidePreset");
+    expect(EXERCISE_MODAL_SRC).toContain("ConfirmButton");
   });
 });

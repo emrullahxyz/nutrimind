@@ -268,3 +268,25 @@ export function withCatalog(config: AppConfig, entries: CatalogEntry[]): AppConf
 export function newCatalogId(): string {
   return `ec_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
 }
+
+// ---------------------------------------------------------------------------
+// GÖMÜLÜ ŞABLONLARIN GİZLENMESİ
+//
+// Kullanıcı hızlı şablonlardan kullanmadıklarını kaldırabilir ve istediğinde
+// geri getirebilir. Gömülü 13 preset KODDA yaşar (bkz. yukarıdaki not); burada
+// yalnızca KULLANICININ GİZLEDİĞİ nameKey'lerin listesi tutulur — preset'in
+// kendisi asla config'e yazılmaz, yalnız "şu anahtarı gösterme" bilgisi.
+//
+// Anahtarlar `exercise.preset*` i18n anahtarıdır; hesabın diliyle birlikte
+// saklanmaz (dil değişince liste bozulmaz — katalog adlarındaki sınıf hatanın
+// aynısını yapısal olarak engeller).
+// ---------------------------------------------------------------------------
+export function parseHiddenPresets(raw: unknown): string[] {
+  const rec = (raw as { hiddenPresets?: unknown })?.hiddenPresets;
+  if (!Array.isArray(rec)) return [];
+  const out: string[] = [];
+  for (const item of rec) {
+    if (typeof item === "string" && item.trim()) out.push(item.trim());
+  }
+  return out;
+}
