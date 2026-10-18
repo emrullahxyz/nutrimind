@@ -13,6 +13,42 @@ export interface ChangeLogVersion {
 
 export const CHANGELOG: ChangeLogVersion[] = [
   {
+    version: "0.32.1",
+    date: "2026-10-18",
+    summary: {
+      tr: "Egzersiz ekranındaki birkaç sorun giderildi: ekran açıkken arkadaki sayfa artık kaymıyor, uzun aktivite adları kırpılmıyor, listenin dibinde yukarı kaydırmak kolay. Ayrıca Egzersiz Kütüphanesi'nden nereden girdiysen oraya dönüyorsun.",
+      en: "Several issues in the exercise screen are fixed: the page behind no longer scrolls while it's open, long activity names are no longer clipped, and scrolling back up from the bottom of the list is easy. The Exercise Library also returns you to wherever you came from.",
+    },
+    items: [
+      {
+        type: "fixed",
+        tr: "Egzersiz ekranı açıkken arkadaki sayfa kaydırılabiliyordu; artık kilitli.",
+        en: "The page behind the exercise screen could still scroll while it was open; it's locked now.",
+      },
+      {
+        type: "fixed",
+        tr: 'Hazır aktivitelerin uzun isimleri kırpılıyor ve sağ üstteki "Kaldır" ile karışıyordu; artık tam okunuyor.',
+        en: 'Long ready-made activity names were clipped and collided with the "Remove" button in the corner; they now read in full.',
+      },
+      {
+        type: "fixed",
+        tr: "Egzersiz listesinin en altına inince yukarı kaydırmak zorlaşıyordu; artık liste içinde rahatça kayıyor.",
+        en: "Scrolling back up from the bottom of the exercise list was hard; the list now scrolls smoothly on its own.",
+      },
+      {
+        type: "improved",
+        tr: 'Egzersiz ekranındaki "+ Egzersiz ekle" ile kütüphaneye gittiğinde, "Tamam" ya da geri tuşu seni yeniden egzersiz ekranına döndürüyor — Ayarlar\'da bırakmıyor.',
+        en: 'When you go to the library via "+ Add exercise", "Done" or the back button returns you to the exercise screen instead of leaving you in Settings.',
+      },
+    ],
+    dev: [
+      "ExerciseModal kendi overlay'ini elle kuruyordu (paylasilan <Modal> DEGIL) ve 8 kardes overlay'den sapmisti. Eklenen katmanlar (referans MealActionSheet.tsx): non-passive wheel+touchmove capture blocker (React 17+ touchmove/wheel'i passive kaydeder, onTouchMove.preventDefault etkisiz), scrim touch-none + overscroll-behavior:none, ic scroll overscroll-contain + min-h-0, useDialogFocus (Escape/Tab/odak) + role=dialog + aria-modal, kapatma X'ine aria-label.",
+      "Kart tasmasi: preset kartinda isim sag ustteki Kaldir'i (ConfirmButton) ile cakisiyordu (olculen 35px, 360px ekranda). Yatay flex yerine dikey: ikon ust satir, isim tam genislikte alt satir -> 5 kartta da cakisma 0. min-h-0 BURADA BUG SEBEBI DEGIL (flex scroll container'da otomatik min-size 0, CSS Flexbox §4.5) — aile tutarliligi icin eklendi.",
+      "Kapanista yarim state (pendingPick/pendingExercise/weightInput/kcalOverride/name) sifirlanir — modal `return null` ile gizlenir ama unmount OLMAZ, yoksa bir sonraki acilista geri gelirdi. Kilo artik O GUNUN olcumu olarak yazilir (exerciseWeight(config,date) o gunu okuyor; todayISO() bugune yaziyordu). Panel max-h 90vh -> 90dvh + pad-safe-b, z-50 -> z-[9999].",
+      "Kutuphane donusu: App onExitExerciseLibrary'i YALNIZ settingsTarget==='exercise' iken ('+ Egzersiz ekle' yolu) bagliyor; Ayarlar menusunden girilirse prop verilmez, Geri Ayarlar'a doner. Donus tek history.back()/popstate yolundan (SettingsSheet.handlePopState, subViewRef+exitLibraryRef ile stale closure onlenir) — geçmiste sarkan girdi yok.",
+    ],
+  },
+  {
     version: "0.32.0",
     date: "2026-10-18",
     summary: {
