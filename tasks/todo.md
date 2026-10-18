@@ -7,6 +7,54 @@ kullanılmıyor; CLAUDE.md de yalnızca AGENTS.md'ye köprüdür.)
 
 ## AÇIK İŞLER
 
+- [ ] **v0.32.0 gerçek cihaz doğrulaması — malzeme seçimi + egzersiz akışı** (18 Eki 2026,
+      kodlandı, dağıtım/tıklama bekliyor). Otomatik kapılar yeşil (typecheck · 1393 test ·
+      PARITY 978×3 + KEYS + HARDCODED · build), ama **tarayıcı MCP erişilemediği için gerçek
+      tıklama denemesi yapılamadı** (L26: taklit edilemeyeni cihazdan İSTE — bu madde de öyle).
+      Doğrulanacak 5 akış: (1) öğüne tıkla → "Malzeme ekle" → **seçim ekranı açılıyor**, otomatik
+      besin gelmiyor → "Elle gir" → alanlar açılıyor → kalorileri yazıp kaydet → kayda giriyor;
+      (2) seçim yapmadan kaydet → öğün değişmemiş; (3) FAB → Egzersiz Kaydet → 13 preset →
+      süre soruluyor → **82 kg için hesaplanan kalori**; (4) "+ Egzersiz ekle" → Ayarlar → Egzersiz
+      Kütüphanesi → ekle → **geri tuşu** (zombi-modal fix'i `afterHistoryBackSettles` ile — en kritik
+      adım, `BottomNav.tsx:122-137` deseni); (5) kilo yoksa bir kez sorulup `config.weight`'e
+      yazılıyor, ikinci egzersizde tekrar sorulmuyor.
+
+- [ ] **`TemplatePreview` ↔ `NutritionSheet` yüzey birliği** (v0.32.0 sonrası). İki yüzey aynı
+      gramaj davranışını iki yerde uyguluyordu; `d92ab75` ikisini `lineUpdateFor` seçicisine
+      bağladı — **bug kapandı ama bağlantı testle korunmuyor**. `lineUpdateFor` saf seçicinin
+      `setDraftGrams`'a geri dönmesi yeşil testle görülemez. Kapatmak için ~15 satırlık kaynak-okuma
+      testi (`safeArea.test.ts` deseni) ya da iki yüzeyin tek bileşene çekilmesi.
+      İlgili: `src/components/NutritionSheet.tsx` · `src/components/TemplatePreview.tsx`.
+
+- [ ] **`ingredientDraft.test.ts:861` ihlal edilen sözleşmeyi kilitliyor.** Test "elle girilen makronun
+      tabanı ilk geçerli gramajdır → 200 g/450 kcal" bekliyor; `NutritionSheet` tarafındaki **doğru**
+      davranış (`setManualAmount`, ölçekleme yok) aynı satır şeklini farklı sonuçla veriyor.
+      `ingredientDraft.ts` ileride sözleşme yönünde düzeltilirse bu test kırmızıya döner ve
+      geliştirici "regresyon" diye geri alır. **Doğru olan sözleşme yönünde düzeltme**; test de
+      değişmeli. İstisna şu an `setManualAmount` dokümanında gerekçesiyle yazılı.
+
+- [ ] **`existingExerciseConfig` ↔ `withCatalog` birleşmeli.** İkisi pratikte aynı işi yapıyor
+      (config satırını koruyarak yaz) ama iki modülde, iki imzayla: `withCatalog` `lib/exercise.ts`'te,
+      `existingExerciseConfig` `ExerciseModal.tsx`'te bileşen içinde saf yardımcı. `withCatalog`'ın
+      imzasına uygun tek yazıcı kalmalı. `CATEGORIES`/`CATEGORY_KEYS` de (`ExerciseModal.tsx:564-572`,
+      `ExerciseSettings.tsx`, `lib/exercise.ts` `VALID_CATEGORIES`) **3 kopya** — biri değişirse
+      testler yeşil kalır, `lib/exercise.ts`'te tek yolda birleşmeli.
+
+- [ ] **`ExerciseSettings` a11y: MET input ve kategori `<select>` için `<label>` bağlantısı yok.**
+      Depoda `useId` deseni mevcut, `WaterSettings`'te sarmalama deseni de. Ekran okuyucu bu iki alanı
+      etiketsiz okuyor.
+
+- [ ] **`MAX_WEIGHT_KG` tek yolda.** `ExerciseModal`'da 400 sert tavanı var; `WeightCard`,
+      `WeightSettings`, `SettingsSheet` sınırsız. Gerçek sınır istenirse `lib/weight.ts`'te ortak
+      yola taşınmalı.
+
+- [ ] **`APP_VERSION` ↔ `changelog[0].version` eşitliği testi yok.** İkisi sessizce ayrışabilir;
+      `changelog.test.ts`'e tek satır (`expect(CHANGELOG[0].version).toBe(APP_VERSION)`).
+
+- [ ] **`onOpenExerciseSettings` zincirinin üç halkası da opsiyonel prop.** Biri düşerse `tsc`
+      sessiz kalır — buton ya hiç render edilmez ya da navigasyon yapmaz. Yalnız
+      `openSettingsSubview` birliği zorunlu. `App.tsx` kaynak-okuma testi (~15 satır) kapatır.
+
 - [ ] **v0.30.8 gerçek cihaz doğrulaması — SU + BARKOD** (kullanıcı geri bildirimi 21 Eyl 2026,
       aynı hesapla iki madde; ikisi de v0.30.8'de kodlandı, dağıtım bekliyor). Plan:
       `docs/superpowers/plans/2026-09-24-su-takibi-ve-barkod-v0308.md`.
