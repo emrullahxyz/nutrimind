@@ -17,7 +17,9 @@ kullanılmıyor; CLAUDE.md de yalnızca AGENTS.md'ye köprüdür.)
       süre soruluyor → **82 kg için hesaplanan kalori**; (4) "+ Egzersiz ekle" → Ayarlar → Egzersiz
       Kütüphanesi → ekle → **geri tuşu** (zombi-modal fix'i `afterHistoryBackSettles` ile — en kritik
       adım, `BottomNav.tsx:122-137` deseni); (5) kilo yoksa bir kez sorulup `config.weight`'e
-      yazılıyor, ikinci egzersizde tekrar sorulmuyor.
+      yazılıyor, ikinci egzersizde tekrar sorulmuyor. (6) Egzersiz ekranında bir hazır
+      şablonun köşesindeki "Kaldır" → onay → kart düşüyor; Ayarlar → Egzersiz Kütüphanesi →
+      "Kaldırılan şablonlar" → "Geri getir" → kart geri dönüyor.
 
 - [ ] **`TemplatePreview` ↔ `NutritionSheet` yüzey birliği** (v0.32.0 sonrası). İki yüzey aynı
       gramaj davranışını iki yerde uyguluyordu; `d92ab75` ikisini `lineUpdateFor` seçicisine
