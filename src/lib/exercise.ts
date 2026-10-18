@@ -1,5 +1,5 @@
 import type { AppConfig, Exercise, ExerciseCategory } from "../types";
-import { latestEntry, parseBodyStats, parseWeightConfig } from "./weight";
+import { latestEntryBefore, parseBodyStats, parseWeightConfig } from "./weight";
 
 const VALID_CATEGORIES: Set<ExerciseCategory> = new Set([
   "run",
@@ -151,19 +151,34 @@ export function metFor(category: ExerciseCategory): number {
 
 /** Kalori hesabında kullanılacak kilo.
  *
- *  ÖNCELİK: son ÖLÇÜM → profil kilosu → `null`.
+ *  ÖNCELİK: `date`'ye ait/en yakın ÖLÇÜM → profil kilosu → `null`.
  *  Ölçüm önce gelir çünkü kullanıcı kilosunu ölçüm geçmişinden günceller;
  *  profildeki değer bayat kalabilir.
  *
- *  `null` DÖNER, varsayılan kilo DEĞİL — L21. Çağıran kullanıcıdan sorup
- *  `config.weight`'e yazmalıdır. */
-export function exerciseWeight(config: AppConfig): number | null {
-  const measured = latestEntry(parseWeightConfig(config).entries)?.kg;
-  if (typeof measured === "number" && Number.isFinite(measured) && measured > 0)
-    return measured;
+ *  TARİH-BAĞIMSIZ OLAMAZ (ölçülen hata): modal `date` prop'uyla AÇILIR ve
+ *  `DayView` GEÇMİŞ bir gün için de açabiliyor. `latestEntry` (bugünün
+ *  son ölçümü) kullanılsaydı 1 Ekim'de 10 Ekim'de kayıt yapılırken 10
+ *  Ekim'in kilosu 1 Ekim'in tarihine yazılırdı — geçmişe bugünün
+ *  ölçümünü sızdıran hesap. `latestEntryBefore` (`weight.ts`) tam bu iş için
+ *  yazılmıştı; `date` verilmediğinde davranış `latestEntry` ile AYNIDIR
+ *  (`""` altındaki her tarih için en büyük tarih = en son ölçüm).
+ *
+ *  Profil kilosu tarih-bağımsız olduğu için düşüş yolunda da aynı kalır:
+ *  geçmiş bir günde profil kilosu elde edilebiliyorsa kullanılır, yoksa
+ *  `null` döner ve çağıran SORAR (L21: varsayılan kilo uydurulmaz). */
+export function exerciseWeight(config: AppConfig, date: string): number | null {
+  const entries = parseWeightConfig(config).entries;
+  const onDate = date in entries ? entries[date] : null;
+  const before = latestEntryBefore(entries, date);
+  const measured =
+    typeof onDate === "number" && Number.isFinite(onDate) && onDate > 0
+      ? onDate
+      : before !== null && Number.isFinite(before.kg) && before.kg > 0
+        ? before.kg
+        : null;
+  if (measured !== null) return measured;
   const profile = parseBodyStats(config).weightKg;
-  if (typeof profile === "number" && Number.isFinite(profile) && profile > 0)
-    return profile;
+  if (typeof profile === "number" && Number.isFinite(profile) && profile > 0) return profile;
   return null;
 }
 
@@ -173,15 +188,23 @@ export function exerciseWeight(config: AppConfig): number | null {
  *  gerektirmiyor. Bu projede `config.profile`'a cinsiyet YAZILIYOR ama
  *  Ayarlar'dan DÜZENLENEMİYOR (`SettingsSheet.handleSaveProfile` yalnız
  *  name/age/weightKg/heightCm/targetWeightKg yazıyor) — ona dayanan bir
- *  formül bayat veriyle hesap yapardı. Kilo ise düzenlenebilir. */
+ *  formül bayat veriyle hesap yapardı. Kilo ise düzenlenebilir.
+ *
+ *  `met` GEÇİLİRSE O KULLANILIR: kullanıcının katalog girdisi (`CatalogEntry.met`)
+ *  kategori tablosundan daha güvenilir bir tahmindir — kullanıcı o işin
+ *  MET'sini kendi bildi. Olmadığında (`undefined`) `metFor(category)` devreye
+ *  girer; geçersiz/bozuk `met` de TABLODA kalır (L21: uydurma yok). */
 export function burnedKcal(
   category: ExerciseCategory,
   weightKg: number,
   minutes: number,
+  met?: number,
 ): number {
   if (!Number.isFinite(weightKg) || weightKg <= 0) return 0;
   if (!Number.isFinite(minutes) || minutes <= 0) return 0;
-  return Math.round(((metFor(category) * 3.5 * weightKg) / 200) * minutes);
+  const metValue =
+    typeof met === "number" && Number.isFinite(met) && met > 0 ? met : metFor(category);
+  return Math.round(((metValue * 3.5 * weightKg) / 200) * minutes);
 }
 
 // ---------------------------------------------------------------------------
@@ -203,22 +226,17 @@ export interface CatalogEntry {
 }
 
 function parseCatalogItem(raw: unknown): CatalogEntry | null {
-  if (typeof raw !== "object" || raw === null || Array.isArray(raw))
-    return null;
+  if (typeof raw !== "object" || raw === null || Array.isArray(raw)) return null;
   const rec = raw as Record<string, unknown>;
   const id = typeof rec.id === "string" ? rec.id.trim() : "";
   const name = typeof rec.name === "string" ? rec.name.trim() : "";
   if (!id || !name) return null;
-  const categoryStr =
-    typeof rec.category === "string" ? rec.category.trim() : "";
+  const categoryStr = typeof rec.category === "string" ? rec.category.trim() : "";
   const category = VALID_CATEGORIES.has(categoryStr as ExerciseCategory)
     ? (categoryStr as ExerciseCategory)
     : "custom";
   const rawMet = rec.met;
-  const met =
-    typeof rawMet === "number" && Number.isFinite(rawMet) && rawMet > 0
-      ? rawMet
-      : null;
+  const met = typeof rawMet === "number" && Number.isFinite(rawMet) && rawMet > 0 ? rawMet : null;
   if (met === null) return null;
   return { id, name, category, met };
 }
@@ -237,15 +255,9 @@ export function parseCatalog(raw: unknown): CatalogEntry[] {
 /** `config.exercise.catalog` yazar — **`entries` (günlük kayıtlar) KORUNUR**.
  *  Katalog yazmak geçmiş egzersiz kayıtlarını silmemelidir; config nesnesi
  *  spread ile kopyalanır, `entries` dokunulmadan taşınır. */
-export function withCatalog(
-  config: AppConfig,
-  entries: CatalogEntry[],
-): AppConfig {
+export function withCatalog(config: AppConfig, entries: CatalogEntry[]): AppConfig {
   const prev = config.exercise;
-  const base =
-    typeof prev === "object" && prev !== null && !Array.isArray(prev)
-      ? prev
-      : {};
+  const base = typeof prev === "object" && prev !== null && !Array.isArray(prev) ? prev : {};
   return { ...config, exercise: { ...base, catalog: entries } };
 }
 

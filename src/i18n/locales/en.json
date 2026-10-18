@@ -65,15 +65,7 @@
     "eatenSodium": "Eaten Sodium"
   },
   "day": {
-    "weekdaysShort": [
-      "Mon",
-      "Tue",
-      "Wed",
-      "Thu",
-      "Fri",
-      "Sat",
-      "Sun"
-    ],
+    "weekdaysShort": ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"],
     "streak": "Day streak",
     "mergeDialogTitle": "Merge {{count}} Meals",
     "mergeSave": "Merge",
@@ -549,6 +541,7 @@
     "title": "Exercise & Activity Log",
     "totalBurned": "Total {{kcal}} kcal burned",
     "quickPresets": "Quick Presets",
+    "myExercises": "My Exercises",
     "presetRun": "Running / Jogging",
     "presetWeights": "Weight Training",
     "presetWalk": "Brisk Walk",

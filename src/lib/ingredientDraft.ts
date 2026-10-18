@@ -105,7 +105,10 @@ export interface DraftLine {
 
 /** Dev-Only: `manual` dışındaki bayrak kombinasyonlarını değiştirir (testler).
  *  Üretimde asla çağrılmaz. */
-export function __setDraftFlag(line: DraftLine, patch: Partial<Pick<DraftLine, "preserved" | "manualMeasured">>): DraftLine {
+export function __setDraftFlag(
+  line: DraftLine,
+  patch: Partial<Pick<DraftLine, "preserved" | "manualMeasured">>,
+): DraftLine {
   return { ...line, ...patch };
 }
 
@@ -159,7 +162,9 @@ export function roundNutrition(n: Nutrition): Nutrition {
 export function resolveDraftUnit(alias: Alias, unit: string): AliasUnit | null {
   const wanted = unit.trim().toLocaleLowerCase("tr");
   if (!wanted) return null;
-  return unitOptions(alias.units).find((u) => u.name.trim().toLocaleLowerCase("tr") === wanted) ?? null;
+  return (
+    unitOptions(alias.units).find((u) => u.name.trim().toLocaleLowerCase("tr") === wanted) ?? null
+  );
 }
 
 /** Verilen alias + miktar/birimden satır.
@@ -185,7 +190,9 @@ export function draftLineFromAlias(
     qty,
     unit: u.name,
     grams: valid ? grams : 0,
-    nutrition: valid ? scaleNutrition(alias.nutrition, alias.serving_g, grams) : (fallback ?? { ...ZERO_NUTRITION }),
+    nutrition: valid
+      ? scaleNutrition(alias.nutrition, alias.serving_g, grams)
+      : (fallback ?? { ...ZERO_NUTRITION }),
     // Ölçülebilir satırda taban alias'ın `serving_g`'sidir; `setDraftGrams`
     // her zaman `scaleNutrition(alias…)` kullandığı için bu alanı okumaz.
     nutritionGrams: valid ? grams : 0,
@@ -477,9 +484,7 @@ export function canEditGrams(line: DraftLine): boolean {
  *  hepsinin çözümü aynıydı: besin değerini gir. Ayrım yalnız metni bölecekti
  *  ve AI kaleminde YANLIŞ uyarı üretiyordu (AI besin değerini zaten bilir). */
 export type GramEditHint =
-  | { kind: "scaled"; fromGrams: number; toGrams: number }
-  | { kind: "noNutrition" }
-  | null;
+  { kind: "scaled"; fromGrams: number; toGrams: number } | { kind: "noNutrition" } | null;
 
 /** @param previous miktar YAZILMADAN ÖNCEKİ satır (`null` = yeni eklenen). */
 export function draftGramHint(
@@ -491,20 +496,28 @@ export function draftGramHint(
   // Miktar gerçekten değişmediyse uyarı göstermek gürültü.
   if (previous.grams === line.grams) return null;
 
-  // v0.31.2'den sonra HAFIZAYA BAĞLI OLMAYAN kalemler de ölçeklenir
-  // (`nutritionGrams` tabanı), yani artık "ölçeklenmedi" durumu YOKTUR:
-  // tabanı OLAN VE MAKROSU GERÇEK olan her satır ölçekler. Ölçeklenmeyen
-  // tek durum: makrosu henüz olmayan satır (kullanıcı ilk kez miktar
-  // yazıyor) — o zaman "besin değerini gir" uyarısı DOĞRUDUR.
-  //
+  // Ölçekleme "scaled" bildirisi: tabanı OLAN VE MAKROSU GERÇEK olan satır.
   // `hasNutrition` ölçütü makronun GERÇEKTEN dolu olduğuna bakar; gramajı
   // tek başına yeterli değil (AI satırında makro her zaman doludur, elle
   // iskelet satırda hep sıfırdır).
+  //
+  // `manualMeasured` BURAYA GİRMEZ (v0.32.1 düzeltmesi): o bayrak tek
+  // başına "ölçeklendi" diyordu, ama taze ELLE satır gramajı artık
+  // `setManualAmount` ile ETİKET olarak yazıyor — makro hiç ÖLÇEKLENMİYOR
+  // (bkz. `NutritionSheet.setManualAmount`: 225 kcal elle satır, 100 g yazılınca
+  // hâlâ 225). Bu ekranda "ölçeklendi" yazmak hatayı GÖRÜNÜR kılıyordu.
+  // Ölçekleyen elle satır (kayıttan gelen, `fromRecord: true`) zaten
+  // `nutritionGrams > 0` taşır ve aşağıdaki dalda yakalanır.
   const hasNutrition = line.nutrition.kcal > 0 || line.nutrition.protein > 0;
-  if (alias || (line.nutritionGrams > 0 && hasNutrition) || line.manualMeasured) {
+  if (alias || (line.nutritionGrams > 0 && hasNutrition)) {
     return { kind: "scaled", fromGrams: previous.grams, toGrams: line.grams };
   }
-  // Makro yok: kullanıcıya DEĞER GİRMESİ gerektiğini söyle. `fromRecord`
+  // Makrosu DOLU ama ölçekleme YOK → kullanıcının yazdığı besin değeri NİHAİ
+  // (elle satır), gramaj yalnız etiket. Ne ölçeklendi ne eksik: SESSİZ kal
+  // (L20: ekranda ne yazıyorsa kayda o girer — uydurulmuş bir geri bildirim
+  // de uydurmadır).
+  if (hasNutrition) return null;
+  // Makro da yok: kullanıcıya DEĞER GİRMESİ gerektiğini söyle. `fromRecord`
   // ayrımı KALDIRILDI: eskiden "kayıttan geldi ama çözülemedi" ile "kullanıcı
   // elle girdi" ayrı dalları vardı, ama ikisinin de çözümü aynıydı (besin
   // değerini gir). Ayrım yalnız metni bölecekti, davranışı değiştirmiyordu.
@@ -642,7 +655,8 @@ export function itemsToDraftLines(items: TemplateItem[], aliases: Alias[]): Draf
     const sources = item.sources ?? [];
     const src = sources[0];
     const alias = src ? byId.get(src.aliasId) : undefined;
-    const measured = src && alias ? draftLineFromAlias(alias, String(src.qty), src.unit, item.nutrition) : null;
+    const measured =
+      src && alias ? draftLineFromAlias(alias, String(src.qty), src.unit, item.nutrition) : null;
     if (measured && sources.length === 1) {
       out.push(measured);
       continue;
@@ -786,7 +800,9 @@ export function aliasOfLine(aliases: Alias[], line: DraftLine): Alias | undefine
  *  kayıt yolu çıktısını (`TemplateItem[]`) besler ve o girdi DraftLine'ın öteki
  *  alanlarını taşımaz. Yardımcı yalnız `nutrition`'a dokunur. */
 export function sumLineNutrition(lines: readonly { nutrition: Nutrition }[]): Nutrition {
-  return lines.reduce<Nutrition>((acc, line) => addNutrition(acc, line.nutrition), { ...ZERO_NUTRITION });
+  return lines.reduce<Nutrition>((acc, line) => addNutrition(acc, line.nutrition), {
+    ...ZERO_NUTRITION,
+  });
 }
 
 /** Kaynakları `MealForm` sepetine açar: bir `sources` girdisi bir kalem.

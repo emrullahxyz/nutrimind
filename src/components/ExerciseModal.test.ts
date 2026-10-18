@@ -14,6 +14,8 @@
 // doğrulayacak.
 // ============================================================================
 import { describe, expect, it } from "vitest";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import {
   EXERCISE_PRESETS,
   MAX_WEIGHT_KG,
@@ -27,6 +29,8 @@ import {
   EXERCISE_CONFIG_KEY,
   burnedKcal,
   metFor,
+  parseCatalog,
+  parseExerciseItem,
   parseExerciseEntries,
   withCatalog,
   withExercises,
@@ -245,5 +249,90 @@ describe("existingExerciseConfig — günlük kayıt yazarken `catalog` KORUNUR"
     const base = existingExerciseConfig(config);
     base.entries = "yazildi";
     expect(config.exercise.entries).toEqual({});
+  });
+});
+
+// ============================================================================
+// BLOKLAYAN — KATALOG YAZILIYORDU, HİÇBİR YERDE OKUNMUYORDU.
+//
+// `grep parseCatalog` → yalnız `ExerciseSettings` (yazan yer) ve testler.
+// `ExerciseModal` onu hiç import etmiyordu; ekran yalnız
+// `EXERCISE_PRESETS.map(...)` çiziyordu. Kullanıcı Ayarlar → Egzersiz
+// Kütüphanesi'nden "Futbol maçı / custom / 7 MET" ekliyor, sonra Egzersiz
+// ekranında o listede yok — elle yeniden yazmak zorunda. `CatalogEntry.met`
+// HİÇBİR YERDE `burnedKcal`'a girmiyordu: özelliğin yarısı eksik teslim.
+//
+// Projede jsdom/@testing-library yok (üst yorum), bu yüzden JSX'in
+// "kart listede görünüyor" hali kaynak taramasıyla, hesabın KENDİSİ saf
+// fonksiyonlarla kanıtlanır.
+// ============================================================================
+const EXERCISE_MODAL_SRC = readFileSync(
+  join(process.cwd(), "src", "components", "ExerciseModal.tsx"),
+  "utf8",
+);
+
+describe("katalog modalda OKUNUYOR (yazılıyordu, hiç okunmuyordu)", () => {
+  const catalog: CatalogEntry[] = [
+    { id: "ec_1", name: "Futbol maçı", category: "custom", met: 7 },
+    { id: "ec_2", name: "Rampa yürüyüş", category: "walk", met: 5.5 },
+  ];
+  const config = { exercise: { entries: {}, catalog } } as AppConfig;
+
+  it("modal katalogu OKUYOR (`parseCatalog` import edilir ve çağrılır)", () => {
+    expect(EXERCISE_MODAL_SRC).toContain("parseCatalog");
+    expect(EXERCISE_MODAL_SRC).toContain("parseCatalog(config[EXERCISE_CONFIG_KEY])");
+  });
+
+  it("katalog girdisi `config.exercise`'in `entries`'i İÇİNDE yaşar (ayrıştırma sırası bozulmaz)", () => {
+    // `{catalog}` yazan bir okuma `{entries}`'i göremezdi; ikisi aynı nesnede.
+    const parsed = parseCatalog(config[EXERCISE_CONFIG_KEY]);
+    expect(parsed).toHaveLength(2);
+    expect(parseExerciseEntries(config[EXERCISE_CONFIG_KEY])).toEqual({});
+    expect(parseCatalog(existingExerciseConfig(config))).toEqual(catalog);
+  });
+
+  it("KART GÖRÜNÜR: katalog başlığı + kart dizisi modalın JSX'inde var", () => {
+    // Başlık ayrı grup: `quickPresets` (gömülü) ile karışmasın.
+    expect(EXERCISE_MODAL_SRC).toContain('t("exercise.myExercises")');
+    expect(EXERCISE_MODAL_SRC).toMatch(/catalog\.map\(/);
+    // Kartın MET'i kullanıcının girdiği değer olarak gösterilir.
+    expect(EXERCISE_MODAL_SRC).toContain("formatNumber(item.met, 1)");
+  });
+
+  it("KART TIKLANINCA katalog MET'i hesaba GİRER (kullanıcının girdiği bilgi kullanılır)", () => {
+    // "Futbol maçı" `custom` → tabloda MET 4.0. Kullanıcı 7 MET yazdı:
+    // hesap 4.0 ile değil 7 ile yapılmalı, yoksa katalog yine ölü kalır.
+    expect(metFor("custom")).toBe(4);
+    expect(resolveKcal(null, "custom", 80, 30, 7)).toBe(294);
+    expect(resolveKcal(null, "custom", 80, 30)).toBe(168);
+    expect(resolveKcal(null, "custom", 80, 30, 7)).toBeGreaterThan(
+      resolveKcal(null, "custom", 80, 30),
+    );
+    // Katalog girdisinin `met`'i panelde de aynı değerle kullanılır.
+    const entry = catalog[0];
+    expect(resolveKcal(null, entry.category, 80, 30, entry.met)).toBe(294);
+  });
+
+  it("elleCalories override önceliği KATALOGDA da geçerli (L20)", () => {
+    expect(resolveKcal(310, "custom", 80, 30, 7)).toBe(310);
+  });
+
+  it("katalog adı kayda OLDUĞU GİBİ yazılır (çeviri değil) — `displayExerciseName` çözmeye çalışmaz", () => {
+    const t = (k: string) => `tr:${k}`;
+    expect(displayExerciseName("Futbol maçı", t)).toBe("Futbol maçı");
+    // Gömülü preset adı KENDİ anahtarıyla çevrilir (dondurulmuş yabancı dil yok).
+    expect(displayExerciseName("exercise.presetFootball", t)).toBe("tr:exercise.presetFootball");
+  });
+
+  it("KAYDA giren egzersiz `parseExerciseItem` süzgecinden GEÇER (katalog yolu kaydı bozmaz)", () => {
+    const kcal = resolveKcal(null, "custom", 80, 30, 7);
+    const saved: Exercise = {
+      id: "ex_cat",
+      name: "Futbol maçı",
+      category: "custom",
+      durationMinutes: 30,
+      caloriesBurned: kcal,
+    };
+    expect(parseExerciseItem(saved)).toEqual(saved);
   });
 });

@@ -27,8 +27,8 @@ export const CHANGELOG: ChangeLogVersion[] = [
       },
       {
         type: "new",
-        tr: "Listedeki besinlerden biri sana uymuyorsa \"Elle gir\" diyerek adını ve kalorisini kendin yazabiliyorsun.",
-        en: "If none of the listed foods fits, tap \"Enter manually\" and enter the name and calories yourself.",
+        tr: 'Listedeki besinlerden biri sana uymuyorsa "Elle gir" diyerek adını ve kalorisini kendin yazabiliyorsun.',
+        en: 'If none of the listed foods fits, tap "Enter manually" and enter the name and calories yourself.',
       },
       {
         type: "new",
@@ -37,7 +37,7 @@ export const CHANGELOG: ChangeLogVersion[] = [
       },
       {
         type: "improved",
-        tr: "Egzersiz ekranı artık \"kaç dakka yaptın\" diye soruyor; eskiden her aktivite için sabit bir süre vardı.",
+        tr: 'Egzersiz ekranı artık "kaç dakka yaptın" diye soruyor; eskiden her aktivite için sabit bir süre vardı.',
         en: "The exercise screen now asks how many minutes you did, instead of a fixed duration per activity.",
       },
       {
@@ -47,19 +47,22 @@ export const CHANGELOG: ChangeLogVersion[] = [
       },
       {
         type: "new",
-        tr: "Ayarlar → Egzersiz Kütüphanesi'nden kendi egzersizlerini ekleyebiliyor ve silebiliyorsun.",
-        en: "You can add and remove your own exercises in Settings → Exercise Library.",
+        tr: 'Ayarlar → Egzersiz Kütüphanesi\'nden kendi egzersizlerini ekleyebiliyor ve silebiliyorsun; eklediğin egzersizler artık Egzersiz ekranında "Senin Egzersizlerin" başlığı altında da çıkıyor — dokununca süreyi seçiyorsun, kalori o egzersize verdiğin MET ile hesaplanıyor.',
+        en: 'You can add and remove your own exercises in Settings → Exercise Library — and they now show on the exercise screen under "My Exercises": tap one, pick the duration, and calories are computed from the MET you gave it.',
       },
       {
         type: "improved",
-        tr: "Egzersiz ekranındaki \"+ Egzersiz ekle\" seni doğrudan kütüphaneye götürüyor.",
-        en: "\"+ Add exercise\" on the exercise screen takes you straight to the library.",
+        tr: 'Egzersiz ekranındaki "+ Egzersiz ekle" seni doğrudan kütüphaneye götürüyor.',
+        en: '"+ Add exercise" on the exercise screen takes you straight to the library.',
       },
     ],
     dev: [
       "Ogun malzeme secimi (NutritionSheet): pickerFor ile bos iskelet satir; dort dalli render (bos / secim ekrani / elle gir / dolu). Secim ekrani hafizadaki besinleri listeler; elle gir dalinda ad+kalori alanlari. Secim yapilmadan kaydet oncesi iskelet satir duser, ogun toplami degismez (draftLinesToItems kayit yolundan hesaplanir).",
+      "BLOKLAYAN 1 (iki yuzey ayrismasi): TemplatePreview elle satiri icin setDraftGrams'i DOGRUDAN cagriyordu, NutritionSheet'te ise lineUpdateFor -> setManualAmount yolu kullaniliyordu. Ayni patlama (225 kcal elle satir; qty=1 -> 225, 10 -> 2250, 100 -> 22500) yalnizca sablon ekraninda canliydi. Duzeltme: TemplatePreview artik lineUpdateFor + isManualDraftLine'i ORTAK kullaniyor (kosul satır satir kopyalanmisti). draftGramHint'in 'scaled' dalindan cikan manualMeasured TERMESI kaldirildi — elle satirda makro artik hic olceklenmiyor, 'olceklandi' yazmak hatayi gorunur kilardi; makrosu dolu elle satir simdi sessiz kalir (uydurulmus geri bildirim de uydurmadir).",
       "Egzersiz kalorisi: src/lib/exercise.ts MET tablosu + burnedKcal(met x 3,5 x kg / 200 x dk). exerciseWeight kilo yoksa null doner; ExerciseModal bir kez sorar, cevabi config.weight'e yazar (asla varsayilan kilo uydurulmaz). Gecmis kayitlar donmus gercek oldugu icin kilo degisince yeniden hesaplanmaz.",
       "Egzersiz katalogu: config.exercise.catalog (CatalogEntry id/name/category/met). withCatalog config'i spread ile kopyalar, entries dokunulmadan tasinir (gunluk kayitlar korunur); ExerciseModal'daki existingExerciseConfig ise ters yonu (catalog korunur) korur — sunucu config.exercise satirini tamamen degistirdigi icin iki yon da sart. 13 gomulu preset config'e hic yazilmaz; kayda yazilan ad, dile bagimsiz nameKey'tir (gorunen ad cevirilir). Kullanici katalogu ExerciseSettings alt ekraninda yonetir.",
+      "BLOKLAYAN 2 (katalog yaziliyordu, HICBIR YERDE okunmuyordu): grep parseCatalog -> yalniz ExerciseSettings (yazan yer) + testler. ExerciseModal onu hic import etmiyordu; ekran yalniz EXERCISE_PRESETS.map(...) ciziyordu, CatalogEntry.met burnedKcal'a hic girmiyordu. Duzeltme: ExerciseModal parseCatalog(config[EXERCISE_CONFIG_KEY]) okuyor ve gomulu preset'lerin ALTI 'Senin Egzersizlerin' grubu olarak ciziyor (tek izgara DEGIL: 'futbol maci' gomulu bir preset olarak da var, ayni izgarada hangisinin kullaniciya ait oldugu kaybolurdu; iki baslik Ayarlar'daki baslikla ayni kelimeleri kullanir). Bos katalogda bolum render edilmez. pendingPreset -> PendingPick tek tip: iki kaynak da ayni 'sure sec -> hesaplanan kalori -> kaydet' akisini kullanir, tek fark met'in katalogdan gelmesi. burnedKcal/resolveKcal opsiyonel met aldi (gecersiz met tabloya duser, uydurma yok).",
+      "BLOKLAYAN 3 (tarih-bagimsiz kilo): exerciseWeight(config) latestEntry kullaniyordu = DAIMA bugunun son olcumu. DayView modali date={date} ile acar ve gecmis bir gun icin de acabiliyor; 1 Ekim'de 10 Ekim'de kayit yapilsaydi 10 Ekim'in kilosu 1 Ekim'e yazilirdi. exerciseWeight(config, date) imzasi + latestEntryBefore (weight.ts'te zaten vardi, sadece kullanilmamisti); oncelik sirasi: O GUNUN olcumu -> o gunden onceki en yakin olcum -> profil -> null. Bugun icin davranis degismedi.",
       "Onega 6 mevcut kategori disindaki aktiviteler 'custom' (MET 4.0) kovasina duser; yanlis kategori-MET eslesmesi yerine bilinen tablo kullanilir.",
       "Olu parseExerciseConfig kaldirildi (ExerciseModal + DayView yeni yollara baglandi).",
       "Tarayici dogrulamasi controller tarafindan yapilacak; sunucu tarafina (server/index.js) dokunulmadi.",
@@ -73,12 +76,30 @@ export const CHANGELOG: ChangeLogVersion[] = [
       en: "Quantity (grams) is editable on AI-added ingredients; changing it scales calories and macros correctly against the item's BASE grams (e.g. 380 g on a 500 g item = 380/500). When no base grams can be derived the amount field stays locked. Photo-added meals now include the AI's portion estimate automatically.",
     },
     items: [
-      { type: "improved", tr: "AI ile eklenen kalemin gramajı düzenlenebilir — yazdığın miktara göre kalori/makrolar oranlanır.", en: "AI-added ingredient grams are editable — calories/macros scale with the amount you enter." },
-      { type: "fixed", tr: "AI ile eklenen kalemde gramajı değiştirince kalori/makrolar absürt çıkıyordu (100 yazınca ~19000 kcal). Artık kalemin taban gramajına göre oranlanıyor.", en: "Changing grams on an AI-added ingredient produced absurd calories/macros (typing 100 gave ~19000 kcal). Now it scales against the item's base grams." },
-      { type: "improved", tr: "Taban gramaj AI'ın porsiyon tahmininden ya da kalem adındaki '(500g)' gibi ifadeden alınır; ikisi de yoksa miktar alanı kilitli kalır.", en: "The base grams come from the AI's portion estimate or a '(500g)' note in the item name; if neither exists the amount field stays locked." },
-      { type: "fixed", tr: "Fotoğrafla (Yemek modu) eklenen kalemlerde miktar 'bilinmiyor' kilitli kalıyordu; artık porsiyon tahmini geliyor, değer düzenlenebilir.", en: "Photo-added (Food mode) ingredients used to stay locked as 'unknown amount'; the portion estimate now comes through and is editable." },
+      {
+        type: "improved",
+        tr: "AI ile eklenen kalemin gramajı düzenlenebilir — yazdığın miktara göre kalori/makrolar oranlanır.",
+        en: "AI-added ingredient grams are editable — calories/macros scale with the amount you enter.",
+      },
+      {
+        type: "fixed",
+        tr: "AI ile eklenen kalemde gramajı değiştirince kalori/makrolar absürt çıkıyordu (100 yazınca ~19000 kcal). Artık kalemin taban gramajına göre oranlanıyor.",
+        en: "Changing grams on an AI-added ingredient produced absurd calories/macros (typing 100 gave ~19000 kcal). Now it scales against the item's base grams.",
+      },
+      {
+        type: "improved",
+        tr: "Taban gramaj AI'ın porsiyon tahmininden ya da kalem adındaki '(500g)' gibi ifadeden alınır; ikisi de yoksa miktar alanı kilitli kalır.",
+        en: "The base grams come from the AI's portion estimate or a '(500g)' note in the item name; if neither exists the amount field stays locked.",
+      },
+      {
+        type: "fixed",
+        tr: "Fotoğrafla (Yemek modu) eklenen kalemlerde miktar 'bilinmiyor' kilitli kalıyordu; artık porsiyon tahmini geliyor, değer düzenlenebilir.",
+        en: "Photo-added (Food mode) ingredients used to stay locked as 'unknown amount'; the portion estimate now comes through and is editable.",
+      },
     ],
-    dev: ["server/ai.js metin/fotoğraf istemlerine baseAmount porsiyon kuralı eklendi; itemsToDraftLines tabani isimden cozer (parseGramFromName/resolveBaseGrams); grams>0 icin preserved=false; canEditGrams taban yoksa alani kilitler; setDraftGrams tabansiz dal artik taban UYDURMAZ (kismi-tus patlamasi cozuldu); MealForm baseAmount/grams'i items'a tasir."],
+    dev: [
+      "server/ai.js metin/fotoğraf istemlerine baseAmount porsiyon kuralı eklendi; itemsToDraftLines tabani isimden cozer (parseGramFromName/resolveBaseGrams); grams>0 icin preserved=false; canEditGrams taban yoksa alani kilitler; setDraftGrams tabansiz dal artik taban UYDURMAZ (kismi-tus patlamasi cozuldu); MealForm baseAmount/grams'i items'a tasir.",
+    ],
   },
   {
     version: "0.31.8",
@@ -142,7 +163,7 @@ export const CHANGELOG: ChangeLogVersion[] = [
     dev: [
       "BUG A1 (egzersiz kalorisi): DayView eski gun-basi anahtari (`exercise_${date}`) okurken ExerciseModal tek `exercise` anahtarina (`{entries}`) yaziyordu — goc yari kalmisti, burnedKcal daima 0. Yeni saf helper lib/exercise.ts burnedKcalFor(rawConfig, date) → parseExerciseEntries + exercisesFor; DayView ona baglandi.",
       "BUG A2 (offline ogun): MealForm/ScanSheet `setDayMeals`'ten ONCE ham fetchData() cagiriyordu; offline'da fetch firlayinca setDayMeals'e (offline-aware kuyruk yolu, data.tsx) hic ulasilmiyordu. Yeni saf helper lib/days.ts resolveWriteDays(offline, fetchDays, contextDays): offline -> context, online -> taze fetch, fetch hatasi -> context (cift-yazma tuzagi korunur).",
-      "UI: NutritionSheet kalem satirindaki NutrientSummaryLine'a kcal=\"inline\" eklendi (TemplatePreview kalem satiriyla ayni gosterim).",
+      'UI: NutritionSheet kalem satirindaki NutrientSummaryLine\'a kcal="inline" eklendi (TemplatePreview kalem satiriyla ayni gosterim).',
       "Temizlik (kullaniciya gorunmez): noUnusedLocals/noUnusedParameters tsconfig'e acildi (~15 dosyada olu import/degisken). Olu modul/fonksiyon silindi: Collapsible.tsx, mealBreakdown.ts(+test), format.ts->formatGrams/formatPercent/currentGreeting/greetingForHour, perfProbe.ts->resetLongTaskProbe, ai.ts->revokeAiConsent. Iki-yuzey tekrari lib/ingredientDraft.ts'e indirildi: aliasOfLine + sumLineNutrition (NutritionSheet + TemplatePreview kopyalari).",
       "Temizlik (kullaniciya gorunmez, ek): sayi animasyon hook'lari birlestirildi — useAnimatedNumber silindi, tek uygulama lib/useAnimatedValue (ease parametresiyle; HeroCalorieCard'in expo egrisi animation.ts'e easeOutExpo olarak tasindi). Kok tasarim prototipleri (support.js + iki .dc.html) docs/archive/prototypes'e tasindi. Tek-cagiranli formatTargetHitRate sarmalayicisi silindi (cagiranlar formatHitRatePct'e bagli).",
       "Ertelenen (follow-up): useSpring tek cagiranli (usePressSpring) — ayri primitif olarak birakildi. server/index.js guard'siz JSON.parse (getDays/getAliases) DONMUS dosya — ayrica bildirildi.",
@@ -210,7 +231,7 @@ export const CHANGELOG: ChangeLogVersion[] = [
     items: [
       {
         type: "fixed",
-        tr: "Bir öğünü \"Düzenle\" ile açıp kaydettiğinde malzeme miktarları ve şablon bağlantısı sessizce siliniyordu. Sonradan öğüne tıklayınca malzeme satırları kaybolmuş oluyordu ve gramajı bir daha düzenleyemezdin. Artık kayıt bu alanları koruyor.",
+        tr: 'Bir öğünü "Düzenle" ile açıp kaydettiğinde malzeme miktarları ve şablon bağlantısı sessizce siliniyordu. Sonradan öğüne tıklayınca malzeme satırları kaybolmuş oluyordu ve gramajı bir daha düzenleyemezdin. Artık kayıt bu alanları koruyor.',
         en: "Opening a meal with Edit and saving used to silently drop its ingredient amounts and template link. Tapping the meal afterwards showed no ingredient rows, and you could never adjust the amounts again. The save now keeps those fields.",
       },
       {
@@ -225,8 +246,8 @@ export const CHANGELOG: ChangeLogVersion[] = [
       },
       {
         type: "fixed",
-        tr: "Bir malzemeye özel birim (örneğin 150 g'lık 1 paket) ekleyip o birimle öğün girince miktar \"1 g\" görünüyordu. Artık kendi birimiyle görünüyor.",
-        en: "Adding a custom unit to an ingredient (say a 150 g pack) and logging a meal with it used to show \"1 g\". It now shows the unit you picked.",
+        tr: 'Bir malzemeye özel birim (örneğin 150 g\'lık 1 paket) ekleyip o birimle öğün girince miktar "1 g" görünüyordu. Artık kendi birimiyle görünüyor.',
+        en: 'Adding a custom unit to an ingredient (say a 150 g pack) and logging a meal with it used to show "1 g". It now shows the unit you picked.',
       },
     ],
     dev: [
@@ -250,8 +271,8 @@ export const CHANGELOG: ChangeLogVersion[] = [
     items: [
       {
         type: "improved",
-        tr: "Üç malzemeli bir şablonu ekleyince önce üç ayrı öğün çıkıyordu. Artık tek öğün: adı \"Yulaf + Protein tozu + Süt\" gibi malzemelerin birleşimi, kalorisi toplamları.",
-        en: "Adding a three-ingredient template used to produce three separate meals. Now it's one: named after its ingredients (\"Oats + Protein powder + Milk\") with their combined calories.",
+        tr: 'Üç malzemeli bir şablonu ekleyince önce üç ayrı öğün çıkıyordu. Artık tek öğün: adı "Yulaf + Protein tozu + Süt" gibi malzemelerin birleşimi, kalorisi toplamları.',
+        en: 'Adding a three-ingredient template used to produce three separate meals. Now it\'s one: named after its ingredients ("Oats + Protein powder + Milk") with their combined calories.',
       },
       {
         type: "fixed",
@@ -281,12 +302,12 @@ export const CHANGELOG: ChangeLogVersion[] = [
     items: [
       {
         type: "fixed",
-        tr: "Şablonun malzemesinde miktarı değiştirince besin değerlerinin değişip değişmediği belli değildi. Artık hafızadaki bir malzemede miktarı düşürünce \"90 g → 45 g için besin değerleri yeniden hesaplandı\" yazıyor.",
-        en: "When you changed an ingredient's amount in a template, nothing said whether the nutrition went with it. Now for an ingredient in memory it says \"Nutrition recalculated for 90 g → 45 g\".",
+        tr: 'Şablonun malzemesinde miktarı değiştirince besin değerlerinin değişip değişmediği belli değildi. Artık hafızadaki bir malzemede miktarı düşürünce "90 g → 45 g için besin değerleri yeniden hesaplandı" yazıyor.',
+        en: 'When you changed an ingredient\'s amount in a template, nothing said whether the nutrition went with it. Now for an ingredient in memory it says "Nutrition recalculated for 90 g → 45 g".',
       },
       {
         type: "improved",
-        tr: "Hafızada olmayan bir malzemede miktarı değiştirirsen artık uyarı çıkıyor: \"Bu malzeme hafızada yok — miktarı değiştirmek besin değerlerini değiştirmez.\" Böylece miktar girip sonucun değişmemesine şaşırmıyorsun.",
+        tr: 'Hafızada olmayan bir malzemede miktarı değiştirirsen artık uyarı çıkıyor: "Bu malzeme hafızada yok — miktarı değiştirmek besin değerlerini değiştirmez." Böylece miktar girip sonucun değişmemesine şaşırmıyorsun.',
         en: "Changing the amount of an ingredient that isn't in your memory now warns you: \"This ingredient isn't in memory — changing the amount won't change its nutrition.\" No more surprise when the numbers don't move.",
       },
       {
@@ -296,13 +317,13 @@ export const CHANGELOG: ChangeLogVersion[] = [
       },
       {
         type: "improved",
-        tr: "Bugün ekranındaki şablonlar yan yana sıkışıp taşıyordu. Artık en çok kullandığın üç şablon kart olarak görünüyor ve kullandıkça listedeki yerleri değişiyorlar. Fazlası \"+N şablon daha\" arkasında.",
-        en: "The templates on Today used to squeeze into each other and overflow. Now your three most-used templates appear as cards and move up as you use them. The rest sit behind \"+N more templates\".",
+        tr: 'Bugün ekranındaki şablonlar yan yana sıkışıp taşıyordu. Artık en çok kullandığın üç şablon kart olarak görünüyor ve kullandıkça listedeki yerleri değişiyorlar. Fazlası "+N şablon daha" arkasında.',
+        en: 'The templates on Today used to squeeze into each other and overflow. Now your three most-used templates appear as cards and move up as you use them. The rest sit behind "+N more templates".',
       },
       {
         type: "improved",
-        tr: "Çok malzemeli şablonu sıfırdan kurabiliyorsun. \"Yeni Şablon\" düğmesi hem Hafıza'da hem de Bugün ekranında; açtığında adını yazıp besin aramaya başlıyorsun, istediğin kadar malzeme ekliyorsun.",
-        en: "You can now build a multi-ingredient template from scratch. The \"New Template\" button is on both the Memory and Today screens: name it, start searching for foods, add as many ingredients as you like.",
+        tr: 'Çok malzemeli şablonu sıfırdan kurabiliyorsun. "Yeni Şablon" düğmesi hem Hafıza\'da hem de Bugün ekranında; açtığında adını yazıp besin aramaya başlıyorsun, istediğin kadar malzeme ekliyorsun.',
+        en: 'You can now build a multi-ingredient template from scratch. The "New Template" button is on both the Memory and Today screens: name it, start searching for foods, add as many ingredients as you like.',
       },
       {
         type: "fixed",
@@ -339,8 +360,8 @@ export const CHANGELOG: ChangeLogVersion[] = [
     version: "0.31.1",
     date: "2026-10-03",
     summary: {
-      tr: "Şablonda \"Malzeme ekle\" artık hafızanı doğrudan açıyor: açtığın anda besin arama kutusu çıkıyor, aradığını yazıp seçiyorsun. Hafızada yoksa \"Elle gir\" deyip adını ve besin değerlerini kendin yazıyorsun.",
-      en: "\"Add ingredient\" in a template now opens your food memory straight away: a search box appears and you pick what you need. If it isn't in memory, tap \"Enter manually\" and type the name and macros yourself.",
+      tr: 'Şablonda "Malzeme ekle" artık hafızanı doğrudan açıyor: açtığın anda besin arama kutusu çıkıyor, aradığını yazıp seçiyorsun. Hafızada yoksa "Elle gir" deyip adını ve besin değerlerini kendin yazıyorsun.',
+      en: '"Add ingredient" in a template now opens your food memory straight away: a search box appears and you pick what you need. If it isn\'t in memory, tap "Enter manually" and type the name and macros yourself.',
     },
     items: [
       {
@@ -350,12 +371,12 @@ export const CHANGELOG: ChangeLogVersion[] = [
       },
       {
         type: "improved",
-        tr: "Hafızada olmayan bir malzeme eklemek istersen \"Elle gir\" deyip adını ve besin değerlerini yazabiliyorsun. Doldurulmamış satır kaydedilmiyor — boş malzemeli yemek oluşmuyor.",
+        tr: 'Hafızada olmayan bir malzeme eklemek istersen "Elle gir" deyip adını ve besin değerlerini yazabiliyorsun. Doldurulmamış satır kaydedilmiyor — boş malzemeli yemek oluşmuyor.',
         en: "If the ingredient isn't in memory, \"Enter manually\" lets you type its name and macros. A row you leave empty isn't saved — no meals with phantom ingredients.",
       },
       {
         type: "fixed",
-        tr: "Şablondaki bir malzemenin miktarını değiştirince satır \"elle girilmiş\" gibi görünüp malzeme adını elle yazılır hale getiriyordu; kayıttaki ad gizleniyordu. Artık kayıttan gelen malzemeler her zaman yerinde kalıyor.",
+        tr: 'Şablondaki bir malzemenin miktarını değiştirince satır "elle girilmiş" gibi görünüp malzeme adını elle yazılır hale getiriyordu; kayıttaki ad gizleniyordu. Artık kayıttan gelen malzemeler her zaman yerinde kalıyor.',
         en: "Changing an ingredient's amount in a template made the row look manually entered and hid the recorded name. Recorded ingredients now always stay as they are.",
       },
     ],
@@ -388,8 +409,8 @@ export const CHANGELOG: ChangeLogVersion[] = [
       },
       {
         type: "new",
-        tr: "Şablona dokununca doğrudan eklemek yerine önizleme açılır: kalemleri orada düzenleyip ekleyebilirsin. \"Şablonu da güncelle\" kutusu işaretliyse değişiklik kalıcı olur, sonraki kullanımlarda yeni haliyle gelir.",
-        en: "Tapping a template opens a preview instead of adding it straight away: edit the items there, then add. Tick \"Also update the template\" to make the change stick for next time.",
+        tr: 'Şablona dokununca doğrudan eklemek yerine önizleme açılır: kalemleri orada düzenleyip ekleyebilirsin. "Şablonu da güncelle" kutusu işaretliyse değişiklik kalıcı olur, sonraki kullanımlarda yeni haliyle gelir.',
+        en: 'Tapping a template opens a preview instead of adding it straight away: edit the items there, then add. Tick "Also update the template" to make the change stick for next time.',
       },
       {
         type: "improved",
@@ -465,12 +486,12 @@ export const CHANGELOG: ChangeLogVersion[] = [
       {
         type: "fixed",
         tr: "iPhone'da barkod taraması hiç çalışmıyordu (tarayıcı okuma özelliğini desteklemiyor) ama ekran yine de “otomatik okunuyor” diyordu. Artık iPhone'da da gerçekten okuyor; okuma mümkün değilse bunu açıkça söyleyip barkodu elle girme yolunu öne çıkarır.",
-        en: "Barcode scanning never worked on iPhone (the browser has no on-device reader) yet the screen still claimed \"reading automatically\". It now really scans on iPhone too, and if scanning is impossible it says so plainly and points you to manual entry.",
+        en: 'Barcode scanning never worked on iPhone (the browser has no on-device reader) yet the screen still claimed "reading automatically". It now really scans on iPhone too, and if scanning is impossible it says so plainly and points you to manual entry.',
       },
       {
         type: "improved",
         tr: "Barkod ararken hata olursa “Tekrar dene” düğmesi aynı barkodu yeniden sorar; ürünü baştan taramak gerekmez.",
-        en: "If a barcode lookup fails, a \"Try again\" button re-asks for the same barcode — no need to scan the product again.",
+        en: 'If a barcode lookup fails, a "Try again" button re-asks for the same barcode — no need to scan the product again.',
       },
     ],
     dev: [
@@ -543,7 +564,7 @@ export const CHANGELOG: ChangeLogVersion[] = [
       "İkinci kök neden: `runChain` yalnızca SON adımın sonucunu döndürüyordu → gerçek sebep Gemini'nin 503'ü iken kullanıcı 'zaman aşımı' okudu. Üçüncü: yedek zincirin tamamı ölüydü — NIM `meta/llama-3.1-8b-instruct` 410 Gone, nemotron-70b 404 'Not found for account', 11B vision 500, **90B vision 90 sn'de yanıt yok**; OpenCode `deepseek-v4-flash-free` 400 'Model is unavailable', fiyatlı modelleri 401 'No payment method'. Kayıtlarda hiç 429 yok (eski RATE_VISION maddesiyle ilgisiz).",
       "server/ai.js: `AI_BUDGET_MS` (varsayılan 25000) + `MIN_STEP_MS` (2500) — her adımın zaman aşımı kalan bütçeyle kırpılır, kalan yetmezse adım HİÇ başlatılmaz (`skipped: budget`). `VENDOR_5XX_STREAK` (2): aynı sağlayıcının kademeleri art arda 5xx/zaman aşımı verirse kalan kademeler atlanır (429 sayılmaz — kota model başına). `callLLM` artık `buildUrl`/`buildBody(model)` alır ve model seviyesinde hatada (400/404/410) aiModels üzerinden TEK kez model değiştirip aynı istekte yeniden dener. Tek-sağlayıcı zorlama modları da aynı zincirden geçer (bütçe/kod/rapor tek yerde).",
       "server/ai.js: `failureFrom(attempts)` — kod TÜM denemelerden seçilir (kova 429 → sağlayıcı hatası → zaman aşımı → erişilemezlik); yanıt gövdesine `attempts` eklenir (PII yok) ve `CODE_MESSAGES` ile İngilizce gövde metni verilir. `AI_LIMITS` dışa açıldı (değişmez kapısı için); index.js'e DOKUNULMADI.",
-      "server/aiHealth.js (yeni, izole): sağlayıcı adımı başına devre kesici — 3 ardışık zaman aşımı / 3 erişilemezlik / 5 sağlayıcı 5xx / tek 401-403-404-410 → 10 dk devre dışı; süre dolunca yarım açık tek deneme. Eşikler ve pencere env'den ÇAĞRI ANINDA okunur. Açılışta `[ai] {kind:\"breaker\"}` satırı.",
+      'server/aiHealth.js (yeni, izole): sağlayıcı adımı başına devre kesici — 3 ardışık zaman aşımı / 3 erişilemezlik / 5 sağlayıcı 5xx / tek 401-403-404-410 → 10 dk devre dışı; süre dolunca yarım açık tek deneme. Eşikler ve pencere env\'den ÇAĞRI ANINDA okunur. Açılışta `[ai] {kind:"breaker"}` satırı.',
       "server/aiModels.js (yeni, izole): ücretsiz model keşfi — sağlayıcı listesinden aday süzme (NIM'de guard/embed/rerank elenir, OpenCode'da `-free` önce), boyut/`flash` heuristiğiyle küçük-hızlı model öne (`\\b1b\\b` sınırı: yoksa '51b' içindeki '1b' eşleşiyordu), adayları tek-jetonluk/1×1 PNG yoklamayla doğrulama, 6 saat olumlu / 15 dk olumsuz önbellek. Ağ YALNIZCA model seviyesinde hata gelince açılır (sağlıklı akışta sıfır ek istek). `NUTRI_AI_AUTOMODEL=0` ile kapatılır.",
       "server/aiLog.js: kayda `upstream` (sağlayıcının ham kodu) + `detail` (kırpık, sır maskeli gerekçe) eklendi; `status` artık BİZİM döndüğümüz kod. `recordChain()` istek başına tek satır özet yazar (başarıda da) — ring buffer'a ve sağlayıcı sayaçlarına girmez. `setHealth()` ile devre kesici durumu `/api/ai/status` gövdesine eklenir (index.js değişmedi).",
       "src/lib/aiDeadline.ts (yeni): `withDeadline()` kullanıcı iptali ile süre aşımını tek sinyalde birleştirir ama AYIRT eder (`AbortSignal.any` bilinçli kullanılmadı — iOS Safari sürüm riski). 35 sn; süre aşımında `AiError(504, ai_timeout)` fırlatılır, iptal sessizce geçer. ScanSheet: 6 sn sonra saniye sayacı (`scan.analyzingSeconds`, 3 dilde) + hata sonrası aynı kareyle 'Tekrar dene' (`common.retry`).",

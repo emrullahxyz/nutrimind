@@ -7,6 +7,8 @@
 // yalnızca stepper ölçeklemesinde (m ≠ 1) meşru.
 // ============================================================================
 import { describe, expect, it } from "vitest";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import {
   addSkeletonLine,
   canRemoveLine,
@@ -19,6 +21,7 @@ import {
 import { ZERO_NUTRITION } from "../types";
 import {
   canEditGrams,
+  draftGramHint,
   draftLineFromAlias,
   draftLinesToItems,
   mealDraftLines,
@@ -379,8 +382,14 @@ describe("setManualAmount — elle satırda gramaj ETİKETTİR, makroya dokunmaz
     const after10 = setManualAmount(after1, "10");
     const after100 = setManualAmount(after10, "100");
 
-    expect([after1.nutrition.kcal, after10.nutrition.kcal, after100.nutrition.kcal]).toEqual([225, 225, 225]);
-    expect([after1.nutrition.protein, after10.nutrition.protein, after100.nutrition.protein]).toEqual([5, 5, 5]);
+    expect([after1.nutrition.kcal, after10.nutrition.kcal, after100.nutrition.kcal]).toEqual([
+      225, 225, 225,
+    ]);
+    expect([
+      after1.nutrition.protein,
+      after10.nutrition.protein,
+      after100.nutrition.protein,
+    ]).toEqual([5, 5, 5]);
     expect(after100.grams).toBe(100); // etiket doğru
     expect(after100.nutritionGrams).toBe(0); // ama ölçekleme tabanı HİÇ kurulmadı
   });
@@ -468,6 +477,95 @@ describe("lineUpdateFor — gramaj değişikliği hangi yola gider?", () => {
   });
 });
 
+// ============================================================================
+// REGRESYON — AYNI PATLAMA İKİ YÜZEYDE YAŞADI (`TemplatePreview`).
+//
+// Ölçülen: şablon önizlemesi `setDraftGrams`'ı DOĞRUDAN çağırıyordu, elle
+// satır koşulu da satır satır kopyalanmıştı (`line.aliasId === null && …`).
+// Sonuç: gün öğününde çözülmüş patlama ŞABLONDA sessizce canlıydı —
+//   225 kcal elle satır → qty=1 → 225 · qty=10 → 2250 · qty=100 → 22500
+//
+// Saf-fonksiyon testleri JSX'in hangi yola BAĞLANDIĞINI görmüyor; o yüzden
+// aşağıdaki kapı HEM saf seçiciyi hem de TemplatePreview'ın kaynağını tarar:
+// ikisinden biri eski kalırsa (elle dalda `setDraftGrams`, kopya koşul)
+// patlama ürüne çıkamaz.
+// ============================================================================
+const TEMPLATE_PREVIEW_SRC = readFileSync(
+  join(process.cwd(), "src", "components", "TemplatePreview.tsx"),
+  "utf8",
+);
+
+describe("TemplatePreview yüzeyi — patlama regresyonu (NutritionSheet ile ortak seçici)", () => {
+  /** Şablon ekranının elle satırı: iskelet + kullanıcının yazdığı makro.
+   *  NutritionSheet testindekiyle AYNI veri — iki yüzey de aynı satırı
+   *  aynı kuralla yönetmeli. */
+  const manual = () => ({
+    ...skeletonLine(),
+    name: "Ev yapımı sos",
+    nutrition: { ...ZERO_NUTRITION, kcal: 225, protein: 5 },
+    manualMeasured: true,
+  });
+
+  it("elle satır → makro SABİT: 1 → 10 → 100 dizgisi patlatmaz", () => {
+    const a = lineUpdateFor(manual(), "1", null);
+    const b = lineUpdateFor(a, "10", null);
+    const c = lineUpdateFor(b, "100", null);
+
+    expect([a.nutrition.kcal, b.nutrition.kcal, c.nutrition.kcal]).toEqual([225, 225, 225]);
+    expect([a.nutrition.protein, b.nutrition.protein, c.nutrition.protein]).toEqual([5, 5, 5]);
+    expect(c.grams).toBe(100);
+    // Patlamayı mümkün kılan şey tabanın kurulmasıydı — kurulmuyor.
+    expect(c.nutritionGrams).toBe(0);
+  });
+
+  it("elle satır: kayda giren değer gramajla tutarlı (L20)", () => {
+    const items = draftLinesToItems([lineUpdateFor(manual(), "100", null)]);
+    expect(items[0].grams).toBe(100);
+    expect(items[0].nutrition.kcal).toBe(225);
+  });
+
+  it("alias satırı → gramaj ÖLÇEKLER (elle dalı tüm satırlara yayılmıyor)", () => {
+    const bound = draftLineFromAlias(tavuk, "100", "g")!;
+    expect(lineUpdateFor(bound, "200", tavuk).nutrition.kcal).toBe(330);
+  });
+
+  it("ŞABLON EKRANI da ortak seçiciyi kullanıyor (`lineUpdateFor`, doğrudan `setDraftGrams` DEĞİL)", () => {
+    // JSX `onChange`'in gövdesi: `lineUpdateFor(line, …)` çağrısı ŞART.
+    expect(TEMPLATE_PREVIEW_SRC).toContain("lineUpdateFor(line, v, alias ?? null)");
+    // Elle satırın doğrudan ölçekleyiciye gitmesi patlamanın kendisidir.
+    expect(TEMPLATE_PREVIEW_SRC).not.toMatch(/setDraftGrams\s*\(\s*line\s*,/);
+  });
+
+  it("ŞABLON EKRANI elle satır koşulunu KOPYALAMIYOR (`isManualDraftLine` kullanıyor)", () => {
+    expect(TEMPLATE_PREVIEW_SRC).toContain("isManualDraftLine(line)");
+    // Koşul satır satır kopyalanırsa iki yüzey sessizce ayrışır (oldu).
+    expect(TEMPLATE_PREVIEW_SRC).not.toMatch(/aliasId\s*===\s*null\s*&&\s*!\s*line\.preserved/);
+  });
+
+  it("elle satırda 'ölçeklendi' ipucu GÖSTERİLMEZ (makro ölçeklenmiyor)", () => {
+    // `draftGramHint` elle satırda ölçekleme bildirmemeli: 100 g yazıldığı
+    // halde 225 kcal sabit kalıyorsa "ölçeklendi" yazmak hatayı görünür kılar.
+    // Makrosu dolu olduğu için "besin değerini gir" uyarısı da yanlış olur —
+    // o da bir geri bildirim uydurması, o yüzden SESSİZ kalır.
+    const onceki = lineUpdateFor(manual(), "10", null);
+    const sonraki = lineUpdateFor(onceki, "100", null);
+    expect(draftGramHint(sonraki, null, onceki)).toBeNull();
+    // Makrosu henüz olmayan elle satırda uyarı DOĞRU: değer girilmeli.
+    expect(draftGramHint(lineUpdateFor(skeletonLine(), "100", null), null, skeletonLine())).toEqual(
+      {
+        kind: "noNutrition",
+      },
+    );
+    // Kayıttan gelen elle kalem ise ÖLÇEKLER ve ipucu "scaled" olur.
+    const saved = mealDraftLines(SAVED_MANUAL, ALIASES)![0];
+    expect(draftGramHint(lineUpdateFor(saved, "200", null), null, saved)).toEqual({
+      kind: "scaled",
+      fromGrams: 100,
+      toGrams: 200,
+    });
+  });
+});
+
 describe("elle satır sadece YENİ eklenen iskeletlerdir (kayıt karışmaz)", () => {
   it("kayıttan gelen ELLE kalem `fromRecord` taşır → elle dalına GİRMEZ", () => {
     const saved = mealDraftLines(SAVED_MANUAL, ALIASES)![0];
@@ -496,7 +594,10 @@ describe("elle satır sadece YENİ eklenen iskeletlerdir (kayıt karışmaz)", (
 
 describe("scaleMealNutrition — aç-kaydet sözleşmesi (m=1 kayıpsız)", () => {
   it("m=1 iken 2 ondalıklı makrolar KORUNUR (8.75 → 8.8 DEĞİL)", () => {
-    const out = scaleMealNutrition({ kcal: 320, protein: 12.34, carbs: 8.75, fat: 3.25, fiber: 1.05 }, 1);
+    const out = scaleMealNutrition(
+      { kcal: 320, protein: 12.34, carbs: 8.75, fat: 3.25, fiber: 1.05 },
+      1,
+    );
     expect(out.carbs).toBe(8.75);
     expect(out.fat).toBe(3.25);
     expect(out.protein).toBe(12.34);
@@ -513,7 +614,15 @@ describe("scaleMealNutrition — aç-kaydet sözleşmesi (m=1 kayıpsız)", () =
   });
 
   it("m=1 iken girilmiş mikro korunur", () => {
-    const base = { kcal: 100, protein: 10, carbs: 20, fat: 5, fiber: 2, sodium: 1400, sugar: 12.25 };
+    const base = {
+      kcal: 100,
+      protein: 10,
+      carbs: 20,
+      fat: 5,
+      fiber: 2,
+      sodium: 1400,
+      sugar: 12.25,
+    };
     const out = scaleMealNutrition(base, 1);
     expect(out.sodium).toBe(1400);
     expect(out.sugar).toBe(12.25);
@@ -527,7 +636,10 @@ describe("scaleMealNutrition — aç-kaydet sözleşmesi (m=1 kayıpsız)", () =
 
 describe("scaleMealNutrition — stepper ölçeklemesi (m ≠ 1)", () => {
   it("m=2 makroyu 1 ondalığa yuvarlar, kcal'i Math.round'lar", () => {
-    const out = scaleMealNutrition({ kcal: 320.4, protein: 12.34, carbs: 8.75, fat: 3.25, fiber: 1.05 }, 2);
+    const out = scaleMealNutrition(
+      { kcal: 320.4, protein: 12.34, carbs: 8.75, fat: 3.25, fiber: 1.05 },
+      2,
+    );
     expect(out.kcal).toBe(641); // Math.round(320.4 × 2)
     expect(out.protein).toBe(24.7); // 24.68 → toFixed(1)
     expect(out.carbs).toBe(17.5);
@@ -541,7 +653,10 @@ describe("scaleMealNutrition — stepper ölçeklemesi (m ≠ 1)", () => {
   });
 
   it("m ≠ 1 iken mikro ölçeklenir ve sodyum yuvarlanır", () => {
-    const out = scaleMealNutrition({ kcal: 100, protein: 10, carbs: 20, fat: 5, fiber: 2, sodium: 1400 }, 1.5);
+    const out = scaleMealNutrition(
+      { kcal: 100, protein: 10, carbs: 20, fat: 5, fiber: 2, sodium: 1400 },
+      1.5,
+    );
     expect(out.sodium).toBe(2100); // Math.round(1400 × 1.5)
   });
 });

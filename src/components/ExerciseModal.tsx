@@ -33,6 +33,7 @@ import {
   burnedKcal,
   exerciseWeight,
   exercisesFor,
+  parseCatalog,
   parseExerciseEntries,
   withExercises,
 } from "../lib/exercise";
@@ -83,9 +84,19 @@ export const EXERCISE_PRESETS: Preset[] = [
   { nameKey: "exercise.presetTreadmill", category: "run", durationMinutes: 30, icon: Gauge },
   { nameKey: "exercise.presetHiit", category: "run", durationMinutes: 20, icon: Zap },
   { nameKey: "exercise.presetYoga", category: "custom", durationMinutes: 45, icon: Flower2 },
-  { nameKey: "exercise.presetPilates", category: "custom", durationMinutes: 60, icon: PersonStanding },
+  {
+    nameKey: "exercise.presetPilates",
+    category: "custom",
+    durationMinutes: 60,
+    icon: PersonStanding,
+  },
   { nameKey: "exercise.presetTennis", category: "custom", durationMinutes: 60, icon: Target },
-  { nameKey: "exercise.presetBasketball", category: "custom", durationMinutes: 60, icon: CircleDot },
+  {
+    nameKey: "exercise.presetBasketball",
+    category: "custom",
+    durationMinutes: 60,
+    icon: CircleDot,
+  },
   { nameKey: "exercise.presetFootball", category: "custom", durationMinutes: 90, icon: Goal },
   { nameKey: "exercise.presetDance", category: "custom", durationMinutes: 60, icon: Music4 },
 ];
@@ -95,6 +106,21 @@ export const DURATION_CHIPS = [15, 30, 45, 60] as const;
 
 /** Kayda girmeden önceki egzersiz — `id`/`caloriesBurned` sonradan eklenir. */
 export type DraftExercise = Omit<Exercise, "id" | "caloriesBurned">;
+
+/** Süre seçimi açılan kart — gömülü preset ya da katalog girdisi.
+ *
+ *  NEDEN TEK TİP: iki kaynak da "dokununca süre sor, hesaplanan kalori
+ *  göster, kaydet" akışını İSTER; ayrı akış yazmak aynı davranışı iki yerde
+ *  farklı bırakmak demek. Tek fark hesapta: katalogda MET'i kullanıcı yazdı
+ *  (`met`), gömülü preset'te kategori tablosundan gelir (`metFor`). */
+export interface PendingPick {
+  /** Kayda yazılacak ad. Gömülü preset'te i18n ANAHTARI (`displayExerciseName`
+   *  kullanıcının güncel dilinde çözer), katalogda kullanıcının kendi metni. */
+  name: string;
+  category: ExerciseCategory;
+  /** Kullanıcının girdiği MET — yalnız katalogda. `undefined` = tabloda ara. */
+  met?: number;
+}
 
 /** Gömülü presetlerin DİL-BAĞIMSIZ kimlikleri. Kayda yazılan `name` budur. */
 const PRESET_NAME_KEYS = new Set(EXERCISE_PRESETS.map((p) => p.nameKey));
@@ -136,15 +162,22 @@ export function displayExerciseName(name: string, t: (key: string) => string): s
 /** Kayda girecek kalori: kullanıcının elle yazdığı gerçek ÖNCE gelir.
  *
  *  L20 (ekranda ne yazıyorsa kayda o girer) — kullanıcının bildiği gerçek,
- *  formülün tahmininden iyidir. `null` ise hesap yapılır. */
+ *  formülün tahmininden iyidir. `null` ise hesap yapılır.
+ *
+ *  `met` katalog girdisinin KENDİ MET'idir (kullanıcı yazdı); verilmezse
+ *  kategori tablosu kullanılır. Katalog yazılıyor ama hiç okunmuyordu:
+ *  `parseCatalog` yalnız `ExerciseSettings`'te okunuyordu, bu ekranda
+ *  `CatalogEntry.met` HİÇBİR yere girmiyordu — kullanıcının girdiği 7 MET
+ *  hiçbir zaman hesaba katılmıyordu. */
 export function resolveKcal(
   override: number | null,
   category: ExerciseCategory,
   weightKg: number,
   minutes: number,
+  met?: number,
 ): number {
   if (override !== null && Number.isFinite(override) && override > 0) return override;
-  return burnedKcal(category, weightKg, minutes);
+  return burnedKcal(category, weightKg, minutes, met);
 }
 
 /** Kilo girişini sayıya çevirir; geçersizse `null`.
@@ -178,21 +211,34 @@ export function ExerciseModal({ isOpen, onClose, date, onOpenExerciseSettings }:
   // deseni yüzünden 400 dönüyordu; egzersiz kaydı hiç kalıcı olmuyordu.)
   const entries = parseExerciseEntries(config[EXERCISE_CONFIG_KEY]);
   const currentExercises: Exercise[] = exercisesFor(entries, date);
+  /** Kullanıcının kendi egzersizleri (Ayarlar → Egzersiz Kütüphanesi).
+   *  ÖNCE `entries` AYRIŞTIRILIR: `config.exercise` TEK config satırı ve
+   *  `{catalog}` yazan bir okuma `{entries}`'i göremezdi — ikisi aynı
+   *  nesnede yaşar (bkz. `existingExerciseConfig`). */
+  const catalog = parseCatalog(config[EXERCISE_CONFIG_KEY]);
 
   const [name, setName] = useState("");
   const [category, setCategory] = useState<ExerciseCategory>("run");
   const [duration, setDuration] = useState(30);
 
   /** Kilo bilinmiyorsa kullanıcıdan BİR KEZ sorulur; girilen değer
-   *  `config.weight`'e bugünün ölçümü olarak yazılır (aşağıda). */
-  const weightKg = exerciseWeight(config);
+   *  `config.weight`'e bugünün ölçümü olarak yazılır (aşağıda).
+   *
+   *  TARİH-BİLİNÇLİ: modal geçmiş bir gün için de açılabiliyor (`date`
+   *  prop'u), kilo da O GÜN'ün ölçümü olmalı. Tarih-bağımsız `latestEntry`
+   *  1 Ekim'e 10 Ekim'in kilosunu yazıyordu. */
+  const weightKg = exerciseWeight(config, date);
   /** Kilo sorusu cevap bekleyen kayıt — ekran kapanana kadar tutulur, böylece
-   *  yarım kayıt kalmaz. */
-  const [pendingExercise, setPendingExercise] = useState<DraftExercise | null>(null);
+   *  yarım kayıt kalmaz. Katalogdan gelen kayıt `met`'ini de taşır. */
+  const [pendingExercise, setPendingExercise] = useState<{
+    exercise: DraftExercise;
+    met?: number;
+  } | null>(null);
   const [weightInput, setWeightInput] = useState("");
 
-  /** Süre akışı: preset'e dokununca kaydetmek yerine süre sorulur. */
-  const [pendingPreset, setPendingPreset] = useState<Preset | null>(null);
+  /** Süre akışı: karta dokununca kaydetmek yerine süre sorulur — gömülü
+   *  preset de katalog girdisi de aynı akışı kullanır. */
+  const [pendingPick, setPendingPick] = useState<PendingPick | null>(null);
   const [pendingMinutes, setPendingMinutes] = useState(30);
 
   /** Hesaplanan kalori önde gelir; kullanıcı dokununca elle değiştirebilir.
@@ -209,10 +255,10 @@ export function ExerciseModal({ isOpen, onClose, date, onOpenExerciseSettings }:
 
   if (!isOpen) return null;
 
-  const persistExercise = async (newEx: DraftExercise, kg: number) => {
+  const persistExercise = async (newEx: DraftExercise, kg: number, met?: number) => {
     const exWithId: Exercise = {
       ...newEx,
-      caloriesBurned: resolveKcal(kcalOverride, newEx.category, kg, newEx.durationMinutes),
+      caloriesBurned: resolveKcal(kcalOverride, newEx.category, kg, newEx.durationMinutes, met),
       id: `ex_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
       loggedAt: new Date().toLocaleTimeString("tr-TR", { hour: "2-digit", minute: "2-digit" }),
     };
@@ -226,18 +272,19 @@ export function ExerciseModal({ isOpen, onClose, date, onOpenExerciseSettings }:
   };
 
   /** Kaydeder. `caloriesBurned` formülle hesaplanır; kilo bilinmiyorsa kayıt
-   *  BEKLETİLİR ve kullanıcıdan bir kez sorulur. */
-  const handleSaveExercise = async (newEx: DraftExercise) => {
+   *  BEKLETİLİR ve kullanıcıdan bir kez sorulur. `met` yalnız katalog
+   *  girdisinden gelir (gömülü preset'te kategori tablosu yeter). */
+  const handleSaveExercise = async (newEx: DraftExercise, met?: number) => {
     if (busy) return;
     if (weightKg === null) {
-      setPendingExercise(newEx);
+      setPendingExercise({ exercise: newEx, met });
       return;
     }
     setBusy(true);
     try {
-      await persistExercise(newEx, weightKg);
+      await persistExercise(newEx, weightKg, met);
       setKcalOverride(null);
-      setPendingPreset(null);
+      setPendingPick(null);
     } finally {
       setBusy(false);
     }
@@ -259,11 +306,11 @@ export function ExerciseModal({ isOpen, onClose, date, onOpenExerciseSettings }:
       if (next !== before) await updateConfig(WEIGHT_CONFIG_KEY, { entries: next });
       // Kilo YAZILDIKTAN SONRA kayıt tamamlanır: ekran kapanmadan önce
       // `weightKg` hâlâ null kalırdı ve kcal 0 gözükürdü.
-      await persistExercise(pendingExercise, kg);
+      await persistExercise(pendingExercise.exercise, kg, pendingExercise.met);
       setPendingExercise(null);
       setWeightInput("");
       setKcalOverride(null);
-      setPendingPreset(null);
+      setPendingPick(null);
     } finally {
       setBusy(false);
     }
@@ -299,10 +346,11 @@ export function ExerciseModal({ isOpen, onClose, date, onOpenExerciseSettings }:
   /** Formdaki kategori + süreden hesaplanan kalori önizlemesi. */
   const customKcal =
     weightKg !== null ? resolveKcal(kcalOverride, category, weightKg, duration) : 0;
-  /** Seçili preset + süresinden hesaplanan kalori önizlemesi. */
+  /** Seçili kart + süresinden hesaplanan kalori önizlemesi. Katalog girdisinde
+   *  `met` kullanıcının KENDİ değeriyle hesaplanır. */
   const presetKcal =
-    weightKg !== null && pendingPreset
-      ? resolveKcal(kcalOverride, pendingPreset.category, weightKg, pendingMinutes)
+    weightKg !== null && pendingPick
+      ? resolveKcal(kcalOverride, pendingPick.category, weightKg, pendingMinutes, pendingPick.met)
       : 0;
 
   return (
@@ -360,7 +408,10 @@ export function ExerciseModal({ isOpen, onClose, date, onOpenExerciseSettings }:
                       // Önceki formdan kalan elle yazılmış kilo taşmasın.
                       setKcalOverride(null);
                       setPendingMinutes(p.durationMinutes);
-                      setPendingPreset(p);
+                      setPendingPick({
+                        name: p.nameKey,
+                        category: p.category,
+                      });
                     }}
                     className="flex items-center gap-2.5 p-3 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/5 hover:border-orange-500/30 text-left transition-all group active:scale-95 spring-press disabled:opacity-40"
                   >
@@ -407,6 +458,62 @@ export function ExerciseModal({ isOpen, onClose, date, onOpenExerciseSettings }:
             )}
           </div>
 
+          {/* KULLANICININ KATALOĞU — "Senin Egzersizlerin".
+              AYRI GRUP (tek ızgara DEĞİL): 13 gömülü aktivite kullanıcının
+              kendi listesiyle aynı ızgarada olsaydı "hangisi benim, hangisi
+              hazır?" ayrımı kaybolurdu ve kullanıcının girdiği egzersizler
+              13 hazır aktivitenin arasında kaybolurdu — özellikle "Futbol
+              maçı" zaten gömülü bir preset olarak da var. İki başlık bu
+              ayrımı görünür kılar ve Ayarlar → Egzersiz Kütüphanesi'ndeki
+              başlıkla aynı kelimeleri kullanır (tek doğruluk).
+              Boş katalogda bölüm HİÇ render edilmez: kullanıcının kütüphanesi
+              boşken ekranı dolduran sahte bir başlık göstermek gürültü. */}
+          {catalog.length > 0 && (
+            <div>
+              <span className="text-xs font-semibold uppercase tracking-wider text-white/40 mb-2.5 block">
+                {t("exercise.myExercises")}
+              </span>
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                {catalog.map((item) => (
+                  <button
+                    key={item.id}
+                    type="button"
+                    disabled={busy}
+                    onClick={() => {
+                      if (theme === "glass") haptic("light");
+                      setKcalOverride(null);
+                      setPendingMinutes(30);
+                      // `met` taşınır: hesap kategori tablosunda değil
+                      // KULLANICININ YAZDIĞI MET'te yapılır (yoksa girdiği
+                      // bilgi hiçbir yere girmiş olmazdı).
+                      setPendingPick({
+                        name: item.name,
+                        category: item.category,
+                        met: item.met,
+                      });
+                    }}
+                    className="flex items-center gap-2.5 p-3 rounded-2xl bg-accent/[0.06] hover:bg-accent/[0.12] border border-accent/20 hover:border-accent/40 text-left transition-all group active:scale-95 spring-press disabled:opacity-40"
+                  >
+                    <div className="w-8 h-8 rounded-xl bg-accent/10 group-hover:bg-accent/20 text-accent flex items-center justify-center shrink-0">
+                      <Dumbbell className="w-4 h-4" />
+                    </div>
+                    <div className="min-w-0">
+                      {/* Kullanıcının kendi yazdığı ad olduğu gibi gösterilir
+                          (çeviri değil) — `displayExerciseName` yalnız gömülü
+                          preset anahtarlarını çözer. */}
+                      <div className="text-xs font-semibold truncate group-hover:text-accent">
+                        {item.name}
+                      </div>
+                      <div className="text-[10px] text-white/40">
+                        {formatNumber(item.met, 1)} MET
+                      </div>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
           {/* KİLO SORUSU — tek dal: kilo bilinmiyorsa hesap kutusu yerine bu.
               Kayıt `pendingExercise`'ta bekler; ekran kapanmadan tamamlanır. */}
           {pendingExercise ? (
@@ -415,8 +522,12 @@ export function ExerciseModal({ isOpen, onClose, date, onOpenExerciseSettings }:
               className="p-4 rounded-2xl bg-orange-500/[0.06] border border-orange-500/25 space-y-3"
             >
               <div>
-                <div className="text-sm font-bold text-white">{t("exercise.weightPromptTitle")}</div>
-                <div className="text-[11px] text-white/50 mt-0.5">{t("exercise.weightPromptBody")}</div>
+                <div className="text-sm font-bold text-white">
+                  {t("exercise.weightPromptTitle")}
+                </div>
+                <div className="text-[11px] text-white/50 mt-0.5">
+                  {t("exercise.weightPromptBody")}
+                </div>
               </div>
               <input
                 type="number"
@@ -452,15 +563,15 @@ export function ExerciseModal({ isOpen, onClose, date, onOpenExerciseSettings }:
           ) : (
             <>
               {/* SÜRE AKIŞI — preset seçildiğinde açılır */}
-              {pendingPreset && (
+              {pendingPick && (
                 <div className="p-4 rounded-2xl bg-white/[0.03] border border-white/5 space-y-3">
                   <div className="flex items-center justify-between">
                     <span className="text-xs font-semibold text-white/80">
-                      {t("exercise.durationLabel")} — {t(pendingPreset.nameKey)}
+                      {t("exercise.durationLabel")} — {displayExerciseName(pendingPick.name, t)}
                     </span>
                     <button
                       type="button"
-                      onClick={() => setPendingPreset(null)}
+                      onClick={() => setPendingPick(null)}
                       className="p-1 rounded-lg text-white/30 hover:text-white/70 transition-colors"
                       aria-label={t("common.cancel")}
                     >
@@ -524,11 +635,18 @@ export function ExerciseModal({ isOpen, onClose, date, onOpenExerciseSettings }:
                     type="button"
                     disabled={busy || pendingMinutes <= 0}
                     onClick={() =>
-                      handleSaveExercise({
-                        name: pendingPreset.nameKey,
-                        category: pendingPreset.category,
-                        durationMinutes: Number(pendingMinutes) || 0,
-                      })
+                      handleSaveExercise(
+                        {
+                          // `name` i18n anahtarı mı kullanıcının metni mi?
+                          // `displayExerciseName` ikisini de doğru çözer:
+                          // gömülü preset anahtarını kullanıcının DİLİNDE
+                          // gösterir, katalog adını olduğu gibi bırakır.
+                          name: pendingPick.name,
+                          category: pendingPick.category,
+                          durationMinutes: Number(pendingMinutes) || 0,
+                        },
+                        pendingPick.met,
+                      )
                     }
                     className="w-full py-2.5 rounded-xl bg-orange-500 hover:bg-orange-600 disabled:opacity-50 font-semibold text-xs text-white flex items-center justify-center gap-1.5 transition-all shadow-lg shadow-orange-500/20 active:scale-95"
                   >
@@ -650,7 +768,9 @@ export function ExerciseModal({ isOpen, onClose, date, onOpenExerciseSettings }:
                       </div>
                     </div>
                     <div className="flex items-center gap-3">
-                      <span className="text-xs font-bold text-orange-400">+{ex.caloriesBurned} kcal</span>
+                      <span className="text-xs font-bold text-orange-400">
+                        +{ex.caloriesBurned} kcal
+                      </span>
                       <button
                         onClick={() => handleDelete(ex.id)}
                         className="p-1.5 rounded-lg text-white/30 hover:text-red-400 hover:bg-white/5 transition-colors"

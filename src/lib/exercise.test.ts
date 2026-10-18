@@ -125,16 +125,16 @@ describe("burnedKcal", () => {
 
   it("kilo ile doğru orantılı", () => {
     expect(burnedKcal("run", 40, 30)).toBe(174);
-    expect(
-      Math.abs(burnedKcal("run", 80, 30) - burnedKcal("run", 40, 30) * 2),
-    ).toBeLessThanOrEqual(1);
+    expect(Math.abs(burnedKcal("run", 80, 30) - burnedKcal("run", 40, 30) * 2)).toBeLessThanOrEqual(
+      1,
+    );
   });
 
   it("süre ile doğru orantılı", () => {
     expect(burnedKcal("run", 80, 60)).toBe(697);
-    expect(
-      Math.abs(burnedKcal("run", 80, 60) - burnedKcal("run", 80, 30) * 2),
-    ).toBeLessThanOrEqual(1);
+    expect(Math.abs(burnedKcal("run", 80, 60) - burnedKcal("run", 80, 30) * 2)).toBeLessThanOrEqual(
+      1,
+    );
   });
 
   it("geçersiz kilo/süre 0 döner (uydurma değer üretmez)", () => {
@@ -151,6 +151,24 @@ describe("burnedKcal", () => {
     expect(burnedKcal("run", 80, 30)).toBeGreaterThan(burnedKcal("walk", 80, 30));
     expect(burnedKcal("custom", 80, 30)).toBeLessThan(burnedKcal("run", 80, 30));
   });
+
+  // Katalog girdisinin `met`'i kategori tablosunu EZER: kullanıcı "futbol
+  // maçı = 7 MET" dediyse `custom`'ın 4.0'ı değil 7'si kullanılmalı
+  // (aksi hâlde kullanıcının girdiği bilgi hiçbir yere girmezdi).
+  it("verilen `met` kategori tablosunu EZER (katalog girdisi gerçekten kullanılır)", () => {
+    expect(burnedKcal("custom", 80, 30, 7)).toBe(294); // 7 × 3,5 × 80 / 200 × 30
+    expect(burnedKcal("run", 80, 30, 7)).toBe(burnedKcal("custom", 80, 30, 7));
+    expect(burnedKcal("custom", 80, 30, 7)).toBeGreaterThan(burnedKcal("custom", 80, 30));
+  });
+
+  it("verilmeyen/bozuk `met` TABLOYA düşer (uydurma yok)", () => {
+    const tablo = burnedKcal("custom", 80, 30);
+    expect(burnedKcal("custom", 80, 30, undefined)).toBe(tablo);
+    expect(burnedKcal("custom", 80, 30, 0)).toBe(tablo);
+    expect(burnedKcal("custom", 80, 30, -4)).toBe(tablo);
+    expect(burnedKcal("custom", 80, 30, NaN)).toBe(tablo);
+    expect(burnedKcal("custom", 80, 30, Infinity)).toBe(tablo);
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -158,17 +176,23 @@ describe("burnedKcal", () => {
 // sorup `config.weight`'e yazmalı. Varsayılan kilo (70 kg, 0 kg) YOK.
 // ---------------------------------------------------------------------------
 describe("exerciseWeight", () => {
+  /** Tarih-bağımsız eski imzanın karşılığı: günün sonrasındaki en büyük
+   *  tarih = en son ölçüm. Testler tarih bilgisini de kapsasın diye SABİT
+   *  bir gün kullanıyoruz (bugünü `todayISO()`'ya bağlamak testi saat
+   *  ortasına duyarlı kılardı). */
+  const TODAY = "2026-08-10";
+
   it("son ölçüm varsa onu kullanır (profil kilosunu değil)", () => {
     const config = {
       weight: { entries: { "2026-08-01": 80, "2026-08-05": 78.5 } },
       profile: { weightKg: 90 },
     } as AppConfig;
-    expect(exerciseWeight(config)).toBe(78.5);
+    expect(exerciseWeight(config, TODAY)).toBe(78.5);
   });
 
   it("ölçüm yoksa profil kilosuna düşer", () => {
     const config = { profile: { weightKg: 72 } } as AppConfig;
-    expect(exerciseWeight(config)).toBe(72);
+    expect(exerciseWeight(config, TODAY)).toBe(72);
   });
 
   it("ölçüm bozuksa profil kilosuna düşer", () => {
@@ -176,28 +200,81 @@ describe("exerciseWeight", () => {
       weight: { entries: { "2026-08-05": 0 } },
       profile: { weightKg: 72 },
     } as AppConfig;
-    expect(exerciseWeight(config)).toBe(72);
+    expect(exerciseWeight(config, TODAY)).toBe(72);
   });
 
   it("hiçbir yerden pozitif kilo gelmezse null döner", () => {
-    expect(exerciseWeight({} as AppConfig)).toBeNull();
-    expect(exerciseWeight({ profile: {} } as AppConfig)).toBeNull();
+    expect(exerciseWeight({} as AppConfig, TODAY)).toBeNull();
+    expect(exerciseWeight({ profile: {} } as AppConfig, TODAY)).toBeNull();
   });
 
   it("bozuk değerler varsayılana düşmez, null döner", () => {
-    expect(exerciseWeight({ profile: { weightKg: 0 } } as AppConfig)).toBeNull();
-    expect(exerciseWeight({ profile: { weightKg: -70 } } as AppConfig)).toBeNull();
-    expect(exerciseWeight({ profile: { weightKg: NaN } } as AppConfig)).toBeNull();
-    expect(exerciseWeight({ profile: { weightKg: "70" } } as unknown as AppConfig)).toBeNull();
-    expect(exerciseWeight({ profile: null } as unknown as AppConfig)).toBeNull();
-    expect(exerciseWeight({ profile: "bozuk" } as unknown as AppConfig)).toBeNull();
+    expect(exerciseWeight({ profile: { weightKg: 0 } } as AppConfig, TODAY)).toBeNull();
+    expect(exerciseWeight({ profile: { weightKg: -70 } } as AppConfig, TODAY)).toBeNull();
+    expect(exerciseWeight({ profile: { weightKg: NaN } } as AppConfig, TODAY)).toBeNull();
+    expect(
+      exerciseWeight({ profile: { weightKg: "70" } } as unknown as AppConfig, TODAY),
+    ).toBeNull();
+    expect(exerciseWeight({ profile: null } as unknown as AppConfig, TODAY)).toBeNull();
+    expect(exerciseWeight({ profile: "bozuk" } as unknown as AppConfig, TODAY)).toBeNull();
   });
 
   it("ölçüm geçersiz ve profil de yoksa null döner", () => {
     const config = {
       weight: { entries: { "2026-08-05": -5, "2026-08-06": NaN } },
     } as AppConfig;
-    expect(exerciseWeight(config)).toBeNull();
+    expect(exerciseWeight(config, TODAY)).toBeNull();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// TARİH-BAĞIMSIZ KILO — geçmişe bugünün ölçümü SIZMAYACAK.
+//
+// ÖLÇÜLEN HATA: `exerciseWeight` `latestEntry` kullanıyordu, yani DAIMA
+// bugünün son ölçümü. `DayView` egzersiz modalını `date={date}` ile açıyor
+// ve GEÇMİŞ bir gün için de açabiliyor: 1 Ekim'de 10 Ekim'de egzersiz
+// kaydedilseydi 10 Ekim'in kilosu 1 Ekim'in tarihine yazılırdı.
+// ---------------------------------------------------------------------------
+describe("exerciseWeight — tarih-bağımsız", () => {
+  /** 1 Ekim'de 80, 5 Ekim'de 78, 10 Ekim'de 75 ölçtü. */
+  const config = {
+    weight: { entries: { "2026-10-01": 80, "2026-10-05": 78, "2026-10-10": 75 } },
+  } as AppConfig;
+
+  it("geçmiş bir güne kayıt yapıldığında O GÜN'ün ölçümü kullanılır", () => {
+    // 5 Ekim'de yapılan kayıt 5 Ekim'in 78 kg'sını görür; 10 Ekim'in 75'i
+    // o tarihte henüz VAR OLMADIĞI için kullanılamaz.
+    expect(exerciseWeight(config, "2026-10-05")).toBe(78);
+    expect(exerciseWeight(config, "2026-10-01")).toBe(80);
+  });
+
+  it("o gün ölçümü yoksa en yakın ÖNCEKİ ölçüm kullanılır", () => {
+    // 7 Ekim'de ölçüm yok → kendisine en yakın önceki gün 5 Ekim.
+    expect(exerciseWeight(config, "2026-10-07")).toBe(78);
+    // 2 Ekim → 1 Ekim. 9 Ekim → 5 Ekim.
+    expect(exerciseWeight(config, "2026-10-02")).toBe(80);
+    expect(exerciseWeight(config, "2026-10-09")).toBe(78);
+  });
+
+  it("kayıttan SONRAKİ bir tarihte sonraki ölçüm de kullanılır (bugün yolu açık)", () => {
+    // 10 Ekim'in ölçümü 12 Ekim'de geçerlidir; `latestEntryBefore` KESİN
+    // önceye bakar, bugünün/yakının ölçümüne ihtiyaç duyulmaz.
+    expect(exerciseWeight(config, "2026-10-12")).toBe(75);
+  });
+
+  it("ilk ölçümden ÖNCEKİ bir günde profil kilosuna düşer, ölçüm UYDURMAZ", () => {
+    const withProfile = {
+      ...config,
+      profile: { weightKg: 72 },
+    } as unknown as AppConfig;
+    // 1 Ekim'den önce hiç ölçüm yok → profil (varsa), yoksa null.
+    expect(exerciseWeight(withProfile, "2026-09-30")).toBe(72);
+    expect(exerciseWeight(config, "2026-09-30")).toBeNull();
+  });
+
+  it("bugün için davranış DEĞİŞMEDİ (son ölçüm)", () => {
+    // Tarih-bağımsız `latestEntry` ile birebir aynı sonuç.
+    expect(exerciseWeight(config, "2026-10-31")).toBe(75);
   });
 });
 

@@ -11,7 +11,15 @@ import { Modal } from "./Modal";
 import { ScanSheet } from "./ScanSheet";
 import { AliasPicker } from "./AliasPicker";
 import { AiError, aiErrorMessage, parseWithAI } from "../lib/ai";
-import { FormActions, NutrientSummaryLine, NumField, NutritionFields, TextField, fromDraft, toDraft } from "./FormBits";
+import {
+  FormActions,
+  NutrientSummaryLine,
+  NumField,
+  NutritionFields,
+  TextField,
+  fromDraft,
+  toDraft,
+} from "./FormBits";
 import type { MealTemplate } from "../lib/templates";
 import type { AIParseItem, Alias } from "../types";
 import {
@@ -25,11 +33,15 @@ import {
   newDraftLine,
   removeDraftLine,
   roundNutrition,
-  setDraftGrams,
   sumLineNutrition,
   swapDraftLine,
 } from "../lib/ingredientDraft";
 import type { DraftLine, GramEditHint } from "../lib/ingredientDraft";
+// Gramaj yazımı hangi yola gider? `NutritionSheet` ile AYNı seçici: elle satır
+// `setManualAmount` (gramaj etiket, makro nihai), alias/kayıt satırı
+// `setDraftGrams` (ölçekleme). Kopyalanmış koşul + doğrudan `setDraftGrams`
+// çağrısı bu ekranda aynı 225 → 22500 patlamasını canlı tutuyordu.
+import { isManualDraftLine, lineUpdateFor } from "./NutritionSheet";
 
 /** Şablon kalemlerini düzenlenebilir satırlara çevirir.
  *
@@ -54,11 +66,7 @@ function round1(value: number): number {
   return Math.round(value * 10) / 10;
 }
 
-function initialDraftLines(
-  template: MealTemplate,
-  aliases: Alias[],
-  isNew = false,
-): DraftLine[] {
+function initialDraftLines(template: MealTemplate, aliases: Alias[], isNew = false): DraftLine[] {
   // Yeni şablon: kullanıcı boş ekranla değil, HAFIZA PICKER'I AÇIK tek bir
   // iskelet satırla başlar (addLine ile aynı deneyim). `blank: true` olduğu
   // için `draftLinesToItems` onu düşürür — doldurulmadan kaydedilemez.
@@ -137,10 +145,7 @@ export function TemplatePreview({
   // listeden tamamen çıkarır — kaydet bu yüzden kapalı kalmalı (bkz.
   // `hasUnnamedItem`).
   const hasUnnamed = hasUnnamedItem(savableItems);
-  const total = useMemo(
-    () => roundNutrition(sumLineNutrition(savableItems)),
-    [savableItems],
-  );
+  const total = useMemo(() => roundNutrition(sumLineNutrition(savableItems)), [savableItems]);
 
   /** AI'nın bulduğu malzemeyi bir satıra çevirir.
    *
@@ -202,7 +207,9 @@ export function TemplatePreview({
       }
     } catch (e) {
       setAiError(
-        e instanceof AiError ? aiErrorMessage(e.status, e.message, e.retryAfter) : String((e as Error)?.message ?? e),
+        e instanceof AiError
+          ? aiErrorMessage(e.status, e.message, e.retryAfter)
+          : String((e as Error)?.message ?? e),
       );
     } finally {
       setAiLoading(false);
@@ -268,116 +275,133 @@ export function TemplatePreview({
             tek yapılacak koşulu gevşetmek; o zaman dal ve anahtar geri gelir. */}
         <ul className="space-y-2">
           {lines.map((line) => {
-              const alias = aliasOfLine(aliases, line);
-              // ELLE satırı: kullanıcı ad + makroyu kendi giriyor (hafızadan değil).
-              //
-              // "Elle satır mı" sorusu `aliasId === null` ile yanıtlanır —
-              // `manualMeasured` DEĞİL. Bayrak, satırın kayda girmesini sağlar
-              // ama alanların AÇIK kalmasıyla ilgisi yoktur: `onChange` makro
-              // alanına ilk dokunuşta bayrağı yükseltir, bayrak da alanları
-              // kapatırsa kullanıcı protein/karb/yağ/lif'i de giremez olur
-              // (ölçüldü: adı yazar yazar alanlar kayboldu).
-              //
-              // `fromRecord` hariç: kayıttan gelen kalemdir, elle girilen değil —
-              // makrosu kullanıcının değil kaydın gerçeğidir, kullanıcı yalnızca
-              // miktar yazar ya da besini değiştirir. `preserved` TEK BAŞINA
-              // yetmez: korunmuş kaleme gramaj yazılınca `preserved` düşer ve
-              // satır `aliasId: null` olduğu için elle sayılırdı — kayıttaki gerçek
-              // ad "MALZEME ADI" alanına düşüyordu (ÖLÇÜLEN HATA).
-              const isManualRow = line.aliasId === null && !line.preserved && !line.fromRecord;
-              return (
-                <li
-                  key={line.key}
-                  className="rounded-chip border border-line bg-white/[0.03] px-3 py-2.5"
-                >
-                  <div className="flex items-center justify-between gap-2">
-                    {pickerFor === line.key ? (
-                      // "Malzeme ekle"nin açtığı İSKELE satırında hafıza
-                      // seçici — satırın ALTINDA değil YERİNDE. Seçim yapılırsa
-                      // `aliasId` dolar ve `blank` düşer; "Elle gir"e
-                      // basılırsa picker kapanır, satır ad + makro alanları
-                      // açık elle satır olur (iskelet kayda girmez).
-                      <div className="flex-1">
-                        <AliasPicker
-                          aliases={aliases}
-                          selectedAliasId={""}
-                          onSelectAlias={(id) => {
-                            const next = aliases.find((a) => a.id === id);
-                            setPickerFor(null);
-                            if (!next) return;
-                            // `swapDraftLine` gramajı KORUR, besini bağlar —
-                            // iskelet satırda gramaj 0, korunacak değer yok,
-                            // ve makro alias'tan ölçeklenir. `blank` düşer.
-                            patch(line.key, swapDraftLine(line, next));
-                          }}
-                          label={t("meal.memorySelectLabel")}
-                        />
-                        <button
-                          type="button"
-                          onClick={() => setPickerFor(null)}
-                          className="mt-1.5 w-full rounded-pill border border-line px-3 py-1.5 text-[11px] font-bold text-ink-secondary transition hover:text-ink-primary"
-                        >
-                          {t("recipeBuilder.manualMode")}
-                        </button>
-                      </div>
-                    ) : swapKey === line.key ? (
-                      <div className="flex-1">
-                        <AliasPicker
-                          aliases={aliases}
-                          selectedAliasId={line.aliasId ?? ""}
-                          onSelectAlias={(id) => {
-                            const next = aliases.find((a) => a.id === id);
-                            if (next) patch(line.key, swapDraftLine(line, next));
-                            setSwapKey(null);
-                          }}
-                          onDismiss={() => setSwapKey(null)}
-                          autoFocus
-                        />
-                      </div>
-                    ) : isManualRow && !swapKey ? (
-                      <div className="flex-1">
-                        <TextField
-                          label={t("nutrition.ingredientManualName")}
-                          value={line.name}
-                          onChange={(v) => patch(line.key, { ...line, name: v })}
-                        />
-                      </div>
-                    ) : (
-                      <span className="min-w-0 flex-1 truncate text-xs font-bold text-ink-primary">
-                        {line.name}
-                      </span>
-                    )}
-                    {swapKey !== line.key && lines.length > 1 && (
+            const alias = aliasOfLine(aliases, line);
+            // ELLE satırı: kullanıcı ad + makroyu kendi giriyor (hafızadan değil).
+            //
+            // "Elle satır mı" sorusu `isManualDraftLine`'da (`NutritionSheet.tsx`)
+            // TANIMLANIR ve ORTAK KULLANILIR. Burada koşul satır satır kopyalanmış
+            //ydı: iki yüzey aynı soruyu iki yerden soruyordu ve biri düzeltilip
+            // öteki eski kalınca patlama ŞABLONDA sessizce geri geliyordu.
+            // Koşul `aliasId === null` ile yanıtlanır — `manualMeasured` DEĞİL.
+            // Bayrak, satırın kayda girmesini sağlar ama alanların AÇIK kalmasıyla
+            // ilgisi yoktur: `onChange` makro alanına ilk dokunuşta bayrağı
+            // yükseltir, bayrak da alanları kapatırsa kullanıcı protein/karb/
+            // yağ/lif'i de giremez olur (ölçüldü: adı yazar yazar alanlar
+            // kayboldu).
+            //
+            // `fromRecord` hariç: kayıttan gelen kalemdir, elle girilen değil —
+            // makrosu kullanıcının değil kaydın gerçeğidir, kullanıcı yalnızca
+            // miktar yazar ya da besini değiştirir. `preserved` TEK BAŞINA
+            // yetmez: korunmuş kaleme gramaj yazılınca `preserved` düşer ve
+            // satır `aliasId: null` olduğu için elle sayılırdı — kayıttaki gerçek
+            // ad "MALZEME ADI" alanına düşüyordu (ÖLÇÜLEN HATA).
+            const isManualRow = isManualDraftLine(line);
+            return (
+              <li
+                key={line.key}
+                className="rounded-chip border border-line bg-white/[0.03] px-3 py-2.5"
+              >
+                <div className="flex items-center justify-between gap-2">
+                  {pickerFor === line.key ? (
+                    // "Malzeme ekle"nin açtığı İSKELE satırında hafıza
+                    // seçici — satırın ALTINDA değil YERİNDE. Seçim yapılırsa
+                    // `aliasId` dolar ve `blank` düşer; "Elle gir"e
+                    // basılırsa picker kapanır, satır ad + makro alanları
+                    // açık elle satır olur (iskelet kayda girmez).
+                    <div className="flex-1">
+                      <AliasPicker
+                        aliases={aliases}
+                        selectedAliasId={""}
+                        onSelectAlias={(id) => {
+                          const next = aliases.find((a) => a.id === id);
+                          setPickerFor(null);
+                          if (!next) return;
+                          // `swapDraftLine` gramajı KORUR, besini bağlar —
+                          // iskelet satırda gramaj 0, korunacak değer yok,
+                          // ve makro alias'tan ölçeklenir. `blank` düşer.
+                          patch(line.key, swapDraftLine(line, next));
+                        }}
+                        label={t("meal.memorySelectLabel")}
+                      />
                       <button
                         type="button"
-                        onClick={() => setLines((prev) => removeDraftLine(prev, line.key))}
-                        aria-label={t("nutrition.ingredientRemove")}
-                        title={t("nutrition.ingredientRemove")}
-                        className="p-1 text-ink-tertiary transition hover:text-danger"
+                        onClick={() => setPickerFor(null)}
+                        className="mt-1.5 w-full rounded-pill border border-line px-3 py-1.5 text-[11px] font-bold text-ink-secondary transition hover:text-ink-primary"
                       >
-                        <Trash2 className="h-4 w-4" />
+                        {t("recipeBuilder.manualMode")}
                       </button>
-                    )}
-                  </div>
-
-                  <div className="mt-2 grid grid-cols-2 gap-2">
-                    <div>
-                      <NumField
-                        label={t("nutrition.ingredientGrams")}
-                        suffix={line.unit}
-                        value={line.qty}
-                        disabled={!canEditGrams(line)}
-                        onChange={(v) => {
-                          // Önceki satır GÖVDEDE okunur: `setHint` içinde
-                          // state updater'ı kullanmak StrictMode'da iki kez
-                          // çalışır (bkz. NutritionSheet.tsx:149-163).
-                          const onceki = lines.find((l) => l.key === line.key) ?? null;
-                          const sonraki = setDraftGrams(line, v, alias ?? null);
-                          setHint({ key: line.key, hint: draftGramHint(sonraki, alias ?? null, onceki) });
-                          patch(line.key, sonraki);
+                    </div>
+                  ) : swapKey === line.key ? (
+                    <div className="flex-1">
+                      <AliasPicker
+                        aliases={aliases}
+                        selectedAliasId={line.aliasId ?? ""}
+                        onSelectAlias={(id) => {
+                          const next = aliases.find((a) => a.id === id);
+                          if (next) patch(line.key, swapDraftLine(line, next));
+                          setSwapKey(null);
                         }}
+                        onDismiss={() => setSwapKey(null)}
+                        autoFocus
                       />
-                      {/* Taban varsa (`nutritionGrams > 0` — baseAmount, kayıtlı
+                    </div>
+                  ) : isManualRow && !swapKey ? (
+                    <div className="flex-1">
+                      <TextField
+                        label={t("nutrition.ingredientManualName")}
+                        value={line.name}
+                        onChange={(v) => patch(line.key, { ...line, name: v })}
+                      />
+                    </div>
+                  ) : (
+                    <span className="min-w-0 flex-1 truncate text-xs font-bold text-ink-primary">
+                      {line.name}
+                    </span>
+                  )}
+                  {swapKey !== line.key && lines.length > 1 && (
+                    <button
+                      type="button"
+                      onClick={() => setLines((prev) => removeDraftLine(prev, line.key))}
+                      aria-label={t("nutrition.ingredientRemove")}
+                      title={t("nutrition.ingredientRemove")}
+                      className="p-1 text-ink-tertiary transition hover:text-danger"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </button>
+                  )}
+                </div>
+
+                <div className="mt-2 grid grid-cols-2 gap-2">
+                  <div>
+                    <NumField
+                      label={t("nutrition.ingredientGrams")}
+                      suffix={line.unit}
+                      value={line.qty}
+                      disabled={!canEditGrams(line)}
+                      onChange={(v) => {
+                        // Önceki satır GÖVDEDE okunur: `setHint` içinde
+                        // state updater'ı kullanmak StrictMode'da iki kez
+                        // çalışır (bkz. NutritionSheet.tsx:149-163).
+                        const onceki = lines.find((l) => l.key === line.key) ?? null;
+                        // ÖLÇÜLEN AYNI PATLAMA (NutritionSheet'te çözüldü, burada
+                        // çözülmemişti): bu ekran `setDraftGrams`'ı DOĞRUDAN
+                        // çağırıyordu, elle satırda `manualMeasured` dalına
+                        // düşüyor ve ilk geçerli gramajı taban yapıyordu:
+                        //   225 kcal elle satır → qty=1 → 225 · 10 → 2250 ·
+                        //   100 → 22500
+                        // `lineUpdateFor` elle satırı `setManualAmount`'a
+                        // yönlendirir (gramaj ETİKET, makro NİHAİ). Seçici
+                        // ORTAK: iki yüzey artık aynı soruyu aynı yerden
+                        // soruyor.
+                        const sonraki = lineUpdateFor(line, v, alias ?? null);
+                        setHint({
+                          key: line.key,
+                          hint: draftGramHint(sonraki, alias ?? null, onceki),
+                        });
+                        patch(line.key, sonraki);
+                      }}
+                    />
+                    {/* Taban varsa (`nutritionGrams > 0` — baseAmount, kayıtlı
                           gram ya da isimdeki "(500g)") gramaj DÜZENLENEBİLİR:
                           yazılan miktar tabana göre oranlar (`setDraftGrams`
                           `base>0` dalı). Taban YOKSA alan KİLİTLİDİR
@@ -388,25 +412,29 @@ export function TemplatePreview({
                           olmasın". Kalem yine de SİLİNEBİLİR ya da "besine
                           bağla" ile hafızaya bağlanıp ölçülebilir hale
                           getirilebilir (`swapDraftLine` alias'lı satırda
-                          ölçülebilir taban kurar). */}
-                      {/* "Miktar bilinmiyor" YALNIZCA gramaj gerçekten yokken. Kayıttan
+                          ölçülebilir taban kurar).
+                          Elle satır (elle girilmiş besin değeri) bu kilitten
+                          ETKİLENMEZ: `canEditGrams` tabanı aramaz, makro
+                          varlığına bakar — gramaj burada ETİKET olarak
+                          yazılır ve makro NİHAİ kalır. */}
+                    {/* "Miktar bilinmiyor" YALNIZCA gramaj gerçekten yokken. Kayıttan
                           `item.grams` ile gelen satırda miktar BİLİNİYOR
                           (100 g), ama gramajı ölçülemediği için `preserved`
                           taşıyor — etiket bu satırda yanlış olurdu. */}
-                      {line.preserved && line.grams <= 0 && (
-                        <p className="mt-1 text-[11px] text-amber-300">
-                          {t("nutrition.ingredientAmountUnknown")}
-                        </p>
-                      )}
-                    </div>
-                    <div className="flex items-end justify-end">
-                      {/* Hafızaya bağlama "besine bağla" düğmesi: tabansız
+                    {line.preserved && line.grams <= 0 && (
+                      <p className="mt-1 text-[11px] text-amber-300">
+                        {t("nutrition.ingredientAmountUnknown")}
+                      </p>
+                    )}
+                  </div>
+                  <div className="flex items-end justify-end">
+                    {/* Hafızaya bağlama "besine bağla" düğmesi: tabansız
                           kilitli satırın ÇIKIŞ YOLUDUR. Alias gelince
                           `swapDraftLine` ölçülebilir taban (`serving_g`)
                           kurar ve alan açılır. Kalem ayrıca silinebilir;
                           kilit veri kaybı değil, "ölçemiyoruz" demenin
                           görünür hâlidir. */}
-                      {/* Hafızaya bağlama düğmesi HER SATIRDA görünür —
+                    {/* Hafızaya bağlama düğmesi HER SATIRDA görünür —
                           korunmuş satırda çıkış yoludur; YENİ elle satırda
                           da çıkış yoludur: kullanıcı "Malzeme ekle" dedi,
                           ad + makro yazacaktı ama hafızada zaten var —
@@ -415,67 +443,71 @@ export function TemplatePreview({
                           idi; yeni elle satırda (aliasId null, preserved false)
                           düğme YOKTU — hafızadaki domates bile elle yeniden
                           yazılıyordu, makroları sıfır kalıyordu. */}
-                      {(alias || (line.preserved && aliases.length > 0) || isManualRow) &&
-                      swapKey !== line.key ? (
-                        <button
-                          type="button"
-                          onClick={() => setSwapKey(line.key)}
-                          className="rounded-pill border border-line px-3 py-2 text-[11px] font-bold text-ink-secondary transition hover:text-ink-primary"
-                        >
-                          {t("nutrition.swapIngredient")}
-                        </button>
-                      ) : null}
-                    </div>
+                    {(alias || (line.preserved && aliases.length > 0) || isManualRow) &&
+                    swapKey !== line.key ? (
+                      <button
+                        type="button"
+                        onClick={() => setSwapKey(line.key)}
+                        className="rounded-pill border border-line px-3 py-2 text-[11px] font-bold text-ink-secondary transition hover:text-ink-primary"
+                      >
+                        {t("nutrition.swapIngredient")}
+                      </button>
+                    ) : null}
                   </div>
+                </div>
 
-                  {/* Elle satır: ad + beş makro. Gramaj TEK BAŞINA yetmez —
+                {/* Elle satır: ad + beş makro. Gramaj TEK BAŞINA yetmez —
                       hafızadan olmayan bir besin için "100 g'da kaç kalori var"
                       bilgisi ancak makroyla gelir. Kaydetme kapısı
                       `hasManualNutrition` kuralıyla aynı: `kcal > 0 ||
                       protein > 0` (`MealForm.tsx:427`).
                       `nutritionFromDraft` boş alanı `undefined` yapar, 0
                       DEĞİL — "bilinmiyor" ile "sıfır" farkı korunur. */}
-                  {isManualRow && (
-                    <div className="mt-2">
-                      <NutritionFields
-                        draft={draftFromNutrition(line.nutrition)}
-                        onChange={(d) =>
-                          patch(line.key, { ...line, nutrition: nutritionFromDraft(d), manualMeasured: true })
-                        }
-                      />
-                    </div>
-                  )}
+                {isManualRow && (
+                  <div className="mt-2">
+                    <NutritionFields
+                      draft={draftFromNutrition(line.nutrition)}
+                      onChange={(d) =>
+                        patch(line.key, {
+                          ...line,
+                          nutrition: nutritionFromDraft(d),
+                          manualMeasured: true,
+                        })
+                      }
+                    />
+                  </div>
+                )}
 
-                  {/* Kalem başına besin değeri. `kcal="inline"` ile KALORI DE
+                {/* Kalem başına besin değeri. `kcal="inline"` ile KALORI DE
                       GÖSTERİLİR: yalnız makrolar (P/K/Y/L) yazınca "besin
                       değeri görünmüyor" gibi duruyordu. */}
-                  <NutrientSummaryLine
-                    as="span"
-                    nutrition={line.nutrition}
-                    kcal="inline"
-                    className="mt-2 block font-mono text-[11px] text-ink-tertiary"
-                  />
+                <NutrientSummaryLine
+                  as="span"
+                  nutrition={line.nutrition}
+                  kcal="inline"
+                  className="mt-2 block font-mono text-[11px] text-ink-tertiary"
+                />
 
-                  {/* Miktar değişikliğinin sonucu. Hafızaya bağlı satırda
+                {/* Miktar değişikliğinin sonucu. Hafızaya bağlı satırda
                       besin değerleri ölçeklendi (şeffaf onay); bağlı olmayanda
                       DEĞİŞMEZ ve kullanıcı bunu bilmeliydi — "miktarı
                       azaltamıyorum" şikâyetinin kaynağı buydu. */}
-                  {hint?.key === line.key && hint.hint?.kind === "scaled" && (
-                    <p className="mt-1 text-[11px] text-memory">
-                      {t("nutrition.ingredientRescaled", {
-                        from: round1(hint.hint.fromGrams),
-                        to: round1(hint.hint.toGrams),
-                      })}
-                    </p>
-                  )}
-                  {hint?.key === line.key && hint.hint?.kind === "noNutrition" && (
-                    <p className="mt-1 text-[11px] text-amber-300">
-                      {t("nutrition.ingredientNoNutrition")}
-                    </p>
-                  )}
-                </li>
-              );
-            })}
+                {hint?.key === line.key && hint.hint?.kind === "scaled" && (
+                  <p className="mt-1 text-[11px] text-memory">
+                    {t("nutrition.ingredientRescaled", {
+                      from: round1(hint.hint.fromGrams),
+                      to: round1(hint.hint.toGrams),
+                    })}
+                  </p>
+                )}
+                {hint?.key === line.key && hint.hint?.kind === "noNutrition" && (
+                  <p className="mt-1 text-[11px] text-amber-300">
+                    {t("nutrition.ingredientNoNutrition")}
+                  </p>
+                )}
+              </li>
+            );
+          })}
         </ul>
 
         <button
@@ -486,9 +518,7 @@ export function TemplatePreview({
           <Plus className="h-3.5 w-3.5" /> {t("nutrition.ingredientAdd")}
         </button>
 
-        {hasUnnamed && (
-          <p className="text-[11px] text-danger">{t("nutrition.itemNameRequired")}</p>
-        )}
+        {hasUnnamed && <p className="text-[11px] text-danger">{t("nutrition.itemNameRequired")}</p>}
 
         {/* AI: öğün ekleme ekranındaki sekmeyle AYNI akış — serbest metin ya da
             kamera. Bulunan malzemeler doğrudan yukarıdaki satırlara düşer,
@@ -497,7 +527,9 @@ export function TemplatePreview({
             özellik iki yerde farklı metin göstermemeli. */}
         <div className="rounded-chip border border-line bg-white/[0.03] p-3">
           <label className="block space-y-1.5">
-            <span className="text-xs font-semibold text-ink-secondary">{t("meal.aiPromptLabel")}</span>
+            <span className="text-xs font-semibold text-ink-secondary">
+              {t("meal.aiPromptLabel")}
+            </span>
             <textarea
               className="w-full min-h-[72px] rounded-xl bg-black/30 border border-white/10 text-sm text-white focus:outline-none focus:border-accent resize-none"
               value={aiText}

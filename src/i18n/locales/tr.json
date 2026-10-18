@@ -65,15 +65,7 @@
     "eatenSodium": "Tüketilen Sodyum"
   },
   "day": {
-    "weekdaysShort": [
-      "Pzt",
-      "Sal",
-      "Çar",
-      "Per",
-      "Cum",
-      "Cmt",
-      "Paz"
-    ],
+    "weekdaysShort": ["Pzt", "Sal", "Çar", "Per", "Cum", "Cmt", "Paz"],
     "streak": "Gün serisi",
     "mergeDialogTitle": "{{count}} Öğünü Birleştir",
     "mergeSave": "Birleştir",
@@ -549,6 +541,7 @@
     "title": "Egzersiz & Aktivite Günlüğü",
     "totalBurned": "Toplam {{kcal}} kcal yakıldı",
     "quickPresets": "Hızlı Hazır Şablonlar",
+    "myExercises": "Senin Egzersizlerin",
     "presetRun": "Koşu / Jogging",
     "presetWeights": "Ağırlık Antrenmanı",
     "presetWalk": "Tempolu Yürüyüş",
