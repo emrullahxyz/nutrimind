@@ -27,8 +27,8 @@ export const CHANGELOG: ChangeLogVersion[] = [
       },
       {
         type: "new",
-        tr: "Listedeki besini seninle ilgili bir şey değilse \"Elle gir\" diyerek adını ve kalorisini kendin yazabiliyorsun.",
-        en: "If none of the listed foods fits, tap \"Type it in\" and enter the name and calories yourself.",
+        tr: "Listedeki besinlerden biri sana uymuyorsa \"Elle gir\" diyerek adını ve kalorisini kendin yazabiliyorsun.",
+        en: "If none of the listed foods fits, tap \"Enter manually\" and enter the name and calories yourself.",
       },
       {
         type: "new",
@@ -52,7 +52,7 @@ export const CHANGELOG: ChangeLogVersion[] = [
       },
       {
         type: "improved",
-        tr: "Egzersiz ekranındaki \"+ Egzersiz Ekle\" seni doğrudan kütüphaneye götürüyor.",
+        tr: "Egzersiz ekranındaki \"+ Egzersiz ekle\" seni doğrudan kütüphaneye götürüyor.",
         en: "\"+ Add exercise\" on the exercise screen takes you straight to the library.",
       },
     ],
