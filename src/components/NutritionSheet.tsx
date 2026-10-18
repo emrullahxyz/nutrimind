@@ -25,7 +25,7 @@ import {
 import type { DraftLine } from "../lib/ingredientDraft";
 import { EditableStat, toDraft, fromDraft } from "./FormBits";
 import type { NutritionDraft } from "./FormBits";
-import { NutrientSummaryLine, NumField } from "./FormBits";
+import { NutrientSummaryLine, NumField, TextField, NutritionFields } from "./FormBits";
 import { MEAL_CATEGORIES, categoryForHour } from "../lib/mealCategory";
 import { useData } from "../lib/data";
 import { AliasPicker } from "./AliasPicker";
@@ -71,12 +71,32 @@ export function resetLineState(meal: MealItem, aliases: Alias[]) {
  *  `aliases[0]` ile doldurmak kullanıcıya rastgele bir besin dayatıyordu —
  *  ekranda gördüğü ilk satır hafızanın ilk besini oluyordu, seçim ekranı
  *  yoktu (aynı hata şablonda yaşanmıştı: `TemplatePreview.tsx:216-228`).
- *  Seçim ekranı (Task 2) bu satırda açılacak; kullanıcı seçmezse `blank`
+ *  Seçim ekranı bu satırda açılır (Task 2); kullanıcı seçmezse `blank`
  *  satır `draftLinesToItems`'te düşer — kayda uydurma besin girmez
  *  (`ingredientDraft.ts:565-569`). */
 export function addSkeletonLine(lines: DraftLine[]): { lines: DraftLine[]; pickerFor: string } {
   const line = newDraftLine(undefined);
   return { lines: addDraftLine(lines, line), pickerFor: line.key };
+}
+
+/** Satır ELLE mi? (kullanıcı ad + makroyu kendi giriyor, hafızadan değil.)
+ *
+ *  "Elle satır mı" sorusu `aliasId === null` ile yanıtlanır — `manualMeasured`
+ *  DEĞİL. Bayrak, satırın kayda girmesini sağlar ama alanların AÇIK kalmasıyla
+ *  ilgisi yoktur: `NutritionFields.onChange` makro alanına ilk dokunuşta
+ *  bayrağı yükseltir, bayrak da alanları kapatırsa kullanıcı protein/karb/yağ/
+ *  lif'i de giremez olur (ölçüldü: adı yazar yazar alanlar kayboldu).
+ *
+ *  `fromRecord` hariç: kayıttan gelen kalemdir, elle girilen değil — makrosu
+ *  kullanıcının değil kaydın gerçeğidir, kullanıcı yalnızca miktar yazar ya da
+ *  besini değiştirir. `preserved` TEK BAŞINA yetmez: korunmuş kaleme gramaj
+ *  yazılınca `preserved` düşer ve satır `aliasId: null` olduğu için elle
+ *  sayılırdı — kayıttaki gerçek ad "MALZEME ADI" alanına düşüyordu.
+ *
+ *  Render'ın İÇİNDE yaşayan koşuldu; jsdom olmadığı için test edilemiyordu.
+ *  Saf fonksiyon: dört bayrak kombinasyonu doğrudan test edilir. */
+export function isManualDraftLine(line: Pick<DraftLine, "aliasId" | "preserved" | "fromRecord">): boolean {
+  return line.aliasId === null && !line.preserved && !line.fromRecord;
 }
 
 /** Kaydın çözülebilen kalem satırları + tam düzenleme (ekle/sil/gramaj/swap).
@@ -163,11 +183,7 @@ function IngredientLines({
   const total = roundNutrition(sumLineNutrition(draftLinesToItems(lines)));
 
   return (
-    // `data-picker-for`: seçim ekranı hangi satırda açık. Satırın kendi JSX'i
-    // Task 2'de dallanacak; o gelene kadar state'in okunabilir olması gerekiyor
-    // (yazılmamış state `noUnusedLocals`'ta hatadır) ve testlerin bu görevdeki
-    // tek gözlem noktası burası.
-    <div className="space-y-2.5 pt-2" data-picker-for={pickerFor ?? undefined}>
+    <div className="space-y-2.5 pt-2">
       <div className="flex items-center justify-between gap-2">
         <span className="text-sm font-bold text-white/90">{t("nutrition.ingredientsTitle")}</span>
         <span className="font-mono text-[11px] text-white/50">{total.kcal} kcal</span>
@@ -175,13 +191,46 @@ function IngredientLines({
       <ul className="space-y-2">
         {lines.map((line) => {
           const alias = aliasOfLine(aliases, line);
+          // ELLE satırı mı? Koşul ve gerekçesi saf fonksiyonda
+          // (`isManualDraftLine`): ekran davranışı jsdom olmadan test
+          // edilemiyor, karar mantığı edilebilir.
+          const isManualRow = isManualDraftLine(line);
           return (
             <li
               key={line.key}
               className="rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-xs sm:text-sm"
             >
               <div className="flex items-center justify-between gap-2">
-                {swapKey === line.key ? (
+                {pickerFor === line.key ? (
+                  // "Malzeme ekle"nin açtığı İSKELE satırında hafıza seçici —
+                  // satırın ALTINDA değil YERİNDE. Seçim yapılırsa `aliasId`
+                  // dolar ve `blank` düşer; "Elle gir"e basılırsa picker kapanır,
+                  // satır ad + makro alanları açık elle satır olur (iskelet
+                  // kayda girmez).
+                  <div className="flex-1">
+                    <AliasPicker
+                      aliases={aliases}
+                      selectedAliasId=""
+                      onSelectAlias={(id) => {
+                        const next = aliases.find((a) => a.id === id);
+                        setPickerFor(null);
+                        if (!next) return;
+                        // `swapDraftLine` gramajı KORUR, besini bağlar —
+                        // iskelet satırda gramaj 0, korunacak değer yok, ve
+                        // makro alias'tan ölçeklenir. `blank` düşer.
+                        patch(line.key, swapDraftLine(line, next));
+                      }}
+                      label={t("meal.memorySelectLabel")}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setPickerFor(null)}
+                      className="mt-1.5 w-full rounded-pill border border-white/15 px-3 py-1.5 text-[11px] font-bold text-ink-secondary transition hover:text-ink-primary"
+                    >
+                      {t("recipeBuilder.manualMode")}
+                    </button>
+                  </div>
+                ) : swapKey === line.key ? (
                   <div className="flex-1">
                     <AliasPicker
                       aliases={aliases}
@@ -193,6 +242,14 @@ function IngredientLines({
                       }}
                       onDismiss={() => setSwapKey(null)}
                       autoFocus
+                    />
+                  </div>
+                ) : isManualRow ? (
+                  <div className="flex-1">
+                    <TextField
+                      label={t("nutrition.ingredientManualName")}
+                      value={line.name}
+                      onChange={(v) => patch(line.key, { ...line, name: v })}
                     />
                   </div>
                 ) : (
@@ -230,7 +287,15 @@ function IngredientLines({
                     </p>
                   )}
                 </div>
-                {alias && swapKey !== line.key && (
+                {/* Hafızaya bağlama düğmesi HER SATIRDA görünür: korunmuş
+                    satırda çıkış yoludur, yeni elle satırda da: kullanıcı
+                    "Malzeme ekle" dedi, ad + makro yazacaktı ama hafızada
+                    zaten var — aranıp bağlanabileceğini görmesini istiyoruz.
+                    Önceden koşul yalnız `alias`'dı, elle satırda düğme YOKTU.
+                    Picker açıkken gizlenir: aynı ekran iki yerde durmaz. */}
+                {(alias || isManualRow || (line.preserved && aliases.length > 0)) &&
+                pickerFor !== line.key &&
+                swapKey !== line.key ? (
                   <button
                     type="button"
                     onClick={() => setSwapKey(line.key)}
@@ -238,8 +303,28 @@ function IngredientLines({
                   >
                     {t("nutrition.swapIngredient")}
                   </button>
-                )}
+                ) : null}
               </div>
+
+              {/* Elle satir: ad + bes makro. Gramaj TEK BASINA yetmez --
+                  hafizadan olmayan bir besin icin "100 g'da kac kalori var"
+                  bilgisi ancak makroyla gelir. `fromDraft` bos alani
+                  `undefined` yapar, 0 DEGIL -- "bilinmiyor" ile "sifir"
+                  farki korunur. */}
+              {isManualRow && (
+                <div className="mt-2">
+                  <NutritionFields
+                    draft={toDraft(line.nutrition)}
+                    onChange={(d) =>
+                      patch(line.key, {
+                        ...line,
+                        nutrition: fromDraft(d),
+                        manualMeasured: true,
+                      })
+                    }
+                  />
+                </div>
+              )}
 
               {/* `kcal="inline"` — kalori de gösterilir. Yalnız makrolar
                   (P/K/Y/L) yazınca "besin değeri görünmüyor" gibi duruyordu;

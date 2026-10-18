@@ -7,10 +7,17 @@
 // yalnızca stepper ölçeklemesinde (m ≠ 1) meşru.
 // ============================================================================
 import { describe, expect, it } from "vitest";
-import { addSkeletonLine, resetLineState, scaleMealNutrition } from "./NutritionSheet";
+import { addSkeletonLine, isManualDraftLine, resetLineState, scaleMealNutrition } from "./NutritionSheet";
 import { ZERO_NUTRITION } from "../types";
-import { draftLinesToItems, mealDraftLines } from "../lib/ingredientDraft";
+import {
+  canEditGrams,
+  draftLinesToItems,
+  mealDraftLines,
+  setDraftGrams,
+  swapDraftLine,
+} from "../lib/ingredientDraft";
 import type { Alias, MealItem } from "../types";
+import type { DraftLine } from "../lib/ingredientDraft";
 
 // ============================================================================
 // "Malzeme ekle" state kurulumu — `addSkeletonLine` + `resetLineState`.
@@ -150,6 +157,119 @@ describe("iskelet satırın ölçülebilir tabanı yoktur (elle satır kurallar�
     expect(added.grams).toBe(0);
     expect(added.preserved).toBe(false);
     expect(added.manualMeasured).toBe(false);
+  });
+});
+
+// ============================================================================
+// Dört dallı satır ekranının KARAR MANTIĞI — `isManualDraftLine`.
+//
+// Render'ın kendisi test edilemez (projede jsdom yok); ekranın hangi dalı
+// çizeceğine karar veren koşul saflaştırılıp burada doğrudan sınanıyor.
+// Kaynak: `TemplatePreview.tsx:287` — aynı koşul, aynı gerekçe.
+// ============================================================================
+describe("isManualDraftLine — hangi satır elle?", () => {
+  /** Dört bayrağın dört kombinasyonu: elle / hafızaya bağlı. */
+  const row = (
+    aliasId: string | null,
+    preserved: boolean,
+    fromRecord: boolean,
+  ): Pick<DraftLine, "aliasId" | "preserved" | "fromRecord"> => ({
+    aliasId,
+    preserved,
+    fromRecord,
+  });
+
+  it("aliasId null + korunmamış + kayıttan değil = ELLE (ad + makro alanları açılır)", () => {
+    expect(isManualDraftLine(row(null, false, false))).toBe(true);
+  });
+
+  it("hafızaya bağlı satır elle DEĞİLDİR (ad + 5 alan açılmaz, kayıt adı korunur)", () => {
+    expect(isManualDraftLine(row(tavuk.id, false, false))).toBe(false);
+  });
+
+  it("korunmuş satır elle DEĞİLDİR (kayıttan geldi, gramajı çözülemedi)", () => {
+    expect(isManualDraftLine(row(null, true, false))).toBe(false);
+  });
+
+  it("KAYITTAN gelen satır elle DEĞİLDİR — `preserved` düşse bile", () => {
+    // Ölçülen hata: korunmuş kaleme gramaj yazılınca `preserved` düşer,
+    // `aliasId` zaten null olduğu için satır elle sayılır ve kayıttaki gerçek
+    // ad "MALZEME ADI" alanına düşer.
+    expect(isManualDraftLine(row(null, false, true))).toBe(false);
+  });
+});
+
+describe("dört dallı satır ekranı — iskelet satırın geçişleri", () => {
+  /** "Malzeme ekle" sonrası iskelet satır. */
+  const skeleton = () => {
+    const base = mealDraftLines(MEAL, ALIASES)!;
+    const { lines, pickerFor } = addSkeletonLine(base);
+    return { lines, pickerFor, line: lines[lines.length - 1] };
+  };
+
+  it("'Elle gir' (picker kapanır) iskeleti elle satıra çevirir — alanlar açılır", () => {
+    const { line } = skeleton();
+    // `setPickerFor(null)` render'ın dalını değiştirir; bayraklara dokunmaz.
+    expect(isManualDraftLine(line)).toBe(true);
+    // Kullanıcı henüz bir şey yazmadı: kayda giremez (iskelet malzeme değil).
+    expect(draftLinesToItems([line])).toHaveLength(0);
+  });
+
+  it("elle satıra AD yazmak tek başına kayda yeterli DEĞİLDİR (makro da gerekir)", () => {
+    const { line } = skeleton();
+    const named = { ...line, name: "Ev yapımı sos" };
+
+    // Ad yazıldı, `blank` bayrağı DURUYOR: besin hafıza ile BAĞLANMADI.
+    expect(named.blank).toBe(true);
+    expect(isManualDraftLine(named)).toBe(true); // alanlar açık kalır
+    expect(draftLinesToItems([named])).toHaveLength(0);
+  });
+
+  it("makro girmek satırı kayda sokar (`manualMeasured` blank'i kırar)", () => {
+    const { line } = skeleton();
+    const typed = {
+      ...line,
+      name: "Ev yapımı sos",
+      nutrition: { ...ZERO_NUTRITION, kcal: 200, protein: 4 },
+      manualMeasured: true,
+    };
+
+    const items = draftLinesToItems([typed]);
+    expect(items).toHaveLength(1);
+    expect(items[0].name).toBe("Ev yapımı sos");
+    expect(items[0].nutrition.kcal).toBe(200);
+    // `aliasId` null → uydurma gramaj YAZILMAZ.
+    expect(items[0].sources).toBeUndefined();
+    expect(items[0].grams).toBeUndefined();
+  });
+
+  it("picker'dan besin seçmek iskeleti bağlar: `blank` düşer, elle alanları kapanır", () => {
+    const { line } = skeleton();
+    const bound = swapDraftLine(line, tavuk);
+
+    expect(bound.blank).toBe(false);
+    expect(bound.aliasId).toBe(tavuk.id);
+    expect(bound.name).toBe(tavuk.name);
+    // Bağlanan satır elle satır DEĞİLDİR — "ad + 5 makro" alanları kapanır.
+    expect(isManualDraftLine(bound)).toBe(false);
+    // Gramaj henüz yazılmadı: ölçülebilir kalem DEĞİLDİR, kayda girmez
+    // (eskiden olduğu gibi `aliases[0]` gelirdi ve kayda uydurma besin yazardı).
+    expect(draftLinesToItems([bound])).toHaveLength(0);
+  });
+
+  it("bağlanan iskelet satır gramaj alanı AÇIKTIR (ölçülebilir taban kurulur)", () => {
+    const { line } = skeleton();
+    const bound = swapDraftLine(line, tavuk);
+
+    expect(canEditGrams(bound)).toBe(true);
+    // Miktar girilince satır kayda girer ve makro `serving_g`'ye (100 g)
+    // oranlanır: 165 kcal × 200/100 = 330.
+    const measured = setDraftGrams(bound, "200", tavuk);
+    expect(measured.nutrition.kcal).toBe(330);
+
+    const items = draftLinesToItems([measured]);
+    expect(items).toHaveLength(1);
+    expect(items[0].sources).toEqual([{ aliasId: tavuk.id, qty: 200, unit: bound.unit }]);
   });
 });
 
