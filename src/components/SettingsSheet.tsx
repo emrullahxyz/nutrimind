@@ -24,6 +24,7 @@ import {
   History,
   Compass,
   Droplets,
+  Dumbbell,
 } from "lucide-react";
 import { Modal } from "./Modal";
 import { APP_VERSION } from "../lib/version";
@@ -33,6 +34,7 @@ import { ExportModal } from "./ExportModal";
 import { ReportView } from "./ReportView";
 import { SupplementSettings } from "./SupplementSettings";
 import { WaterSettings } from "./WaterSettings";
+import { ExerciseSettings } from "./ExerciseSettings";
 import { WeightSettings } from "./WeightSettings";
 import { useData } from "../lib/data";
 import { formatNumber, todayISO } from "../lib/format";
@@ -68,6 +70,7 @@ type SubView =
   | "goals"
   | "supplements"
   | "water"
+  | "exercise"
   | "data"
   | "report"
   | "profile"
@@ -527,8 +530,19 @@ export function SettingsSheet({
               subtitle={t("settings.supplementsSubtitle")}
               onClick={() => openSubView("supplements")}
             />
-            {/* Su, takviyenin HEMEN ardında: ikisi de "makro olmayan günlük
-                sayaç" ve kart ekranında da yan yana duruyorlar. */}
+            {/* Egzersiz kütüphanesi takviyenin HEMEN ardında: ikisi de "kendi
+                girdilerini yönet" ekranları ve aynı config satırı düzenler
+                (config.exercise / config.supplements). */}
+            <MenuItem
+              icon={Dumbbell}
+              iconBg="bg-orange-500/15"
+              iconColor="text-orange-400"
+              title={t("settings.exerciseTitle")}
+              subtitle={t("settings.exerciseSubtitle")}
+              onClick={() => openSubView("exercise")}
+            />
+            {/* Su, egzersiz kütüphanesinin ardında: ikisi de "makro olmayan
+                günlük sayaç" ve kart ekranında da yan yana duruyorlar. */}
             <MenuItem
               icon={Droplets}
               iconBg="bg-sky-500/15"
@@ -691,6 +705,7 @@ export function SettingsSheet({
               {subView === "goals" && t("settings.subviewGoals")}
               {subView === "supplements" && t("settings.subviewSupplements")}
               {subView === "water" && t("settings.subviewWater")}
+              {subView === "exercise" && t("settings.subviewExercise")}
               {subView === "data" && t("settings.subviewData")}
               {subView === "report" && t("settings.subviewReport")}
               {subView === "profile" && t("settings.subviewProfile")}
@@ -715,6 +730,9 @@ export function SettingsSheet({
 
           {/* 2b. SU TAKİBİ */}
           {subView === "water" && <WaterSettings />}
+
+          {/* 2c. EGZERSİZ KÜTÜPHANESİ */}
+          {subView === "exercise" && <ExerciseSettings />}
 
           {/* 3. VERİ YEDEKLEME & YÜKLEME + HESAP VERİLERİ (KVKK/GDPR) */}
           {subView === "data" && (
