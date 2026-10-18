@@ -55,6 +55,11 @@ export const CHANGELOG: ChangeLogVersion[] = [
         tr: 'Egzersiz ekranındaki "+ Egzersiz ekle" seni doğrudan kütüphaneye götürüyor.',
         en: '"+ Add exercise" on the exercise screen takes you straight to the library.',
       },
+      {
+        type: "new",
+        tr: 'Hazır aktivitelerden kullanmadıklarını kartın köşesindeki "Kaldır" ile listeden çıkarabilirsin (yanlışlıkla dokunmamak için onay ister). Kaldırdıklarını Ayarlar → Egzersiz Kütüphanesi\'ndeki "Kaldırılan şablonlar" bölümünden istediğin zaman geri getirebilirsin.',
+        en: 'You can hide ready-made activities you don\'t use with the "Remove" button on the card corner (it asks for confirmation so you don\'t tap it by accident). Bring them back any time from "Removed templates" in Settings → Exercise Library.',
+      },
     ],
     dev: [
       "Ogun malzeme secimi (NutritionSheet): pickerFor ile bos iskelet satir; dort dalli render (bos / secim ekrani / elle gir / dolu). Secim ekrani hafizadaki besinleri listeler; elle gir dalinda ad+kalori alanlari. Secim yapilmadan kaydet oncesi iskelet satir duser, ogun toplami degismez (draftLinesToItems kayit yolundan hesaplanir).",
@@ -63,7 +68,9 @@ export const CHANGELOG: ChangeLogVersion[] = [
       "Egzersiz katalogu: config.exercise.catalog (CatalogEntry id/name/category/met). withCatalog config'i spread ile kopyalar, entries dokunulmadan tasinir (gunluk kayitlar korunur); ExerciseModal'daki existingExerciseConfig ise ters yonu (catalog korunur) korur — sunucu config.exercise satirini tamamen degistirdigi icin iki yon da sart. 13 gomulu preset config'e hic yazilmaz; kayda yazilan ad, dile bagimsiz nameKey'tir (gorunen ad cevirilir). Kullanici katalogu ExerciseSettings alt ekraninda yonetir.",
       "BLOKLAYAN 2 (katalog yaziliyordu, HICBIR YERDE okunmuyordu): grep parseCatalog -> yalniz ExerciseSettings (yazan yer) + testler. ExerciseModal onu hic import etmiyordu; ekran yalniz EXERCISE_PRESETS.map(...) ciziyordu, CatalogEntry.met burnedKcal'a hic girmiyordu. Duzeltme: ExerciseModal parseCatalog(config[EXERCISE_CONFIG_KEY]) okuyor ve gomulu preset'lerin ALTI 'Senin Egzersizlerin' grubu olarak ciziyor (tek izgara DEGIL: 'futbol maci' gomulu bir preset olarak da var, ayni izgarada hangisinin kullaniciya ait oldugu kaybolurdu; iki baslik Ayarlar'daki baslikla ayni kelimeleri kullanir). Bos katalogda bolum render edilmez. pendingPreset -> PendingPick tek tip: iki kaynak da ayni 'sure sec -> hesaplanan kalori -> kaydet' akisini kullanir, tek fark met'in katalogdan gelmesi. burnedKcal/resolveKcal opsiyonel met aldi (gecersiz met tabloya duser, uydurma yok).",
       "BLOKLAYAN 3 (tarih-bagimsiz kilo): exerciseWeight(config) latestEntry kullaniyordu = DAIMA bugunun son olcumu. DayView modali date={date} ile acar ve gecmis bir gun icin de acabiliyor; 1 Ekim'de 10 Ekim'de kayit yapilsaydi 10 Ekim'in kilosu 1 Ekim'e yazilirdi. exerciseWeight(config, date) imzasi + latestEntryBefore (weight.ts'te zaten vardi, sadece kullanilmamisti); oncelik sirasi: O GUNUN olcumu -> o gunden onceki en yakin olcum -> profil -> null. Bugun icin davranis degismedi.",
-      "Onega 6 mevcut kategori disindaki aktiviteler 'custom' (MET 4.0) kovasina duser; yanlis kategori-MET eslesmesi yerine bilinen tablo kullanilir.",
+      "Uc yonde de config satiri korunur: egzersiz kaydi entries yazar (catalog korunur), katalog yazar (entries korunur), gizlenen sablon hiddenPresets yazar (ikisi de korunur). Gomulu preset gizleme: config.exercise.hiddenPresets = nameKey listesi; preset kodda kalir, kart kosesindeki Kaldir -> ConfirmButton iki adimli onay. Geri getirme ExerciseSettings'te.",
+      "6 mevcut kategori disindaki aktiviteler 'custom' (MET 4.0) kovasina duser; yanlis kategori-MET eslesmesi yerine bilinen tablo kullanilir.",
+      "Sure/kilo tasmasi: burnedKcal sonlu olmayan sonucu 0'a duser; parseDurationInput girdiyi MAX_DURATION_MIN=1440'a kirpar (MAX_WEIGHT_KG deseniyle simetrik). Number('1e308') sonlu ama carpim Infinity -> JSON stringify null -> sessiz kayit kaybi onlendi.",
       "Olu parseExerciseConfig kaldirildi (ExerciseModal + DayView yeni yollara baglandi).",
       "Tarayici dogrulamasi controller tarafindan yapilacak; sunucu tarafina (server/index.js) dokunulmadi.",
     ],
