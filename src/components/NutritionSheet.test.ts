@@ -7,8 +7,151 @@
 // yalnızca stepper ölçeklemesinde (m ≠ 1) meşru.
 // ============================================================================
 import { describe, expect, it } from "vitest";
-import { scaleMealNutrition } from "./NutritionSheet";
+import { addSkeletonLine, resetLineState, scaleMealNutrition } from "./NutritionSheet";
 import { ZERO_NUTRITION } from "../types";
+import { draftLinesToItems, mealDraftLines } from "../lib/ingredientDraft";
+import type { Alias, MealItem } from "../types";
+
+// ============================================================================
+// "Malzeme ekle" state kurulumu — `addSkeletonLine` + `resetLineState`.
+//
+// Hata: `addRow()` `newDraftLine(aliases[0])` çağırıyordu, yani kullanıcıya
+// HAFIZANIN İLK BESİNİ dayatılıyordu; seçim ekranı yoktu. Artık boş iskelet
+// satır açılıyor ve seçim o satırda açılacak.
+//
+// Bu görev state'in KURULUMUNU doğrular; ekranın kendisi (AliasPicker render'ı,
+// dört dallı satır JSX'i, "Elle gir") Task 2'nin işidir.
+// ============================================================================
+
+const tavuk: Alias = {
+  id: "a1",
+  triggers: ["tavuk"],
+  name: "Tavuk",
+  brand: null,
+  serving_g: 100,
+  nutrition: { kcal: 165, protein: 31, carbs: 0, fat: 3.6, fiber: 0 },
+};
+
+const pilav: Alias = {
+  id: "a2",
+  triggers: ["pilav"],
+  name: "Pilav",
+  brand: null,
+  serving_g: 100,
+  nutrition: { kcal: 130, protein: 4, carbs: 28, fat: 0.4, fiber: 0.6 },
+};
+
+const ALIASES: Alias[] = [tavuk, pilav];
+
+/** Kırılımı olan tek kalemli öğün — `mealDraftLines` null döndürmesin. */
+const MEAL: MealItem = {
+  id: "m1",
+  label: "Akşam",
+  computed: { kcal: 330, protein: 62, carbs: 56, fat: 7.2, fiber: 1.2 },
+  sources: [{ aliasId: "a1", qty: 200, unit: "g" }],
+};
+
+describe("addSkeletonLine — rastgele besin yerine boş iskelet", () => {
+  it("eklenen satır blank + aliasId null (hafızanın ilk besini DOLDURULMAZ)", () => {
+    const base = mealDraftLines(MEAL, ALIASES)!;
+    const { lines } = addSkeletonLine(base);
+    const added = lines[lines.length - 1];
+
+    expect(added.blank).toBe(true);
+    expect(added.aliasId).toBeNull();
+    expect(added.name).toBe("");
+    // Eski hata buradaydı: aliases[0] (tavuk) otomatik gelirdi.
+    expect(added.aliasId).not.toBe(tavuk.id);
+  });
+
+  it("satır KAYDA girmez — iskelet malzeme değildir (draftLinesToItems düşürür)", () => {
+    const base = mealDraftLines(MEAL, ALIASES)!;
+    const { lines } = addSkeletonLine(base);
+    const added = lines[lines.length - 1];
+    const withoutAdded = lines.filter((l) => l.key !== added.key);
+
+    expect(draftLinesToItems([added])).toHaveLength(0);
+    // Mevcut kalemler etkilenmez: iskelet eklenince kayıt aynı kalır.
+    expect(draftLinesToItems(lines)).toEqual(draftLinesToItems(withoutAdded));
+  });
+
+  it("mevcut satırlara dokunmaz, sona ekler", () => {
+    const base = mealDraftLines(MEAL, ALIASES)!;
+    const { lines } = addSkeletonLine(base);
+
+    expect(lines).toHaveLength(base.length + 1);
+    expect(lines.slice(0, base.length)).toEqual(base);
+  });
+
+  it("pickerFor, YENİ satırın key'idir (seçim ekranı o satırda açılır)", () => {
+    const base = mealDraftLines(MEAL, ALIASES)!;
+    const { lines, pickerFor } = addSkeletonLine(base);
+    const added = lines[lines.length - 1];
+
+    expect(pickerFor).toBe(added.key);
+    expect(pickerFor).not.toBe(base[0].key);
+  });
+
+  it("her eklemede YENİ key (picker eski satırda kalmaz)", () => {
+    const once = addSkeletonLine(mealDraftLines(MEAL, ALIASES)!);
+    const twice = addSkeletonLine(once.lines);
+
+    expect(twice.pickerFor).not.toBe(once.pickerFor);
+    expect(twice.lines).toHaveLength(once.lines.length + 1);
+  });
+
+  it("elle (alias'sız) satırın üstüne eklemek de aynı sözleşmeyi korur", () => {
+    const once = addSkeletonLine(mealDraftLines(MEAL, ALIASES)!);
+    const twice = addSkeletonLine(once.lines);
+    const added = twice.lines[twice.lines.length - 1];
+
+    expect(added.blank).toBe(true);
+    expect(added.aliasId).toBeNull();
+    expect(twice.pickerFor).toBe(added.key);
+  });
+});
+
+describe("resetLineState — öğün değişince satır içi ekranlar kapanır", () => {
+  it("pickerFor null'a döner (açık seçim yeni öğüne sızmaz)", () => {
+    const afterAdd = addSkeletonLine(mealDraftLines(MEAL, ALIASES)!);
+    expect(afterAdd.pickerFor).not.toBeNull();
+
+    const fresh = resetLineState(MEAL, ALIASES);
+    expect(fresh.pickerFor).toBeNull();
+  });
+
+  it("swapKey de sıfırlanır", () => {
+    const fresh = resetLineState(MEAL, ALIASES);
+    expect(fresh.swapKey).toBeNull();
+  });
+
+  it("satırlar yeni öğünden türetilir (kayıttan gelir, elle eklenenler gider)", () => {
+    const { lines } = addSkeletonLine(mealDraftLines(MEAL, ALIASES)!);
+    expect(lines).toHaveLength(2); // kayıt kalemi + iskelet
+
+    const fresh = resetLineState(MEAL, ALIASES);
+    expect(fresh.lines).toHaveLength(1);
+    expect(fresh.lines![0].aliasId).toBe("a1");
+  });
+
+  it("kırılımsız öğünde satır null kalır (bölüm çizilmez, mevcut kural)", () => {
+    const sourcesuz: MealItem = { id: "m2", label: "Su", computed: { ...ZERO_NUTRITION } };
+    expect(resetLineState(sourcesuz, ALIASES).lines).toBeNull();
+  });
+});
+
+describe("iskelet satırın ölçülebilir tabanı yoktur (elle satır kuralları)", () => {
+  it("alias'sız iskelet makro olarak boştur — uydurma besin değeri taşımaz", () => {
+    const base = mealDraftLines(MEAL, ALIASES)!;
+    const { lines } = addSkeletonLine(base);
+    const added = lines[lines.length - 1];
+
+    expect(added.nutrition).toEqual(ZERO_NUTRITION);
+    expect(added.grams).toBe(0);
+    expect(added.preserved).toBe(false);
+    expect(added.manualMeasured).toBe(false);
+  });
+});
 
 describe("scaleMealNutrition — aç-kaydet sözleşmesi (m=1 kayıpsız)", () => {
   it("m=1 iken 2 ondalıklı makrolar KORUNUR (8.75 → 8.8 DEĞİL)", () => {

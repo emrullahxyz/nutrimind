@@ -58,6 +58,27 @@ export function scaleMealNutrition(computed: Nutrition | undefined, multiplier: 
   };
 }
 
+/** Öğün değişince yerel satır durumu: satırlar tazelenir, açık satır içi
+ *  ekranlar (swap, hafıza seçimi) kapanır. Üç state'i tek yerde toplayan SAF
+ *  fonksiyon — resetKey efektinin doğruluk kaynağı, jsdom olmadan test
+ *  edilebilir kalan tek yer. */
+export function resetLineState(meal: MealItem, aliases: Alias[]) {
+  return { lines: mealDraftLines(meal, aliases), swapKey: null, pickerFor: null };
+}
+
+/** "Malzeme ekle": BOŞ iskelet satır açar ve seçim ekranını O satırda açar.
+ *
+ *  `aliases[0]` ile doldurmak kullanıcıya rastgele bir besin dayatıyordu —
+ *  ekranda gördüğü ilk satır hafızanın ilk besini oluyordu, seçim ekranı
+ *  yoktu (aynı hata şablonda yaşanmıştı: `TemplatePreview.tsx:216-228`).
+ *  Seçim ekranı (Task 2) bu satırda açılacak; kullanıcı seçmezse `blank`
+ *  satır `draftLinesToItems`'te düşer — kayda uydurma besin girmez
+ *  (`ingredientDraft.ts:565-569`). */
+export function addSkeletonLine(lines: DraftLine[]): { lines: DraftLine[]; pickerFor: string } {
+  const line = newDraftLine(undefined);
+  return { lines: addDraftLine(lines, line), pickerFor: line.key };
+}
+
 /** Kaydın çözülebilen kalem satırları + tam düzenleme (ekle/sil/gramaj/swap).
  *  Saf kurallar `lib/ingredientDraft.ts`'te. */
 function IngredientLines({
@@ -75,13 +96,17 @@ function IngredientLines({
   // `key` yerine iç state: parent farklı öğünde resetKey değiştirir.
   const [lines, setLines] = useState<DraftLine[] | null>(() => mealDraftLines(meal, aliases));
   const [swapKey, setSwapKey] = useState<string | null>(null);
+  // Yeni eklenen iskelet satırda hafıza seçimi hangi satırda açık.
+  const [pickerFor, setPickerFor] = useState<string | null>(null);
 
   // Farklı öğün açılınca sıfırla (aynı sheet yeniden mount edilmiyor).
   // meal/aliases doğrudan deps'e konmaz: resolve her render yeni dizi
   // üretir, effect döngüye girer. resetKey parent'tan gelir.
   useEffect(() => {
-    setLines(mealDraftLines(meal, aliases));
-    setSwapKey(null);
+    const next = resetLineState(meal, aliases);
+    setLines(next.lines);
+    setSwapKey(next.swapKey);
+    setPickerFor(next.pickerFor);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [resetKey]);
 
@@ -118,7 +143,10 @@ function IngredientLines({
   }
 
   function addRow() {
-    commit(lines ? addDraftLine(lines, newDraftLine(aliases[0])) : null);
+    if (!lines) return;
+    const next = addSkeletonLine(lines);
+    commit(next.lines);
+    setPickerFor(next.pickerFor);
   }
 
   // Başlık toplamı, kayıt YOLUNDAN hesaplanır — `lines`'ten DEĞİL.
@@ -135,7 +163,11 @@ function IngredientLines({
   const total = roundNutrition(sumLineNutrition(draftLinesToItems(lines)));
 
   return (
-    <div className="space-y-2.5 pt-2">
+    // `data-picker-for`: seçim ekranı hangi satırda açık. Satırın kendi JSX'i
+    // Task 2'de dallanacak; o gelene kadar state'in okunabilir olması gerekiyor
+    // (yazılmamış state `noUnusedLocals`'ta hatadır) ve testlerin bu görevdeki
+    // tek gözlem noktası burası.
+    <div className="space-y-2.5 pt-2" data-picker-for={pickerFor ?? undefined}>
       <div className="flex items-center justify-between gap-2">
         <span className="text-sm font-bold text-white/90">{t("nutrition.ingredientsTitle")}</span>
         <span className="font-mono text-[11px] text-white/50">{total.kcal} kcal</span>
