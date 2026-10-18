@@ -38,6 +38,12 @@ import {
 } from "../lib/exercise";
 import { parseWeightConfig, seedEntry } from "../lib/weight";
 import { formatNumber, todayISO } from "../lib/format";
+import { afterHistoryBackSettles } from "../lib/backStack";
+
+/** `config.weight` — kilo ölçümlerinin config anahtarı. `ExerciseModal` kilo
+ *  sorusunu buraya yazar; egzersiz kaydı ise `EXERCISE_CONFIG_KEY`'e. İki
+ *  anahtar ayrıdır (biri diğerini silmez). */
+export const WEIGHT_CONFIG_KEY = "weight";
 
 interface Props {
   isOpen: boolean;
@@ -93,6 +99,28 @@ export type DraftExercise = Omit<Exercise, "id" | "caloriesBurned">;
 /** Gömülü presetlerin DİL-BAĞIMSIZ kimlikleri. Kayda yazılan `name` budur. */
 const PRESET_NAME_KEYS = new Set(EXERCISE_PRESETS.map((p) => p.nameKey));
 
+/** `config.exercise`'in nesne tarafı — `catalog` DAHİL, bozuksa `{}`.
+ *
+ *  NEDEN gerekli: `config.exercise` TEK bir config satırı ve sunucu yazmada
+ *  satırın tamamını değiştiriyor (`PUT /api/config/<key>`). Yani `{entries}`
+ *  yazan bir `updateConfig(EXERCISE_CONFIG_KEY, { entries })` çağrısı aynı
+ *  satırdaki `catalog`'u **sessizce silerdi** — kullanıcının Ayarlar →
+ *  Egzersiz Kütüphanesi'nde eklediği her şey bir sonraki egzersiz kaydında
+ *  yok olurdu.
+ *
+ *  `withCatalog` (`lib/exercise.ts`) ters yönü koruyor ("entries KORUNUR");
+ *  bu yardımcı onun **simetriğidir**: günlük kayıt yazarken `catalog` korunur.
+ *
+ *  Dönen değer KOPYADIR — canlı `config.exercise` nesnesi değil. Çağıran
+ *  üst düzey anahtarları değiştirirse (spread ile yaptığı gibi) config'e
+ *  sızmasın; `withCatalog` da aynı disiplini uygular (`{ ...base, ... }`). */
+export function existingExerciseConfig(config: unknown): Record<string, unknown> {
+  const prev = (config as { exercise?: unknown })?.exercise;
+  return typeof prev === "object" && prev !== null && !Array.isArray(prev)
+    ? { ...(prev as Record<string, unknown>) }
+    : {};
+}
+
 /** Kaydın görünen adı.
  *
  *  NEDEN çeviri burada, kayıtta değil: `Exercise.name` dolu olmak zorunda
@@ -123,12 +151,19 @@ export function resolveKcal(
  *
  *  Virgül de kabul edilir (`78,5` — Türkiye'de/yazarken olağan). Uydurma kilo
  *  YOK: boş, sıfır, negatif ya da sayı olmayan girdi `null` döner ve soru
- *  kapanmaz (L21). */
+ *  kapanmaz (L21).
+ *
+ *  ÜST SINIR 400 kg: `Number("1e308")` sonlu bir sayıdır ama `burnedKcal`
+ *  onu `Infinity` yapar ve `parseExerciseItem` `Infinity` kalorili kaydı
+ *  reddeder — kullanıcı kaydetti sanır, reload'da kaydı kaybolurdu. Sınırdan
+ *  büyük girdi de `null` döner: soru kapanır, sahte kayıt yazılmaz. */
+export const MAX_WEIGHT_KG = 400;
+
 export function parseWeightInput(text: string): number | null {
   const cleaned = text.trim().replace(",", ".");
   if (!cleaned) return null;
   const kg = Number(cleaned);
-  if (!Number.isFinite(kg) || kg <= 0) return null;
+  if (!Number.isFinite(kg) || kg <= 0 || kg > MAX_WEIGHT_KG) return null;
   return kg;
 }
 
@@ -182,7 +217,12 @@ export function ExerciseModal({ isOpen, onClose, date, onOpenExerciseSettings }:
       loggedAt: new Date().toLocaleTimeString("tr-TR", { hour: "2-digit", minute: "2-digit" }),
     };
     const updated = [...currentExercises, exWithId];
-    await updateConfig(EXERCISE_CONFIG_KEY, { entries: withExercises(entries, date, updated) });
+    // `...base` şart: sunucu satırın tamamını değiştirdiği için yalnız
+    // `{entries}` yazmak `catalog`'u silerdi (bkz. `existingExerciseConfig`).
+    await updateConfig(EXERCISE_CONFIG_KEY, {
+      ...existingExerciseConfig(config),
+      entries: withExercises(entries, date, updated),
+    });
   };
 
   /** Kaydeder. `caloriesBurned` formülle hesaplanır; kilo bilinmiyorsa kayıt
@@ -216,7 +256,7 @@ export function ExerciseModal({ isOpen, onClose, date, onOpenExerciseSettings }:
       // zaten kayıtlıysa dokunmaz — geçmiş ölçümü ezmeyiz.
       const before = parseWeightConfig(config).entries;
       const next = seedEntry(before, todayISO(), kg);
-      if (next !== before) await updateConfig("weight", { entries: next });
+      if (next !== before) await updateConfig(WEIGHT_CONFIG_KEY, { entries: next });
       // Kilo YAZILDIKTAN SONRA kayıt tamamlanır: ekran kapanmadan önce
       // `weightKg` hâlâ null kalırdı ve kcal 0 gözükürdü.
       await persistExercise(pendingExercise, kg);
@@ -234,7 +274,10 @@ export function ExerciseModal({ isOpen, onClose, date, onOpenExerciseSettings }:
     setBusy(true);
     try {
       const updated = currentExercises.filter((e) => e.id !== id);
-      await updateConfig(EXERCISE_CONFIG_KEY, { entries: withExercises(entries, date, updated) });
+      await updateConfig(EXERCISE_CONFIG_KEY, {
+        ...existingExerciseConfig(config),
+        entries: withExercises(entries, date, updated),
+      });
     } finally {
       setBusy(false);
     }
@@ -328,25 +371,38 @@ export function ExerciseModal({ isOpen, onClose, date, onOpenExerciseSettings }:
                       <div className="text-xs font-semibold truncate group-hover:text-orange-300">
                         {t(p.nameKey)}
                       </div>
-                      <div className="text-[10px] text-white/40">{p.durationMinutes}dk</div>
+                      <div className="text-[10px] text-white/40">
+                        {p.durationMinutes} {t("exercise.minutes")}
+                      </div>
                     </div>
                   </button>
                 );
               })}
             </div>
 
-            {/* Prop verilmezse render edilmez — bugünkü davranış korunur. */}
+            {/* Prop verilmezse render edilmez — bugünkü davranış korunur.
+                SIRA ÖNEMLİ: önce kapat, sonra settle et. Modalın kapanış
+                temizliği `markProgrammaticBack()` + `history.back()` çağırıyor
+                ve bu ASENKRON; Ayarlar'ın alt görünümü aynı anda
+                `pushState` yaparsa tarayıcı back()'in hedefini çağrı anındaki
+                konuma göre kaydedip aradaki yeni push'u atlıyor → alt görünüm
+                React'te açık ama geçmiş girdisi yok ("zombi modal"), ilk geri
+                basış yutuluyor. `afterHistoryBackSettles` back()'in GERÇEKTEN
+                ürettiği `popstate`'i bekler — bkz. `lib/backStack.ts` ve
+                `BottomNav`'ın FAB menüsü (aynı desen). */}
             {onOpenExerciseSettings && (
               <button
                 type="button"
                 disabled={busy}
                 onClick={() => {
-                  onOpenExerciseSettings();
                   onClose();
+                  afterHistoryBackSettles(() => onOpenExerciseSettings());
                 }}
                 className="mt-2 w-full py-2.5 rounded-2xl border border-dashed border-white/10 hover:border-orange-500/30 text-xs font-semibold text-white/60 hover:text-orange-300 flex items-center justify-center gap-1.5 transition-all active:scale-95 disabled:opacity-40"
               >
-                <Plus className="h-3.5 w-3.5" /> {t("exercise.addExercise")}
+                {/* Anahtar metni `+` ile başlıyor; ikon da `+` olduğu için
+                    çift artı olmasın diye metinden soyulur. */}
+                <Plus className="h-3.5 w-3.5" /> {t("exercise.addExercise").replace(/^\+\s*/, "")}
               </button>
             )}
           </div>

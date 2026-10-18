@@ -14,12 +14,36 @@
 // doğrulayacak.
 // ============================================================================
 import { describe, expect, it } from "vitest";
-import { EXERCISE_PRESETS, displayExerciseName, parseWeightInput, resolveKcal } from "./ExerciseModal";
-import { burnedKcal, metFor } from "../lib/exercise";
-import { EXERCISE_CONFIG_KEY } from "../lib/exercise";
+import {
+  EXERCISE_PRESETS,
+  MAX_WEIGHT_KG,
+  WEIGHT_CONFIG_KEY,
+  displayExerciseName,
+  existingExerciseConfig,
+  parseWeightInput,
+  resolveKcal,
+} from "./ExerciseModal";
+import {
+  EXERCISE_CONFIG_KEY,
+  burnedKcal,
+  metFor,
+  parseExerciseEntries,
+  withCatalog,
+  withExercises,
+} from "../lib/exercise";
+import type { AppConfig, Exercise } from "../types";
+import type { CatalogEntry } from "../lib/exercise";
 import en from "../i18n/locales/en.json";
 import tr from "../i18n/locales/tr.json";
 import pl from "../i18n/locales/pl.json";
+
+const ex: Exercise = {
+  id: "ex_1",
+  name: "exercise.presetRun",
+  category: "run",
+  durationMinutes: 30,
+  caloriesBurned: 349,
+};
 
 const CATEGORIES = ["run", "weights", "walk", "swim", "cycle", "custom"] as const;
 
@@ -106,7 +130,12 @@ describe("displayExerciseName", () => {
 
   it("hiçbir preset adı KAYDA çevrilerek yazılmaz (bozulmanın kökü kapatıldı)", () => {
     for (const p of EXERCISE_PRESETS) {
-      expect(p.nameKey).toBe(p.nameKey); // anahtar dil-bağımsız kimliktir
+      const short = p.nameKey.replace(/^exercise\./, "") as keyof typeof tr.exercise;
+      // Kayda yazılan şey çeviri metni DEĞİL — ne tam anahtar ne de öneksiz
+      // hali. `t()` ile yazılmış olsaydı biri bunlardan biriyle eşleşirdi.
+      expect([short, p.nameKey]).not.toContain(tr.exercise[short]);
+      expect([short, p.nameKey]).not.toContain(en.exercise[short]);
+      expect([short, p.nameKey]).not.toContain(pl.exercise[short]);
     }
   });
 });
@@ -148,11 +177,73 @@ describe("parseWeightInput", () => {
       expect(parseWeightInput(bad), bad).toBeNull();
     }
   });
+
+  it("sınırdan büyük kilo null döner — Infinity kalorili KAYIT YAZILMAZ (sessiz veri kaybı)", () => {
+    // `Number("1e308")` sonludur ama `burnedKcal` → Infinity üretir ve
+    // `parseExerciseItem` bu kaydı reddeder: kullanıcı kaydetti sanır, reload'da
+    // kaybolurdu. Sınır büyükse de reddedilmelidir.
+    expect(parseWeightInput("1e308")).toBeNull();
+    expect(parseWeightInput(String(MAX_WEIGHT_KG + 1))).toBeNull();
+    expect(parseWeightInput(String(MAX_WEIGHT_KG))).toBe(MAX_WEIGHT_KG);
+  });
 });
 
-describe("EXERCISE_CONFIG_KEY (kilo sorusu ayrı anahtara yazar)", () => {
-  it("egzersiz ve kilo AYRI anahtarlarda yaşar (biri diğerini silmez)", () => {
+describe("config anahtarları (egzersiz ve kilo AYRI satırlarda)", () => {
+  it("egzersiz kaydı ile kilo ölçümü birbirini silmez", () => {
     expect(EXERCISE_CONFIG_KEY).toBe("exercise");
-    expect(EXERCISE_CONFIG_KEY).not.toBe("weight");
+    expect(WEIGHT_CONFIG_KEY).toBe("weight");
+    expect(EXERCISE_CONFIG_KEY).not.toBe(WEIGHT_CONFIG_KEY);
+    // İkisi de backend'in anahtar desenine uyar (tire/büyük harf yok).
+    for (const key of [EXERCISE_CONFIG_KEY, WEIGHT_CONFIG_KEY]) {
+      expect(key).toMatch(/^[a-z][a-z0-9_]{0,31}$/);
+    }
+  });
+});
+
+describe("existingExerciseConfig — günlük kayıt yazarken `catalog` KORUNUR", () => {
+  const catalog: CatalogEntry[] = [
+    { id: "ec_1", name: "Rampa yürüyüş", category: "walk", met: 5.5 },
+  ];
+
+  it("kataloglu config'i olduğu gibi yaylar", () => {
+    const base = existingExerciseConfig({ exercise: { entries: {}, catalog } });
+    expect(base.catalog).toEqual(catalog);
+  });
+
+  it("catalog YANINA günlük kayıt yazınca katalog düşmez ⭐ simetri", () => {
+    // `withCatalog`'un "entries KORUNUR" vaadi tek yönlüydü; bu yazma yolu
+    // ters yönü koruyor. İkisi birleşince `catalog` da `entries` de yaşar.
+    const raw = existingExerciseConfig({ exercise: { entries: {}, catalog } });
+    const next: Record<string, unknown> = {
+      ...raw,
+      entries: withExercises({}, "2026-10-18", [ex]),
+    };
+    expect(parseExerciseEntries(next)["2026-10-18"]).toHaveLength(1);
+    expect(next.catalog).toEqual(catalog);
+  });
+
+  it("withCatalog SONRASI günlük kayıt yazmak katalog'u düşürmez", () => {
+    const withCat = withCatalog({ exercise: { entries: {} } } as AppConfig, catalog);
+    const base = existingExerciseConfig(withCat);
+    const next: Record<string, unknown> = {
+      ...base,
+      entries: withExercises({}, "2026-10-18", [ex]),
+    };
+    expect(next.catalog).toEqual(catalog);
+    expect(parseExerciseEntries(next)["2026-10-18"]).toHaveLength(1);
+  });
+
+  it("config.exercise bozuksa boş nesne döner (yazma yine de çalışır)", () => {
+    for (const bad of [null, undefined, "bozuk", 42, [1, 2]]) {
+      expect(existingExerciseConfig({ exercise: bad })).toEqual({});
+    }
+    expect(existingExerciseConfig(undefined)).toEqual({});
+  });
+
+  it("girdi config'i mutasyona uğratmaz", () => {
+    const config = { exercise: { entries: {}, catalog } };
+    const base = existingExerciseConfig(config);
+    base.entries = "yazildi";
+    expect(config.exercise.entries).toEqual({});
   });
 });
