@@ -204,7 +204,11 @@ export function burnedKcal(
   if (!Number.isFinite(minutes) || minutes <= 0) return 0;
   const metValue =
     typeof met === "number" && Number.isFinite(met) && met > 0 ? met : metFor(category);
-  return Math.round(((metValue * 3.5 * weightKg) / 200) * minutes);
+  const kcal = Math.round(((metValue * 3.5 * weightKg) / 200) * minutes);
+  // Aşırı büyük süre/kilo taşırırsa `Infinity` dönebilir; `JSON.stringify(Infinity)`
+  // `null` üretir ve sunucu kaydı sessizce reddeder (kullanıcı kaydetti sanır).
+  // Sınır 0'a düşer — çağıran katman (ExerciseModal) zaten girdiyi sınırlar.
+  return Number.isFinite(kcal) ? kcal : 0;
 }
 
 // ---------------------------------------------------------------------------

@@ -152,6 +152,14 @@ describe("burnedKcal", () => {
     expect(burnedKcal("custom", 80, 30)).toBeLessThan(burnedKcal("run", 80, 30));
   });
 
+  // Taşma koruması: aşırı büyük kilo/süre `Infinity` üretirse JSON'da `null`
+  // olur ve sunucu kaydı sessizce reddeder. Asla `Infinity` dönmemeli.
+  it("taşan hesap Infinity değil 0 döner", () => {
+    expect(burnedKcal("run", 82, 1e308)).toBe(0);
+    expect(burnedKcal("run", 1e308, 30)).toBe(0);
+    expect(Number.isFinite(burnedKcal("run", 82, Number.MAX_VALUE))).toBe(true);
+  });
+
   // Katalog girdisinin `met`'i kategori tablosunu EZER: kullanıcı "futbol
   // maçı = 7 MET" dediyse `custom`'ın 4.0'ı değil 7'si kullanılmalı
   // (aksi hâlde kullanıcının girdiği bilgi hiçbir yere girmezdi).

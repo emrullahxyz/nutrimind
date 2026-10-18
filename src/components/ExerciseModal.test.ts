@@ -18,10 +18,12 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import {
   EXERCISE_PRESETS,
+  MAX_DURATION_MIN,
   MAX_WEIGHT_KG,
   WEIGHT_CONFIG_KEY,
   displayExerciseName,
   existingExerciseConfig,
+  parseDurationInput,
   parseWeightInput,
   resolveKcal,
 } from "./ExerciseModal";
@@ -189,6 +191,27 @@ describe("parseWeightInput", () => {
     expect(parseWeightInput("1e308")).toBeNull();
     expect(parseWeightInput(String(MAX_WEIGHT_KG + 1))).toBeNull();
     expect(parseWeightInput(String(MAX_WEIGHT_KG))).toBe(MAX_WEIGHT_KG);
+  });
+});
+
+describe("parseDurationInput", () => {
+  it("pozitif tam sayıyı alır", () => {
+    expect(parseDurationInput("30")).toBe(30);
+    expect(parseDurationInput("45.9")).toBe(45);
+  });
+
+  it("boş/bozuk/sıfır/negatifte 0 döner", () => {
+    for (const bad of ["", "abc", "0", "-30", "NaN", "Infinity"]) {
+      expect(parseDurationInput(bad), bad).toBe(0);
+    }
+  });
+
+  it("üst sınırda kırpılır — Infinity kalorili KAYIT YAZILMAZ (sessiz veri kaybı)", () => {
+    // Kilo için `MAX_WEIGHT_KG` ile aynı gerekçe: `Number("1e308")` sonlu ama
+    // `burnedKcal` onu Infinity yapar, JSON'da null olur, kayıt düşerdi.
+    expect(parseDurationInput("1e308")).toBe(MAX_DURATION_MIN);
+    expect(parseDurationInput(String(MAX_DURATION_MIN + 60))).toBe(MAX_DURATION_MIN);
+    expect(parseDurationInput(String(MAX_DURATION_MIN))).toBe(MAX_DURATION_MIN);
   });
 });
 

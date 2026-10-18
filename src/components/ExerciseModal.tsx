@@ -200,6 +200,17 @@ export function parseWeightInput(text: string): number | null {
   return kg;
 }
 
+/** Süre üst sınırı — 24 saat. `MAX_WEIGHT_KG` ile aynı gerekçe: `Number("1e308")`
+ *  sonlu bir sayıdır ama `burnedKcal`'i `Infinity` yapardı; `Infinity` JSON'da
+ *  `null` olur ve kayıt sessizce düşerdi. Sınırlı tut, kullanıcı 0 kcal görmez. */
+export const MAX_DURATION_MIN = 24 * 60;
+
+export function parseDurationInput(text: string): number {
+  const n = Number(text);
+  if (!Number.isFinite(n) || n <= 0) return 0;
+  return Math.min(Math.floor(n), MAX_DURATION_MIN);
+}
+
 export function ExerciseModal({ isOpen, onClose, date, onOpenExerciseSettings }: Props) {
   // Lock background body scroll when modal is open
   useBodyScrollLock(isOpen);
@@ -600,8 +611,9 @@ export function ExerciseModal({ isOpen, onClose, date, onOpenExerciseSettings }:
                   <input
                     type="number"
                     min="1"
+                    max={MAX_DURATION_MIN}
                     value={pendingMinutes}
-                    onChange={(e) => setPendingMinutes(Number(e.target.value) || 0)}
+                    onChange={(e) => setPendingMinutes(parseDurationInput(e.target.value))}
                     className="w-full px-3 py-2 rounded-xl bg-black/30 border border-white/10 text-xs text-white focus:outline-none focus:border-accent"
                   />
 
@@ -704,8 +716,9 @@ export function ExerciseModal({ isOpen, onClose, date, onOpenExerciseSettings }:
                     <input
                       type="number"
                       min="1"
+                      max={MAX_DURATION_MIN}
                       value={duration}
-                      onChange={(e) => setDuration(Number(e.target.value))}
+                      onChange={(e) => setDuration(parseDurationInput(e.target.value))}
                       className="w-full px-3 py-2 rounded-xl bg-black/30 border border-white/10 text-xs text-white focus:outline-none focus:border-accent"
                     />
                   </div>
