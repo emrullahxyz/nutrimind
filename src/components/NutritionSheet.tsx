@@ -99,6 +99,51 @@ export function isManualDraftLine(line: Pick<DraftLine, "aliasId" | "preserved" 
   return line.aliasId === null && !line.preserved && !line.fromRecord;
 }
 
+/** Silme düğmesi bu satırda görünür mü?
+ *
+ *  Düğme dal zincirinin KARDEŞİ, metin dalının içi değil: kullanıcı ad +
+ *  makro yazdıktan sonra satır elle daldadır ve düğme metin dalının içinde
+ *  kalırsa kalıcı olarak ERİŞİLEMEZ olurdu (elle satırın `aliasId`'si hep
+ *  null'dır, yani hep o daldadır). `removeRow` çalışır, düğme çizilmez.
+ *
+ *  Yalnız `swapKey` gizler: swap ekranı ZATEN o satırın yerini almıştır,
+ *  yan yana iki denetim (picker + çöp) koymak gürültü. Picker dalı da kendi
+ *  hâlinde zaten görünür — o satırda başka bir düğme aranmaz.
+ *
+ *  Son satır (`lineCount <= 1`) silinemez: malzemesiz "yemek" kaydedilmemeli,
+ *  kullanıcı her an "Malzeme ekle" ile yenisini açabilir. */
+export function canRemoveLine(
+  line: Pick<DraftLine, "key">,
+  swapKey: string | null,
+  lineCount: number,
+): boolean {
+  return swapKey !== line.key && lineCount > 1;
+}
+
+/** Bu satırın MİKTAR alanı şu an yazılabilir mi?
+ *
+ *  İki bağımsız kapı: `canEditGrams` (taban var mı) ve BU koşul — arayüzün
+ *  elle sıralaması. Yalnız `canEditGrams` yeterli DEĞİL.
+ *
+ *  Tuzak (L20): elle satırda miktar ve makro alanları aynı anda açıksa,
+ *  kullanıcı ÖNCE gramajı yazarsa `setDraftGrams` alias-null dalına düşer
+ *  (`ingredientDraft.ts:385`) ve `nutrition` ile `nutritionGrams`'a
+ *  DOKUNMAZ, `manualMeasured` da yazılmaz. Sonra makro girilince yalnız
+ *  `nutrition` yazılır. Kayda "100 g" + "200 kcal" girer, taban 0 kalır ve
+ *  SONRAKİ gramaj değişiklikleri makroyu hiç ölçeklemez — modülün "hafızada
+ *  olmayan kalemde miktar ile makro arasında ORAN vardır" sözleşmesi
+ *  (`ingredientDraft.ts:308-310`) ihlal edilir.
+ *
+ *  Sıralama: kullanıcı ÖNCE makro girer (`manualMeasured` yükselir), SONRA
+ *  miktar. O sırada `setDraftGrams` tabanı kuran dalı
+ *  (`ingredientDraft.ts:375-384`) makroyu KORUR ve oran bütün kalır.
+ *
+ *  Kayıttan gelen kalem istisnadır: `canEditGrams` onun tabanını kendi
+ *  ölçümünden kurar, makro zaten gerçektir, ek sıralama gerekmez. */
+export function canEnterManualGrams(line: Pick<DraftLine, "aliasId" | "fromRecord">): boolean {
+  return line.aliasId !== null || line.fromRecord;
+}
+
 /** Kaydın çözülebilen kalem satırları + tam düzenleme (ekle/sil/gramaj/swap).
  *  Saf kurallar `lib/ingredientDraft.ts`'te. */
 function IngredientLines({
@@ -253,32 +298,37 @@ function IngredientLines({
                     />
                   </div>
                 ) : (
-                  <>
-                    <span className="min-w-0 flex-1 truncate font-semibold text-white/90">
-                      {line.name}
-                    </span>
-                    {lines.length > 1 && (
-                      <button
-                        type="button"
-                        onClick={() => removeRow(line.key)}
-                        aria-label={t("nutrition.ingredientRemove")}
-                        title={t("nutrition.ingredientRemove")}
-                        className="p-1 text-ink-tertiary transition hover:text-danger"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </button>
-                    )}
-                  </>
+                  <span className="min-w-0 flex-1 truncate font-semibold text-white/90">
+                    {line.name}
+                  </span>
+                )}
+                {/* Silme düğmesi dal zincirinin KARDEŞİ: elle satır elle daldadır
+                    (ad + makro girildi), düğme metin dalının içinde kalırsa
+                    kalıcı olarak erişilemez olurdu. */}
+                {canRemoveLine(line, swapKey, lines.length) && (
+                  <button
+                    type="button"
+                    onClick={() => removeRow(line.key)}
+                    aria-label={t("nutrition.ingredientRemove")}
+                    title={t("nutrition.ingredientRemove")}
+                    className="p-1 text-ink-tertiary transition hover:text-danger"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </button>
                 )}
               </div>
 
               <div className="mt-2 flex items-end gap-2">
                 <div>
+                  {/* Elle satırda miktar alanı makro GİRİLENE KADAR kilitli:
+                      miktar önce yazılırsa makro ile taban kurulamaz ve
+                      sonraki miktar değişiklikleri makroyu ölçeklemez (L20).
+                      Bkz. `canEnterManualGrams`. */}
                   <NumField
                     label={t("nutrition.ingredientGrams")}
                     suffix={line.unit}
                     value={line.qty}
-                    disabled={!canEditGrams(line)}
+                    disabled={!canEditGrams(line) || (!line.manualMeasured && !canEnterManualGrams(line))}
                     onChange={(v) => patch(line.key, setDraftGrams(line, v, alias ?? null))}
                   />
                   {line.preserved && line.grams <= 0 && (
@@ -306,11 +356,11 @@ function IngredientLines({
                 ) : null}
               </div>
 
-              {/* Elle satir: ad + bes makro. Gramaj TEK BASINA yetmez --
-                  hafizadan olmayan bir besin icin "100 g'da kac kalori var"
-                  bilgisi ancak makroyla gelir. `fromDraft` bos alani
-                  `undefined` yapar, 0 DEGIL -- "bilinmiyor" ile "sifir"
-                  farki korunur. */}
+              {/* Elle satır: ad + beş makro. Gramaj TEK BAŞINA yetmez —
+                  hafızadan olmayan bir besin için "100 g'da kaç kalori var"
+                  bilgisi ancak makroyla gelir. `fromDraft` boş alanı
+                  `undefined` yapar, 0 DEĞİL — "bilinmiyor" ile "sıfır"
+                  farkı korunur. */}
               {isManualRow && (
                 <div className="mt-2">
                   <NutritionFields

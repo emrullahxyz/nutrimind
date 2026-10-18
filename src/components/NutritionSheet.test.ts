@@ -7,7 +7,14 @@
 // yalnızca stepper ölçeklemesinde (m ≠ 1) meşru.
 // ============================================================================
 import { describe, expect, it } from "vitest";
-import { addSkeletonLine, isManualDraftLine, resetLineState, scaleMealNutrition } from "./NutritionSheet";
+import {
+  addSkeletonLine,
+  canEnterManualGrams,
+  canRemoveLine,
+  isManualDraftLine,
+  resetLineState,
+  scaleMealNutrition,
+} from "./NutritionSheet";
 import { ZERO_NUTRITION } from "../types";
 import {
   canEditGrams,
@@ -24,10 +31,8 @@ import type { DraftLine } from "../lib/ingredientDraft";
 //
 // Hata: `addRow()` `newDraftLine(aliases[0])` çağırıyordu, yani kullanıcıya
 // HAFIZANIN İLK BESİNİ dayatılıyordu; seçim ekranı yoktu. Artık boş iskelet
-// satır açılıyor ve seçim o satırda açılacak.
-//
-// Bu görev state'in KURULUMUNU doğrular; ekranın kendisi (AliasPicker render'ı,
-// dört dallı satır JSX'i, "Elle gir") Task 2'nin işidir.
+// satır açılıyor ve seçim o satırda açılıyor (`isManualDraftLine`,
+// `canRemoveLine`, `canEnterManualGrams` ile dört dala ayrılan JSX).
 // ============================================================================
 
 const tavuk: Alias = {
@@ -57,6 +62,12 @@ const MEAL: MealItem = {
   computed: { kcal: 330, protein: 62, carbs: 56, fat: 7.2, fiber: 1.2 },
   sources: [{ aliasId: "a1", qty: 200, unit: "g" }],
 };
+
+/** "Malzeme ekle" sonrası iskelet satır (picker açık, içerik yok). */
+function skeletonLine(): DraftLine {
+  const { lines } = addSkeletonLine(mealDraftLines(MEAL, ALIASES)!);
+  return lines[lines.length - 1];
+}
 
 describe("addSkeletonLine — rastgele besin yerine boş iskelet", () => {
   it("eklenen satır blank + aliasId null (hafızanın ilk besini DOLDURULMAZ)", () => {
@@ -107,7 +118,7 @@ describe("addSkeletonLine — rastgele besin yerine boş iskelet", () => {
     expect(twice.lines).toHaveLength(once.lines.length + 1);
   });
 
-  it("elle (alias'sız) satırın üstüne eklemek de aynı sözleşmeyi korur", () => {
+  it("iskelet satır EKLEMEK alias'sız satırın üstüne de aynı sözleşmeyi korur", () => {
     const once = addSkeletonLine(mealDraftLines(MEAL, ALIASES)!);
     const twice = addSkeletonLine(once.lines);
     const added = twice.lines[twice.lines.length - 1];
@@ -270,6 +281,125 @@ describe("dört dallı satır ekranı — iskelet satırın geçişleri", () => 
     const items = draftLinesToItems([measured]);
     expect(items).toHaveLength(1);
     expect(items[0].sources).toEqual([{ aliasId: tavuk.id, qty: 200, unit: bound.unit }]);
+  });
+});
+
+// ============================================================================
+// REVIEW DÜZELTMESİ 1 — elle satır SİLİNEMİYORDU.
+//
+// Çöp düğmesi metin dalının `<>` fragment'inin İÇİNDE kalmıştı. Elle satırın
+// `aliasId`'si kalıcı olarak null'dur, yani satır kalıcı olarak elle daldadır ve
+// düğmeye asla ulaşamazdı: `removeRow` çalışır, düğme ÇİZİLMEZ.
+// Düğme artık dal zincirinin KARDEŞİ; görünürlük kuralı `canRemoveLine`.
+// ============================================================================
+describe("canRemoveLine — silme düğmesi hangi satırda görünür?", () => {
+  const row = { key: "l1" };
+  const other = { key: "l2" };
+
+  it("elle satırda da görünür (ad + makro girildikten sonra erişilebilir kalmalı)", () => {
+    // `aliasId: null` + `blank: false` → tam elle satır. Düğme YOKSA yanlış
+    // kalem kullanıcı tarafından hiçbir zaman silinemez.
+    const typed = { ...skeletonLine(), name: "Ev yapımı sos", manualMeasured: true };
+    expect(typed.aliasId).toBeNull();
+    expect(isManualDraftLine(typed)).toBe(true);
+    expect(canRemoveLine(typed, null, 2)).toBe(true);
+  });
+
+  it("düz metin satırında görünür", () => {
+    expect(canRemoveLine(row, null, 2)).toBe(true);
+  });
+
+  it("başka satırın swap ekranı açıkken de görünür (koruma satıra özeldir)", () => {
+    expect(canRemoveLine(row, other.key, 2)).toBe(true);
+  });
+
+  it("kendi satırının swap ekranı açıkken GİZLER (picker yerini almıştır)", () => {
+    expect(canRemoveLine(row, row.key, 2)).toBe(false);
+  });
+
+  it("son satır SİLİNEMEZ — malzemesiz 'yemek' kaydedilmemeli", () => {
+    expect(canRemoveLine(row, null, 1)).toBe(false);
+  });
+});
+
+// ============================================================================
+// REVIEW DÜZELTMESİ 2 — gramaj makro ÖNCESİ yazılırsa oran bozuluyordu (L20).
+//
+// Tuzak: elle satırda miktar ve makro alanları aynı anda açıksa kullanıcı önce
+// gramajı yazabiliyordu. `setDraftGrams` alias-null dalına düşüyor
+// (`ingredientDraft.ts:385`), `nutrition`/`nutritionGrams`'a dokunmuyordu,
+// `manualMeasured` yazılmıyordu. Sonra makro girilince yalnız `nutrition`
+// yazılıyordu: "100 g" + "200 kcal" kayda giriyor, taban 0 kalıyor ve sonraki
+// miktar değişiklikleri makroyu HİÇ ölçeklemiyordu.
+// Düzeltme: elle satırda miktar alanı makro girilene kadar kilitli.
+// ============================================================================
+describe("canEnterManualGrams — miktar alanı ne zaman açılır?", () => {
+  it("iskelet/elle satırda KAPALI (makro önce girilmeli)", () => {
+    const line = skeletonLine();
+    expect(canEnterManualGrams(line)).toBe(false);
+    // Alan görünür ama kilitli: `NumField disabled` → `onChange` ÇAĞRILMAZ,
+    // yani yazdığını sandığı değer sessizce kaybolmaz (FormBits sözleşmesi).
+    expect(canEditGrams(line)).toBe(true); // amaç: sıralama kapısı
+  });
+
+  it("makro girilince (`manualMeasured`) alan AÇILIR", () => {
+    const typed = { ...skeletonLine(), manualMeasured: true };
+    // `canEnterManualGrams` elle satırda hep false'tur; alanı açan şey
+    // bayraktır, koşul değil (aşağıdaki bileşik kapı testinde doğrulanır).
+    expect(canEnterManualGrams(typed)).toBe(false);
+    expect(typed.manualMeasured).toBe(true);
+  });
+
+  it("hafızaya bağlı satırda AÇIK — taban alias'tan gelir, sıralama gerekmez", () => {
+    expect(canEnterManualGrams(swapDraftLine(skeletonLine(), tavuk))).toBe(true);
+  });
+
+  it("KAYITTAN gelen satırda AÇIK — gramaj kayıttan ölçülebilir", () => {
+    expect(canEnterManualGrams(mealDraftLines(MEAL, ALIASES)![0])).toBe(true);
+  });
+});
+
+describe("elle satırda miktar → makro ORANI kurulur (L20 sırası)", () => {
+  /** Elle satır + kullanıcının yazdığı makro (arayüzün yaptığı patch). */
+  const manual = (nutrition: Record<string, number>) => ({
+    ...skeletonLine(),
+    name: "Ev yapımı sos",
+    nutrition: { ...ZERO_NUTRITION, ...nutrition },
+    manualMeasured: true,
+  });
+
+  it("ÖNERİLEN sıra: makro → miktar. Taban kurulur, oran bütün kalır", () => {
+    const first = setDraftGrams(manual({ kcal: 225, protein: 5 }), "100", null);
+    expect(first.nutrition.kcal).toBe(225); // kullanıcının yazdığı değer KORUNUR
+    expect(first.nutritionGrams).toBe(100); // ilk geçerli gramaj taban olur
+
+    const scaled = setDraftGrams(first, "200", null);
+    expect(scaled.nutrition.kcal).toBe(450); // 225 × 200/100
+    expect(scaled.nutrition.protein).toBe(10);
+  });
+
+  it("TUAZAK: miktar → makro sırası oranı KURAMAZ (bileşik kapı bunu engeller)", () => {
+    // Engelleyici koşulun gerekçesi: makro bayrağı OLMADAN önce miktar
+    // yazılırsa taban kurulmaz, makro sonradan yazılır ve sonraki miktar
+    // değişikliği makroyu 1× bırakır (ölçeklenmez): 200 g'da hâlâ 225 kcal.
+    const gramsFirst = setDraftGrams(skeletonLine(), "100", null);
+    expect(gramsFirst.manualMeasured).toBe(false);
+    expect(gramsFirst.nutritionGrams).toBe(0); // taban kurulMADI
+
+    const withMacro = { ...gramsFirst, nutrition: { ...ZERO_NUTRITION, kcal: 225 } };
+    const later = setDraftGrams(withMacro, "200", null);
+    expect(later.nutrition.kcal).toBe(225); // 450 DEĞİL — ölçeklenmedi
+  });
+
+  it("bileşik kapı: elle satırda miktar alanı ancak makro bayrağı açınca yazılabilir", () => {
+    const before = skeletonLine();
+    // Arayüzdeki `disabled` koşulu birebir:
+    const locked = !canEditGrams(before) || (!before.manualMeasured && !canEnterManualGrams(before));
+    expect(locked).toBe(true); // makro girilmeden miktar YAZILAMAZ
+
+    const after = manual({ kcal: 225 });
+    const unlocked = !canEditGrams(after) || (!after.manualMeasured && !canEnterManualGrams(after));
+    expect(unlocked).toBe(false); // makro girildi → alan açık
   });
 });
 
