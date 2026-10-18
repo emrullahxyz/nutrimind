@@ -303,6 +303,8 @@
     "goalsSubtitle": "Daily kcal, protein, carbs, fat & fiber",
     "supplementsTitle": "Supplement Tracking",
     "supplementsSubtitle": "Protein powder, creatine, vitamins, etc.",
+    "exerciseTitle": "Exercise Library",
+    "exerciseSubtitle": "Add the exercises you do",
     "weightTitle": "Weight & Body History",
     "weightSubtitle": "Current weight and goal charts",
     "reportTitle": "Generate Summary PDF Report",
@@ -401,6 +403,7 @@
     "inboxSubtitle": "User messages & requests",
     "subviewFeedbackInbox": "Feedback Inbox",
     "subviewWater": "Water Tracking",
+    "subviewExercise": "Exercise Library",
     "waterTitle": "Water Tracking",
     "waterSubtitle": "Daily target, quick add and undo"
   },
@@ -576,7 +579,16 @@
     "saveExercise": "Save Exercise",
     "todayList": "Exercises Added Today ({{count}})",
     "noActivityYet": "No activity added for today yet.",
-    "minutes": "minutes"
+    "minutes": "minutes",
+    "catalogListTitle": "Saved Exercises ({{count}})",
+    "catalogEmpty": "No saved exercises yet.",
+    "catalogAddTitle": "Add Exercise",
+    "catalogNameLabel": "Exercise name",
+    "catalogNamePlaceholder": "e.g. Football Match",
+    "catalogNameRequired": "Exercise name is required.",
+    "categoryLabel": "Category",
+    "metLabel": "MET (effort)",
+    "metHint": "Leave blank for an average estimate (≈{{estimate}})"
   },
   "offline": {
     "banner": "You're offline. Changes are saved on this device and sync when you're back online. Last data: {{time}}.",

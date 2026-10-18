@@ -303,6 +303,8 @@
     "goalsSubtitle": "Dzienne kcal, białko, węglowodany, tłuszcze i błonnik",
     "supplementsTitle": "Śledzenie suplementów",
     "supplementsSubtitle": "Proszek białkowy, kreatyna, witaminy itp.",
+    "exerciseTitle": "Biblioteka Ćwiczeń",
+    "exerciseSubtitle": "Dodaj ćwiczenia, które wykonujesz",
     "weightTitle": "Historia wagi i ciała",
     "weightSubtitle": "Bieżąca waga i wykresy celów",
     "reportTitle": "Generuj raport PDF podsumowania",
@@ -401,6 +403,7 @@
     "inboxSubtitle": "Wiadomości i prośby użytkowników",
     "subviewFeedbackInbox": "Skrzynka opinii",
     "subviewWater": "Śledzenie wody",
+    "subviewExercise": "Biblioteka Ćwiczeń",
     "waterTitle": "Śledzenie wody",
     "waterSubtitle": "Dzienny cel, szybkie dodawanie i cofanie"
   },
@@ -576,7 +579,16 @@
     "saveExercise": "Zapisz ćwiczenie",
     "todayList": "Ćwiczenia dodane dziś ({{count}})",
     "noActivityYet": "Nie dodano jeszcze żadnej aktywności na dziś.",
-    "minutes": "minut"
+    "minutes": "minut",
+    "catalogListTitle": "Zapisane ćwiczenia ({{count}})",
+    "catalogEmpty": "Brak zapisanych ćwiczeń.",
+    "catalogAddTitle": "Dodaj ćwiczenie",
+    "catalogNameLabel": "Nazwa ćwiczenia",
+    "catalogNamePlaceholder": "np. Mecz piłkarski",
+    "catalogNameRequired": "Nazwa ćwiczenia jest wymagana.",
+    "categoryLabel": "Kategoria",
+    "metLabel": "MET (wysiłek)",
+    "metHint": "Zostaw puste — policzy średnią (≈{{estimate}})"
   },
   "offline": {
     "banner": "Jesteś offline. Zmiany są zapisywane na tym urządzeniu i zsynchronizują się po powrocie do sieci. Ostatnie dane: {{time}}.",

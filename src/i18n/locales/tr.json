@@ -303,6 +303,8 @@
     "goalsSubtitle": "Günlük Kcal, Protein, Karbonhidrat, Yağ & Lif",
     "supplementsTitle": "Takviye & Supplement Takibi",
     "supplementsSubtitle": "Protein tozu, kreatin, vitamin vb.",
+    "exerciseTitle": "Egzersiz Kütüphanesi",
+    "exerciseSubtitle": "Yaptığın egzersizleri ekle",
     "weightTitle": "Kilo & Vücut Geçmişi",
     "weightSubtitle": "Mevcut kilo ve hedef grafikler",
     "reportTitle": "Özet PDF Raporu Oluştur",
@@ -401,6 +403,7 @@
     "inboxSubtitle": "Kullanıcı mesaj ve istekleri",
     "subviewFeedbackInbox": "Geri Bildirimler",
     "subviewWater": "Su Takibi",
+    "subviewExercise": "Egzersiz Kütüphanesi",
     "waterTitle": "Su Takibi",
     "waterSubtitle": "Günlük hedef, hızlı ekleme ve geri alma"
   },
@@ -576,7 +579,16 @@
     "saveExercise": "Egzersizi Kaydet",
     "todayList": "Bugün Eklenen Egzersizler ({{count}})",
     "noActivityYet": "Henüz bugün için bir aktivite eklenmedi.",
-    "minutes": "dakika"
+    "minutes": "dakika",
+    "catalogListTitle": "Kayıtlı Egzersizler ({{count}})",
+    "catalogEmpty": "Henüz kayıtlı egzersiz yok.",
+    "catalogAddTitle": "Yeni Egzersiz Ekle",
+    "catalogNameLabel": "Egzersiz adı",
+    "catalogNamePlaceholder": "örn. Futbol maçı",
+    "catalogNameRequired": "Egzersiz adı zorunludur.",
+    "categoryLabel": "Kategori",
+    "metLabel": "MET (şiddet)",
+    "metHint": "Boş bırakırsan ortalamaya göre hesaplanır (≈{{estimate}})"
   },
   "offline": {
     "banner": "Çevrimdışısınız. Değişiklikler cihaza kaydedilir, bağlantı gelince senkronize edilir. Son veri: {{time}}.",
