@@ -11,6 +11,7 @@ import {
   addSkeletonLine,
   canRemoveLine,
   isManualDraftLine,
+  lineUpdateFor,
   resetLineState,
   scaleMealNutrition,
   setManualAmount,
@@ -18,6 +19,7 @@ import {
 import { ZERO_NUTRITION } from "../types";
 import {
   canEditGrams,
+  draftLineFromAlias,
   draftLinesToItems,
   mealDraftLines,
   setDraftGrams,
@@ -31,8 +33,9 @@ import type { DraftLine } from "../lib/ingredientDraft";
 //
 // Hata: `addRow()` `newDraftLine(aliases[0])` çağırıyordu, yani kullanıcıya
 // HAFIZANIN İLK BESİNİ dayatılıyordu; seçim ekranı yoktu. Artık boş iskelet
-// satır açılıyor ve seçim o satırda açılıyor (`isManualDraftLine`,
-// `canRemoveLine`, `canEnterManualGrams` ile dört dala ayrılan JSX).
+// satır açılıyor ve seçim o satırda açılıyor. Satırın dört dalı saf
+// fonksiyonlarla karar veriyor: `isManualDraftLine` (elle satır mı),
+// `canRemoveLine` (silme düğmesi), `lineUpdateFor` (gramaj hangi yola gider).
 // ============================================================================
 
 const tavuk: Alias = {
@@ -68,6 +71,15 @@ function skeletonLine(): DraftLine {
   const { lines } = addSkeletonLine(mealDraftLines(MEAL, ALIASES)!);
   return lines[lines.length - 1];
 }
+
+/** Kaydedilmiş ELLE kalem: `sources` yok → `itemsToDraftLines` kayıt yolu
+ *  (`fromRecord: true`, `nutritionGrams = items[].grams`). */
+const SAVED_MANUAL: MealItem = {
+  id: "m3",
+  label: "Akşam",
+  computed: { ...ZERO_NUTRITION, kcal: 225 },
+  items: [{ name: "Ev yapımı sos", nutrition: { ...ZERO_NUTRITION, kcal: 225 }, grams: 100 }],
+};
 
 describe("addSkeletonLine — rastgele besin yerine boş iskelet", () => {
   it("eklenen satır blank + aliasId null (hafızanın ilk besini DOLDURULMAZ)", () => {
@@ -359,8 +371,10 @@ describe("setManualAmount — elle satırda gramaj ETİKETTİR, makroya dokunmaz
   });
 
   it("TUŞ-BAŞINA PATLAMA YOK — 1 → 10 → 100 yazınca değer sabit kalır", () => {
-    // RED PROOF: bu testin KIRMIZI olduğu kanıtı aşağıda — `setDraftGrams`
-    // ile aynı dizgi 225 → 2250 → 22500 yapıyor.
+    // Patlamanın kendisi `setManualAmount` dokümanında kayıtlıdır; burada
+    // yalnız DOĞRU davranış sabitlenir. `setDraftGrams`'ın hatalı çıktısını
+    // (225 → 2250 → 22500) beklenen değer olarak yazmak KİLTTİ — ileride o
+    // bug gerçekten düzeltilirse doğru davranış "regresyon" gibi görünürdü.
     const after1 = setManualAmount(manual(), "1");
     const after10 = setManualAmount(after1, "10");
     const after100 = setManualAmount(after10, "100");
@@ -369,17 +383,6 @@ describe("setManualAmount — elle satırda gramaj ETİKETTİR, makroya dokunmaz
     expect([after1.nutrition.protein, after10.nutrition.protein, after100.nutrition.protein]).toEqual([5, 5, 5]);
     expect(after100.grams).toBe(100); // etiket doğru
     expect(after100.nutritionGrams).toBe(0); // ama ölçekleme tabanı HİÇ kurulmadı
-
-    // --- RED PROOF (kırmızı olduğu doğrulandı) ---
-    // `setDraftGrams` elle dala alınırsa aynı dizgi makroyu çarpıyor:
-    //   1 → 225, 10 → 2250, 100 → 22500 (22500 DEĞİL 225 beklenirdi).
-    const buggy1 = setDraftGrams(manual(), "1", null);
-    const buggy10 = setDraftGrams(buggy1, "10", null);
-    const buggy100 = setDraftGrams(buggy10, "100", null);
-    expect([buggy1.nutrition.kcal, buggy10.nutrition.kcal, buggy100.nutrition.kcal]).toEqual([
-      225, 2250, 22500,
-    ]);
-    // Bu yüzden `setManualAmount` varken `setDraftGrams` elle dalda KULLANILMAZ.
   });
 
   it("yazdığını sandığı değer kaybolmaz — ekranda ne varsa kayda o girer (L20)", () => {
@@ -408,15 +411,64 @@ describe("setManualAmount — elle satırda gramaj ETİKETTİR, makroya dokunmaz
   });
 });
 
-describe("elle satır sadece YENİ eklenen iskeletlerdir (kayıt karışmaz)", () => {
-  /** Kaydedilmiş ELLE kalem: `sources` yok → `itemsToDraftLines` kayıt yolu. */
-  const SAVED_MANUAL: MealItem = {
-    id: "m3",
-    label: "Akşam",
-    computed: { ...ZERO_NUTRITION, kcal: 225 },
-    items: [{ name: "Ev yapımı sos", nutrition: { ...ZERO_NUTRITION, kcal: 225 }, grams: 100 }],
-  };
+// ============================================================================
+// RE-REVIEW DÜZELTMESİ 1 — JSX BAĞLANTISININ REGRESYON TESTİ YOKTU.
+//
+// `onChange` içindeki ternary testler tarafından GÖRÜLMEZ: JSX elle dalda
+// `setDraftGrams`'a geri dönerse patlama sessizce gelir ve testler yeşil
+// kalır (ölçüldü — 1314 test yeşil kaldı). Dal seçimi artık saf fonksiyonda:
+// `lineUpdateFor`. JSX `onChange` yalnız onu çağırır.
+// ============================================================================
+describe("lineUpdateFor — gramaj değişikliği hangi yola gider?", () => {
+  /** Taze elle satır + kullanıcının yazdığı makro. */
+  const manual = () => ({
+    ...skeletonLine(),
+    name: "Ev yapımı sos",
+    nutrition: { ...ZERO_NUTRITION, kcal: 225, protein: 5 },
+    manualMeasured: true,
+  });
 
+  it("elle satır → setManualAmount yolu: gramaj yazılır, `nutrition` DEĞİŞMEZ", () => {
+    const next = lineUpdateFor(manual(), "100", null);
+
+    expect(next.grams).toBe(100);
+    expect(next.qty).toBe("100");
+    expect(next.nutrition.kcal).toBe(225); // ölçeklenmedi
+    expect(next.nutrition.protein).toBe(5);
+    expect(next.nutritionGrams).toBe(0); // taban kurulmadı → patlama imkânsız
+  });
+
+  it("elle satır: 1 → 10 → 100 dizgisi makroyu SABİT tutar (patlama regresyonu)", () => {
+    const a = lineUpdateFor(manual(), "1", null);
+    const b = lineUpdateFor(a, "10", null);
+    const c = lineUpdateFor(b, "100", null);
+
+    expect(c.nutrition.kcal).toBe(225);
+    expect(c.nutrition.protein).toBe(5);
+    expect(c.grams).toBe(100);
+  });
+
+  it("alias satırı → setDraftGrams yolu: gramaj ÖLÇEKLER", () => {
+    // `draftLineFromAlias` 100 g/serving → 165 kcal taban.
+    const bound = draftLineFromAlias(tavuk, "100", "g")!;
+    const next = lineUpdateFor(bound, "200", tavuk);
+
+    expect(next.grams).toBe(200);
+    expect(next.nutrition.kcal).toBe(330); // 165 × 200/100
+  });
+
+  it("alias'sız ama KAYITTAN gelen satır → setDraftGrams yolu (ölçekleme çalışır)", () => {
+    // Bilinçli AYRIM: aynı ekranda iki davranış. Taze iskelet gramaja
+    // duyarsız, kayıtlı elle kalem duyarlı (round-trip).
+    const saved = mealDraftLines(SAVED_MANUAL, ALIASES)![0];
+    expect(isManualDraftLine(saved)).toBe(false);
+
+    const next = lineUpdateFor(saved, "200", null);
+    expect(next.nutrition.kcal).toBe(450); // 225 × 200/100
+  });
+});
+
+describe("elle satır sadece YENİ eklenen iskeletlerdir (kayıt karışmaz)", () => {
   it("kayıttan gelen ELLE kalem `fromRecord` taşır → elle dalına GİRMEZ", () => {
     const saved = mealDraftLines(SAVED_MANUAL, ALIASES)![0];
     expect(saved.fromRecord).toBe(true);
