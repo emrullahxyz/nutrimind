@@ -13,6 +13,59 @@ export interface ChangeLogVersion {
 
 export const CHANGELOG: ChangeLogVersion[] = [
   {
+    version: "0.32.0",
+    date: "2026-10-18",
+    summary: {
+      tr: "Bir öğüne malzeme eklerken artık kendi hafızalı besinlerinden arayıp seçebiliyorsun; istersen kalorileri elle de girebilirsin. Egzersiz ekranı da yenilendi: hazır aktiviteler, süre soran akış ve vücut ağırlığına göre otomatik hesaplanan kalori.",
+      en: "When adding an ingredient to a meal you can now search and pick from your own food memory, or type the calories by hand. The exercise screen is rebuilt too: ready-made activities, a duration step, and calories computed automatically from your body weight.",
+    },
+    items: [
+      {
+        type: "new",
+        tr: "Öğüne malzeme eklemek için boş bir satır açılıyor ve hafızandaki besinlerin arasından arayıp seçebiliyorsun.",
+        en: "Adding an ingredient to a meal now opens an empty row where you can search your food memory and pick from it.",
+      },
+      {
+        type: "new",
+        tr: "Listedeki besini seninle ilgili bir şey değilse \"Elle gir\" diyerek adını ve kalorisini kendin yazabiliyorsun.",
+        en: "If none of the listed foods fits, tap \"Type it in\" and enter the name and calories yourself.",
+      },
+      {
+        type: "new",
+        tr: "Egzersiz listesinde 13 hazır aktivite var (koşu, yürüyüş, bisiklet, yüzme, yoga vb.).",
+        en: "The exercise list ships with 13 ready-made activities (running, walking, cycling, swimming, yoga, and more).",
+      },
+      {
+        type: "improved",
+        tr: "Egzersiz ekranı artık \"kaç dakka yaptın\" diye soruyor; eskiden her aktivite için sabit bir süre vardı.",
+        en: "The exercise screen now asks how many minutes you did, instead of a fixed duration per activity.",
+      },
+      {
+        type: "improved",
+        tr: "Yakılan kalori artık vücut ağırlığına göre otomatik hesaplanıyor; herkese aynı rakam yazılmıyor. Sonucu istediğin gibi elle düzeltebilirsin.",
+        en: "Burned calories are now computed automatically from your body weight instead of one fixed number for everyone. You can still fine-tune the result by hand.",
+      },
+      {
+        type: "new",
+        tr: "Ayarlar → Egzersiz Kütüphanesi'nden kendi egzersizlerini ekleyebiliyor ve silebiliyorsun.",
+        en: "You can add and remove your own exercises in Settings → Exercise Library.",
+      },
+      {
+        type: "improved",
+        tr: "Egzersiz ekranındaki \"+ Egzersiz Ekle\" seni doğrudan kütüphaneye götürüyor.",
+        en: "\"+ Add exercise\" on the exercise screen takes you straight to the library.",
+      },
+    ],
+    dev: [
+      "Ogun malzeme secimi (NutritionSheet): pickerFor ile bos iskelet satir; dort dalli render (bos / secim ekrani / elle gir / dolu). Secim ekrani hafizadaki besinleri listeler; elle gir dalinda ad+kalori alanlari. Secim yapilmadan kaydet oncesi iskelet satir duser, ogun toplami degismez (draftLinesToItems kayit yolundan hesaplanir).",
+      "Egzersiz kalorisi: src/lib/exercise.ts MET tablosu + burnedKcal(met x 3,5 x kg / 200 x dk). exerciseWeight kilo yoksa null doner; ExerciseModal bir kez sorar, cevabi config.weight'e yazar (asla varsayilan kilo uydurulmaz). Gecmis kayitlar donmus gercek oldugu icin kilo degisince yeniden hesaplanmaz.",
+      "Egzersiz katalogu: config.exercise.catalog (CatalogEntry id/name/category/met). withCatalog config'i spread ile kopyalar, entries dokunulmadan tasinir (gunluk kayitlar korunur); ExerciseModal'daki existingExerciseConfig ise ters yonu (catalog korunur) korur — sunucu config.exercise satirini tamamen degistirdigi icin iki yon da sart. 13 gomulu preset config'e hic yazilmaz; kayda yazilan ad, dile bagimsiz nameKey'tir (gorunen ad cevirilir). Kullanici katalogu ExerciseSettings alt ekraninda yonetir.",
+      "Onega 6 mevcut kategori disindaki aktiviteler 'custom' (MET 4.0) kovasina duser; yanlis kategori-MET eslesmesi yerine bilinen tablo kullanilir.",
+      "Olu parseExerciseConfig kaldirildi (ExerciseModal + DayView yeni yollara baglandi).",
+      "Tarayici dogrulamasi controller tarafindan yapilacak; sunucu tarafina (server/index.js) dokunulmadi.",
+    ],
+  },
+  {
     version: "0.31.9",
     date: "2026-10-12",
     summary: {
