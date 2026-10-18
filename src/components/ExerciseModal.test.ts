@@ -406,3 +406,49 @@ describe("gömülü şablon gizleme", () => {
     expect(EXERCISE_MODAL_SRC).toContain("ConfirmButton");
   });
 });
+
+// ============================================================================
+// OVERLAY/SCROLL/A11Y — ExerciseModal kendi overlay'ini elle kurar (paylaşılan
+// `<Modal>` DEĞİL). Diğer overlay'lerde (özellikle MealActionSheet) kanıtlanmış
+// katmanlar buraya da eklenmeli; eksik oldukları için üç bug çıkıyordu.
+// jsdom yok → kaynak taraması.
+// ============================================================================
+describe("overlay katmanları (scroll kilidi + a11y)", () => {
+  it("preset kartı dikey düzendedir — isim ✕ ile çakışmaz", () => {
+    // Ölçülen bug: yatay düzende isim ✕'in ALTINA biniyordu (35px çakışma) ve
+    // sağ boşluk eklemek ismi darlaştırıyordu. Dikey düzen: ikon üstte, isim
+    // tam genişlikte altta. Kart `flex-col` olmalı.
+    expect(EXERCISE_MODAL_SRC).toMatch(/w-full flex flex-col gap-2 p-3 rounded-2xl/);
+  });
+
+  it("arka plan scroll'u NON-PASSIVE blocker + scrim touch-none ile kilitlenir", () => {
+    // `useBodyScrollLock` html/body overflow'unu kapatır ama tekerlek/dokunma
+    // altındaki alanı kaydırabilir; MealActionSheet bu yüzden non-passive
+    // pencere dinleyicisi ekliyor. React 17+ onTouchMove.preventDefault'i
+    // passive olduğu için sessizce etkisizdir.
+    expect(EXERCISE_MODAL_SRC).toContain('"wheel", blockBackgroundScroll, { passive: false, capture: true }');
+    // `touchmove` çağrısı çok satıra sarılı; boşluk esnek eşleş.
+    expect(EXERCISE_MODAL_SRC).toMatch(/"touchmove",\s*blockBackgroundScroll,\s*\{\s*passive: false,\s*capture: true,/);
+    expect(EXERCISE_MODAL_SRC).toContain("touch-none");
+    expect(EXERCISE_MODAL_SRC).toContain("overscroll-behavior:none");
+  });
+
+  it("iç scroll container overscroll-contain taşır (scroll chaining yok)", () => {
+    expect(EXERCISE_MODAL_SRC).toMatch(/min-h-0 overflow-y-auto overscroll-contain/);
+  });
+
+  it("odak yönetimi + dialog rolü (Escape/Tab/a11y)", () => {
+    expect(EXERCISE_MODAL_SRC).toContain("useDialogFocus(");
+    expect(EXERCISE_MODAL_SRC).toContain('role="dialog"');
+    expect(EXERCISE_MODAL_SRC).toContain('aria-modal="true"');
+    // kapatma ✕'i etiketli (ekran okuyucu boş buton okumasın)
+    expect(EXERCISE_MODAL_SRC).toMatch(/aria-label=\{t\("common\.close"\)\}/);
+  });
+
+  it("kapanışta yarım state sıfırlanır + kilo o güne yazılır", () => {
+    expect(EXERCISE_MODAL_SRC).toMatch(/if \(isOpen\) return;/);
+    expect(EXERCISE_MODAL_SRC).toContain("seedEntry(before, date, kg)");
+    expect(EXERCISE_MODAL_SRC).toContain("max-h-[90dvh]");
+    expect(EXERCISE_MODAL_SRC).toContain("pad-safe-b");
+  });
+});

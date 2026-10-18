@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   Activity,
   Bike,
@@ -24,6 +24,7 @@ import { useData } from "../lib/data";
 import { useBodyScrollLock } from "../hooks/useBodyScrollLock";
 import { useModalHistory } from "../hooks/useModalHistory";
 import { useModalExit } from "../hooks/useModalExit";
+import { useDialogFocus } from "../hooks/useDialogFocus";
 import { haptic } from "../lib/haptics";
 import { useTheme } from "../lib/theme";
 import { useTranslation } from "react-i18next";
@@ -39,7 +40,7 @@ import {
   withExercises,
 } from "../lib/exercise";
 import { parseWeightConfig, seedEntry } from "../lib/weight";
-import { formatNumber, todayISO } from "../lib/format";
+import { formatNumber } from "../lib/format";
 import { afterHistoryBackSettles } from "../lib/backStack";
 import { ConfirmButton } from "./FormBits";
 
@@ -269,6 +270,54 @@ export function ExerciseModal({ isOpen, onClose, date, onOpenExerciseSettings }:
 
   const [busy, setBusy] = useState(false);
 
+  /** Panel elemanı — odak tuzağı (`useDialogFocus`) ve arka plan scroll
+   *  blocker'ının muafiyet alanı bu ref'ten okunur. */
+  const panelRef = useRef<HTMLDivElement>(null);
+
+  // Odak + Escape: açılışta odak panele, Tab panel içinde döngüde kalır,
+  // Escape kapatır (yalnız en üst katman). Modal.tsx/MealForm ile aynı hook;
+  // yokluğunda Escape kapatmıyor ve Tab arka plana kaçıyordu (AGENTS.md:120).
+  useDialogFocus({
+    containerRef: panelRef,
+    active: isOpen && !closing,
+    onEscape: beginClose,
+    autoFocus: "container",
+  });
+
+  /* Arka planı TAM kilitle: doküman kilidi (`useBodyScrollLock`) html/body
+     overflow'unu kapatır, ama tekerlek/dokunma ile altındaki kaydırma alanı
+     yine kımıldayabilir. Gerçek (PASİF OLMAYAN) pencere dinleyicileri şart —
+     React 17+ `touchmove`/`wheel`'i passive kaydeder, `onTouchMove` içindeki
+     `preventDefault` sessizce etkisizdir. Panelin KENDİ gövdesi muaf: içerik
+     taşarsa panel içinde kayar. (MealActionSheet.tsx ile aynı desen.) */
+  useEffect(() => {
+    if (!isOpen) return;
+    const blockBackgroundScroll = (e: Event) => {
+      if (panelRef.current?.contains(e.target as Node)) return;
+      e.preventDefault();
+    };
+    window.addEventListener("wheel", blockBackgroundScroll, { passive: false, capture: true });
+    window.addEventListener("touchmove", blockBackgroundScroll, {
+      passive: false,
+      capture: true,
+    });
+    return () => {
+      window.removeEventListener("wheel", blockBackgroundScroll, true);
+      window.removeEventListener("touchmove", blockBackgroundScroll, true);
+    };
+  }, [isOpen]);
+
+  // Modal `return null` ile gizlenir ama unmount OLMAZ: yarım kalmış süre
+  // paneli / kilo sorusu / ad bir sonraki açılışta geri gelmesin.
+  useEffect(() => {
+    if (isOpen) return;
+    setPendingPick(null);
+    setPendingExercise(null);
+    setWeightInput("");
+    setKcalOverride(null);
+    setName("");
+  }, [isOpen]);
+
   if (!isOpen) return null;
 
   const persistExercise = async (newEx: DraftExercise, kg: number, met?: number) => {
@@ -313,12 +362,14 @@ export function ExerciseModal({ isOpen, onClose, date, onOpenExerciseSettings }:
     if (kg === null) return;
     setBusy(true);
     try {
-      // Kilo `config.weight`'e bugünün ÖLÇÜMÜ olarak yazılır: hem kalıcıdır
+      // Kilo `config.weight`'e O GÜNÜN ÖLÇÜMÜ olarak yazılır: hem kalıcıdır
       // hem de Kilo & Vücut Geçmişi'ne gerçek bir kayıt girer (uydurma değil,
-      // kullanıcının az önce girdiği gerçek bir ölçüm). `seedEntry` bugün
-      // zaten kayıtlıysa dokunmaz — geçmiş ölçümü ezmeyiz.
+      // kullanıcının az önce girdiği gerçek bir ölçüm). `seedEntry` o gün zaten
+      // kayıtlıysa dokunmaz — geçmiş ölçümü ezmeyiz. Tarih `date` prop'u:
+      // `exerciseWeight(config, date)` o günü okuyor, yazma da o güne olmalı
+      // (geçmiş gün modalında kilo bugüne yazılırsa geçmiş gün boş kalırdı).
       const before = parseWeightConfig(config).entries;
-      const next = seedEntry(before, todayISO(), kg);
+      const next = seedEntry(before, date, kg);
       if (next !== before) await updateConfig(WEIGHT_CONFIG_KEY, { entries: next });
       // Kilo YAZILDIKTAN SONRA kayıt tamamlanır: ekran kapanmadan önce
       // `weightKg` hâlâ null kalırdı ve kcal 0 gözükürdü.
@@ -388,12 +439,17 @@ export function ExerciseModal({ isOpen, onClose, date, onOpenExerciseSettings }:
 
   return (
     <div
-      className={`fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/75 p-0 sm:p-4 backdrop-blur-sm animate-fadeIn ${
+      className={`fixed inset-0 z-[9999] touch-none [overscroll-behavior:none] flex items-end sm:items-center justify-center bg-black/75 p-0 sm:p-4 backdrop-blur-sm animate-fadeIn ${
         closing ? "scrim-out" : ""
       }`}
     >
       <div
-        className={`w-full max-w-lg rounded-t-3xl sm:rounded-3xl bg-panel-alt border border-white/10 p-5 text-white shadow-2xl max-h-[90vh] flex flex-col overflow-hidden relative glass-exercise ${
+        ref={panelRef}
+        role="dialog"
+        aria-modal="true"
+        aria-label={t("exercise.title")}
+        tabIndex={-1}
+        className={`pad-safe-b w-full max-w-lg rounded-t-3xl sm:rounded-3xl bg-panel-alt border border-white/10 p-5 text-white shadow-2xl max-h-[90dvh] flex flex-col overflow-hidden relative glass-exercise ${
           closing ? "modal-out" : ""
         }`}
       >
@@ -411,7 +467,9 @@ export function ExerciseModal({ isOpen, onClose, date, onOpenExerciseSettings }:
             </div>
           </div>
           <button
+            type="button"
             onClick={beginClose}
+            aria-label={t("common.close")}
             className={
               theme === "glass"
                 ? "w-9 h-9 rounded-full bg-orange-500/10 hover:bg-orange-500/20 flex items-center justify-center text-orange-300 transition-colors"
@@ -422,7 +480,7 @@ export function ExerciseModal({ isOpen, onClose, date, onOpenExerciseSettings }:
           </button>
         </div>
 
-        <div className="flex-1 overflow-y-auto py-4 space-y-5 pr-1">
+        <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain py-4 space-y-5 pr-1">
           {/* Quick Presets */}
           <div>
             <span className="text-xs font-semibold uppercase tracking-wider text-white/40 mb-2.5 block">
@@ -446,8 +504,12 @@ export function ExerciseModal({ isOpen, onClose, date, onOpenExerciseSettings }:
                           category: p.category,
                         });
                       }}
-                      className="w-full flex items-center gap-2.5 p-3 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/5 hover:border-orange-500/30 text-left transition-all group active:scale-95 spring-press disabled:opacity-40"
+                      className="w-full flex flex-col gap-2 p-3 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/5 hover:border-orange-500/30 text-left transition-all group active:scale-95 spring-press disabled:opacity-40"
                     >
+                      {/* DİKEY DÜZEN: ikon üst satırda (sağında ✕ için boşluk),
+                          isim ALT satırda TAM genişlikte. Yatay düzende isim
+                          ✕'in altına biniyordu (ölçülen 35px çakışma) ve sağ
+                          boşluk eklemek ismi daha da daraltıyordu (kart 147px). */}
                       <div className="w-8 h-8 rounded-xl bg-orange-500/10 group-hover:bg-orange-500/20 text-orange-400 flex items-center justify-center shrink-0">
                         <Icon className="w-4 h-4" />
                       </div>
@@ -462,8 +524,9 @@ export function ExerciseModal({ isOpen, onClose, date, onOpenExerciseSettings }:
                     </button>
                     {/* Kaldırma ✕ — kart bir `button`, içine buton koymak
                         geçersiz HTML olurdu; mutlak konumlu kardeş olarak
-                        durur. Kazara dokunmaya karşı `ConfirmButton` iki
-                        adımlı onay ister ("Emin misin?"). */}
+                        durur. İkon satırının sağındaki boşluğa oturur, bu
+                        yüzden isme çarpmaz. Kazara dokunmaya karşı
+                        `ConfirmButton` iki adımlı onay ister ("Emin misin?"). */}
                     <ConfirmButton
                       onConfirm={() => handleHidePreset(p.nameKey)}
                       disabled={busy}
