@@ -16,6 +16,8 @@ interface DailyPageProps {
   resetKey?: number;
   onOpenSupplementSettings?: () => void;
   onOpenWaterSettings?: () => void;
+  /** Egzersiz modalındaki "+ Egzersiz Ekle" → Ayarlar alt-görünümü. */
+  onOpenExerciseSettings?: () => void;
 }
 
 export function DailyPage({
@@ -28,6 +30,7 @@ export function DailyPage({
   resetKey = 0,
   onOpenSupplementSettings,
   onOpenWaterSettings,
+  onOpenExerciseSettings,
 }: DailyPageProps = {}) {
   const { t } = useTranslation();
   const [selectedDate, setSelectedDate] = useState<string>(todayISO());
@@ -55,6 +58,7 @@ export function DailyPage({
         showTemplates
         onOpenSupplementSettings={onOpenSupplementSettings}
         onOpenWaterSettings={onOpenWaterSettings}
+        onOpenExerciseSettings={onOpenExerciseSettings}
         triggerAddMeal={triggerAddMeal}
         onResetTriggerAddMeal={onResetTriggerAddMeal}
         triggerScan={triggerScan}

@@ -136,6 +136,7 @@ export function DayView({
   showTemplates = true,
   onOpenSupplementSettings,
   onOpenWaterSettings,
+  onOpenExerciseSettings,
   resetKey = 0,
 }: {
   date: string;
@@ -153,6 +154,9 @@ export function DayView({
   onOpenSupplementSettings?: () => void;
   /** Su kartının dişli simgesi — takviyeyle AYNI yol (Ayarlar alt-görünümü). */
   onOpenWaterSettings?: () => void;
+  /** Egzersiz modalındaki "+ Egzersiz Ekle" düğmesinin hedefi. Modalın
+   *  kendi açılışı `triggerExercise` ile ayrı bir yoldur; buraya dokunulmaz. */
+  onOpenExerciseSettings?: () => void;
   showWeightCard?: boolean;
   /** Şablon çipleri: yalnızca Bugün'de gösterilir (Geçmiş gün detayında değil).
    *  `enableScan`den AYRI — o bayrak tarama giriş noktası içindi ve Bugün'de
@@ -673,6 +677,7 @@ export function DayView({
         isOpen={showExerciseModal}
         onClose={() => setShowExerciseModal(false)}
         date={date}
+        onOpenExerciseSettings={onOpenExerciseSettings}
       />
 
       <NutritionSheet

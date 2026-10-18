@@ -245,7 +245,7 @@ function MainContent() {
    *  dişlisi). `SettingsSheet` hedef sekmede MOUNT olurken `initialSubView`'ı
    *  okuyup kendi geçmiş girdisini pushlar — yani burada ek bir geçmiş işi
    *  yapmak çift girdi üretirdi. */
-  const openSettingsSubview = (subView: "water" | "supplements") => {
+  const openSettingsSubview = (subView: "water" | "supplements" | "exercise") => {
     setSettingsTarget(subView);
     handleTabChange("settings");
   };
@@ -396,6 +396,10 @@ function MainContent() {
                pratikte görünmüyordu; ikisi birlikte bağlandı. */
             onOpenSupplementSettings={() => openSettingsSubview("supplements")}
             onOpenWaterSettings={() => openSettingsSubview("water")}
+            /* Egzersiz modalındaki "+ Egzersiz Ekle" düğmesi de AYNI yol:
+               önce modal kapanır, `afterHistoryBackSettles` gerçek popstate'i
+               bekler, SONRA Ayarlar → Egzersiz Kütüphanesi mount olur. */
+            onOpenExerciseSettings={() => openSettingsSubview("exercise")}
             resetKey={tabResetKey.daily}
           />
         ) : tab === "history" ? (
@@ -448,10 +452,13 @@ function MainContent() {
         <ScanSheet onClose={() => setGlobalScanOpen(false)} onVisionResult={handleVisionResult} />
       )}
 
+      {/* Diğer sekmelerden FAB ile açılan global modal: düğme ancak burada da
+          bağlanırsa görünür, yoksa "+ Egzersiz Ekle" sadece "Bugün"de olur. */}
       <ExerciseModal
         isOpen={globalExerciseOpen}
         onClose={() => setGlobalExerciseOpen(false)}
         date={todayISO()}
+        onOpenExerciseSettings={() => openSettingsSubview("exercise")}
       />
 
       {/* Yeni hesabın ilk açılışında: 5 adımlı profil + TDEE kurulumu. */}
