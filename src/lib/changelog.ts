@@ -13,6 +13,24 @@ export interface ChangeLogVersion {
 
 export const CHANGELOG: ChangeLogVersion[] = [
   {
+    version: "0.32.2",
+    date: "2026-10-30",
+    summary: {
+      tr: "Kamera düzeltildi: çok mercekli telefonlarda taramayı açınca (barkod, yemek, etiket) artık ana kamera seçiliyor, ilk kare bulanık değil keskin geliyor. Yön değiştirme gerekmiyor.",
+      en: "Camera fixed: on multi-camera phones, opening a scan (barcode, food, label) now picks the main camera, so the first frame is sharp instead of blurry. No need to flip back and forth.",
+    },
+    items: [
+      {
+        type: "fixed",
+        tr: "Çok mercekli telefonlarda taramayı açınca yardımcı (ultra geniş gibi) lens seçilebiliyor, görüntü bulanık geliyordu. Artık ana kamera devreye giriyor.",
+        en: "On multi-camera phones, opening a scan could pick an auxiliary lens (like ultra-wide), so the image looked blurry. The main camera is now used.",
+      },
+    ],
+    dev: [
+      "resolveCameraPick keep dali yalnizca YONU dogruluyordu (actual===facing) — ultra-genis/telefoto/derinlik de 'environment' dondurdugu icin yanlis lens 'keep' kalip bulanik goruntu sabitleniyordu. Keep dalina lens-kimlik sarti: `wanted` (pickCameraDeviceId'in aux elemesi + min camera2 indeksi ile sectigi ana lens) current'tan farkliysa retry-device. useCameraStream mevcut byDevice+stopAndSettle+resolvedRef cache'iyle ana lense gecip sonraki acilislari tek istekte keskin baslatir.",
+    ],
+  },
+  {
     version: "0.32.1",
     date: "2026-10-18",
     summary: {

@@ -164,6 +164,22 @@ describe("resolveCameraPick — yön kararı", () => {
     expect(d.reason).toBe("verified");
   });
 
+  // Ölçülmüş arıza (Android, 3 mercek): ilk açılışta ULTRA-GENİŞ lens geliyor
+  // ama yön "environment" olduğu için eski kod "keep" diyordu — bulanık görüntü
+  // kalıcıydı, yalnızca ön→arka çevirme düzeltiyordu. Yön doğrulaması yetmez:
+  // yardımcı lensler de aynı yöne bakar.
+  it("ultra-geniş açıldı + facingMode=environment dönüyor → keep DEĞİL retry-device (ana lens)", () => {
+    const d = resolveCameraPick({
+      facing: "environment",
+      devices: iosDevices,
+      settings: { deviceId: "ios-ultra", facingMode: "environment" },
+    });
+    expect(d.kind).toBe("retry-device");
+    expect(d.deviceId).toBe("ios-back"); // wanted — ultra-geniş DEĞİL
+    expect(d.reason).toBe("wrong-lens:environment");
+    expect(d.actualFacing).toBe("environment");
+  });
+
   it("ölçüm yok + hedef lens de bilinmiyorsa sert YÖN isteği (id uydurulmaz)", () => {
     const d = resolveCameraPick({
       facing: "environment",

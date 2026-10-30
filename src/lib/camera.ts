@@ -304,6 +304,16 @@ export function resolveCameraPick({ facing, devices, settings }: CameraPickInput
 
   if (actual === facing) {
     const known = wanted ?? current;
+    // Yön aynı olması yetmez: ultra-geniş/telefoto/derinlik de "environment"
+    // döner. Hedef lens biliniyorsa ve mevcut lens ondan farklıysa ana lense geç.
+    if (wanted && wanted !== current) {
+      return {
+        kind: "retry-device",
+        deviceId: wanted,
+        reason: `wrong-lens:${actual}`,
+        actualFacing: actual,
+      };
+    }
     return { kind: "keep", deviceId: known, reason: "verified", actualFacing: actual };
   }
 
