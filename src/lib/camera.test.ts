@@ -5,6 +5,7 @@ import {
   guideRectFor,
   measuredFacing,
   pickBackCameraDeviceId,
+  pickCameraDeviceId,
   resolveCameraPick,
   visionModeFor,
 } from "./camera";
@@ -131,6 +132,37 @@ describe("measuredFacing — 'ne istedik' değil 'ne geldi'", () => {
 });
 
 describe("resolveCameraPick — yön kararı", () => {
+  const localizedDevices = [
+    { deviceId: "front", label: "Przedni aparat", kind: "videoinput" },
+    { deviceId: "back", label: "Tylny aparat", kind: "videoinput" },
+  ];
+
+  it("does not guess camera direction from unfamiliar labels or list order", () => {
+    expect(pickCameraDeviceId(localizedDevices, "environment")).toBeNull();
+    expect(pickCameraDeviceId(localizedDevices, "user")).toBeNull();
+  });
+
+  it("keeps a measured rear stream when localized lens names cannot be classified", () => {
+    expect(resolveCameraPick({ facing: "environment", devices: localizedDevices,
+      settings: { deviceId: "back", facingMode: "environment" } })).toMatchObject({
+        kind: "keep", deviceId: "back",
+      });
+  });
+
+  it("uses strict facing instead of selecting an unknown device when front camera is measured", () => {
+    expect(resolveCameraPick({ facing: "environment", devices: localizedDevices,
+      settings: { deviceId: "front", facingMode: "user" } })).toMatchObject({
+        kind: "retry-facing", deviceId: null,
+      });
+  });
+
+  it("does not switch a verified rear stream without a current deviceId", () => {
+    expect(resolveCameraPick({ facing: "environment", devices: iosDevices,
+      settings: { facingMode: "environment" } })).toMatchObject({
+        kind: "keep", deviceId: null,
+      });
+  });
+
   it("M2: deviceId gelmese bile ANA arka kameraya geçilir (eski kod burada duruyordu)", () => {
     const d = resolveCameraPick({
       facing: "environment",

@@ -1054,7 +1054,8 @@
   },
   "camera": {
     "errNotStarted": "Kamera görüntüsü başlatılamadı. Ekranı kapatıp tekrar dene.",
-    "errOpen": "Kamera açılamadı: {{detail}}"
+    "errOpen": "Kamera açılamadı: {{detail}}",
+    "errFacing": "İstenen kamera açılamadı. Ekranı kapatıp tekrar dene."
   },
   "nutrientShort": {
     "kcal": "kcal",

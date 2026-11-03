@@ -1054,7 +1054,8 @@
   },
   "camera": {
     "errNotStarted": "Nie udało się uruchomić obrazu z kamery. Zamknij ten ekran i spróbuj ponownie.",
-    "errOpen": "Nie udało się otworzyć kamery: {{detail}}"
+    "errOpen": "Nie udało się otworzyć kamery: {{detail}}",
+    "errFacing": "Nie udało się otworzyć wybranej kamery. Zamknij ten ekran i spróbuj ponownie."
   },
   "nutrientShort": {
     "kcal": "kcal",

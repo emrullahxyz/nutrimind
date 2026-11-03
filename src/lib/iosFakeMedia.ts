@@ -23,7 +23,7 @@ interface FakeDevice {
 }
 
 interface Scenario {
-  /** İlk `getUserMedia` çağrısında yön kısıtı YOK SAYILIR (iOS'ta bildirilen). */
+  /** İlk `getUserMedia` çağrısında soft/ideal yön isteği YOK SAYILIR (iOS'ta bildirilen). */
   ignoreFacingOnFirstCall: boolean;
   /** `track.getSettings()` içinde `deviceId` hiç gelmez. Etiket/ID'lerin izinden
    *  ÖNCE boş dönmesi her senaryoda ortak (gerçek davranış), ayrı bayrak değil. */
@@ -226,27 +226,39 @@ function makeStream(sc: Scenario, device: FakeDevice, tick: number): MediaStream
 function pickDevice(sc: Scenario, mode: FakeState, constraints: MediaStreamConstraints): FakeDevice {
   const v = constraints.video;
   const dict = typeof v === "object" && v !== null ? (v as MediaTrackConstraints) : null;
-  const all = sc.devices;
+  let all = sc.devices;
+
+  // Kesin kısıtlar birlikte sağlanmalı; ideal tercihler bunları gevşetemez.
+  for (const [constraint, field] of [["deviceId", "id"], ["facingMode", "facing"]] as const) {
+    const value = dict?.[constraint];
+    const exact = typeof value === "object" && !Array.isArray(value) ? value.exact : undefined;
+    if (exact === undefined) continue;
+    const wanted = Array.isArray(exact) ? exact : [exact];
+    all = all.filter((d) => wanted.includes(d[field]));
+    if (!all.length) {
+      throw Object.assign(new DOMException(`Cannot satisfy ${constraint}`, "OverconstrainedError"), { constraint });
+    }
+  }
 
   if (dict?.deviceId) {
-    const wanted =
-      typeof dict.deviceId === "object" && "exact" in dict.deviceId
-        ? String(dict.deviceId.exact)
-        : String(dict.deviceId);
-    const found = all.find((d) => d.id === wanted);
+    const value = dict.deviceId;
+    const wanted = typeof value === "object" && !Array.isArray(value) ? value.exact ?? value.ideal : value;
+    const found = all.find((d) => (Array.isArray(wanted) ? wanted : [wanted]).includes(d.id));
     if (found) return found;
   }
 
-  const wantsBack = dict?.facingMode
+  const facing = dict?.facingMode;
+  const exactFacing = typeof facing === "object" && !Array.isArray(facing) ? facing.exact : undefined;
+  const wantsBack = facing
     ? /environment|back/i.test(
-        typeof dict.facingMode === "object"
-          ? String((dict.facingMode as ConstrainDOMStringParameters).ideal ?? "")
-          : String(dict.facingMode),
+        typeof facing === "object" && !Array.isArray(facing)
+          ? String(facing.exact ?? facing.ideal ?? "")
+          : String(facing),
       )
     : true;
 
-  // ARKASI İSTENİYORSA BİLE ilk çağrıda ön kamera: iOS'ta bildirilen davranış.
-  if (sc.ignoreFacingOnFirstCall && mode.calls === 0) {
+  // İlk çağrıda yalnız soft/ideal yön isteğini yok say: kesin kısıt korunur.
+  if (sc.ignoreFacingOnFirstCall && mode.calls === 0 && exactFacing === undefined) {
     return all.find((d) => d.facing === "user") ?? all[0];
   }
   if (wantsBack) return all.find((d) => d.facing === "environment") ?? all[0];

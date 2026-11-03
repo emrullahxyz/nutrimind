@@ -1054,7 +1054,8 @@
   },
   "camera": {
     "errNotStarted": "The camera feed could not be started. Close this screen and try again.",
-    "errOpen": "Could not open the camera: {{detail}}"
+    "errOpen": "Could not open the camera: {{detail}}",
+    "errFacing": "Could not open the requested camera. Close this screen and try again."
   },
   "nutrientShort": {
     "kcal": "kcal",

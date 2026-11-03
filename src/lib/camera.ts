@@ -207,14 +207,13 @@ export function pickCameraDeviceId(
   if (inputs.every((d) => !d.label.trim())) return null;
 
   if (facing === "user") {
-    let front = inputs.filter((d) => LABEL_FRONT_RE.test(d.label));
-    if (front.length === 0) front = inputs.filter((d) => !LABEL_BACK_RE.test(d.label));
-    return (front.length > 0 ? front : inputs)[0].deviceId;
+    const front = inputs.filter((d) => LABEL_FRONT_RE.test(d.label));
+    return front[0]?.deviceId ?? (inputs.length === 1 ? inputs[0].deviceId : null);
   }
 
-  let back = inputs.filter((d) => LABEL_BACK_RE.test(d.label));
-  if (back.length === 0) back = inputs.filter((d) => !LABEL_FRONT_RE.test(d.label));
-  if (back.length === 0) back = inputs;
+  const back = inputs.filter((d) => LABEL_BACK_RE.test(d.label));
+  // Unknown/localized names do not prove direction. Let facingMode select it.
+  if (back.length === 0) return inputs.length === 1 ? inputs[0].deviceId : null;
 
   const main = back.filter((d) => !LABEL_AUX_RE.test(d.label));
   const pool = main.length > 0 ? main : back;
@@ -295,7 +294,7 @@ export function measuredFacing(
  *   • ölçülen yön FARKLI → hedef lens biliniyorsa ona geç (`retry-device`),
  *     bilinmiyorsa sert yön isteği (`retry-facing`),
  *   • ölçülemedi → hedef lens biliniyorsa ona geç, bilinmiyorsa sert yön isteği.
- * Çağıran EN FAZLA bir kez yeniden dener (sınırsız döngü yok).
+ * Çağıran lens geçişini ve gerekirse bir sert yön isteğini sınırlı dener.
  */
 export function resolveCameraPick({ facing, devices, settings }: CameraPickInput): CameraDecision {
   const wanted = devices ? pickCameraDeviceId(devices, facing) : null;
@@ -303,10 +302,10 @@ export function resolveCameraPick({ facing, devices, settings }: CameraPickInput
   const current = settings?.deviceId ?? null;
 
   if (actual === facing) {
-    const known = wanted ?? current;
+    const known = current;
     // Yön aynı olması yetmez: ultra-geniş/telefoto/derinlik de "environment"
     // döner. Hedef lens biliniyorsa ve mevcut lens ondan farklıysa ana lense geç.
-    if (wanted && wanted !== current) {
+    if (wanted && current && wanted !== current) {
       return {
         kind: "retry-device",
         deviceId: wanted,
@@ -484,18 +483,42 @@ export function useCameraStream(
       await new Promise<void>((res) => window.setTimeout(res, 60));
     };
 
+    let requestAttempt = 0;
+    let used = byFacing(facing);
+    let devices: CameraDeviceLike[] | null = null;
+    let strictTried = false;
+    let requestFailed = false;
+    const acquire = async (constraints: MediaStreamConstraints) => {
+      used = constraints;
+      requestAttempt += 1;
+      requestFailed = false;
+      const video = constraints.video as MediaTrackConstraints;
+      if (typeof video.facingMode === "object" && "exact" in video.facingMode) strictTried = true;
+      try {
+        return await navigator.mediaDevices.getUserMedia(constraints);
+      } catch (e) {
+        requestFailed = true;
+        if (!stopped && !hiddenRef.current) {
+          cameraDiag.record({
+            facing, attempt: requestAttempt, requested: describeConstraints(used),
+            result: "failed", got: "n/a", devices: summarizeDevices(devices), note: truncateNote(e),
+          });
+        }
+        throw e;
+      }
+    };
+
     void (async () => {
       try {
         const cached = resolvedRef.current[facing];
-        let used = cached ? byDevice(cached) : byFacing(facing);
         try {
-          stream = await navigator.mediaDevices.getUserMedia(used);
+          stream = await acquire(cached ? byDevice(cached) : byFacing(facing));
         } catch (e) {
+          if (stopped || hiddenRef.current) return;
           if (!cached) throw e;
           // Önbellekteki lens artık yok/değişmiş: girdiyi at, sıfırdan çöz.
           delete resolvedRef.current[facing];
-          used = byFacing(facing);
-          stream = await navigator.mediaDevices.getUserMedia(used);
+          stream = await acquire(byFacing(facing));
         }
         if (stopped || hiddenRef.current) {
           stream.getTracks().forEach((t) => t.stop());
@@ -505,12 +528,12 @@ export function useCameraStream(
 
         // İlk akış izni alır (etiketler ancak bundan sonra dolar), ardından
         // "gerçekten doğru lens mi?" sorusu ÖLÇÜLEREK cevaplanır.
-        let devices = await devicesNow();
+        devices = await devicesNow();
         let settings = settingsOf(stream);
         const decision = resolveCameraPick({ facing, devices, settings });
         cameraDiag.record({
           facing,
-          attempt: 1,
+          attempt: requestAttempt,
           requested: describeConstraints(used),
           result: decision.kind === "keep" ? "ok" : "retry",
           got: summarizeSettings(settings),
@@ -522,8 +545,7 @@ export function useCameraStream(
         }
 
         if (decision.kind !== "keep" && !stopped && !hiddenRef.current) {
-          // SINIRLI: en fazla bir yeniden deneme. Yanlış lens biliniyorsa ona,
-          // bilinmiyorsa sert yön isteğine geçilir (ikisi de tek adım).
+          // Bilinen hedef lense, bilinmiyorsa doğrudan sert yön isteğine geç.
           const next =
             decision.kind === "retry-device" && decision.deviceId
               ? byDevice(decision.deviceId)
@@ -533,20 +555,10 @@ export function useCameraStream(
           await stopAndSettle(previous);
           if (stopped || hiddenRef.current) return;
           try {
-            stream = await navigator.mediaDevices.getUserMedia(next);
-          } catch (e) {
-            // `exact` bir cihazda karşılanamayabilir (tek kamera, masaüstü) —
-            // hata değil, geri çekilme: ilk (yumuşak) kısıtlarla devam.
-            cameraDiag.record({
-              facing,
-              attempt: 2,
-              requested: describeConstraints(next),
-              result: "failed",
-              got: "n/a",
-              devices: summarizeDevices(devices),
-              note: truncateNote(e),
-            });
-            stream = await navigator.mediaDevices.getUserMedia(byFacing(facing));
+            stream = await acquire(next);
+          } catch {
+            if (stopped || hiddenRef.current) return;
+            stream = await acquire(byFacing(facing));
           }
           if (stopped || hiddenRef.current) {
             stream.getTracks().forEach((t) => t.stop());
@@ -557,13 +569,13 @@ export function useCameraStream(
           settings = settingsOf(stream);
           const settled = measuredFacing(settings, devices);
           const finalPick = resolveCameraPick({ facing, devices, settings });
-          if (finalPick.deviceId && (settled === facing || finalPick.kind === "keep")) {
+          if (finalPick.deviceId && finalPick.kind === "keep") {
             resolvedRef.current[facing] = finalPick.deviceId;
           }
           cameraDiag.record({
             facing,
-            attempt: 2,
-            requested: describeConstraints(next),
+            attempt: requestAttempt,
+            requested: describeConstraints(used),
             // "Ok" demek için YÖN ÖLÇÜLMÜŞ olmalı; ölçülemeyen ama doğru lensle
             // açılan akış `unverified` olarak kaydedilir (uydurma yok).
             result: settled === facing ? "ok" : settled ? "failed" : "unverified",
@@ -571,6 +583,40 @@ export function useCameraStream(
             devices: summarizeDevices(devices),
             note: finalPick.reason,
           });
+        }
+
+        const wrongFacing = () => {
+          const actual = measuredFacing(settings, devices);
+          return actual !== null && actual !== facing &&
+            (devices?.filter((device) => device.kind === "videoinput").length ?? 0) > 1;
+        };
+        if (wrongFacing() && !strictTried) {
+          const previous = stream;
+          stream = null;
+          await stopAndSettle(previous);
+          if (stopped || hiddenRef.current) return;
+          stream = await acquire(byFacing(facing, true));
+          if (stopped || hiddenRef.current) {
+            stream.getTracks().forEach((track) => track.stop());
+            return;
+          }
+          devices = await devicesNow();
+          settings = settingsOf(stream);
+          const finalPick = resolveCameraPick({ facing, devices, settings });
+          if (finalPick.kind === "keep" && finalPick.deviceId) {
+            resolvedRef.current[facing] = finalPick.deviceId;
+          }
+          cameraDiag.record({
+            facing, attempt: requestAttempt, requested: describeConstraints(used),
+            result: measuredFacing(settings, devices) === facing ? "ok" : wrongFacing() ? "failed" : "unverified",
+            got: summarizeSettings(settings), devices: summarizeDevices(devices), note: finalPick.reason,
+          });
+        }
+        if (wrongFacing()) {
+          delete resolvedRef.current[facing];
+          release();
+          setError(i18n.t("camera.errFacing"));
+          return;
         }
 
         const active = stream;
@@ -593,7 +639,10 @@ export function useCameraStream(
             /* cihaz desteklemiyor — sorun değil */
           }
         }
-        if (stopped || hiddenRef.current) return;
+        if (stopped || hiddenRef.current) {
+          active.getTracks().forEach((track) => track.stop());
+          return;
+        }
 
         const video = videoRef.current;
         if (!video) {
@@ -636,6 +685,12 @@ export function useCameraStream(
         setReady(true);
       } catch (e) {
         if (stopped || hiddenRef.current) return;
+        if (!requestFailed) {
+          cameraDiag.record({
+            facing, attempt: requestAttempt, requested: describeConstraints(used), result: "failed",
+            got: summarizeSettings(settingsOf(stream)), devices: summarizeDevices(devices), note: truncateNote(e),
+          });
+        }
         release();
         setError(i18n.t("camera.errOpen", { detail: String((e as Error)?.message ?? e) }));
       }

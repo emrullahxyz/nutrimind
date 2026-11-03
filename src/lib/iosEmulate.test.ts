@@ -1,14 +1,20 @@
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   applyBarcodeEmulation,
   applyEmulateAttributes,
   parseBarcodeParam,
   parseEmulateParam,
 } from "./iosEmulate";
-import { cameraScenarioFor, parseCameraScenarioParam, SCENARIOS } from "./iosFakeMedia";
+import {
+  cameraScenarioFor,
+  installFakeMediaDevices,
+  parseCameraScenarioParam,
+  SCENARIOS,
+  uninstallFakeMediaDevices,
+} from "./iosFakeMedia";
 
-// Dev-only taklit altyapısı. Saf kısımları burada; DOM/browser kısımları
-// (`installFakeMediaDevices`) gerçek tarayıcıda, Preview'da koşar.
+// Dev-only taklit altyapısı. Kamera seçiminde gerçek install/uninstall yolu,
+// yalnızca canvas ve tarayıcı API sınırları stub edilir.
 
 describe("parseEmulateParam", () => {
   it("bilinen modları okur", () => {
@@ -72,6 +78,94 @@ describe("barkod yeteneği taklidi", () => {
     expect(typeof (globalThis as unknown as { BarcodeDetector?: unknown }).BarcodeDetector).toBe(
       "function",
     );
+  });
+});
+
+describe("sahte getUserMedia kısıtları", () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+    vi.stubGlobal("navigator", {
+      mediaDevices: {
+        getUserMedia: vi.fn(),
+        enumerateDevices: async () => [],
+        getSupportedConstraints: () => ({}),
+      },
+    });
+    vi.stubGlobal("window", { setInterval, clearInterval });
+    vi.stubGlobal("document", {
+      createElement: () => ({
+        getContext: () => null,
+        captureStream: () => {
+          const track = { stop() {} };
+          return { getVideoTracks: () => [track] };
+        },
+      }),
+    });
+  });
+
+  afterEach(() => {
+    uninstallFakeMediaDevices();
+    vi.unstubAllGlobals();
+    vi.useRealTimers();
+  });
+
+  it.each(["ios-no-deviceid", "ios-first-front"] as const)(
+    "%s: exact environment ilk çağrıda arka kamera seçer, ideal'den önce gelir",
+    async (scenario) => {
+      installFakeMediaDevices("island", "", scenario);
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: { exact: "environment", ideal: "user" } },
+      });
+      expect(stream.getVideoTracks()[0].getSettings().facingMode).toBe("environment");
+      expect(stream.getVideoTracks()[0].label).toBe("Back Camera");
+    },
+  );
+
+  it.each<[string, MediaTrackConstraints, string]>([
+    ["yok deviceId", { deviceId: { exact: "missing-camera" } }, "deviceId"],
+    ["yok facingMode", { facingMode: { exact: "left" } }, "facingMode"],
+    [
+      "çelişen kesin kısıtlar",
+      { deviceId: { exact: "ios-front" }, facingMode: { exact: "environment" } },
+      "facingMode",
+    ],
+  ])("%s: OverconstrainedError ile reddeder", async (_name, video, constraint) => {
+    installFakeMediaDevices("island", "", "ios-first-front");
+    await expect(navigator.mediaDevices.getUserMedia({ video })).rejects.toMatchObject({
+      name: "OverconstrainedError",
+      constraint,
+    });
+    expect((await navigator.mediaDevices.enumerateDevices()).every((d) => d.deviceId === "")).toBe(true);
+  });
+
+  it("exact dizilerini kabul eder; deviceId ideal'inden önce gelir", async () => {
+    installFakeMediaDevices("island", "", "ios-first-front");
+    const stream = await navigator.mediaDevices.getUserMedia({
+      video: {
+        deviceId: { exact: ["missing-camera", "ios-back-ultra"], ideal: "ios-front" },
+        facingMode: { exact: ["left", "environment"] },
+      },
+    });
+    expect(stream.getVideoTracks()[0].label).toBe("Back Ultra Wide Camera");
+  });
+
+  it.each(["environment", { ideal: "environment" }])(
+    "ilk çağrı soft facingMode=%j isteğini yok sayar; sonraki çağrı uygular",
+    async (facingMode) => {
+      installFakeMediaDevices("island", "", "ios-first-front");
+      const first = await navigator.mediaDevices.getUserMedia({ video: { facingMode } });
+      expect(first.getVideoTracks()[0].getSettings().facingMode).toBe("user");
+      const second = await navigator.mediaDevices.getUserMedia({ video: { facingMode } });
+      expect(second.getVideoTracks()[0].getSettings().facingMode).toBe("environment");
+    },
+  );
+
+  it("yok ideal deviceId isteği reddetmez; kesin facingMode'a uyar", async () => {
+    installFakeMediaDevices("island", "", "ios-first-front");
+    const stream = await navigator.mediaDevices.getUserMedia({
+      video: { deviceId: { ideal: "missing-camera" }, facingMode: { exact: "environment" } },
+    });
+    expect(stream.getVideoTracks()[0].getSettings().facingMode).toBe("environment");
   });
 });
 

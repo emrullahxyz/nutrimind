@@ -13,6 +13,30 @@ export interface ChangeLogVersion {
 
 export const CHANGELOG: ChangeLogVersion[] = [
   {
+    version: "0.32.3",
+    date: "2026-11-03",
+    summary: {
+      tr: "Tarama ekranının yanlışlıkla ön kameraya geçmesine yol açabilen kamera seçimi düzeltildi. İstenen kamera açılamazsa yanlış görüntüyle devam etmek yerine yeniden deneme seçeneği gösteriliyor.",
+      en: "Camera selection was corrected to prevent scans from unexpectedly switching to the front camera. If the requested camera cannot be opened, the scanner offers a retry instead of continuing with the wrong view.",
+    },
+    items: [
+      {
+        type: "fixed",
+        tr: "Tanınmayan kamera adları artık yön tahmini için kullanılmıyor; doğrulanmış arka kamera gereksiz yere değiştirilmiyor.",
+        en: "Unrecognized camera names are no longer used to guess direction, and a verified rear camera is not switched unnecessarily.",
+      },
+      {
+        type: "fixed",
+        tr: "Kamera yeniden denenirken yanlış yönle devam edilmesi ve tarama kapatıldıktan sonra yeniden kamera istenmesi önlendi.",
+        en: "Camera retries no longer continue with a confirmed wrong-facing view or request another camera after scanning is closed.",
+      },
+    ],
+    dev: [
+      "Codex'in bilinmeyen etiketlerde yön tahmini yapmayan ve yalnız gözlenen deviceId'yi cache'leyen düzeltmeleri korundu. Son akış yanlış yöndeyse sınırlı exact-facing denemesi ve çoklu cihazda final yön kontrolü eklendi; tek webcam fallback'i korunuyor.",
+      "Tanılama gerçek getUserMedia isteğini ve deneme sırasını kaydediyor. İptal edilmiş cached istek fallback başlatmıyor; odak kurulumu sırasında gizlenen sayfanın yerel akışı durduruluyor. Fake media exact kısıtlarını uyguluyor; karar, akış ve taklit regresyon testleri eklendi. Gerçek iPhone donanım doğrulaması yapılmadı.",
+    ],
+  },
+  {
     version: "0.32.2",
     date: "2026-10-30",
     summary: {
