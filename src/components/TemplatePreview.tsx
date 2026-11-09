@@ -573,7 +573,7 @@ export function TemplatePreview({
           {aiError && <p className="mt-2 text-[11px] text-danger">{aiError}</p>}
           {localImport && (
             <p role="status" className="mt-2 text-[11px] text-ink-secondary">
-              {localImport === "parentTotals" ? t("mealJson.parentTotals") : t("mealJson.imported")}
+              {localImport === "perServing" ? t("mealJson.perServing") : localImport === "parentTotals" ? t("mealJson.parentTotals") : t("mealJson.imported")}
             </p>
           )}
         </div>

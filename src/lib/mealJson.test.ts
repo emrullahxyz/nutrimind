@@ -9,6 +9,24 @@ const meal = { name: "Breakfast", calories: 664, protein: 43.9, carbs: 55.9, fat
 const parse = (value: unknown) => parseMealJson(JSON.stringify(value));
 
 describe("local meal JSON", () => {
+  it("imports the selected per-serving recipe without multiplying by recipe servings", () => {
+    expect(parse({ name: "Tavuklu domates soslu makarna", servings: 4, per_serving: {
+      calories_kcal: 468, protein_g: 34.5, carbs_g: 67, fat_g: 6.3, fiber_g: 3,
+    } })).toEqual({ kind: "valid", notice: "perServing", items: [{
+      name: "Tavuklu domates soslu makarna",
+      nutrition: { kcal: 468, protein: 34.5, carbs: 67, fat: 6.3, fiber: 3 },
+    }] });
+  });
+  it("validates per-serving values and refuses mixed nutrition bases", () => {
+    const serving = { calories_kcal: 468, protein_g: 34.5, carbs_g: 67, fat_g: 6.3 };
+    for (const per_serving of [null, {}, { ...serving, protein_g: "34.5" }, { ...serving, fiber_g: -1 }]) {
+      expect(parse({ name: "Pasta", servings: 4, per_serving }).kind).toBe("invalid");
+    }
+    expect(parse({ ...meal, servings: 4, per_serving: serving }).kind).toBe("invalid");
+    expect(parse({ name: "Pasta", servings: 0, per_serving: serving }).kind).toBe("invalid");
+    expect(parse({ items: [meal], per_serving: serving }).kind).toBe("invalid");
+    expect(parse({ ...meal, ingredients: [{ name: "Pasta", per_serving: serving }] }).kind).toBe("invalid");
+  });
   it("preserves example totals and grams when ingredients lack nutrition", () => {
     const result = parse({ ...meal, name: "Yumurtalı, lorlu çavdar ekmekli kahvaltı", ingredients: [
       { name: "L boy yumurta", amount: 2, unit: "adet" },

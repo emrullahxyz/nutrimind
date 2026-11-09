@@ -4,10 +4,15 @@ export type MealJsonError = "syntax" | "schema" | "nutrition" | "amount" | "tota
 export type MealJsonResult =
   | { kind: "text" }
   | { kind: "invalid"; error: MealJsonError }
-  | { kind: "valid"; items: AIParseItem[]; notice?: "parentTotals" };
+  | { kind: "valid"; items: AIParseItem[]; notice?: "parentTotals" | "perServing" };
 
 const CORE = ["kcal", "protein", "carbs", "fat"] as const;
 const KEYS = [...CORE, "fiber", "sugar", "satFat", "sodium"] as const;
+const NUTRIENT_ALIASES = {
+  calories: "kcal", calories_kcal: "kcal", protein_g: "protein", carbs_g: "carbs",
+  fat_g: "fat", fiber_g: "fiber", sugar_g: "sugar", satFat_g: "satFat", sodium_mg: "sodium",
+} as const;
+const NUTRIENT_FIELDS = [...KEYS, ...Object.keys(NUTRIENT_ALIASES)];
 const isRecord = (v: unknown): v is Record<string, unknown> =>
   typeof v === "object" && v !== null && !Array.isArray(v);
 const has = (v: Record<string, unknown>, key: string) => Object.prototype.hasOwnProperty.call(v, key);
@@ -47,11 +52,11 @@ function readItem(raw: unknown) {
   const fields: Partial<Nutrition> = {};
   if (has(raw, "nutrition") && !isRecord(raw.nutrition)) fail("nutrition");
   for (const source of [raw, ...(isRecord(raw.nutrition) ? [raw.nutrition] : [])]) {
-    for (const key of [...KEYS, "calories"] as const) {
+    for (const key of NUTRIENT_FIELDS) {
       if (!has(source, key)) continue;
       const value = source[key];
       if (!nonnegative(value)) fail("nutrition");
-      const target = key === "calories" ? "kcal" : key;
+      const target = (NUTRIENT_ALIASES[key as keyof typeof NUTRIENT_ALIASES] ?? key) as keyof Nutrition;
       if (fields[target] !== undefined && fields[target] !== value) fail("nutrition");
       fields[target] = value;
     }
@@ -75,7 +80,17 @@ function checkTotals(fields: Partial<Nutrition>, items: AIParseItem[]) {
   }
 }
 
-function readMeal(raw: unknown): { items: AIParseItem[]; fallback: boolean } {
+function readMeal(raw: unknown): { items: AIParseItem[]; fallback: boolean; perServing?: true } {
+  if (isRecord(raw) && has(raw, "per_serving")) {
+    // The recipe yield is metadata: these values already describe ONE serving.
+    // Reject mixed bases rather than combining recipe totals with serving values.
+    if (!isRecord(raw.per_serving) || [...NUTRIENT_FIELDS, "nutrition", "ingredients", "items", "baseAmount", "portion_g", "amount", "unit"].some((key) => has(raw, key))) fail("schema");
+    if (has(raw, "servings") && (!nonnegative(raw.servings) || raw.servings <= 0)) fail("amount");
+    if (["per_serving", "ingredients", "items", "servings"].some((key) => has(raw.per_serving as Record<string, unknown>, key))) fail("schema");
+    const serving = readItem({ ...raw.per_serving, name: raw.name });
+    if (!serving.item) fail("nutrition");
+    return { items: [serving.item], fallback: false, perServing: true };
+  }
   const parent = readItem(raw);
   if (has(parent.raw, "items")) fail("schema");
   if (!has(parent.raw, "ingredients")) {
@@ -86,7 +101,7 @@ function readMeal(raw: unknown): { items: AIParseItem[]; fallback: boolean } {
   // Validate every child before choosing a fallback; invalid supplied values
   // cannot disappear behind usable parent totals.
   const children = parent.raw.ingredients.map(readItem);
-  if (children.some((child) => has(child.raw, "ingredients") || has(child.raw, "items"))) fail("schema");
+  if (children.some((child) => has(child.raw, "ingredients") || has(child.raw, "items") || has(child.raw, "per_serving"))) fail("schema");
   const active = children.filter((child) => child.raw.amount !== 0);
   if (active.some((child) => typeof child.raw.name !== "string" || !child.raw.name.trim())) fail("schema");
   if (active.length > 0 && active.every((child) => child.item !== undefined)) {
@@ -119,12 +134,13 @@ export function parseMealJson(text: string): MealJsonResult {
     return looksJson ? { kind: "invalid", error: "syntax" } : { kind: "text" };
   }
   try {
-    if (isRecord(raw) && has(raw, "items") && [...KEYS, "calories", "nutrition", "ingredients", "baseAmount", "portion_g", "amount", "unit"].some((key) => has(raw, key))) fail("schema");
+    if (isRecord(raw) && has(raw, "items") && [...NUTRIENT_FIELDS, "per_serving", "nutrition", "ingredients", "baseAmount", "portion_g", "amount", "unit"].some((key) => has(raw, key))) fail("schema");
     const entries = isRecord(raw) && has(raw, "items") ? raw.items : Array.isArray(raw) ? raw : [raw];
     if (!Array.isArray(entries) || entries.length === 0) fail("schema");
     const meals = entries.map(readMeal);
     return { kind: "valid", items: meals.flatMap((meal) => meal.items),
-      ...(meals.some((meal) => meal.fallback) ? { notice: "parentTotals" as const } : {}) };
+      ...(meals.some((meal) => meal.perServing) ? { notice: "perServing" as const }
+        : meals.some((meal) => meal.fallback) ? { notice: "parentTotals" as const } : {}) };
   } catch (error) {
     if (error instanceof InvalidJsonMeal) return { kind: "invalid", error: error.code };
     throw error;

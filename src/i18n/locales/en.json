@@ -457,6 +457,7 @@
   "mealJson": {
     "help": "You can also paste meal JSON here. JSON imports work offline and use the supplied nutrition values.",
     "imported": "JSON imported. Review the items before saving.",
+    "perServing": "Per-serving values were imported as one serving each, without multiplying by the recipe's serving count. Review the items before saving.",
     "parentTotals": "Imported the meal totals as one item because the ingredients do not have complete nutrition values. Review before saving.",
     "error": {
       "syntax": "This looks like JSON but could not be read. Check the JSON syntax and close any code fence.",

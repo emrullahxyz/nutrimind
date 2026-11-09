@@ -13,6 +13,22 @@ export interface ChangeLogVersion {
 
 export const CHANGELOG: ChangeLogVersion[] = [
   {
+    version: "0.32.5",
+    date: "2026-11-09",
+    summary: {
+      tr: "ChatGPT'den alınan porsiyon başına öğün JSON'ları artık doğrudan içe aktarılabiliyor. Tarifin porsiyon sayısı besin değerlerini çoğaltmıyor.",
+      en: "Per-serving meal JSON from ChatGPT can now be imported directly. The recipe's serving count does not multiply the nutrition values.",
+    },
+    items: [
+      {
+        type: "fixed",
+        tr: "per_serving, calories_kcal ve protein_g gibi alanlar destekleniyor; bir porsiyonun değerleri AI isteği yapılmadan alınıyor.",
+        en: "Fields such as per_serving, calories_kcal and protein_g are supported, importing one serving without an AI request.",
+      },
+    ],
+    dev: [],
+  },
+  {
     version: "0.32.4",
     date: "2026-11-09",
     summary: {

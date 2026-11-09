@@ -40,6 +40,18 @@ describe("aiErrorMessage", () => {
 });
 
 describe("parseWithAI", () => {
+  it("imports one per-serving recipe offline without calling AI", async () => {
+    vi.stubGlobal("navigator", { onLine: false });
+    const fetchSpy = vi.fn();
+    vi.stubGlobal("fetch", fetchSpy);
+    const result = await parseWithAI(JSON.stringify({ name: "Pasta", servings: 4,
+      per_serving: { calories_kcal: 468, protein_g: 34.5, carbs_g: 67, fat_g: 6.3, fiber_g: 3 },
+    }));
+    expect(result).toEqual({ localImport: "perServing", items: [{ name: "Pasta",
+      nutrition: { kcal: 468, protein: 34.5, carbs: 67, fat: 6.3, fiber: 3 },
+    }] });
+    expect(fetchSpy).not.toHaveBeenCalled();
+  });
   it("keeps all JSON errors off the network even while online", async () => {
     vi.stubGlobal("navigator", { onLine: true });
     const fetchSpy = vi.fn();

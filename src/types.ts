@@ -134,7 +134,7 @@ export interface AIParseResult {
   items: AIParseItem[];
   healthNote?: string;
   /** Local JSON bypasses AI and must not infer grams from item names. */
-  localImport?: "imported" | "parentTotals";
+  localImport?: "imported" | "parentTotals" | "perServing";
 }
 
 /**

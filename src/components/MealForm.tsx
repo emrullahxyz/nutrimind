@@ -990,7 +990,7 @@ export function MealForm({
               {aiError && <ErrorText>{aiError}</ErrorText>}
               {localImport && (
                 <p role="status" className="text-[11px] text-white/80">
-                  {localImport === "parentTotals" ? t("mealJson.parentTotals") : t("mealJson.imported")}
+                  {localImport === "perServing" ? t("mealJson.perServing") : localImport === "parentTotals" ? t("mealJson.parentTotals") : t("mealJson.imported")}
                 </p>
               )}
             </div>

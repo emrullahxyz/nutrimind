@@ -457,6 +457,7 @@
   "mealJson": {
     "help": "Buraya öğün JSON'u da yapıştırabilirsin. JSON içe aktarma çevrimdışı çalışır ve verilen besin değerlerini kullanır.",
     "imported": "JSON içe aktarıldı. Kaydetmeden önce kalemleri kontrol et.",
+    "perServing": "Porsiyon başına değerler birer porsiyon olarak içe aktarıldı; tarifin porsiyon sayısıyla çarpılmadı. Kaydetmeden önce kalemleri kontrol et.",
     "parentTotals": "Malzemelerin besin değerleri eksik olduğu için öğünün toplamları tek kalem olarak içe aktarıldı. Kaydetmeden önce kontrol et.",
     "error": {
       "syntax": "Bu metin JSON gibi görünüyor ancak okunamadı. JSON yazımını kontrol et ve varsa kod bloğunu kapat.",

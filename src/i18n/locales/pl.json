@@ -457,6 +457,7 @@
   "mealJson": {
     "help": "Możesz też wkleić tutaj JSON posiłku. Import JSON działa offline i używa podanych wartości odżywczych.",
     "imported": "Zaimportowano JSON. Sprawdź składniki przed zapisaniem.",
+    "perServing": "Wartości na porcję zaimportowano jako jedną porcję każdej pozycji, bez mnożenia przez liczbę porcji przepisu. Sprawdź pozycje przed zapisaniem.",
     "parentTotals": "Zaimportowano sumy posiłku jako jedną pozycję, ponieważ składniki nie mają kompletnych wartości odżywczych. Sprawdź przed zapisaniem.",
     "error": {
       "syntax": "Ten tekst wygląda jak JSON, ale nie można go odczytać. Sprawdź składnię JSON i zamknij ewentualny blok kodu.",
