@@ -40,7 +40,7 @@ import { formatKcal, todayISO, weekdayIndex } from "../lib/format";
 import { effectiveProfile } from "../lib/goals";
 import { rankAliases } from "../lib/aliasRank";
 import { categoryForHour, MEAL_CATEGORIES } from "../lib/mealCategory";
-import type { AIParseItem, Alias, MealCategory, MealItem, MealPayload, MealSource, Nutrition, TemplateItem } from "../types";
+import type { AIParseItem, AIParseResult, Alias, MealCategory, MealItem, MealPayload, MealSource, Nutrition, TemplateItem } from "../types";
 import { usualQuantity } from "../lib/quantity";
 import { AliasPicker } from "./AliasPicker";
 import { useBodyScrollLock } from "../hooks/useBodyScrollLock";
@@ -61,6 +61,7 @@ interface BasketItem {
   /** Alias'sız kalemin ölçülen gramı (AI `baseAmount` ya da isimdeki "(500g)").
    *  Kaydet'te `TemplateItem.grams`'a yazılır; `sources` varsa YAZILMAZ. */
   grams?: number;
+  gramsUnknown?: true;
   needsReview?: boolean;
 }
 
@@ -285,6 +286,7 @@ export function MealForm({
   const [aiText, setAiText] = useState("");
   const [aiLoading, setAiLoading] = useState(false);
   const [aiError, setAiError] = useState<string | null>(null);
+  const [localImport, setLocalImport] = useState<AIParseResult["localImport"]>();
 
   /** Mevcut öğünü sepete açar: bir `sources` girdisi bir kalem, `computed` ile
    *  satırlar toplamı arasındaki fark (elle eklenmiş kalem) ayrı kaynaksız
@@ -348,6 +350,8 @@ export function MealForm({
       name: item.name,
       nutrition: item.nutrition,
       sources: item.sources,
+      grams: item.grams,
+      gramsUnknown: item.gramsUnknown,
     });
   }
 
@@ -363,6 +367,8 @@ export function MealForm({
               name: updatedName,
               nutrition: basketEditDraft.nutrition,
               sources: basketEditDraft.sources,
+              grams: basketEditDraft.grams,
+              gramsUnknown: basketEditDraft.gramsUnknown,
               needsReview: false,
             }
           : it
@@ -535,7 +541,7 @@ export function MealForm({
     }
   }
 
-  function addAIItemsToBasket(items: AIParseItem[]) {
+  function addAIItemsToBasket(items: AIParseItem[], local = false) {
     if (items.length === 0) return;
 
     let currentBasket = basket;
@@ -544,12 +550,13 @@ export function MealForm({
     }
 
     const newItems: BasketItem[] = items.map((it, i) => {
-      const g = resolveBaseGrams(it.name, it.baseAmount);
+      const g = local ? (it.baseAmount ?? 0) : resolveBaseGrams(it.name, it.baseAmount);
       return {
         id: `ai-${Date.now()}-${i}-${Math.random()}`,
         name: it.name,
         nutrition: it.nutrition,
         ...(g > 0 ? { grams: g } : {}),
+        ...(local && g <= 0 ? { gramsUnknown: true as const } : {}),
         ...(it.needsReview ? { needsReview: true } : {}),
       };
     });
@@ -563,12 +570,14 @@ export function MealForm({
     if (!aiText.trim() || aiLoading) return;
     setAiLoading(true);
     setAiError(null);
+    setLocalImport(undefined);
     try {
       const result = await parseWithAI(aiText.trim());
       if (result.items.length === 0) {
         setAiError(t("meal.aiEmpty"));
       } else {
-        addAIItemsToBasket(result.items);
+        addAIItemsToBasket(result.items, !!result.localImport);
+        setLocalImport(result.localImport);
         setAiText("");
       }
     } catch (e) {
@@ -632,6 +641,7 @@ export function MealForm({
           nutrition: b.nutrition,
           ...(b.sources ? { sources: b.sources } : {}),
           ...(b.grams && b.grams > 0 && !(b.sources && b.sources.length) ? { grams: b.grams } : {}),
+          ...(!b.grams && !b.sources?.length && b.gramsUnknown ? { gramsUnknown: true as const } : {}),
         }));
         // Alias'sız kalem varsa KİMLİĞİ yalnız `items` taşır (öğün-düz
         // `sources` bir aliasId ister). Saf-alias sepet ise `items` gerekmez:
@@ -950,10 +960,16 @@ export function MealForm({
                 <textarea
                   className="w-full min-h-[96px] p-3 rounded-xl bg-black/40 border border-white/10 text-sm text-white focus:outline-none focus:border-amber-400 resize-none"
                   value={aiText}
-                  onChange={(e) => setAiText(e.target.value)}
+                  onChange={(e) => {
+                    setAiText(e.target.value);
+                    setLocalImport(undefined);
+                    setAiError(null);
+                  }}
                   placeholder={t("meal.aiPromptPlaceholder")}
                 />
               </label>
+
+              <p className="text-[11px] text-white/60">{t("mealJson.help")}</p>
 
               <div className="flex justify-end pt-1">
                 <button
@@ -972,6 +988,11 @@ export function MealForm({
               </div>
 
               {aiError && <ErrorText>{aiError}</ErrorText>}
+              {localImport && (
+                <p role="status" className="text-[11px] text-white/80">
+                  {localImport === "parentTotals" ? t("mealJson.parentTotals") : t("mealJson.imported")}
+                </p>
+              )}
             </div>
 
             {aiLoading ? (

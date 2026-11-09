@@ -129,6 +129,7 @@ export function parseTemplateItems(raw: unknown): TemplateItem[] {
       nutrition,
       ...(sources ? { sources } : {}),
       ...(grams !== undefined ? { grams } : {}),
+      ...(!sources && grams === undefined && itemRec.gramsUnknown === true ? { gramsUnknown: true as const } : {}),
     });
   }
   return validItems;

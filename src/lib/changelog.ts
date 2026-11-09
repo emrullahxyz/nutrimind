@@ -13,6 +13,27 @@ export interface ChangeLogVersion {
 
 export const CHANGELOG: ChangeLogVersion[] = [
   {
+    version: "0.32.4",
+    date: "2026-11-09",
+    summary: {
+      tr: "Öğün JSON'unu mevcut analiz alanına yapıştırarak besin değerlerini doğrudan içe aktarabilirsin. Çevrimdışı da çalışır; kalemleri kaydetmeden önce düzenleyebilirsin.",
+      en: "Paste meal JSON into the existing analysis field to import its nutrition values directly. It also works offline, and you can edit the items before saving.",
+    },
+    items: [
+      {
+        type: "new",
+        tr: "JSON öğünleri ve kalem listeleri, verilen kalori ve gramaj korunarak içe aktarılır.",
+        en: "Import JSON meals and item lists while preserving the supplied calories and gram amounts.",
+      },
+      {
+        type: "improved",
+        tr: "Malzemelerin besin değerleri eksikse öğün toplamı tek kalem olarak kullanılır ve açıklama gösterilir. Geçersiz ya da tutarsız JSON için düzeltme istenir.",
+        en: "When ingredient nutrition is incomplete, the meal totals are used as one item with an explanation. Invalid or inconsistent JSON prompts a correction.",
+      },
+    ],
+    dev: [],
+  },
+  {
     version: "0.32.3",
     date: "2026-11-03",
     summary: {

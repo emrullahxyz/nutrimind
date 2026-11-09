@@ -454,6 +454,18 @@
     "err503": "Feedback is disabled in this environment.",
     "errOther": "Request failed (HTTP {{s}})."
   },
+  "mealJson": {
+    "help": "You can also paste meal JSON here. JSON imports work offline and use the supplied nutrition values.",
+    "imported": "JSON imported. Review the items before saving.",
+    "parentTotals": "Imported the meal totals as one item because the ingredients do not have complete nutrition values. Review before saving.",
+    "error": {
+      "syntax": "This looks like JSON but could not be read. Check the JSON syntax and close any code fence.",
+      "schema": "Unsupported meal JSON. Use a meal object, an array of meals, or an object with an items array. Each imported item needs a name.",
+      "nutrition": "Meal JSON needs numeric, nonnegative calories (or kcal), protein, carbs and fat. Any supplied fiber, sugar, satFat and sodium values must also be valid numbers.",
+      "amount": "Invalid JSON amount. Gram bases must be positive numbers; ingredient amounts must be nonnegative numbers. Gram fields must agree.",
+      "totals": "The meal totals disagree with the ingredient totals. Check the supplied values before importing."
+    }
+  },
   "ai": {
     "consentTitle": "AI analysis",
     "consentBody": "Your photos and meal text are sent to Google Gemini. Data is processed by AI and not stored on our servers.",

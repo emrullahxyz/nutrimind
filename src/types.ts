@@ -48,6 +48,9 @@ export interface TemplateItem {
    *  yerde aynı sayının iki kopyası ise birinin güncellenip diğerinin
    *  eskimesi demektir. */
   grams?: number;
+  /** Explicitly unknown, so legacy name-based gram inference must not run.
+   * Used for local imports that supply no gram base; omitted once measured. */
+  gramsUnknown?: true;
 }
 
 export type MealCategory = "breakfast" | "lunch" | "dinner" | "snack";
@@ -130,6 +133,8 @@ export interface AIParseItem {
 export interface AIParseResult {
   items: AIParseItem[];
   healthNote?: string;
+  /** Local JSON bypasses AI and must not infer grams from item names. */
+  localImport?: "imported" | "parentTotals";
 }
 
 /**

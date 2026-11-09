@@ -48,6 +48,8 @@ export interface DraftLine {
   qty: string;
   unit: string;
   grams: number;
+  /** Imported with no gram base; do not infer one from its name on reopen. */
+  gramsUnknown?: true;
   nutrition: Nutrition;
   /** `nutrition` HANGİ gramaja ait? (g, 0 = bilinmiyor)
    *
@@ -599,6 +601,7 @@ export function draftLinesToItems(lines: DraftLine[]): TemplateItem[] {
       // `sources[].qty` içinde, ikinci bir kopyaya gerek yok — ve iki
       // kopyadan biri güncellenip diğeri eskir.
       ...(!l.aliasId && l.grams > 0 ? { grams: l.grams } : {}),
+      ...(!l.aliasId && l.grams <= 0 && l.gramsUnknown ? { gramsUnknown: true as const } : {}),
     });
   }
   return items;
@@ -665,7 +668,7 @@ export function itemsToDraftLines(items: TemplateItem[], aliases: Alias[]): Draf
     // yok. AI/metin akışı gramı isme yazar (server baseAmount'u items'a
     // taşımaz); bu yüzden isimden okumak zorunlu, yoksa taban 0 kalır ve
     // kullanıcı gram yazınca ölçeklenecek referans bulunmaz.
-    const base = resolveBaseGrams(item.name, item.grams);
+    const base = item.gramsUnknown ? (item.grams ?? 0) : resolveBaseGrams(item.name, item.grams);
     out.push({
       key: `draft-item-${i}-${item.name}`,
       aliasId: null,
@@ -673,6 +676,7 @@ export function itemsToDraftLines(items: TemplateItem[], aliases: Alias[]): Draf
       qty: base > 0 ? String(base) : "",
       unit: "g",
       grams: base,
+      ...(base <= 0 && item.gramsUnknown ? { gramsUnknown: true as const } : {}),
       nutrition: item.nutrition,
       nutritionGrams: base,
       preserved: base <= 0,
@@ -744,6 +748,7 @@ export interface MealSeedItem {
   /** Alias'sız kalemin ölçülen gramı (`TemplateItem.grams`). Alias'lı kalemde
    *  gram `sources[].qty` içindedir — burada YAZILMAZ (çift kayıt tuzağı). */
   grams?: number;
+  gramsUnknown?: true;
 }
 
 /** Bir besin kümesini `MealForm.save`'in `cleanNutrition`'iyle AYNI kesinlikte
@@ -832,6 +837,7 @@ export function mealToBasketSeed(
       ...(l.aliasId
         ? { sources: [{ aliasId: l.aliasId, qty: parseNum(l.qty), unit: l.unit }] }
         : { ...(l.nutritionGrams > 0 ? { grams: l.nutritionGrams } : {}) }),
+      ...(!l.aliasId && l.nutritionGrams <= 0 && l.gramsUnknown ? { gramsUnknown: true as const } : {}),
     });
     sum = addNutrition(sum, l.nutrition);
   }

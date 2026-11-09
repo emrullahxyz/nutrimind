@@ -21,7 +21,7 @@ import {
   toDraft,
 } from "./FormBits";
 import type { MealTemplate } from "../lib/templates";
-import type { AIParseItem, Alias } from "../types";
+import type { AIParseItem, AIParseResult, Alias } from "../types";
 import {
   addDraftLine,
   aliasOfLine,
@@ -108,6 +108,7 @@ export function TemplatePreview({
   const [aiText, setAiText] = useState("");
   const [aiLoading, setAiLoading] = useState(false);
   const [aiError, setAiError] = useState<string | null>(null);
+  const [localImport, setLocalImport] = useState<AIParseResult["localImport"]>();
   const [scanOpen, setScanOpen] = useState(false);
   /** "Malzeme ekle" → AÇILAN İSKELE SATIRINA yönlendiren picker anahtarı.
    *  Seçim yapılmadan kapanırsa satır, ad + makro alanları açık elle satır
@@ -160,7 +161,7 @@ export function TemplatePreview({
    *  `sources` yazılır ve gramaj `baseAmount`'tan gelir; bu, kullanıcının
    *  henüz doğrulamadığı bir miktarı kayda ölçüm gibi geçirirdi. Kullanıcı
    *  isterse "Malzemeyi değiştir" ile hafızaya bağlar ve miktar o zaman ölçülür. */
-  function addAIItems(items: AIParseItem[]) {
+  function addAIItems(items: AIParseItem[], local = false) {
     if (items.length === 0) return;
     const fresh = items.map((it, i): DraftLine => {
       const base = newDraftLine(undefined);
@@ -171,6 +172,7 @@ export function TemplatePreview({
         name: it.name,
         qty: hasAmount ? String(it.baseAmount) : "",
         grams: hasAmount ? (it.baseAmount as number) : 0,
+        ...(local && !hasAmount ? { gramsUnknown: true as const } : {}),
         unit: "g",
         nutrition: it.nutrition,
         // AI makrosu `baseAmount` gramajı içindir — kullanıcı miktarı
@@ -198,11 +200,13 @@ export function TemplatePreview({
     if (!aiText.trim() || aiLoading) return;
     setAiLoading(true);
     setAiError(null);
+    setLocalImport(undefined);
     try {
       const result = await parseWithAI(aiText.trim());
       if (result.items.length === 0) setAiError(t("meal.aiEmpty"));
       else {
-        addAIItems(result.items);
+        addAIItems(result.items, !!result.localImport);
+        setLocalImport(result.localImport);
         setAiText("");
       }
     } catch (e) {
@@ -533,10 +537,16 @@ export function TemplatePreview({
             <textarea
               className="w-full min-h-[72px] rounded-xl bg-black/30 border border-white/10 text-sm text-white focus:outline-none focus:border-accent resize-none"
               value={aiText}
-              onChange={(e) => setAiText(e.target.value)}
+              onChange={(e) => {
+                setAiText(e.target.value);
+                setLocalImport(undefined);
+                setAiError(null);
+              }}
               placeholder={t("meal.aiPromptPlaceholder")}
             />
           </label>
+
+          <p className="mt-2 text-[11px] text-ink-secondary">{t("mealJson.help")}</p>
 
           <div className="mt-2 flex items-center justify-end gap-2">
             <button
@@ -561,6 +571,11 @@ export function TemplatePreview({
           </div>
 
           {aiError && <p className="mt-2 text-[11px] text-danger">{aiError}</p>}
+          {localImport && (
+            <p role="status" className="mt-2 text-[11px] text-ink-secondary">
+              {localImport === "parentTotals" ? t("mealJson.parentTotals") : t("mealJson.imported")}
+            </p>
+          )}
         </div>
 
         {scanOpen && (

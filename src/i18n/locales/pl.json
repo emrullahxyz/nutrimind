@@ -454,6 +454,18 @@
     "err503": "Opinie są wyłączone w tym środowisku.",
     "errOther": "Żądanie nie powiodło się (HTTP {{s}})."
   },
+  "mealJson": {
+    "help": "Możesz też wkleić tutaj JSON posiłku. Import JSON działa offline i używa podanych wartości odżywczych.",
+    "imported": "Zaimportowano JSON. Sprawdź składniki przed zapisaniem.",
+    "parentTotals": "Zaimportowano sumy posiłku jako jedną pozycję, ponieważ składniki nie mają kompletnych wartości odżywczych. Sprawdź przed zapisaniem.",
+    "error": {
+      "syntax": "Ten tekst wygląda jak JSON, ale nie można go odczytać. Sprawdź składnię JSON i zamknij ewentualny blok kodu.",
+      "schema": "Nieobsługiwany JSON posiłku. Użyj obiektu posiłku, tablicy posiłków lub obiektu z tablicą items. Każda importowana pozycja musi mieć nazwę.",
+      "nutrition": "JSON posiłku wymaga nieujemnych liczb dla calories (lub kcal), protein, carbs i fat. Podane wartości fiber, sugar, satFat i sodium również muszą być poprawnymi liczbami.",
+      "amount": "Nieprawidłowa ilość w JSON. Podstawy gramowe muszą być dodatnimi liczbami, a ilości składników nieujemnymi liczbami. Pola gramowe muszą być zgodne.",
+      "totals": "Sumy posiłku nie zgadzają się z sumami składników. Sprawdź podane wartości przed importem."
+    }
+  },
   "ai": {
     "consentTitle": "Analiza AI",
     "consentBody": "Twoje zdjęcia i tekst posiłku są wysyłane do Google Gemini. Dane są przetwarzane przez AI i nie są przechowywane na naszym serwerze.",

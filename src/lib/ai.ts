@@ -8,6 +8,7 @@ import type { AIParseItem, AIParseResult, Nutrition, VisionMode } from "../types
 import { signalUnauthorizedFromApi } from "./api";
 import { isBrowserOffline } from "./netStatus";
 import { CLIENT_AI_TIMEOUT_MS, withDeadline } from "./aiDeadline";
+import { parseMealJson } from "./mealJson";
 import i18n from "../i18n/i18n";
 
 /** Proxy'den dönen hata. `status` HTTP kodudur (0 = ağa hiç çıkılamadı),
@@ -176,6 +177,9 @@ async function aiPost<T>(path: string, body: unknown, signal?: AbortSignal): Pro
 
 /** Serbest metni Gemini'ye gönderir, yapısal besin öğelerine çevirir. */
 export async function parseWithAI(text: string, signal?: AbortSignal): Promise<AIParseResult> {
+  const local = parseMealJson(text);
+  if (local.kind === "valid") return { items: local.items, localImport: local.notice ?? "imported" };
+  if (local.kind === "invalid") throw new AiError(400, i18n.t(`mealJson.error.${local.error}`));
   const raw = await aiPost<{ items?: unknown[] }>(
     "/api/ai/parse",
     { text, lang: activeLang() },

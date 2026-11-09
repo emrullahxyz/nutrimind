@@ -40,6 +40,36 @@ describe("aiErrorMessage", () => {
 });
 
 describe("parseWithAI", () => {
+  it("keeps all JSON errors off the network even while online", async () => {
+    vi.stubGlobal("navigator", { onLine: true });
+    const fetchSpy = vi.fn();
+    vi.stubGlobal("fetch", fetchSpy);
+    for (const text of ["{broken", "[]", "undefined", "false", "42", '"hello"', JSON.stringify([{ name: "Toast", kcal: 80, protein: 3, carbs: 12, fat: 2 }, { name: "missing" }]), JSON.stringify({ name: "Wrong total", kcal: 200, protein: 3, carbs: 12, fat: 2, ingredients: [{ name: "Toast", kcal: 80, protein: 3, carbs: 12, fat: 2 }] })]) {
+      await expect(parseWithAI(text)).rejects.toBeInstanceOf(AiError);
+    }
+    expect(fetchSpy).not.toHaveBeenCalled();
+  });
+
+  it("returns a localized validation error and parent-total notice for local import", async () => {
+    await expect(parseWithAI("{broken")).rejects.toMatchObject({ status: 400, message: t("mealJson.error.syntax") });
+    const result = await parseWithAI(JSON.stringify({ name: "Breakfast", calories: 80, protein: 3, carbs: 12, fat: 2, ingredients: [{ name: "Toast" }] }));
+    expect(result.localImport).toBe("parentTotals");
+    expect(result.items).toHaveLength(1);
+  });
+
+  it("imports JSON offline without network and rejects malformed/unsupported JSON locally", async () => {
+    vi.stubGlobal("navigator", { onLine: false });
+    const fetchSpy = vi.fn();
+    vi.stubGlobal("fetch", fetchSpy);
+    const result = await parseWithAI(JSON.stringify({ name: "Toast", calories: 80, protein: 3, carbs: 12, fat: 2 }));
+    expect(result.items[0].nutrition.kcal).toBe(80);
+    expect(result.localImport).toBe("imported");
+    for (const text of ["{broken", "{}", "[]", "null", "```json\n{}"]) {
+      await expect(parseWithAI(text)).rejects.toMatchObject({ status: 400 });
+    }
+    expect(fetchSpy).not.toHaveBeenCalled();
+  });
+
   it("geçerli item'ları döner, confidence/needsReview korunur", async () => {
     mockFetchOnce(200, {
       items: [
@@ -61,6 +91,8 @@ describe("parseWithAI", () => {
     expect(result.items[0].name).toBe("Tavuk Göğsü (200g)");
     expect(result.items[0].confidence).toBe(0.9);
     expect(result.items[1].needsReview).toBe(true);
+    expect(fetch).toHaveBeenCalledWith("/api/ai/parse", expect.objectContaining({ method: "POST" }));
+    expect(result.localImport).toBeUndefined();
   });
 
   it("eksik makrolu item'ı sessizce eler", async () => {

@@ -454,6 +454,18 @@
     "err503": "Geri bildirim bu ortamda kapalı.",
     "errOther": "İstek başarısız (HTTP {{s}})."
   },
+  "mealJson": {
+    "help": "Buraya öğün JSON'u da yapıştırabilirsin. JSON içe aktarma çevrimdışı çalışır ve verilen besin değerlerini kullanır.",
+    "imported": "JSON içe aktarıldı. Kaydetmeden önce kalemleri kontrol et.",
+    "parentTotals": "Malzemelerin besin değerleri eksik olduğu için öğünün toplamları tek kalem olarak içe aktarıldı. Kaydetmeden önce kontrol et.",
+    "error": {
+      "syntax": "Bu metin JSON gibi görünüyor ancak okunamadı. JSON yazımını kontrol et ve varsa kod bloğunu kapat.",
+      "schema": "Desteklenmeyen öğün JSON'u. Öğün nesnesi, öğün dizisi veya items dizisi içeren bir nesne kullan. İçe aktarılan her kalemin adı olmalı.",
+      "nutrition": "Öğün JSON'unda calories (veya kcal), protein, carbs ve fat sıfır ya da pozitif sayı olmalı. Verilen fiber, sugar, satFat ve sodium değerleri de geçerli sayı olmalı.",
+      "amount": "JSON miktarı geçersiz. Gram tabanları pozitif sayı, malzeme miktarları sıfır ya da pozitif sayı olmalı. Gram alanları birbiriyle uyuşmalı.",
+      "totals": "Öğünün toplamları malzeme toplamlarıyla uyuşmuyor. İçe aktarmadan önce verilen değerleri kontrol et."
+    }
+  },
   "ai": {
     "consentTitle": "Yapay zeka ile analiz",
     "consentBody": "Fotoğrafların ve öğün metnin Google Gemini'ye gönderilir. Verilerin yapay zeka tarafından işlenir, sunucumuzda saklanmaz.",

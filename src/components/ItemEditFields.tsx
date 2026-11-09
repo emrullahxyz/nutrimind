@@ -17,6 +17,21 @@ export interface EditableItem {
   name: string;
   nutrition: Nutrition;
   sources?: MealSource[];
+  grams?: number;
+  gramsUnknown?: true;
+}
+
+export function scaleEditableItem(item: EditableItem, factor: number): EditableItem {
+  return {
+    ...item,
+    nutrition: scaleNutritionByFactor(item.nutrition, factor),
+    sources: scaleMealSources(item.sources, factor),
+    ...(item.grams !== undefined ? { grams: item.grams * factor } : {}),
+  };
+}
+
+export function editItemNutrition(item: EditableItem, nutrition: Nutrition): EditableItem {
+  return { ...item, nutrition, sources: undefined };
 }
 
 type Basis = "quantity" | "manual";
@@ -62,8 +77,7 @@ export function ItemEditFields({
     return aliases.find((a) => a.id === source[0].aliasId);
   });
   const [hadSourcesOriginally] = useState(() => !!item.sources && item.sources.length > 0);
-  const [baseNutrition] = useState(() => item.nutrition);
-  const [baseSources] = useState(() => item.sources);
+  const [baseItem] = useState(() => item);
 
   const [qty, setQty] = useState(() =>
     mode === "exact" && item.sources ? String(item.sources[0].qty) : "1",
@@ -98,10 +112,9 @@ export function ItemEditFields({
   function commitMultiplier(next: number) {
     setBasis("quantity");
     setMultiplier(next);
-    const nextNutrition = scaleNutritionByFactor(baseNutrition, next);
-    const nextSources = scaleMealSources(baseSources, next);
-    setDraft(toDraft(nextNutrition));
-    onChange({ name: item.name, nutrition: nextNutrition, sources: nextSources });
+    const scaled = scaleEditableItem(baseItem, next);
+    setDraft(toDraft(scaled.nutrition));
+    onChange({ ...scaled, name: item.name });
   }
 
   function handleStep(delta: number) {
@@ -111,7 +124,7 @@ export function ItemEditFields({
   function handleMacroChange(nextDraft: NutritionDraft) {
     setDraft(nextDraft);
     setBasis("manual");
-    onChange({ name: item.name, nutrition: fromDraft(nextDraft), sources: undefined });
+    onChange(editItemNutrition(item, fromDraft(nextDraft)));
   }
 
   return (
