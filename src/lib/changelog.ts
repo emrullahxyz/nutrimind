@@ -13,6 +13,20 @@ export interface ChangeLogVersion {
 
 export const CHANGELOG: ChangeLogVersion[] = [
   {
+    version: "0.32.6",
+    date: "2026-11-11",
+    summary: {
+      tr: "JSON içe aktarma daha fazla ChatGPT biçimini tanıyor. Öğün adı, besin değerleri ve malzeme bilgilerinin farklı alanlarda verilmesi artık destekleniyor.",
+      en: "JSON import recognizes more ChatGPT formats, including alternative fields for meal names, nutrition and ingredient information.",
+    },
+    items: [{
+      type: "improved",
+      tr: "meal, nutrition_estimate, macros, meals ve foods gibi alanlar destekleniyor. Malzeme miktarları sözlük olarak verilse de öğünün toplam değerleri korunuyor.",
+      en: "Fields such as meal, nutrition_estimate, macros, meals and foods are supported. Meal totals are preserved when ingredient quantities are supplied as a dictionary.",
+    }],
+    dev: [],
+  },
+  {
     version: "0.32.5",
     date: "2026-11-09",
     summary: {

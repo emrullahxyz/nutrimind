@@ -9,6 +9,30 @@ const meal = { name: "Breakfast", calories: 664, protein: 43.9, carbs: 55.9, fat
 const parse = (value: unknown) => parseMealJson(JSON.stringify(value));
 
 describe("local meal JSON", () => {
+  it("accepts meal and nutrition_estimate with informational ingredient quantities", () => {
+    expect(parse({ meal: "Anne köftesi + ev yapımı lavaş", ingredients: {
+      raw_mixed_ground_meat_g: 180, meat_fat_percent: 17.5, raw_lavash_dough_g: 180,
+      hydration_percent: 60, salt_g: 2, estimated_flour_g: 111.3, estimated_water_g: 66.8,
+    }, nutrition_estimate: { calories_kcal: 808, protein_g: 43.9, carbs_g: 84.9, fat_g: 32.6 } }))
+      .toEqual({ kind: "valid", notice: "parentTotals", items: [{ name: "Anne köftesi + ev yapımı lavaş",
+        nutrition: { kcal: 808, protein: 43.9, carbs: 84.9, fat: 32.6, fiber: 0 } }] });
+  });
+  it("normalizes common name, nutrient container, and list aliases", () => {
+    for (const nameKey of ["meal", "meal_name", "food_name", "title", "label"]) {
+      for (const nutritionKey of ["nutrition_estimate", "nutrition_facts", "nutritional_values", "macros", "total_nutrition"]) {
+        const entry = { [nameKey]: "Lunch", [nutritionKey]: { energy_kcal: 808, protein: 43.9, carbohydrates_g: 84.9, fat: 32.6 } };
+        for (const input of [entry, [entry], { meals: [entry] }, { foods: [entry] }]) {
+          expect(parse(input)).toMatchObject({ kind: "valid", items: [{ name: "Lunch", nutrition: { kcal: 808, carbs: 84.9 } }] });
+        }
+      }
+    }
+  });
+  it("does not silently choose conflicting aliases or invent missing nutrition", () => {
+    expect(parse({ ...meal, meal: "Different" }).kind).toBe("invalid");
+    expect(parse({ ...meal, nutrition_estimate: { calories_kcal: 1 } }).kind).toBe("invalid");
+    expect(parse({ meal: "Lunch", ingredients: { flour_g: 100 } }).kind).toBe("invalid");
+    expect(parse({ meals: [meal], nutrition_estimate: { calories_kcal: 1 } }).kind).toBe("invalid");
+  });
   it("imports the selected per-serving recipe without multiplying by recipe servings", () => {
     expect(parse({ name: "Tavuklu domates soslu makarna", servings: 4, per_serving: {
       calories_kcal: 468, protein_g: 34.5, carbs_g: 67, fat_g: 6.3, fiber_g: 3,

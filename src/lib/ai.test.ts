@@ -40,6 +40,15 @@ describe("aiErrorMessage", () => {
 });
 
 describe("parseWithAI", () => {
+  it("imports ChatGPT meal estimates and ingredient metadata without an AI request", async () => {
+    const fetchSpy = vi.fn();
+    vi.stubGlobal("fetch", fetchSpy);
+    const result = await parseWithAI(JSON.stringify({ meal: "Kofte and lavash", ingredients: { meat_g: 180, dough_g: 180 },
+      nutrition_estimate: { calories_kcal: 808, protein_g: 43.9, carbs_g: 84.9, fat_g: 32.6 } }));
+    expect(result.items).toEqual([{ name: "Kofte and lavash", nutrition: { kcal: 808, protein: 43.9, carbs: 84.9, fat: 32.6, fiber: 0 } }]);
+    expect(result.localImport).toBe("parentTotals");
+    expect(fetchSpy).not.toHaveBeenCalled();
+  });
   it("imports one per-serving recipe offline without calling AI", async () => {
     vi.stubGlobal("navigator", { onLine: false });
     const fetchSpy = vi.fn();
