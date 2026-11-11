@@ -15,7 +15,7 @@ const NUTRIENT_ALIASES = {
 } as const;
 const NUTRIENT_FIELDS = [...KEYS, ...Object.keys(NUTRIENT_ALIASES)];
 const NAME_FIELDS = ["name", "meal", "meal_name", "food_name", "title", "label"];
-const NUTRITION_FIELDS = ["nutrition", "nutrition_estimate", "nutrition_facts", "nutritional_values", "macros", "total_nutrition"];
+const NUTRITION_FIELDS = ["nutrition", "nutrition_estimate", "nutrition_facts", "nutritional_values", "macros", "total_nutrition", "nutrition_total"];
 const LIST_FIELDS = ["items", "meals", "foods"];
 const isRecord = (v: unknown): v is Record<string, unknown> =>
   typeof v === "object" && v !== null && !Array.isArray(v);

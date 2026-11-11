@@ -28,7 +28,7 @@ export function WeekStrip({ selectedDate, onSelectDate }: WeekStripProps) {
   const weekDays = Array.from({ length: 7 }, (_, i) => addDaysISO(endIso, i - 6));
 
   return (
-    <div className="flex items-center justify-between gap-1 overflow-x-auto py-1 no-scrollbar sm:gap-2">
+    <div className="flex items-center justify-between gap-1 overflow-x-auto px-1 py-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:gap-2">
       {weekDays.map((dateIso) => {
         const isSelected = dateIso === selectedDate;
         const isToday = dateIso === today;

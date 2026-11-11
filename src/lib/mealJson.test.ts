@@ -9,6 +9,11 @@ const meal = { name: "Breakfast", calories: 664, protein: 43.9, carbs: 55.9, fat
 const parse = (value: unknown) => parseMealJson(JSON.stringify(value));
 
 describe("local meal JSON", () => {
+  it("preserves nutrition_total as supplied without multiplying by servings", () => {
+    expect(parse({ meal: "Ev yapımı dana kıymalı burrito", servings: 2, meat_filling_fraction: 1,
+      lavash_raw_dough_g: 120, nutrition_total: { calories_kcal: 943, protein_g: 53, carbs_g: 64, fat_g: 51 } }))
+      .toEqual({ kind: "valid", items: [{ name: "Ev yapımı dana kıymalı burrito", nutrition: { kcal: 943, protein: 53, carbs: 64, fat: 51, fiber: 0 } }] });
+  });
   it("accepts meal and nutrition_estimate with informational ingredient quantities", () => {
     expect(parse({ meal: "Anne köftesi + ev yapımı lavaş", ingredients: {
       raw_mixed_ground_meat_g: 180, meat_fat_percent: 17.5, raw_lavash_dough_g: 180,

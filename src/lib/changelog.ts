@@ -13,6 +13,20 @@ export interface ChangeLogVersion {
 
 export const CHANGELOG: ChangeLogVersion[] = [
   {
+    version: "0.32.7",
+    date: "2026-11-11",
+    summary: {
+      tr: "Üstteki gün şeridinden yarını seçerek öğünlerini önceden planlayabilir, ekleyebilir, düzenleyebilir ve silebilirsin. Gün seçimi sırasında görünen gereksiz yatay kaydırma çubuğu da düzeltildi.",
+      en: "Select tomorrow in the date strip to plan, add, edit and delete meals ahead of time. The unnecessary horizontal scrollbar appearing during date selection has also been fixed.",
+    },
+    items: [
+      { type: "new", tr: "Yarının öğünleri gün şeridinden seçilip düzenlenebiliyor.", en: "Tomorrow's meals can be selected and edited from the date strip." },
+      { type: "fixed", tr: "Seçilen günün vurgusu için kenar boşluğu ayrıldı; gün şeridindeki yatay kaydırma çubuğu gizlendi.", en: "Added space for the selected date highlight and hid the date strip's horizontal scrollbar." },
+      { type: "fixed", tr: "nutrition_total alanındaki öğün toplamları artık doğrudan içe aktarılabiliyor; tarifin porsiyon sayısıyla çarpılmıyor.", en: "Meal totals in nutrition_total can now be imported directly, without multiplying by the recipe's serving count." },
+    ],
+    dev: [],
+  },
+  {
     version: "0.32.6",
     date: "2026-11-11",
     summary: {
