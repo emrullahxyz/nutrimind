@@ -962,6 +962,25 @@ html[data-emulate-ios="se"] {
   animation: shimmer 1.4s ease-in-out infinite;
 }
 
+/* Inline history search: only the field enters, results remain immediate. */
+.history-search-field {
+  opacity: 1;
+  transform: translateX(0);
+  transition: opacity 150ms ease-out, transform 150ms ease-out;
+}
+@starting-style {
+  .history-search-field {
+    opacity: 0;
+    transform: translateX(-4px);
+  }
+}
+.history-search-field[data-instant] {
+  transition: none;
+}
+.history-search-input::-webkit-search-cancel-button {
+  -webkit-appearance: none;
+}
+
 /* ---- Hareket hassasiyeti: reduced-motion tercihi ---- */
 @media (prefers-reduced-motion: reduce) {
   *,

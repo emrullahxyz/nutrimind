@@ -1,4 +1,6 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { HistorySearch } from "../components/HistorySearch";
+import { filterHistoryWeeks } from "../lib/historySearch";
 import { Card } from "../components/Card";
 import { Stat } from "../components/Stat";
 import { WeekBars } from "../components/WeekBars";
@@ -46,7 +48,11 @@ function SectionLabel({ children }: { children: string }) {
 export function HistoryPage({ resetKey = 0 }: { resetKey?: number }) {
   const { t } = useTranslation();
   const { days } = useData();
-  const all = weeks(days);
+  const all = useMemo(() => weeks(days), [days]);
+  const [searchQuery, setSearchQuery] = useState("");
+  // Remount the disclosure in the same update that clears its controlled query.
+  const [searchResetKey, setSearchResetKey] = useState(resetKey);
+  const filteredWeeks = useMemo(() => filterHistoryWeeks(all, days, searchQuery), [all, days, searchQuery]);
   const [selectedWeek, setSelectedWeek] = useState<string | null>(null);
   const [selectedDay, setSelectedDay] = useState<string | null>(null);
   const [visibleWeeksCount, setVisibleWeeksCount] = useState<number>(6);
@@ -63,6 +69,9 @@ export function HistoryPage({ resetKey = 0 }: { resetKey?: number }) {
     if (resetKey > 0) {
       setSelectedWeek(null);
       setSelectedDay(null);
+      setSearchQuery("");
+      setSearchResetKey(resetKey);
+      setVisibleWeeksCount(6);
       if (window.history.state?.tab === "history") {
         window.history.replaceState({ tab: "history", isRoot: true }, "");
       }
@@ -104,8 +113,14 @@ export function HistoryPage({ resetKey = 0 }: { resetKey?: number }) {
   };
 
   const week = selectedWeek ? all.find((w) => w.startDate === selectedWeek) : null;
-  const visibleWeeks = all.slice(0, visibleWeeksCount);
-  const hasMoreWeeks = all.length > visibleWeeksCount;
+  const visibleWeeks = filteredWeeks.slice(0, visibleWeeksCount);
+  const hasMoreWeeks = filteredWeeks.length > visibleWeeksCount;
+  const isSearching = searchQuery.trim().length > 0;
+
+  const handleSearch = (query: string) => {
+    setSearchQuery(query);
+    setVisibleWeeksCount(6);
+  };
 
   // --- Kademe 3: gün detayı (günlük görünümle aynı) ---
   if (selectedDay) {
@@ -192,13 +207,18 @@ export function HistoryPage({ resetKey = 0 }: { resetKey?: number }) {
       </div>
 
       <div className="flex flex-col gap-4">
-        <div className="flex items-center justify-between">
-          <SectionLabel>{t("history.weeks")}</SectionLabel>
-          <span className="text-xs text-ink-tertiary font-mono">
-            {t("history.weeksShown", { shown: visibleWeeks.length, total: all.length })}
-          </span>
-        </div>
-        {all.length === 0 ? (
+        <HistorySearch
+          key={searchResetKey}
+          query={searchQuery}
+          onQueryChange={handleSearch}
+          shown={visibleWeeks.length}
+          total={filteredWeeks.length}
+        />
+        {isSearching && filteredWeeks.length === 0 ? (
+          <p className="text-sm text-ink-tertiary">
+            {t("history.searchNoResults", { query: searchQuery.trim() })}
+          </p>
+        ) : all.length === 0 ? (
           <div className="anim-fadeup text-sm text-ink-tertiary space-y-1">
             <p>{t("empty.historyTitle")}</p>
             <p className="text-xs text-ink-tertiary/80">
@@ -213,8 +233,8 @@ export function HistoryPage({ resetKey = 0 }: { resetKey?: number }) {
                   key={w.startDate}
                   type="button"
                   onClick={() => handleSelectWeek(w.startDate)}
-                  className="anim-fadeup text-left"
-                  style={{ animationDelay: `${i * 60}ms` }}
+                  className={isSearching ? "text-left" : "anim-fadeup text-left"}
+                  style={isSearching ? undefined : { animationDelay: `${i * 60}ms` }}
                 >
                   <Card className="flex flex-col gap-3 p-4 transition hover:border-memory/40 hover:bg-white/[0.03]">
                     <div className="flex items-baseline justify-between gap-2">
@@ -239,11 +259,11 @@ export function HistoryPage({ resetKey = 0 }: { resetKey?: number }) {
                   onClick={() => setVisibleWeeksCount((prev) => prev + 6)}
                   className="inline-flex items-center gap-2 rounded-full border border-line bg-white/5 px-4 py-2 text-xs font-bold text-ink-primary hover:bg-white/10 hover:border-white/20 transition-all active:scale-95"
                 >
-                  <span>{t("history.showMoreWeeks", { count: all.length - visibleWeeksCount })}</span>
+                  <span>{t("history.showMoreWeeks", { count: filteredWeeks.length - visibleWeeksCount })}</span>
                 </button>
               </div>
             )}
-            {!hasMoreWeeks && all.length > 6 && (
+            {!hasMoreWeeks && filteredWeeks.length > 6 && (
               <div className="flex justify-center pt-2">
                 <button
                   type="button"

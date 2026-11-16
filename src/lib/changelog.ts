@@ -13,6 +13,27 @@ export interface ChangeLogVersion {
 
 export const CHANGELOG: ChangeLogVersion[] = [
   {
+    version: "0.32.8",
+    date: "2026-11-16",
+    summary: {
+      tr: "İlerleme sekmesinde geçmiş öğünlerini arayabilirsin. Haftalar başlığının yanındaki arama simgesini açıp yazmaya başladığında, öğün adında veya içeriğinde eşleşme bulunan haftalar anında gösterilir.",
+      en: "Search your past meals in the Progress tab. Open the search icon next to Weeks and start typing to instantly filter weeks by meal titles or ingredient names.",
+    },
+    items: [
+      {
+        type: "new",
+        tr: "Geçmiş öğün araması tüm kayıtlı haftaları kapsar; haftalık toplamları değiştirmeden öğün başlıklarında ve besin içeriklerinde arama yapar.",
+        en: "Meal history search covers all recorded weeks, matching meal titles and ingredient names without changing weekly totals.",
+      },
+      {
+        type: "new",
+        tr: "Arama alanı masaüstünde üzerine gelince, telefonda dokununca açılır. Klavye ve çevrimdışı kullanım desteklenir; detaylardan geri dönünce araman korunur.",
+        en: "The search field opens on hover on desktop or with a tap on mobile. Keyboard and offline use are supported, and your search is kept when returning from details.",
+      },
+    ],
+    dev: [],
+  },
+  {
     version: "0.32.7",
     date: "2026-11-11",
     summary: {
