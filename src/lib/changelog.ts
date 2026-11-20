@@ -13,6 +13,27 @@ export interface ChangeLogVersion {
 
 export const CHANGELOG: ChangeLogVersion[] = [
   {
+    version: "0.32.9",
+    date: "2026-11-21",
+    summary: {
+      tr: "Metinle veya fotoğrafla öğün eklerken Nutrimind artık bu işi yapabildiğini doğruladığı bir Gemini modelini seçiyor.",
+      en: "When you add a meal from text or a photo, Nutrimind now chooses a Gemini model it has verified for that task.",
+    },
+    items: [
+      {
+        type: "improved",
+        tr: "Yeni Gemini modelleri otomatik keşfediliyor ve metin ile görsel okuma için ayrı ayrı deneniyor.",
+        en: "Nutrimind automatically discovers new Gemini models and tests their text and image capabilities separately.",
+      },
+      {
+        type: "fixed",
+        tr: "Bir model kotasına ulaşırsa veya yanıt vermezse, kalan sürede uygun başka bir model denenebiliyor.",
+        en: "If a model reaches its quota or stops responding, Nutrimind can try another suitable model within the remaining time.",
+      },
+    ],
+    dev: [],
+  },
+  {
     version: "0.32.8",
     date: "2026-11-16",
     summary: {
