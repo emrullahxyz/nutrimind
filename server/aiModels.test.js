@@ -513,7 +513,7 @@ describe("Gemini catalog recovery deadlines", () => {
     vi.useFakeTimers();
     try {
       const refresh = api.refreshGeminiCatalog();
-      const recovery = api.createGeminiCatalogRecovery(Date.now() + 25)(410);
+      const recovery = api.createGeminiCatalogRecovery(Date.now() + 100)(410, Date.now() + 25);
       await vi.advanceTimersByTimeAsync(25);
       expect(await recovery).toEqual({ ok: false, reason: "timeout", catalog: null });
       expect(fetchMock.mock.calls[0][1].signal.aborted).toBe(false);

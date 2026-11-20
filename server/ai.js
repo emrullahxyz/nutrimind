@@ -1362,6 +1362,14 @@ const geminiGeneration = require("./aiGemini.js").createGeminiGeneration({
   getApiKey: () => process.env.GEMINI_API_KEY,
 });
 
+const geminiRouting = require("./aiGeminiRouting.js").createGeminiRouting({
+  ...geminiGeneration,
+  getGeminiCatalog: aiModels.getGeminiCatalog,
+  refreshGeminiCatalog: aiModels.refreshGeminiCatalog,
+  createGeminiCatalogRecovery: aiModels.createGeminiCatalogRecovery,
+  getApiKey: () => process.env.GEMINI_API_KEY,
+});
+
 // Periyodik free-model taraması (server/aiDiscovery.js): test dışında ve
 // AUTOMODEL kapalı değilse başlat. Süreç içi setInterval ile yaşar; açılışta
 // ilk tur atar. `NODE_ENV=test` muafiyeti AiLogic.test izolasyonunu korur.
@@ -1370,4 +1378,4 @@ if (process.env.NODE_ENV !== "test" && process.env.NUTRI_AI_AUTOMODEL !== "0") {
   discovery.startDiscovery(Number(process.env.NUTRI_AI_DISCOVER_INTERVAL_MS));
 }
 
-module.exports = { parseMealText, parseMealImage, aiLog, aiHealth, aiModels, AI_LIMITS, ...geminiGeneration };
+module.exports = { parseMealText, parseMealImage, aiLog, aiHealth, aiModels, AI_LIMITS, ...geminiGeneration, ...geminiRouting };

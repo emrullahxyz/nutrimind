@@ -511,14 +511,15 @@ function refreshGeminiCatalog({ timeoutMs } = {}) {
 }
 
 /** Create when the request takes its catalog snapshot. A refresh since that point
- *  (including a failed attempt) satisfies recovery for peers on the same snapshot. */
+ *  (including a failed attempt) satisfies recovery for peers on the same snapshot.
+ *  An optional earlier wait boundary reserves part of the request for a fallback. */
 function createGeminiCatalogRecovery(deadlineAt) {
   const observedRefresh = geminiRefresh;
   const refreshWasPending = observedRefresh?.pending;
   let used = false;
-  return (status) => {
+  return (status, waitUntil = deadlineAt) => {
     if (used || (status !== 404 && status !== 410)) return null;
-    const remainingMs = deadlineAt - Date.now();
+    const remainingMs = Math.min(deadlineAt, waitUntil) - Date.now();
     if (!(remainingMs > 0)) return null;
     used = true;
     const promise =
