@@ -348,6 +348,28 @@ describe("authenticated Gemini generation capabilities", () => {
     expect(requests).toHaveLength(2);
   });
 
+  it("rechecks stale empirical incompatibility even when the catalog record stays the same", async () => {
+    const [model] = await catalog(record("rolling-alias"));
+    vi.useFakeTimers();
+    const now = Date.now();
+    let response = () => reply([{ ...product, kcal: 100 }]);
+    const requests = mockGeneration(() => response());
+    expect(await ai.ensureGeminiCapability(model, "vision")).toMatchObject({
+      kind: "bad-response",
+    });
+    response = () => reply();
+    vi.setSystemTime(now + 86_399_000);
+    expect(await ai.ensureGeminiCapability(model, "vision")).toMatchObject({
+      kind: "incompatible",
+    });
+    vi.setSystemTime(now + 86_400_000);
+    expect(await ai.ensureGeminiCapability(model, "vision")).toMatchObject({
+      ok: true,
+      format: "schema",
+    });
+    expect(requests).toHaveLength(2);
+  });
+
   it("limits a five-minute background round, counts retries, and rotates to other candidates", async () => {
     const models = await catalog(record("i9"), record("j0"), record("k1"));
     vi.useFakeTimers();

@@ -172,7 +172,7 @@ function createGeminiGeneration({
   function getGeminiCapability(model, mode) {
     if (!MODES.includes(mode) || !declaredCompatible(model, mode)) return INCOMPATIBLE;
     const proof = records.get(model)?.get(mode)?.proof;
-    if (!proof || (proof.state === "verified" && Date.now() - proof.verifiedAt >= PROOF_TTL_MS))
+    if (!proof || Date.now() - (proof.verifiedAt ?? proof.checkedAt) >= PROOF_TTL_MS)
       return UNTESTED;
     return proof;
   }
@@ -270,6 +270,11 @@ function createGeminiGeneration({
     return slot.proof;
   }
 
+  function recordIncompatible(slot) {
+    slot.proof = Object.freeze({ state: "incompatible", checkedAt: Date.now() });
+    slot.preferred = undefined;
+  }
+
   function isKnownLabel({ items }) {
     const [item] = items;
     return (
@@ -307,7 +312,7 @@ function createGeminiGeneration({
     }
     if (result.ok) return { ok: true, ...stamp(slot, format, result) };
     if (["schema-rejected", "unsupported-modality", "bad-response"].includes(result.kind)) {
-      slot.proof = INCOMPATIBLE;
+      recordIncompatible(slot);
     }
     return result;
   }
@@ -360,7 +365,7 @@ function createGeminiGeneration({
     const result = await generate(model, capability.format, { ...input, deadlineAt: deadline });
     const slot = slotFor(model, mode);
     if (result.ok) stamp(slot, capability.format, result);
-    if (result.kind === "unsupported-modality") slot.proof = INCOMPATIBLE;
+    if (result.kind === "unsupported-modality") recordIncompatible(slot);
     if (result.kind === "schema-rejected" && capability.format === "schema") {
       slot.proof = null;
       slot.preferred = "json";
