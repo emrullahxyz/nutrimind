@@ -182,6 +182,7 @@ describe("authenticated Gemini generation capabilities", () => {
 
     const errors = [
       [() => failure("Unable to process input image."), "invalid-image"],
+      [() => failure("Cannot process input image."), "invalid-image"],
       [() => failure("traffic", 503), "unavailable"],
       [
         () =>
@@ -238,7 +239,7 @@ describe("authenticated Gemini generation capabilities", () => {
       },
     });
     expect(JSON.stringify(quota)).not.toContain("private");
-    expect(requests).toHaveLength(6);
+    expect(requests).toHaveLength(7);
   });
 
   it("pre-filters declared modalities and forgets a successful proof when declarations change", async () => {
@@ -322,6 +323,68 @@ describe("authenticated Gemini generation capabilities", () => {
     });
     expect(requests).toHaveLength(2);
   });
+
+  it("does not restore revoked vision proof when a concurrent old request succeeds", async () => {
+    const [model] = await catalog(record("concurrent-vision"));
+    let complete;
+    const requests = mockGeneration(() => {
+      if (requests.length === 2)
+        return new Promise((resolve) => {
+          complete = resolve;
+        });
+      if (requests.length === 3) return failure("This model does not support images.");
+      return reply();
+    });
+    await ai.ensureGeminiCapability(model, "vision");
+    const older = ai.runVerifiedGemini(model, "vision", actualMeal);
+    expect(await ai.runVerifiedGemini(model, "vision", actualMeal)).toMatchObject({
+      kind: "unsupported-modality",
+    });
+    complete(reply());
+    expect(await older).toMatchObject({ ok: true });
+    expect(await ai.runVerifiedGemini(model, "vision", actualMeal)).toMatchObject({
+      kind: "incompatible",
+    });
+    expect(requests).toHaveLength(3);
+  });
+
+  it.each([
+    ["success", () => reply()],
+    ["modality rejection", () => failure("This model does not support images.")],
+  ])(
+    "keeps newer JSON proof after an obsolete schema call returns %s",
+    async (_case, staleReply) => {
+      const [model] = await catalog(record("concurrent-schema"));
+      let complete;
+      const requests = mockGeneration(() => {
+        if (requests.length === 2)
+          return new Promise((resolve) => {
+            complete = resolve;
+          });
+        if (requests.length === 3) return failure("responseSchema is not supported.");
+        return reply();
+      });
+      await ai.ensureGeminiCapability(model, "vision");
+      const older = ai.runVerifiedGemini(model, "vision", actualMeal);
+      expect(await ai.runVerifiedGemini(model, "vision", actualMeal)).toMatchObject({
+        kind: "schema-rejected",
+      });
+      expect(await ai.ensureGeminiCapability(model, "vision")).toMatchObject({
+        ok: true,
+        format: "json",
+      });
+      complete(staleReply());
+      await older;
+      expect(await ai.runVerifiedGemini(model, "vision", actualMeal)).toMatchObject({ ok: true });
+      expect(requests.map(({ schema }) => Boolean(schema))).toEqual([
+        true,
+        true,
+        true,
+        false,
+        false,
+      ]);
+    },
+  );
 
   it("refreshes proof with real use and keeps fresh proof across an unchanged catalog refresh", async () => {
     const entry = record("fresh-proof");

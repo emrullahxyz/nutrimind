@@ -112,7 +112,7 @@ function classifyError(response, json, startedAt) {
   if (status === 403) return reject("forbidden");
   if (status === 400 || status === 422) {
     const rejectsFeature =
-      /not supported|does not support|unsupported|not enabled|unknown (?:name|field)|not available|cannot process/i.test(
+      /not supported|does not support|unsupported|not enabled|unknown (?:name|field)|not available/i.test(
         message,
       );
     if (
@@ -132,7 +132,7 @@ function classifyError(response, json, startedAt) {
     )
       return reject("unsupported-modality");
     if (
-      /(?:invalid|malformed|corrupt(?:ed)?) (?:input )?(?:image|base64)|(?:unable|failed) to (?:decode|process|read) (?:the )?(?:input )?image|image (?:could not be decoded|is invalid)/i.test(
+      /(?:invalid|malformed|corrupt(?:ed)?) (?:input )?(?:image|base64)|(?:cannot|(?:unable|failed) to) (?:decode|process|read) (?:the )?(?:input )?image|image (?:could not be decoded|is invalid)/i.test(
         message,
       )
     )
@@ -180,7 +180,7 @@ function createGeminiGeneration({
   function slotFor(model, mode) {
     let modes = records.get(model);
     if (!modes) records.set(model, (modes = new Map()));
-    if (!modes.has(mode)) modes.set(mode, {});
+    if (!modes.has(mode)) modes.set(mode, { revision: 0 });
     return modes.get(mode);
   }
 
@@ -342,6 +342,7 @@ function createGeminiGeneration({
     if (stopAt <= Date.now()) return failed("timeout");
     const slot = slotFor(model, mode);
     if (slot.inFlight) return awaitProbe(slot.inFlight, stopAt);
+    slot.revision += 1;
     slot.inFlight = probe(model, mode, slot, stopAt, takeAttempt).finally(() => {
       slot.inFlight = null;
     });
@@ -361,12 +362,19 @@ function createGeminiGeneration({
     if (mode === "vision" && (!input.imageBase64 || !input.mimeType))
       return failed("invalid-image");
     if (mode === "text" && input.imageBase64) return failed("unsupported-modality");
+    const slot = slotFor(model, mode);
+    const revision = slot.revision;
     const deadline = Math.min(deadlineAt, Date.now() + maxMs);
     const result = await generate(model, capability.format, { ...input, deadlineAt: deadline });
-    const slot = slotFor(model, mode);
+    // Older requests can finish for their callers without changing a replaced proof.
+    if (revision !== slot.revision) return result;
     if (result.ok) stamp(slot, capability.format, result);
-    if (result.kind === "unsupported-modality") recordIncompatible(slot);
+    if (result.kind === "unsupported-modality") {
+      slot.revision += 1;
+      recordIncompatible(slot);
+    }
     if (result.kind === "schema-rejected" && capability.format === "schema") {
+      slot.revision += 1;
       slot.proof = null;
       slot.preferred = "json";
     }
