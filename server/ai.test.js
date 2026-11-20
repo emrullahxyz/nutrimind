@@ -199,6 +199,74 @@ describe("Gemini through production AI entry points", () => {
     ]);
   });
 
+  it("recovers a paginated Gemini catalog after model quota and retirement, then reuses the replacement", async () => {
+    const ai = await loadAi({
+      NUTRIMIND_LLM_PROVIDER: "gemini",
+      GEMINI_API_KEY: "gemini-key",
+      NUTRI_AI_AUTOMODEL: "0",
+    });
+    const pages = [];
+    const fetchMock = vi.fn(async (url, init) => {
+      const endpoint = new URL(url);
+      if (init.method === "GET") {
+        const token = endpoint.searchParams.get("pageToken");
+        pages.push(token);
+        const names = {
+          first: ["gemini-quota"],
+          initial: ["gemini-retired"],
+          refreshed: ["gemini-unavailable", "gemini-replacement"],
+        };
+        return Response.json({
+          models: (names[token ?? "first"] ?? []).map((name) => ({
+            name: "models/" + name,
+            supportedGenerationMethods: ["generateContent"],
+          })),
+          ...(!token && { nextPageToken: pages.length === 1 ? "initial" : "refreshed" }),
+        });
+      }
+      const model = endpoint.pathname.split("/").at(-1).split(":")[0];
+      switch (model) {
+        case "gemini-quota":
+          return isProbe(init)
+            ? generationResponse([probeItem], undefined, "gemini-quota-runtime")
+            : new Response(null, { status: 429, headers: { "Retry-After": "60" } });
+        case "gemini-retired":
+          return new Response(null, { status: 410 });
+        case "gemini-unavailable":
+          return new Response(null, { status: 503 });
+        case "gemini-replacement":
+          return generationResponse(
+            isProbe(init) ? [probeItem] : [mealItem],
+            undefined,
+            "gemini-replacement-runtime",
+          );
+        default:
+          throw new Error("Unexpected model in regression fixture");
+      }
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    expect(await ai.parseMealText(textInput)).toMatchObject({
+      status: 200,
+      body: { items: [{ name: "Elma", nutrition: { kcal: 50, fiber: 2.4 } }] },
+    });
+    expect(await ai.parseMealText({ ...textInput, text: "next meal" })).toMatchObject({
+      status: 200,
+      body: { items: [{ name: "Elma" }] },
+    });
+    expect(pages).toEqual([null, "initial", null, "refreshed"]);
+    expect(productionCalls(fetchMock).map(([url]) => url)).toEqual([
+      expect.stringContaining("gemini-quota:generateContent"),
+      expect.stringContaining("gemini-replacement:generateContent"),
+      expect.stringContaining("gemini-replacement:generateContent"),
+    ]);
+    expect(ai.aiModels.getGeminiCatalog().candidates.map(({ id }) => id)).toEqual([
+      "models/gemini-quota",
+      "models/gemini-unavailable",
+      "models/gemini-replacement",
+    ]);
+  });
+
   it("exposes verified input modes, the runtime, and model waits without copying private content", async () => {
     const log = vi.spyOn(console, "log").mockImplementation(() => {});
     const key = "private-gemini-key";

@@ -3,7 +3,8 @@
 const { quotaWait, nextPacificMidnight } = require("./aiGemini.js");
 
 const BUDGET_MS = 25_000;
-const MAX_CANDIDATES = 3;
+const MAX_CANDIDATES = 10;
+const MAX_GENERATION_OR_SLOW_ATTEMPTS = 3;
 const MISSING_WAIT_MS = 5 * 60_000;
 const TRANSIENT_WAIT_MS = 15_000;
 function modelId(value) {
@@ -234,21 +235,28 @@ function createGeminiRouting({
     const recover = createGeminiCatalogRecovery(deadlineAt);
     const attemptedNames = new Set();
     const attemptedRuntime = new Set();
+    let generationOrSlowAttempts = 0;
     let failureKind;
     const rememberFailure = (kind) => {
       if (failurePriority(kind) > failurePriority(failureKind)) failureKind = kind;
     };
-    for (let count = 0; count < MAX_CANDIDATES && Date.now() < deadlineAt; count += 1) {
+    while (
+      attemptedNames.size < MAX_CANDIDATES &&
+      generationOrSlowAttempts < MAX_GENERATION_OR_SLOW_ATTEMPTS
+    ) {
       const now = Date.now();
-      if (deadlineAt - now < minStepMs) break;
+      if (now >= deadlineAt || deadlineAt - now < minStepMs) break;
       if (globalWait(now) || requestCredential !== currentCredential()) break;
       const [candidate, fallback] = eligible(mode, attemptedNames, attemptedRuntime, now);
       if (!candidate) break;
       const { model, actual } = candidate;
-      const attemptDeadline =
-        fallback && count + 1 < MAX_CANDIDATES
-          ? Math.min(deadlineAt, now + Math.max(minStepMs, Math.ceil((deadlineAt - now) / 2)))
-          : deadlineAt;
+      const hasFallback =
+        fallback &&
+        attemptedNames.size + 1 < MAX_CANDIDATES &&
+        generationOrSlowAttempts + 1 < MAX_GENERATION_OR_SLOW_ATTEMPTS;
+      const attemptDeadline = hasFallback
+        ? Math.min(deadlineAt, now + Math.max(minStepMs, Math.ceil((deadlineAt - now) / 2)))
+        : deadlineAt;
       attemptedNames.add(model.id);
       lastTried[mode].set(model.id, ++sequence);
       let capability = candidate.capability;
@@ -264,6 +272,9 @@ function createGeminiRouting({
         if (requestCredential !== currentCredential()) return failure("credential-changed");
         record(model, mode, proof, requestCredential);
         if (!proof.ok) {
+          if (proof.kind === "timeout" || proof.kind === "network") {
+            generationOrSlowAttempts += 1;
+          }
           rememberFailure(proof.kind);
           if (proof.upstream === 404 || proof.upstream === 410) {
             await recover(proof.upstream, attemptDeadline);
@@ -282,6 +293,7 @@ function createGeminiRouting({
       )
         continue;
       if (runtime) attemptedRuntime.add(runtime);
+      generationOrSlowAttempts += 1;
       const result = await runVerifiedGemini(model, mode, {
         ...input,
         deadlineAt: attemptDeadline,

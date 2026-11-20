@@ -185,7 +185,6 @@ describe("Gemini routing", () => {
     f.recover.mockImplementationOnce(async () => {
       f.replace(f.catalog.candidates.map((m) => ({ ...m })));
     });
-    expect(await f.routeGemini("text", {})).toMatchObject({ status: 502 });
     expect(await f.routeGemini("text", {})).toMatchObject({ status: 200 });
     expect(f.ensureGeminiCapability.mock.calls.map(([m]) => m.id)).toEqual([
       "models/a",
@@ -193,6 +192,29 @@ describe("Gemini routing", () => {
       "models/c",
       "models/d",
     ]);
+  });
+
+  it("bounds synthetic discovery even when the upstream fails quickly", async () => {
+    const f = fixture(Array.from({ length: 12 }, (_, index) => "model-" + index), false);
+    f.ensureGeminiCapability.mockResolvedValue({ ok: false, kind: "unavailable" });
+    expect(await f.routeGemini("text", {})).toMatchObject({ status: 502 });
+    expect(f.ensureGeminiCapability).toHaveBeenCalledTimes(10);
+    expect(f.runVerifiedGemini).not.toHaveBeenCalled();
+  });
+
+  it.each(["timeout", "network"])("caps slow or repeated %s attempts", async (kind) => {
+    const f = fixture(["a", "b", "c", "d"], false);
+    f.ensureGeminiCapability.mockResolvedValue({ ok: false, kind });
+    expect(await f.routeGemini("text", {})).toMatchObject({ status: 504 });
+    expect(f.ensureGeminiCapability).toHaveBeenCalledTimes(3);
+    expect(f.runVerifiedGemini).not.toHaveBeenCalled();
+  });
+
+  it("sends meal data to at most three models even when more verify", async () => {
+    const f = fixture(["a", "b", "c", "d"], false);
+    f.runVerifiedGemini.mockResolvedValue({ ok: false, kind: "unavailable" });
+    expect(await f.routeGemini("text", {})).toMatchObject({ status: 502 });
+    expect(f.runVerifiedGemini).toHaveBeenCalledTimes(3);
   });
 
   it("does not repeat an already attempted known runtime and does not use catalog version as the identity", async () => {

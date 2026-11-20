@@ -5,7 +5,9 @@
 `POST /api/ai/parse` ve `POST /api/ai/vision` aynı süreç içi Gemini kataloğunu ve kota
 beklemelerini kullanır. `auto` ve `gemini` ikisi de bu seçimi açar. Katalog anahtarın
 erişebildiği modelleri sayfalayarak alır. Modelin metin ve görsel yetenekleri ayrı sentetik
-etiketlerle doğrulanır. Bir istek en fazla üç aday dener ve ilk başarılı yanıtta biter.
+etiketlerle doğrulanır. Bir istek ilk başarılı yanıta kadar en fazla on adayı değerlendirir.
+Gerçek öğün gönderimleri ile zaman aşımına veya ağ hatasına uğrayan sentetik denemeler toplamda
+üçle sınırlıdır. Katalog, sentetik denemeler ve öğün gönderimleri aynı 25 saniyeyi paylaşır.
 Model API'den 404 veya 410 verirse katalog aynı istek içinde bir kez yenilenebilir. Başarısız
 bir katalog yenilemesinde aynı anahtarın son eksiksiz kataloğu kullanılabilir.
 
