@@ -50,6 +50,7 @@ const buckets = [];
 
 /** ai.js devre kesici durumu (server/aiHealth.js snapshot'ı). */
 let health = [];
+let readGeminiSnapshot = () => null;
 
 function bump(provider, ok) {
   let s = stats.get(provider);
@@ -171,8 +172,11 @@ function setHealth(list) {
   }
 }
 
-/** GET /api/ai/status gövdesi. Sahibin teşhis ucu: son kayıtlar (en yeni önce),
- *  sağlayıcı sayaçları, kova dolulukları, devre kesici durumları. */
+function setGeminiSnapshot(read) {
+  readGeminiSnapshot = typeof read === "function" ? read : () => null;
+}
+
+/** GET /api/ai/status için anlık Gemini durumu, yerel kovalar ve son istek sonuçları. */
 function snapshot() {
   try {
     return {
@@ -190,6 +194,7 @@ function snapshot() {
         }
       }),
       health: health.slice(),
+      gemini: readGeminiSnapshot(),
     };
   } catch {
     return { ok: false, error: "snapshot failed" };
@@ -208,6 +213,7 @@ module.exports = {
   recordChain,
   setBuckets,
   setHealth,
+  setGeminiSnapshot,
   snapshot,
   reset,
   scrubDetail,

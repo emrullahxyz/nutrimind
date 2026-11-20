@@ -201,7 +201,11 @@ function createGeminiRouting({
       );
   }
 
-  async function routeGemini(mode, input, { deadlineAt = Date.now() + BUDGET_MS } = {}) {
+  async function routeGemini(
+    mode,
+    input,
+    { deadlineAt = Date.now() + BUDGET_MS, minStepMs = 0 } = {},
+  ) {
     const requestCredential = currentCredential();
     if (!getApiKey()) return failure("missing-key");
     const firstWait = globalWait(Date.now());
@@ -220,13 +224,14 @@ function createGeminiRouting({
     let lastFailure;
     for (let count = 0; count < MAX_CANDIDATES && Date.now() < deadlineAt; count += 1) {
       const now = Date.now();
+      if (deadlineAt - now < minStepMs) break;
       if (globalWait(now) || requestCredential !== currentCredential()) break;
       const [candidate, fallback] = eligible(mode, attemptedNames, attemptedRuntime, now);
       if (!candidate) break;
       const { model, actual } = candidate;
       const attemptDeadline =
         fallback && count + 1 < MAX_CANDIDATES
-          ? now + Math.ceil((deadlineAt - now) / 2)
+          ? Math.min(deadlineAt, now + Math.max(minStepMs, Math.ceil((deadlineAt - now) / 2)))
           : deadlineAt;
       attemptedNames.add(model.id);
       lastTried[mode].set(model.id, ++sequence);
@@ -291,7 +296,9 @@ function createGeminiRouting({
         now,
       );
     }
-    if (now >= deadlineAt) return failure("timeout");
+    if (now >= deadlineAt || (!lastFailure && deadlineAt - now < minStepMs)) {
+      return failure("timeout");
+    }
     return failure(lastFailure?.kind === "rate-limit" ? "provider-error" : lastFailure?.kind);
   }
 

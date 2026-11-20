@@ -470,6 +470,7 @@ describe("authenticated Gemini generation capabilities", () => {
       "fetch",
       vi.fn(async () => Response.json({ models: [record("l2")] })),
     );
+    vi.stubEnv("NUTRIMIND_LLM_PROVIDER", "gemini");
     const stop = discovery.startGeminiDiscovery(undefined, {
       probeRound: (models) => requests.push(models[0]?.id),
     });
