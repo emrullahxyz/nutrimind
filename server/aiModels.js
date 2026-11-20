@@ -398,10 +398,14 @@ async function fetchGeminiPages(key, signal) {
       if (!Array.isArray(methods) || methods.some((method) => typeof method !== "string")) {
         return { reason: "invalid-response" };
       }
+      const inputModalities = normalizeModalities(entry.supportedInputModalities ?? entry.inputModalities);
+      const outputModalities = normalizeModalities(entry.supportedOutputModalities ?? entry.outputModalities);
       models.set(entry.name, {
         id: entry.name,
         version: typeof entry.version === "string" ? entry.version : null,
         methods: [...new Set(methods)].sort(),
+        ...(inputModalities && { inputModalities }),
+        ...(outputModalities && { outputModalities }),
       });
     }
     if (!nextPageToken) return { models };
@@ -409,6 +413,16 @@ async function fetchGeminiPages(key, signal) {
     seenTokens.add(nextPageToken);
     url.searchParams.set("pageToken", nextPageToken);
   }
+}
+
+function normalizeModalities(values) {
+  if (!Array.isArray(values) || values.some((value) => typeof value !== "string")) return null;
+  return Object.freeze([...new Set(values.map((value) => value.trim().toUpperCase()))].sort());
+}
+
+function equalModalities(previous, next) {
+  if (!previous || !next) return previous === next;
+  return previous.length === next.length && previous.every((value, index) => value === next[index]);
 }
 
 function commitGeminiCatalog(entries) {
@@ -419,7 +433,9 @@ function commitGeminiCatalog(entries) {
       prior &&
       prior.version === model.version &&
       prior.methods.length === model.methods.length &&
-      prior.methods.every((method, index) => method === model.methods[index])
+      prior.methods.every((method, index) => method === model.methods[index]) &&
+      equalModalities(prior.inputModalities, model.inputModalities) &&
+      equalModalities(prior.outputModalities, model.outputModalities)
     ) {
       return prior;
     }

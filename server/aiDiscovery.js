@@ -21,6 +21,7 @@
 "use strict";
 
 const aiModels = require("./aiModels.js");
+const { GEMINI_PROBE_INTERVAL_MS } = require("./aiGemini.js");
 
 /** Taramada kaç aday yoklanır (ağ bütçesi). */
 const MAX_PROBES_PER_PROVIDER = 3;
@@ -125,16 +126,34 @@ function stopDiscovery() {
 const GEMINI_STARTUP_RETRY_MS = 60_000;
 let geminiSchedule = null;
 
-/** Refresh only the authenticated Google catalog, including on startup. */
-function startGeminiDiscovery(intervalMs = DEFAULT_INTERVAL_MS) {
+/** Refresh the authenticated catalog and optionally run a separate synthetic probe cadence. */
+function startGeminiDiscovery(intervalMs = DEFAULT_INTERVAL_MS, { probeRound } = {}) {
   if (geminiSchedule || !process.env.GEMINI_API_KEY) return stopGeminiDiscovery;
   const interval = Math.max(MIN_INTERVAL_MS, Number(intervalMs) || DEFAULT_INTERVAL_MS);
-  const schedule = { timer: null };
+  const schedule = { timer: null, probeTimer: null };
   geminiSchedule = schedule;
+
+  const probe = async () => {
+    if (geminiSchedule !== schedule) return;
+    try {
+      await probeRound(aiModels.getGeminiCatalog()?.candidates ?? []);
+    } catch {
+      // A background probe failure leaves the catalog scheduler active.
+    } finally {
+      if (geminiSchedule === schedule) {
+        schedule.probeTimer = setTimeout(probe, GEMINI_PROBE_INTERVAL_MS);
+        schedule.probeTimer.unref?.();
+      }
+    }
+  };
 
   const tick = async () => {
     const { catalog } = await aiModels.refreshGeminiCatalog();
     if (geminiSchedule !== schedule) return;
+    if (catalog && probeRound && schedule.probeTimer === null) {
+      schedule.probeTimer = setTimeout(probe, 0);
+      schedule.probeTimer.unref?.();
+    }
     schedule.timer = setTimeout(tick, catalog ? interval : GEMINI_STARTUP_RETRY_MS);
     schedule.timer.unref?.();
   };
@@ -145,6 +164,7 @@ function startGeminiDiscovery(intervalMs = DEFAULT_INTERVAL_MS) {
 function stopGeminiDiscovery() {
   if (!geminiSchedule) return;
   clearTimeout(geminiSchedule.timer);
+  clearTimeout(geminiSchedule.probeTimer);
   geminiSchedule = null;
 }
 
