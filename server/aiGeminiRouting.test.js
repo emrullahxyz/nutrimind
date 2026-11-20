@@ -356,3 +356,221 @@ describe("Gemini routing with the real catalog and capability modules", () => {
     expect(fetchMock).toHaveBeenCalledTimes(3);
   });
 });
+
+describe("Gemini shared failure and credential boundaries", () => {
+  afterEach(() => {
+    ai.aiModels.resetGeminiCatalog();
+    vi.unstubAllEnvs();
+    vi.unstubAllGlobals();
+  });
+  it("shares quota when the dimension is another known alias", async () => {
+    const f = fixture(["alias-a", "alias-b", "alias-c", "independent"]);
+    for (const model of f.catalog.candidates.slice(0, 3)) model.actual = "common-runtime";
+    f.runVerifiedGemini.mockResolvedValueOnce(
+      limited("RequestsPerMinutePerModel", "alias-b", 91_000),
+    );
+    await f.routeGemini("text", {});
+    await f.routeGemini("vision", {});
+    expect(f.runVerifiedGemini.mock.calls.map(([model]) => model.id)).toEqual([
+      "models/alias-a",
+      "models/independent",
+      "models/independent",
+    ]);
+  });
+  it("does one cold listing within a shared 429 window and uses bounded numeric retry", async () => {
+    vi.useFakeTimers();
+    vi.stubEnv("GEMINI_API_KEY", "cold-quota-credential");
+    const request = vi
+      .fn()
+      .mockResolvedValueOnce(
+        Response.json(
+          {
+            error: {
+              details: [{ "@type": "type.googleapis.com/google.rpc.RetryInfo", retryDelay: "42s" }],
+            },
+          },
+          { status: 429, headers: { "Retry-After": "9".repeat(307) } },
+        ),
+      )
+      .mockResolvedValueOnce(Response.json({ models: [] }));
+    vi.stubGlobal("fetch", request);
+    expect(await ai.routeGemini("text", {})).toMatchObject({
+      status: 429,
+      body: { retryAfter: 42 },
+    });
+    expect(await ai.routeGemini("vision", {})).toMatchObject({
+      status: 429,
+      body: { retryAfter: 42 },
+    });
+    expect(ai.geminiRoutingSnapshot().projectWaiting).toMatchObject({
+      reason: "rate-limit",
+      retryAt: Date.now() + 42_000,
+    });
+    expect(request).toHaveBeenCalledTimes(1);
+    vi.advanceTimersByTime(42_000);
+    await ai.routeGemini("text", {});
+    expect(request).toHaveBeenCalledTimes(2);
+  });
+  it("holds a rejected cold credential and immediately retries with the replacement", async () => {
+    vi.stubEnv("GEMINI_API_KEY", "cold-rejected-credential");
+    const request = vi
+      .fn()
+      .mockResolvedValueOnce(
+        Response.json(
+          {
+            error: {
+              details: [
+                { "@type": "type.googleapis.com/google.rpc.ErrorInfo", reason: "API_KEY_INVALID" },
+              ],
+            },
+          },
+          { status: 400 },
+        ),
+      )
+      .mockResolvedValueOnce(Response.json({ models: [] }));
+    vi.stubGlobal("fetch", request);
+    expect(await ai.routeGemini("text", {})).toMatchObject({ status: 502 });
+    expect(await ai.routeGemini("vision", {})).toMatchObject({ status: 502 });
+    expect(request).toHaveBeenCalledTimes(1);
+    vi.stubEnv("GEMINI_API_KEY", "cold-replacement-credential");
+    await ai.routeGemini("text", {});
+    expect(request).toHaveBeenCalledTimes(2);
+    expect(ai.geminiRoutingSnapshot().projectWaiting).toBe(null);
+  });
+  it("discards late listings and generation across an A→B→A rotation", async () => {
+    const catalogReply = Response.json({
+      models: [{ name: "models/rotation-model", supportedGenerationMethods: ["generateContent"] }],
+    });
+    const generated = () =>
+      Response.json({
+        modelVersion: "rotation-runtime",
+        candidates: [
+          {
+            content: {
+              parts: [
+                {
+                  text: JSON.stringify({
+                    items: [
+                      {
+                        name: "Mavrix 7K",
+                        kcal: 273,
+                        protein: 13,
+                        carbs: 26,
+                        fat: 12,
+                        fiber: 4,
+                        baseAmount: 100,
+                      },
+                    ],
+                  }),
+                },
+              ],
+            },
+          },
+        ],
+      });
+    let finishOldList, finishOldGenerate;
+    const a = "first-rotation-secret";
+    const b = "second-rotation-secret";
+    vi.stubEnv("GEMINI_API_KEY", a);
+    const request = vi
+      .fn()
+      .mockImplementationOnce(
+        () =>
+          new Promise((resolve) => {
+            finishOldList = resolve;
+          }),
+      )
+      .mockResolvedValueOnce(catalogReply.clone())
+      .mockResolvedValueOnce(generated())
+      .mockImplementationOnce(
+        () =>
+          new Promise((resolve) => {
+            finishOldGenerate = resolve;
+          }),
+      )
+      .mockResolvedValueOnce(catalogReply.clone());
+    vi.stubGlobal("fetch", request);
+    const lateCatalog = ai.aiModels.refreshGeminiCatalog();
+    vi.stubEnv("GEMINI_API_KEY", b);
+    const { catalog } = await ai.aiModels.refreshGeminiCatalog();
+    finishOldList(catalogReply);
+    expect((await lateCatalog).ok).toBe(false);
+    expect(ai.aiModels.getGeminiCatalog()).toBe(catalog);
+    const [old] = catalog.candidates;
+    expect((await ai.ensureGeminiCapability(old, "text")).ok).toBe(true);
+    const lateGeneration = ai.routeGemini("text", { prompt: "private-input" });
+    vi.stubEnv("GEMINI_API_KEY", a);
+    const { catalog: newCatalog } = await ai.aiModels.refreshGeminiCatalog();
+    expect(newCatalog.candidates[0]).not.toBe(old);
+    finishOldGenerate(generated());
+    expect((await lateGeneration).status).toBe(502);
+    expect(ai.getGeminiCapability(old, "text").state).toBe("untested");
+    expect(ai.getGeminiCapability(newCatalog.candidates[0], "text").state).toBe("untested");
+    const data = JSON.stringify(ai.geminiRoutingSnapshot());
+    expect(data).not.toContain(a);
+    expect(data).not.toContain(b);
+    expect(ai.geminiRoutingSnapshot().active.text).toBe(null);
+  });
+
+  it("does not join or publish an old credential's in-flight synthetic proof", async () => {
+    const list = () =>
+      Response.json({
+        models: [
+          { name: "models/proof-rotation", supportedGenerationMethods: ["generateContent"] },
+        ],
+      });
+    const reply = (modelVersion) =>
+      Response.json({
+        modelVersion,
+        candidates: [
+          {
+            content: {
+              parts: [
+                {
+                  text: JSON.stringify({
+                    items: [
+                      {
+                        name: "Mavrix 7K",
+                        kcal: 273,
+                        protein: 13,
+                        carbs: 26,
+                        fat: 12,
+                        fiber: 4,
+                        baseAmount: 100,
+                      },
+                    ],
+                  }),
+                },
+              ],
+            },
+          },
+        ],
+      });
+    let finishOldProof;
+    const request = vi
+      .fn()
+      .mockResolvedValueOnce(list())
+      .mockImplementationOnce(
+        () =>
+          new Promise((resolve) => {
+            finishOldProof = resolve;
+          }),
+      )
+      .mockResolvedValueOnce(list())
+      .mockResolvedValueOnce(reply("new-proof-runtime"));
+    vi.stubGlobal("fetch", request);
+    vi.stubEnv("GEMINI_API_KEY", "old-proof-credential");
+    const { catalog: previous } = await ai.aiModels.refreshGeminiCatalog();
+    const proof = ai.ensureGeminiCapability(previous.candidates[0], "text");
+    vi.stubEnv("GEMINI_API_KEY", "new-proof-credential");
+    const { catalog: current } = await ai.aiModels.refreshGeminiCatalog();
+    expect(await ai.ensureGeminiCapability(current.candidates[0], "text")).toMatchObject({
+      ok: true,
+      modelVersion: "new-proof-runtime",
+    });
+    finishOldProof(reply("old-proof-runtime"));
+    expect(await proof).toMatchObject({ ok: false });
+    expect(ai.geminiRoutingSnapshot().models[0].text.modelVersion).toBe("new-proof-runtime");
+    expect(request).toHaveBeenCalledTimes(4);
+  });
+});

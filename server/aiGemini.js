@@ -9,6 +9,43 @@ const PROBE_TIMEOUT_MS = 10_000;
 const PROOF_TTL_MS = 24 * 60 * 60_000;
 const MODES = ["text", "vision"];
 
+const PACIFIC = new Intl.DateTimeFormat("en-US", {
+  timeZone: "America/Los_Angeles",
+  year: "numeric",
+  month: "numeric",
+  day: "numeric",
+  timeZoneName: "shortOffset",
+});
+
+function nextPacificMidnight(now) {
+  const parts = (at) =>
+    Object.fromEntries(PACIFIC.formatToParts(at).map(({ type, value }) => [type, value]));
+  const { year, month, day } = parts(now);
+  const nextDate = Date.UTC(Number(year), Number(month) - 1, Number(day) + 1);
+  // Both Pacific offsets put local midnight shortly before this reference instant.
+  const offsetHours = Number(parts(nextDate + 8.5 * 3_600_000).timeZoneName.slice(3));
+  return nextDate - offsetHours * 3_600_000;
+}
+
+function isDaily({ quotaId = "", quotaMetric = "" }) {
+  return (
+    /per[ _-]?day|daily|(?:^|[_-])rpd(?:$|[_-])/i.test(quotaId + " " + quotaMetric) ||
+    /^rpd$/i.test(quotaId)
+  );
+}
+
+function quotaWait(result, limits, now) {
+  const daily = limits.some(isDaily);
+  const minute = limits.some(({ quotaId = "", quotaMetric = "" }) =>
+    /per[ _-]?minute|(?:^|[ _-])(?:rpm|tpm)(?:$|[ _-])/i.test(quotaId + " " + quotaMetric),
+  );
+  const retryAt = Math.max(
+    now + (result.retryAfterMs || (minute ? 60_000 : 15_000)),
+    daily ? nextPacificMidnight(now) : 0,
+  );
+  return { reason: "rate-limit", retryAt, limits };
+}
+
 const PROBE_ITEM = {
   name: "Mavrix 7K",
   baseAmount: 100,
@@ -76,9 +113,9 @@ function retryAfterMs(error, headers) {
         : null;
     return seconds === null ? 0 : seconds * 1_000;
   });
-  return Math.ceil(
-    Math.max((seconds ?? 0) * 1_000, Number.isFinite(date) ? date : 0, ...upstreamDelays),
-  );
+  const delays = [(seconds ?? 0) * 1_000, date, ...upstreamDelays];
+  const maxDelayMs = 365 * 24 * 60 * 60_000;
+  return Math.ceil(Math.max(0, ...delays.filter((ms) => Number.isFinite(ms) && ms <= maxDelayMs)));
 }
 
 function classifyError(response, json, startedAt) {
@@ -159,11 +196,10 @@ function createGeminiGeneration({
   stripMarkdownFence,
   getCatalog,
   getApiKey,
+  getCredentialGeneration,
 }) {
   const records = new WeakMap();
-  let cursor = 0;
-  let runningRound = false;
-  let nextRoundAt = 0;
+  let round;
 
   function currentModel(model) {
     return getCatalog()?.candidates.includes(model);
@@ -171,6 +207,7 @@ function createGeminiGeneration({
 
   function getGeminiCapability(model, mode) {
     if (!MODES.includes(mode) || !declaredCompatible(model, mode)) return INCOMPATIBLE;
+    if (!currentModel(model)) return UNTESTED;
     const proof = records.get(model)?.get(mode)?.proof;
     if (!proof || Date.now() - (proof.verifiedAt ?? proof.checkedAt) >= PROOF_TTL_MS)
       return UNTESTED;
@@ -211,6 +248,7 @@ function createGeminiGeneration({
     accept,
   ) {
     const startedAt = Date.now();
+    const credential = getCredentialGeneration();
     const key = getApiKey();
     if (!key) return failed("invalid-key", startedAt);
     if (!currentModel(model)) return failed("missing-model", startedAt);
@@ -235,6 +273,7 @@ function createGeminiGeneration({
       });
       const raw = await response.text();
       signal.throwIfAborted();
+      if (credential !== getCredentialGeneration()) return failed("credential-changed", startedAt);
       if (Date.now() >= deadlineAt) return failed("timeout", startedAt);
       let json;
       try {
@@ -310,6 +349,7 @@ function createGeminiGeneration({
       slot.preferred = format = "json";
       result = await attempt(format);
     }
+    if (!currentModel(model)) return failed("missing-model");
     if (result.ok) return { ok: true, ...stamp(slot, format, result) };
     if (["schema-rejected", "unsupported-modality", "bad-response"].includes(result.kind)) {
       recordIncompatible(slot);
@@ -367,7 +407,7 @@ function createGeminiGeneration({
     const deadline = Math.min(deadlineAt, Date.now() + maxMs);
     const result = await generate(model, capability.format, { ...input, deadlineAt: deadline });
     // Older requests can finish for their callers without changing a replaced proof.
-    if (revision !== slot.revision) return result;
+    if (!currentModel(model) || revision !== slot.revision) return result;
     if (result.ok) stamp(slot, capability.format, result);
     if (result.kind === "unsupported-modality") {
       slot.revision += 1;
@@ -382,17 +422,21 @@ function createGeminiGeneration({
   }
 
   async function runGeminiProbeRound(candidates, { allow = () => true, onResult = () => {} } = {}) {
-    if (runningRound || Date.now() < nextRoundAt || !getApiKey() || !candidates.length) return;
-    runningRound = true;
-    nextRoundAt = Date.now() + GEMINI_PROBE_INTERVAL_MS;
+    const credential = getCredentialGeneration();
+    if (round?.credential !== credential)
+      round = { credential, cursor: 0, running: false, nextAt: 0 };
+    const state = round;
+    if (state.running || Date.now() < state.nextAt || !getApiKey() || !candidates.length) return;
+    state.running = true;
+    state.nextAt = Date.now() + GEMINI_PROBE_INTERVAL_MS;
     let attemptsLeft = 2;
     const pairs = MODES.flatMap((_, offset) =>
       candidates.map((model, index) => [model, MODES[(index + offset) % MODES.length]]),
     );
     try {
       for (let scanned = 0; scanned < pairs.length && attemptsLeft > 0; scanned += 1) {
-        const [model, mode] = pairs[cursor % pairs.length];
-        cursor = (cursor + 1) % pairs.length;
+        const [model, mode] = pairs[state.cursor % pairs.length];
+        state.cursor = (state.cursor + 1) % pairs.length;
         if (
           !currentModel(model) ||
           getGeminiCapability(model, mode).state !== "untested" ||
@@ -410,11 +454,17 @@ function createGeminiGeneration({
         if (result.kind !== "probe-deferred") onResult(model, mode, result);
       }
     } finally {
-      runningRound = false;
+      state.running = false;
     }
   }
 
   return { getGeminiCapability, ensureGeminiCapability, runVerifiedGemini, runGeminiProbeRound };
 }
 
-module.exports = { createGeminiGeneration, GEMINI_PROBE_INTERVAL_MS };
+module.exports = {
+  createGeminiGeneration,
+  GEMINI_PROBE_INTERVAL_MS,
+  classifyError,
+  quotaWait,
+  nextPacificMidnight,
+};

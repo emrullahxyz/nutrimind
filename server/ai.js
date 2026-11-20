@@ -1359,12 +1359,15 @@ const geminiGeneration = require("./aiGemini.js").createGeminiGeneration({
   parseAiItem,
   stripMarkdownFence,
   getCatalog: aiModels.getGeminiCatalog,
+  getCredentialGeneration: aiModels.getGeminiCredentialGeneration,
   getApiKey: () => process.env.GEMINI_API_KEY,
 });
 
 const geminiRouting = require("./aiGeminiRouting.js").createGeminiRouting({
   ...geminiGeneration,
   getGeminiCatalog: aiModels.getGeminiCatalog,
+  getGeminiCatalogWait: aiModels.getGeminiCatalogWait,
+  getCredentialGeneration: aiModels.getGeminiCredentialGeneration,
   refreshGeminiCatalog: aiModels.refreshGeminiCatalog,
   createGeminiCatalogRecovery: aiModels.createGeminiCatalogRecovery,
   getApiKey: () => process.env.GEMINI_API_KEY,

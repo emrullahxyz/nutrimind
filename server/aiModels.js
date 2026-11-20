@@ -354,27 +354,61 @@ function setDiscovered(provider, mode, model) {
   }
 }
 
+const { classifyError, quotaWait } = require("./aiGemini.js");
 const GEMINI_MODELS_URL = "https://generativelanguage.googleapis.com/v1beta/models";
 const MAX_TIMER_MS = 2_147_483_647;
 
 let geminiCatalog = null;
 let geminiRefresh = null;
+let geminiRefreshFailure = null;
+let geminiKey;
+let credentialGeneration = 0;
+
+function getGeminiCredentialGeneration() {
+  const key = process.env.GEMINI_API_KEY || "";
+  if (geminiKey !== key) {
+    geminiKey = key;
+    resetGeminiCatalog();
+  }
+  return credentialGeneration;
+}
 
 function getGeminiCatalog() {
+  getGeminiCredentialGeneration();
   return geminiCatalog;
 }
 
-async function fetchGeminiPages(key, signal) {
+function getGeminiCatalogWait(now = Date.now()) {
+  getGeminiCredentialGeneration();
+  const wait = geminiRefreshFailure?.wait;
+  return wait?.retryAt > now ? wait : null;
+}
+
+async function fetchGeminiPages(key, generation, signal) {
   const models = new Map();
   const seenTokens = new Set();
   const url = new URL(GEMINI_MODELS_URL);
   while (true) {
+    if (generation !== getGeminiCredentialGeneration()) return { reason: "credential-changed" };
     const response = await fetch(url.toString(), {
       method: "GET",
       headers: { "x-goog-api-key": key },
       signal,
     });
-    if (!response.ok) return { reason: "http-error", status: response.status };
+    if (!response.ok) {
+      const failure = { reason: "http-error", status: response.status };
+      let json;
+      try {
+        json = await response.json();
+      } catch {
+        // HTTP status and Retry-After are useful even without a JSON error body.
+      }
+      signal.throwIfAborted();
+      const { kind, retryAfterMs, quota } = classifyError(response, json, Date.now());
+      return kind === "rate-limit" || kind === "invalid-key"
+        ? { ...failure, kind, retryAfterMs, quota }
+        : failure;
+    }
 
     let page;
     try {
@@ -452,8 +486,10 @@ function commitGeminiCatalog(entries) {
   return geminiCatalog;
 }
 
-function geminiCatalogFailure(reason) {
-  return { ok: false, reason, catalog: geminiCatalog };
+function geminiCatalogFailure(reason, generation = getGeminiCredentialGeneration()) {
+  return generation === getGeminiCredentialGeneration()
+    ? { ok: false, reason, catalog: geminiCatalog }
+    : { ok: false, reason: "credential-changed", catalog: null };
 }
 
 /** Give each caller its own wait limit, independently of the shared refresh. */
@@ -471,33 +507,51 @@ async function waitForGeminiRefresh(promise, timeoutMs, onTimeout) {
   }
 }
 
-async function loadGeminiCatalog(key, timeoutMs) {
+async function loadGeminiCatalog(key, generation, timeoutMs) {
   const controller = new AbortController();
   const pageResult = await waitForGeminiRefresh(
-    fetchGeminiPages(key, controller.signal).catch(() => ({ reason: "network-error" })),
+    fetchGeminiPages(key, generation, controller.signal).catch(() => ({ reason: "network-error" })),
     timeoutMs,
     () => {
       controller.abort();
       return { reason: "timeout" };
     },
   );
-  if (!pageResult.models) return { ok: false, ...pageResult, catalog: geminiCatalog };
+  if (generation !== getGeminiCredentialGeneration())
+    return { ok: false, reason: "credential-changed", catalog: null };
+  if (!pageResult.models) {
+    const now = Date.now();
+    const result = { ok: false, ...pageResult, catalog: geminiCatalog };
+    let wait;
+    if (pageResult.kind === "rate-limit") {
+      wait = quotaWait(pageResult, pageResult.quota?.violations ?? [], now);
+    } else if (pageResult.kind === "invalid-key") {
+      wait = { reason: "invalid-key", retryAt: now + 60_000 };
+    } else if (!geminiCatalog) {
+      wait = { reason: result.reason, retryAt: now + 15_000 };
+    }
+    geminiRefreshFailure = wait ? { result, wait } : null;
+    return result;
+  }
+  geminiRefreshFailure = null;
   return { ok: true, catalog: commitGeminiCatalog(pageResult.models) };
 }
 
 /** Load the last complete catalog atomically. Explicit timeouts bound only the caller. */
 function refreshGeminiCatalog({ timeoutMs } = {}) {
+  const generation = getGeminiCredentialGeneration();
+  if (getGeminiCatalogWait()) return Promise.resolve(geminiRefreshFailure.result);
   if (timeoutMs <= 0) return Promise.resolve(geminiCatalogFailure("timeout"));
 
   if (!geminiRefresh?.pending) {
-    const key = process.env.GEMINI_API_KEY || "";
-    if (!key) return Promise.resolve(geminiCatalogFailure("missing-key"));
+    if (!geminiKey) return Promise.resolve(geminiCatalogFailure("missing-key"));
 
     const budgetMs = discoverBudgetMs();
     const refresh = { pending: true };
     geminiRefresh = refresh;
     refresh.promise = loadGeminiCatalog(
-      key,
+      geminiKey,
+      generation,
       Number.isFinite(budgetMs) && budgetMs > 0 ? budgetMs : 8000,
     ).finally(() => {
       refresh.pending = false;
@@ -506,7 +560,7 @@ function refreshGeminiCatalog({ timeoutMs } = {}) {
 
   const { promise } = geminiRefresh;
   return Number.isFinite(timeoutMs)
-    ? waitForGeminiRefresh(promise, timeoutMs, () => geminiCatalogFailure("timeout"))
+    ? waitForGeminiRefresh(promise, timeoutMs, () => geminiCatalogFailure("timeout", generation))
     : promise;
 }
 
@@ -514,11 +568,13 @@ function refreshGeminiCatalog({ timeoutMs } = {}) {
  *  (including a failed attempt) satisfies recovery for peers on the same snapshot.
  *  An optional earlier wait boundary reserves part of the request for a fallback. */
 function createGeminiCatalogRecovery(deadlineAt) {
+  const generation = getGeminiCredentialGeneration();
   const observedRefresh = geminiRefresh;
   const refreshWasPending = observedRefresh?.pending;
   let used = false;
   return (status, waitUntil = deadlineAt) => {
     if (used || (status !== 404 && status !== 410)) return null;
+    if (generation !== getGeminiCredentialGeneration()) return null;
     const remainingMs = Math.min(deadlineAt, waitUntil) - Date.now();
     if (!(remainingMs > 0)) return null;
     used = true;
@@ -526,18 +582,24 @@ function createGeminiCatalogRecovery(deadlineAt) {
       geminiRefresh && (refreshWasPending || geminiRefresh !== observedRefresh)
         ? geminiRefresh.promise
         : refreshGeminiCatalog();
-    return waitForGeminiRefresh(promise, remainingMs, () => geminiCatalogFailure("timeout"));
+    return waitForGeminiRefresh(promise, remainingMs, () =>
+      geminiCatalogFailure("timeout", generation),
+    );
   };
 }
 
-/** For tests after outstanding refreshes have settled. */
+/** Retire the current catalog, refresh and failure state together. */
 function resetGeminiCatalog() {
+  credentialGeneration += 1;
   geminiCatalog = null;
   geminiRefresh = null;
+  geminiRefreshFailure = null;
 }
 
 module.exports = {
   getGeminiCatalog,
+  getGeminiCatalogWait,
+  getGeminiCredentialGeneration,
   refreshGeminiCatalog,
   createGeminiCatalogRecovery,
   resetGeminiCatalog,

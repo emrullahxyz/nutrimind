@@ -1,27 +1,11 @@
 "use strict";
 
+const { quotaWait, nextPacificMidnight } = require("./aiGemini.js");
+
 const BUDGET_MS = 25_000;
 const MAX_CANDIDATES = 3;
 const MISSING_WAIT_MS = 5 * 60_000;
 const TRANSIENT_WAIT_MS = 15_000;
-const PACIFIC = new Intl.DateTimeFormat("en-US", {
-  timeZone: "America/Los_Angeles",
-  year: "numeric",
-  month: "numeric",
-  day: "numeric",
-  timeZoneName: "shortOffset",
-});
-
-function nextPacificMidnight(now) {
-  const parts = (at) =>
-    Object.fromEntries(PACIFIC.formatToParts(at).map(({ type, value }) => [type, value]));
-  const { year, month, day } = parts(now);
-  const nextDate = Date.UTC(Number(year), Number(month) - 1, Number(day) + 1);
-  // Both Pacific offsets put local midnight shortly before this reference instant.
-  const offsetHours = Number(parts(nextDate + 8.5 * 3_600_000).timeZoneName.slice(3));
-  return nextDate - offsetHours * 3_600_000;
-}
-
 function modelId(value) {
   return value ? "models/" + value.replace(/^models\//, "") : null;
 }
@@ -37,25 +21,6 @@ function isProjectLimit({ quotaDimensions, quotaId = "", quotaMetric = "" }) {
     !dimension.includes("permodel") &&
     !metric.includes("permodel")
   );
-}
-
-function isDaily({ quotaId = "", quotaMetric = "" }) {
-  return (
-    /per[ _-]?day|daily|(?:^|[_-])rpd(?:$|[_-])/i.test(quotaId + " " + quotaMetric) ||
-    /^rpd$/i.test(quotaId)
-  );
-}
-
-function quotaWait(result, limits, now) {
-  const daily = limits.some(isDaily);
-  const minute = limits.some(({ quotaId = "", quotaMetric = "" }) =>
-    /per[ _-]?minute|(?:^|[ _-])(?:rpm|tpm)(?:$|[ _-])/i.test(quotaId + " " + quotaMetric),
-  );
-  const retryAt = Math.max(
-    now + (result.retryAfterMs || (minute ? 60_000 : TRANSIENT_WAIT_MS)),
-    daily ? nextPacificMidnight(now) : 0,
-  );
-  return { reason: "rate-limit", retryAt, limits };
 }
 
 function failure(kind, retryAt, now = Date.now()) {
@@ -87,20 +52,27 @@ function createGeminiRouting({
   runVerifiedGemini,
   runGeminiProbeRound,
   getApiKey,
+  getCredentialGeneration = getApiKey,
+  getGeminiCatalogWait = () => null,
 }) {
-  const observed = new WeakMap();
+  let observed = new WeakMap();
   const quotaById = new Map();
   const activeByMode = new Map();
   const lastTried = { text: new Map(), vision: new Map() };
   let sequence = 0;
   let projectWait;
   let keyWait;
-  let key;
+  let generation;
 
-  function currentKey() {
-    const current = getApiKey();
-    if (current !== key) {
-      key = current;
+  function currentCredential() {
+    const current = getCredentialGeneration();
+    if (current !== generation) {
+      generation = current;
+      observed = new WeakMap();
+      activeByMode.clear();
+      lastTried.text.clear();
+      lastTried.vision.clear();
+      sequence = 0;
       keyWait = null;
       projectWait = null;
       quotaById.clear();
@@ -128,7 +100,8 @@ function createGeminiRouting({
   function globalWait(now) {
     if (keyWait?.retryAt > now) return keyWait;
     if (projectWait?.retryAt > now) return projectWait;
-    return null;
+    const catalogWait = getGeminiCatalogWait(now);
+    return !getGeminiCatalog() || catalogWait?.reason === "invalid-key" ? catalogWait : null;
   }
 
   function rememberWait(previous, next, now) {
@@ -137,8 +110,8 @@ function createGeminiRouting({
       : next;
   }
 
-  function record(model, mode, result, requestKey) {
-    if (requestKey !== currentKey()) return;
+  function record(model, mode, result, requestCredential) {
+    if (requestCredential !== currentCredential()) return;
     const now = Date.now();
     const state = stateFor(model);
     if (result.ok) {
@@ -160,9 +133,19 @@ function createGeminiRouting({
       const capability = getGeminiCapability(model, mode);
       for (const limit of scoped) {
         const id = modelId(limit.quotaDimensions?.model) || actualId(model, capability) || model.id;
-        const entries = byId.get(id) ?? [];
-        entries.push(limit);
-        byId.set(id, entries);
+        const alias = getGeminiCatalog()?.candidates.find((candidate) => candidate.id === id);
+        const affected = new Set([id]);
+        if (alias) {
+          for (const inputMode of ["text", "vision"]) {
+            const runtime = actualId(alias, getGeminiCapability(alias, inputMode));
+            if (runtime) affected.add(runtime);
+          }
+        }
+        for (const name of affected) {
+          const entries = byId.get(name) ?? [];
+          entries.push(limit);
+          byId.set(name, entries);
+        }
       }
       if (!scoped.length) byId.set(actualId(model, capability) || model.id, []);
       for (const [id, evidence] of byId) {
@@ -219,14 +202,17 @@ function createGeminiRouting({
   }
 
   async function routeGemini(mode, input, { deadlineAt = Date.now() + BUDGET_MS } = {}) {
-    const requestKey = currentKey();
-    if (!requestKey) return failure("missing-key");
+    const requestCredential = currentCredential();
+    if (!getApiKey()) return failure("missing-key");
     const firstWait = globalWait(Date.now());
     if (firstWait) return failure(firstWait.reason, firstWait.retryAt);
     if (!getGeminiCatalog()) {
       const refreshed = await refreshGeminiCatalog({ timeoutMs: deadlineAt - Date.now() });
-      if (!refreshed.ok)
-        return failure(refreshed.reason === "http-error" ? "provider-error" : refreshed.reason);
+      if (requestCredential !== currentCredential()) return failure("credential-changed");
+      if (!refreshed.ok) {
+        const wait = globalWait(Date.now());
+        return wait ? failure(wait.reason, wait.retryAt) : failure(refreshed.reason);
+      }
     }
     const recover = createGeminiCatalogRecovery(deadlineAt);
     const attemptedNames = new Set();
@@ -234,7 +220,7 @@ function createGeminiRouting({
     let lastFailure;
     for (let count = 0; count < MAX_CANDIDATES && Date.now() < deadlineAt; count += 1) {
       const now = Date.now();
-      if (globalWait(now) || requestKey !== currentKey()) break;
+      if (globalWait(now) || requestCredential !== currentCredential()) break;
       const [candidate, fallback] = eligible(mode, attemptedNames, attemptedRuntime, now);
       if (!candidate) break;
       const { model, actual } = candidate;
@@ -250,11 +236,12 @@ function createGeminiRouting({
           deadlineAt: attemptDeadline,
           maxMs: Math.min(10_000, Math.ceil((attemptDeadline - now) / 2)),
           takeAttempt: () =>
-            requestKey === currentKey() &&
+            requestCredential === currentCredential() &&
             !globalWait(Date.now()) &&
             !findQuota(model, getGeminiCapability(model, mode), Date.now()),
         });
-        record(model, mode, proof, requestKey);
+        if (requestCredential !== currentCredential()) return failure("credential-changed");
+        record(model, mode, proof, requestCredential);
         if (!proof.ok) {
           lastFailure = proof;
           if (proof.upstream === 404 || proof.upstream === 410) {
@@ -266,7 +253,7 @@ function createGeminiRouting({
       }
       const runtime = actualId(model, capability) || actual;
       const checkedAt = Date.now();
-      if (globalWait(checkedAt) || requestKey !== currentKey()) break;
+      if (globalWait(checkedAt) || requestCredential !== currentCredential()) break;
       if (checkedAt >= attemptDeadline || findQuota(model, capability, checkedAt)) continue;
       if (
         runtime &&
@@ -278,7 +265,8 @@ function createGeminiRouting({
         ...input,
         deadlineAt: attemptDeadline,
       });
-      record(model, mode, result, requestKey);
+      if (requestCredential !== currentCredential()) return failure("credential-changed");
+      record(model, mode, result, requestCredential);
       if (result.ok) {
         activeByMode.set(mode, { model, modelVersion: result.modelVersion });
         return { status: 200, body: result.body };
@@ -289,6 +277,7 @@ function createGeminiRouting({
         await recover(result.upstream, attemptDeadline);
       }
     }
+    if (requestCredential !== currentCredential()) return failure("credential-changed");
     const now = Date.now();
     const wait = globalWait(now);
     if (wait) return failure(wait.reason, wait.retryAt, now);
@@ -307,27 +296,28 @@ function createGeminiRouting({
   }
 
   async function probeGeminiRoutingRound(models) {
-    const requestKey = currentKey();
-    if (!requestKey || globalWait(Date.now())) return;
+    const requestCredential = currentCredential();
+    if (!getApiKey() || globalWait(Date.now())) return;
     return runGeminiProbeRound(models, {
       allow(model, mode) {
         const now = Date.now();
         return (
-          requestKey === currentKey() &&
+          requestCredential === currentCredential() &&
           !globalWait(now) &&
           !findQuota(model, getGeminiCapability(model, mode), now) &&
           !(stateFor(model).lastWait?.retryAt > now)
         );
       },
       onResult(model, mode, result) {
-        record(model, mode, result, requestKey);
+        record(model, mode, result, requestCredential);
       },
     });
   }
 
   function geminiRoutingSnapshot() {
     const now = Date.now();
-    const current = currentKey();
+    currentCredential();
+    const current = getApiKey();
     const catalog = getGeminiCatalog();
     const safe = (value) =>
       typeof value === "string" &&
