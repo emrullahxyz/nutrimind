@@ -469,20 +469,29 @@ async function loadGeminiCatalog(key, timeoutMs) {
   return { ok: true, catalog: commitGeminiCatalog(pageResult.models) };
 }
 
-/** Load the last complete catalog atomically. Overlapping refreshes share one promise. */
-function refreshGeminiCatalog({ timeoutMs = discoverBudgetMs() } = {}) {
-  if (geminiRefresh?.pending) return geminiRefresh.promise;
-  const key = process.env.GEMINI_API_KEY || "";
-  if (!key) return Promise.resolve(geminiCatalogFailure("missing-key"));
+/** Load the last complete catalog atomically. Explicit timeouts bound only the caller. */
+function refreshGeminiCatalog({ timeoutMs } = {}) {
   if (timeoutMs <= 0) return Promise.resolve(geminiCatalogFailure("timeout"));
 
-  const refresh = { pending: true };
-  geminiRefresh = refresh;
-  const timeout = Number.isFinite(timeoutMs) ? timeoutMs : 8000;
-  refresh.promise = loadGeminiCatalog(key, timeout).finally(() => {
-    refresh.pending = false;
-  });
-  return refresh.promise;
+  if (!geminiRefresh?.pending) {
+    const key = process.env.GEMINI_API_KEY || "";
+    if (!key) return Promise.resolve(geminiCatalogFailure("missing-key"));
+
+    const budgetMs = discoverBudgetMs();
+    const refresh = { pending: true };
+    geminiRefresh = refresh;
+    refresh.promise = loadGeminiCatalog(
+      key,
+      Number.isFinite(budgetMs) && budgetMs > 0 ? budgetMs : 8000,
+    ).finally(() => {
+      refresh.pending = false;
+    });
+  }
+
+  const { promise } = geminiRefresh;
+  return Number.isFinite(timeoutMs)
+    ? waitForGeminiRefresh(promise, timeoutMs, () => geminiCatalogFailure("timeout"))
+    : promise;
 }
 
 /** Create when the request takes its catalog snapshot. A refresh since that point
@@ -499,7 +508,7 @@ function createGeminiCatalogRecovery(deadlineAt) {
     const promise =
       geminiRefresh && (refreshWasPending || geminiRefresh !== observedRefresh)
         ? geminiRefresh.promise
-        : refreshGeminiCatalog({ timeoutMs: Math.min(remainingMs, discoverBudgetMs() || 8000) });
+        : refreshGeminiCatalog();
     return waitForGeminiRefresh(promise, remainingMs, () => geminiCatalogFailure("timeout"));
   };
 }

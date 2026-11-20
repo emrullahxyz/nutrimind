@@ -422,14 +422,14 @@ describe("Gemini catalog", () => {
   });
 
   it("bounds all pages by one timeout and returns the startup failure reason", async () => {
-    const api = await loadModels(configured);
+    const api = await loadModels({ ...configured, NUTRI_AI_DISCOVER_BUDGET_MS: "25" });
     const fetchMock = vi
       .fn()
       .mockResolvedValueOnce(page([], "next"))
       .mockImplementationOnce(() => new Promise(() => {}));
     vi.stubGlobal("fetch", fetchMock);
 
-    expect(await api.refreshGeminiCatalog({ timeoutMs: 25 })).toEqual({
+    expect(await api.refreshGeminiCatalog()).toEqual({
       ok: false,
       reason: "timeout",
       catalog: null,
@@ -520,6 +520,41 @@ describe("Gemini catalog recovery deadlines", () => {
 
       complete(Response.json({ models: [] }));
       expect((await refresh).ok).toBe(true);
+      expect(fetchMock).toHaveBeenCalledTimes(1);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+});
+
+describe("Gemini refresh waiters", () => {
+  it("keeps the shared fetch alive when the caller starting recovery has the shortest deadline", async () => {
+    const api = await loadModels({ GEMINI_API_KEY: "test_gemini_key" });
+    let complete;
+    const fetchMock = vi.fn().mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          complete = resolve;
+        }),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+    vi.useFakeTimers();
+    try {
+      const recoverShort = api.createGeminiCatalogRecovery(Date.now() + 20);
+      const recoverLong = api.createGeminiCatalogRecovery(Date.now() + 200);
+      const shortRecovery = recoverShort(404);
+      const longRecovery = recoverLong(410);
+      const ordinaryWaiter = api.refreshGeminiCatalog({ timeoutMs: 35 });
+
+      await vi.advanceTimersByTimeAsync(20);
+      expect(await shortRecovery).toEqual({ ok: false, reason: "timeout", catalog: null });
+      expect(fetchMock.mock.calls[0][1].signal.aborted).toBe(false);
+      await vi.advanceTimersByTimeAsync(15);
+      expect(await ordinaryWaiter).toEqual({ ok: false, reason: "timeout", catalog: null });
+      expect(fetchMock.mock.calls[0][1].signal.aborted).toBe(false);
+
+      complete(Response.json({ models: [] }));
+      expect((await longRecovery).ok).toBe(true);
       expect(fetchMock).toHaveBeenCalledTimes(1);
     } finally {
       vi.useRealTimers();
