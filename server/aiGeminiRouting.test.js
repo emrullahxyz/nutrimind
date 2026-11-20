@@ -155,6 +155,28 @@ describe("Gemini routing", () => {
     expect(f.runVerifiedGemini.mock.calls.at(-1)[2].deadlineAt).toBe(start + 25_000);
   });
 
+  it.each([
+    [15_000, 502, "ai_provider_error"],
+    [25_000, 504, "ai_timeout"],
+  ])(
+    "classifies a 503 followed by a fallback that times out at %d ms",
+    async (duration, status, code) => {
+      vi.useFakeTimers();
+      const f = fixture(["first", "second"]);
+      const start = Date.now();
+      f.runVerifiedGemini
+        .mockResolvedValueOnce({ ok: false, kind: "unavailable", upstream: 503 })
+        .mockImplementationOnce(async () => {
+          await new Promise((resolve) => setTimeout(resolve, duration));
+          return { ok: false, kind: "timeout" };
+        });
+      const pending = f.routeGemini("text", {});
+      await vi.advanceTimersByTimeAsync(duration);
+      expect(await pending).toMatchObject({ status, body: { code } });
+      expect(Date.now() - start).toBe(duration);
+    },
+  );
+
   it("keeps attempted names across replacement records and progresses through fast catalog failures", async () => {
     const f = fixture(["a", "b", "c", "d"], false);
     f.ensureGeminiCapability.mockImplementation(async (model) =>

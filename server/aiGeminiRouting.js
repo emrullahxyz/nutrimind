@@ -43,6 +43,19 @@ function failure(kind, retryAt, now = Date.now()) {
   return { status, body: { error, code } };
 }
 
+function failurePriority(kind) {
+  return (
+    {
+      "bad-response": 4,
+      "provider-error": 4,
+      unavailable: 4,
+      timeout: 3,
+      network: 2,
+      "rate-limit": 0,
+    }[kind] ?? (kind ? 1 : 0)
+  );
+}
+
 function createGeminiRouting({
   getGeminiCatalog,
   refreshGeminiCatalog,
@@ -221,7 +234,10 @@ function createGeminiRouting({
     const recover = createGeminiCatalogRecovery(deadlineAt);
     const attemptedNames = new Set();
     const attemptedRuntime = new Set();
-    let lastFailure;
+    let failureKind;
+    const rememberFailure = (kind) => {
+      if (failurePriority(kind) > failurePriority(failureKind)) failureKind = kind;
+    };
     for (let count = 0; count < MAX_CANDIDATES && Date.now() < deadlineAt; count += 1) {
       const now = Date.now();
       if (deadlineAt - now < minStepMs) break;
@@ -248,7 +264,7 @@ function createGeminiRouting({
         if (requestCredential !== currentCredential()) return failure("credential-changed");
         record(model, mode, proof, requestCredential);
         if (!proof.ok) {
-          lastFailure = proof;
+          rememberFailure(proof.kind);
           if (proof.upstream === 404 || proof.upstream === 410) {
             await recover(proof.upstream, attemptDeadline);
           }
@@ -273,10 +289,15 @@ function createGeminiRouting({
       if (requestCredential !== currentCredential()) return failure("credential-changed");
       record(model, mode, result, requestCredential);
       if (result.ok) {
-        activeByMode.set(mode, { model, modelVersion: result.modelVersion });
+        const previous = activeByMode.get(mode);
+        const modelVersion =
+          result.modelVersion ??
+          getGeminiCapability(model, mode).modelVersion ??
+          (previous?.model === model ? previous.modelVersion : null);
+        activeByMode.set(mode, { model, modelVersion });
         return { status: 200, body: result.body };
       }
-      lastFailure = result;
+      rememberFailure(result.kind);
       if (result.kind === "invalid-image") return failure(result.kind);
       if (result.upstream === 404 || result.upstream === 410) {
         await recover(result.upstream, attemptDeadline);
@@ -296,10 +317,10 @@ function createGeminiRouting({
         now,
       );
     }
-    if (now >= deadlineAt || (!lastFailure && deadlineAt - now < minStepMs)) {
+    if (now >= deadlineAt || (!failureKind && deadlineAt - now < minStepMs)) {
       return failure("timeout");
     }
-    return failure(lastFailure?.kind === "rate-limit" ? "provider-error" : lastFailure?.kind);
+    return failure(failureKind);
   }
 
   async function probeGeminiRoutingRound(models) {

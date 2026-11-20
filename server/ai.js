@@ -475,7 +475,7 @@ const geminiRouting = require("./aiGeminiRouting.js").createGeminiRouting({
   runVerifiedGemini: (model, mode, input) =>
     geminiGeneration.runVerifiedGemini(model, mode, {
       ...input,
-      deadlineAt: Math.min(input.deadlineAt, Date.now() + AI_TIMEOUT_MS),
+      maxMs: AI_TIMEOUT_MS,
     }),
   getGeminiCatalog: aiModels.getGeminiCatalog,
   getGeminiCatalogWait: aiModels.getGeminiCatalogWait,

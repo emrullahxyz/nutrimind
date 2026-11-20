@@ -298,11 +298,12 @@ function createGeminiGeneration({
   }
 
   function stamp(slot, format, result) {
+    if (result.modelVersion) slot.modelVersion = result.modelVersion;
     slot.proof = Object.freeze({
       state: "verified",
       format,
       verifiedAt: Date.now(),
-      modelVersion: result.modelVersion,
+      modelVersion: slot.modelVersion ?? null,
       latencyMs: result.latencyMs,
     });
     slot.preferred = format;

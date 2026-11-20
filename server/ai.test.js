@@ -260,6 +260,45 @@ describe("Gemini through production AI entry points", () => {
     }
   });
 
+  it("retains the known runtime when a successful response omits it", async () => {
+    const ai = await loadAi({ NUTRIMIND_LLM_PROVIDER: "gemini", GEMINI_API_KEY: "gemini-key" });
+    vi.stubGlobal(
+      "fetch",
+      mockGemini([mealItem], () =>
+        Response.json({
+          candidates: [{ content: { parts: [{ text: JSON.stringify({ items: [mealItem] }) }] } }],
+        }),
+      ),
+    );
+    expect((await ai.parseMealText(textInput)).status).toBe(200);
+    const snapshot = ai.aiLog.snapshot().gemini;
+    expect(snapshot.active.text.modelVersion).toBe("gemini-real-001");
+    expect(snapshot.models[0].text.modelVersion).toBe("gemini-real-001");
+
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(() =>
+        Response.json({
+          models: [
+            {
+              name: "models/gemini-first",
+              version: "replacement",
+              supportedGenerationMethods: ["generateContent"],
+            },
+          ],
+        }),
+      ),
+    );
+    expect((await ai.aiModels.refreshGeminiCatalog()).ok).toBe(true);
+    expect(ai.aiLog.snapshot().gemini).toMatchObject({
+      active: { text: null },
+      models: [{ text: { state: "untested", modelVersion: null } }],
+    });
+
+    vi.stubEnv("GEMINI_API_KEY", "rotated-gemini-key");
+    expect(ai.aiLog.snapshot().gemini).toMatchObject({ active: { text: null }, models: [] });
+  });
+
   it("preserves provider and malformed-response client errors", async () => {
     vi.spyOn(console, "log").mockImplementation(() => {});
     const ai = await loadAi({ NUTRIMIND_LLM_PROVIDER: "gemini", GEMINI_API_KEY: "gemini-key" });
