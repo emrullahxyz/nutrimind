@@ -40,6 +40,7 @@ async function fetchGeminiPages(key, generation, signal) {
     const response = await fetch(url.toString(), {
       method: "GET",
       headers: { "x-goog-api-key": key },
+      redirect: "error",
       signal,
     });
     if (!response.ok) {

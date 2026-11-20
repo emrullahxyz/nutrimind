@@ -63,6 +63,46 @@ function fixture(names, verified = true) {
 afterEach(() => vi.useRealTimers());
 
 describe("Gemini routing", () => {
+  it.each([
+    ["replacing", "old-runtime", false],
+    ["reintroducing", "alpha", true],
+  ])("releases an alias quota after %s its catalog record", async (_, dimension, remove) => {
+    const f = fixture(["alpha", "mirror"]);
+    const [alpha, mirror] = f.catalog.candidates;
+    alpha.actual = mirror.actual = "old-runtime";
+    f.runVerifiedGemini.mockResolvedValueOnce(limited("RequestsPerDayPerModel", dimension));
+    await expect(f.routeGemini("text", {})).resolves.toMatchObject({ status: 429 });
+    if (remove) {
+      f.replace([mirror]);
+      await expect(f.routeGemini("text", {})).resolves.toMatchObject({ status: 429 });
+    }
+
+    const replacement = {
+      ...alpha,
+      version: remove ? alpha.version : "002",
+      actual: "new-runtime",
+    };
+    f.replace([replacement, mirror]);
+    await expect(f.routeGemini("text", {})).resolves.toMatchObject({ status: 200 });
+    expect(f.runVerifiedGemini.mock.calls.map(([model]) => model)).toEqual([alpha, replacement]);
+    expect(f.geminiRoutingSnapshot().models[1].waiting).toMatchObject({ reason: "rate-limit" });
+  });
+
+  it("preserves explicitly named runtime quota for direct models and newly verified aliases", async () => {
+    const f = fixture(["request-path", "physical-target"], false);
+    const [request, target] = f.catalog.candidates;
+    f.ensureGeminiCapability.mockResolvedValueOnce(
+      limited("RequestsPerDayPerModel", "physical-target"),
+    );
+    await expect(f.routeGemini("text", {})).resolves.toMatchObject({ status: 429 });
+
+    const alias = { id: "models/new-alias", actual: "physical-target" };
+    f.replace([{ ...target, version: "002" }, alias]);
+    await expect(f.routeGemini("text", {})).resolves.toMatchObject({ status: 429 });
+    expect(f.ensureGeminiCapability.mock.calls.map(([model]) => model)).toEqual([request, alias]);
+    expect(f.runVerifiedGemini).not.toHaveBeenCalled();
+  });
+
   it("shares named runtime quota with aliases and vision, then reuses after the reported delay", async () => {
     vi.useFakeTimers();
     const f = fixture(["alias-a", "alias-b", "independent"]);
@@ -406,6 +446,14 @@ describe("Gemini shared failure and credential boundaries", () => {
     ai.aiModels.resetGeminiCatalog();
     vi.unstubAllEnvs();
     vi.unstubAllGlobals();
+  });
+  it("returns the unreachable error when the cold catalog request fails on the network", async () => {
+    vi.stubEnv("GEMINI_API_KEY", "cold-network-credential");
+    vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new TypeError("fetch failed")));
+    await expect(ai.routeGemini("text", {})).resolves.toMatchObject({
+      status: 504,
+      body: { code: "ai_unreachable" },
+    });
   });
   it("shares quota when the dimension is another known alias", async () => {
     const f = fixture(["alias-a", "alias-b", "alias-c", "independent"]);

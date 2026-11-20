@@ -64,9 +64,15 @@ describe("Gemini catalog", () => {
       "models/first",
       "models/unseen-name",
     ]);
-    const [url, init] = fetchMock.mock.calls[0];
+    const [url] = fetchMock.mock.calls[0];
     expect(String(url)).toBe("https://generativelanguage.googleapis.com/v1beta/models");
-    expect(init).toMatchObject({ method: "GET", headers: { "x-goog-api-key": "test_gemini_key" } });
+    for (const [, init] of fetchMock.mock.calls) {
+      expect(init).toMatchObject({
+        method: "GET",
+        headers: { "x-goog-api-key": "test_gemini_key" },
+        redirect: "error",
+      });
+    }
     expect(new URL(fetchMock.mock.calls[1][0]).searchParams.get("pageToken")).toBe("next & token");
   });
 

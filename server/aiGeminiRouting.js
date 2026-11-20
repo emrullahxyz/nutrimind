@@ -40,7 +40,7 @@ function failure(kind, retryAt, now = Date.now()) {
     network: [504, "ai_unreachable", "AI service unreachable"],
     "bad-response": [502, "ai_bad_response", "AI service returned an unexpected response"],
     "invalid-image": [400, "ai_bad_request", "AI service could not process this image"],
-  }[kind] || [502, "ai_provider_error", "AI service error"];
+  }[kind === "network-error" ? "network" : kind] || [502, "ai_provider_error", "AI service error"];
   return { status, body: { error, code } };
 }
 
@@ -104,9 +104,11 @@ function createGeminiRouting({
   }
 
   function findQuota(model, capability, now) {
-    const requested = quotaById.get(model.id);
-    const actual = quotaById.get(actualId(model, capability));
-    return [requested, actual]
+    return [
+      stateFor(model).quota,
+      quotaById.get(model.id),
+      quotaById.get(actualId(model, capability)),
+    ]
       .filter((wait) => wait?.retryAt > now)
       .sort((a, b) => b.retryAt - a.retryAt)[0];
   }
@@ -143,33 +145,44 @@ function createGeminiRouting({
         projectWait = rememberWait(projectWait, quotaWait(result, project, now), now);
       const scoped = limits.filter((limit) => !isProjectLimit(limit));
       if (project.length && !scoped.length) return;
-      const byId = new Map();
-      const capability = getGeminiCapability(model, mode);
+      const byTarget = new Map();
+      const actual = actualId(model, getGeminiCapability(model, mode));
       for (const limit of scoped) {
-        const id = modelId(limit.quotaDimensions?.model) || actualId(model, capability) || model.id;
-        const alias = getGeminiCatalog()?.candidates.find((candidate) => candidate.id === id);
-        const affected = new Set([id]);
-        if (alias) {
+        const named = modelId(limit.quotaDimensions?.model);
+        const affected = new Set();
+        const target =
+          named === model.id
+            ? model
+            : named && getGeminiCatalog()?.candidates.find((candidate) => candidate.id === named);
+        if (target) {
           for (const inputMode of ["text", "vision"]) {
-            const runtime = actualId(alias, getGeminiCapability(alias, inputMode));
+            const runtime = actualId(target, getGeminiCapability(target, inputMode));
             if (runtime) affected.add(runtime);
           }
         }
-        for (const name of affected) {
-          const entries = byId.get(name) ?? [];
+        // A name known to point only to distinct runtimes is scoped to its catalog record.
+        const quotaTarget = affected.size && !affected.has(named) ? target : named || actual;
+        if (quotaTarget) affected.add(quotaTarget);
+        for (const target of affected) {
+          const entries = byTarget.get(target) ?? [];
           entries.push(limit);
-          byId.set(name, entries);
+          byTarget.set(target, entries);
         }
       }
-      if (!scoped.length) byId.set(actualId(model, capability) || model.id, []);
-      for (const [id, evidence] of byId) {
+      if (!scoped.length && actual) byTarget.set(actual, []);
+      for (const [target, evidence] of byTarget) {
         const wait = quotaWait(result, evidence, now);
-        quotaById.set(id, rememberWait(quotaById.get(id), wait, now));
+        if (typeof target === "string") {
+          quotaById.set(target, rememberWait(quotaById.get(target), wait, now));
+        } else {
+          const targetState = stateFor(target);
+          targetState.quota = rememberWait(targetState.quota, wait, now);
+        }
       }
       // The responding path consumed the quota even when this is the first evidence
       // of a runtime name and it differs from the requested catalog name.
       const wait = quotaWait(result, scoped, now);
-      quotaById.set(model.id, rememberWait(quotaById.get(model.id), wait, now));
+      state.quota = rememberWait(state.quota, wait, now);
       return;
     }
     const { kind, upstream, retryAfterMs } = result;
