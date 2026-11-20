@@ -354,7 +354,167 @@ function setDiscovered(provider, mode, model) {
   }
 }
 
+const GEMINI_MODELS_URL = "https://generativelanguage.googleapis.com/v1beta/models";
+const MAX_TIMER_MS = 2_147_483_647;
+
+let geminiCatalog = null;
+let geminiRefresh = null;
+
+function getGeminiCatalog() {
+  return geminiCatalog;
+}
+
+async function fetchGeminiPages(key, signal) {
+  const models = new Map();
+  const seenTokens = new Set();
+  const url = new URL(GEMINI_MODELS_URL);
+  while (true) {
+    const response = await fetch(url.toString(), {
+      method: "GET",
+      headers: { "x-goog-api-key": key },
+      signal,
+    });
+    if (!response.ok) return { reason: "http-error", status: response.status };
+
+    let page;
+    try {
+      page = await response.json();
+    } catch {
+      return { reason: "invalid-response" };
+    }
+    signal.throwIfAborted();
+    if (!page || typeof page !== "object" || Array.isArray(page)) {
+      return { reason: "invalid-response" };
+    }
+    const { models: entries = [], nextPageToken = "" } = page;
+    if (!Array.isArray(entries) || typeof nextPageToken !== "string") {
+      return { reason: "invalid-response" };
+    }
+    for (const entry of entries) {
+      if (typeof entry?.name !== "string" || !/^models\/[^/?#]+$/.test(entry.name)) {
+        return { reason: "invalid-response" };
+      }
+      const methods = entry.supportedGenerationMethods ?? [];
+      if (!Array.isArray(methods) || methods.some((method) => typeof method !== "string")) {
+        return { reason: "invalid-response" };
+      }
+      models.set(entry.name, {
+        id: entry.name,
+        version: typeof entry.version === "string" ? entry.version : null,
+        methods: [...new Set(methods)].sort(),
+      });
+    }
+    if (!nextPageToken) return { models };
+    if (seenTokens.has(nextPageToken)) return { reason: "repeated-page-token" };
+    seenTokens.add(nextPageToken);
+    url.searchParams.set("pageToken", nextPageToken);
+  }
+}
+
+function commitGeminiCatalog(entries) {
+  const previous = new Map(geminiCatalog?.models.map((model) => [model.id, model]));
+  const models = [...entries.values()].map((model) => {
+    const prior = previous.get(model.id);
+    if (
+      prior &&
+      prior.version === model.version &&
+      prior.methods.length === model.methods.length &&
+      prior.methods.every((method, index) => method === model.methods[index])
+    ) {
+      return prior;
+    }
+    // Capability and routing caches can use a WeakMap keyed by this record.
+    Object.freeze(model.methods);
+    return Object.freeze(model);
+  });
+  geminiCatalog = Object.freeze({
+    revision: (geminiCatalog?.revision ?? 0) + 1,
+    refreshedAt: Date.now(),
+    models: Object.freeze(models),
+    candidates: Object.freeze(models.filter(({ methods }) => methods.includes("generateContent"))),
+  });
+  return geminiCatalog;
+}
+
+function geminiCatalogFailure(reason) {
+  return { ok: false, reason, catalog: geminiCatalog };
+}
+
+/** Give each caller its own wait limit, independently of the shared refresh. */
+async function waitForGeminiRefresh(promise, timeoutMs, onTimeout) {
+  let timer;
+  try {
+    return await Promise.race([
+      promise,
+      new Promise((resolve) => {
+        timer = setTimeout(() => resolve(onTimeout()), Math.min(timeoutMs, MAX_TIMER_MS));
+      }),
+    ]);
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+async function loadGeminiCatalog(key, timeoutMs) {
+  const controller = new AbortController();
+  const pageResult = await waitForGeminiRefresh(
+    fetchGeminiPages(key, controller.signal).catch(() => ({ reason: "network-error" })),
+    timeoutMs,
+    () => {
+      controller.abort();
+      return { reason: "timeout" };
+    },
+  );
+  if (!pageResult.models) return { ok: false, ...pageResult, catalog: geminiCatalog };
+  return { ok: true, catalog: commitGeminiCatalog(pageResult.models) };
+}
+
+/** Load the last complete catalog atomically. Overlapping refreshes share one promise. */
+function refreshGeminiCatalog({ timeoutMs = discoverBudgetMs() } = {}) {
+  if (geminiRefresh?.pending) return geminiRefresh.promise;
+  const key = process.env.GEMINI_API_KEY || "";
+  if (!key) return Promise.resolve(geminiCatalogFailure("missing-key"));
+  if (timeoutMs <= 0) return Promise.resolve(geminiCatalogFailure("timeout"));
+
+  const refresh = { pending: true };
+  geminiRefresh = refresh;
+  const timeout = Number.isFinite(timeoutMs) ? timeoutMs : 8000;
+  refresh.promise = loadGeminiCatalog(key, timeout).finally(() => {
+    refresh.pending = false;
+  });
+  return refresh.promise;
+}
+
+/** Create when the request takes its catalog snapshot. A refresh since that point
+ *  (including a failed attempt) satisfies recovery for peers on the same snapshot. */
+function createGeminiCatalogRecovery(deadlineAt) {
+  const observedRefresh = geminiRefresh;
+  const refreshWasPending = observedRefresh?.pending;
+  let used = false;
+  return (status) => {
+    if (used || (status !== 404 && status !== 410)) return null;
+    const remainingMs = deadlineAt - Date.now();
+    if (!(remainingMs > 0)) return null;
+    used = true;
+    const promise =
+      geminiRefresh && (refreshWasPending || geminiRefresh !== observedRefresh)
+        ? geminiRefresh.promise
+        : refreshGeminiCatalog({ timeoutMs: Math.min(remainingMs, discoverBudgetMs() || 8000) });
+    return waitForGeminiRefresh(promise, remainingMs, () => geminiCatalogFailure("timeout"));
+  };
+}
+
+/** For tests after outstanding refreshes have settled. */
+function resetGeminiCatalog() {
+  geminiCatalog = null;
+  geminiRefresh = null;
+}
+
 module.exports = {
+  getGeminiCatalog,
+  refreshGeminiCatalog,
+  createGeminiCatalogRecovery,
+  resetGeminiCatalog,
   getModel,
   refreshOnFailure,
   invalidate,

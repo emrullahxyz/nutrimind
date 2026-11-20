@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const ENV_KEYS = [
+  "GEMINI_API_KEY",
   "OPENROUTER_API_KEY",
   "OPENCODE_API_KEY",
   "OLLAMA_CLOUD_API_KEY",
@@ -132,5 +133,36 @@ describe("aiDiscovery periyodik model taraması", () => {
     // yalnızca stop'un throw etmemesi + timer'ın temizlenmesi yeterli kabul.
     expect(afterStart).toBeGreaterThanOrEqual(1);
     expect(() => m.stopDiscovery()).not.toThrow();
+  });
+});
+describe("Gemini catalog scheduler", () => {
+  it("fetches only the Gemini catalog on startup, retries an initial failure, then waits six hours", async () => {
+    const discovery = await loadDiscovery({ GEMINI_API_KEY: "test_gemini_key", ...keys });
+    discovery._aiModels.resetGeminiCatalog();
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(new Response(null, { status: 503 }))
+      .mockImplementation(() => Promise.resolve(Response.json({ models: [] })));
+    vi.stubGlobal("fetch", fetchMock);
+    vi.useFakeTimers();
+    const stop = discovery.startGeminiDiscovery();
+    try {
+      await vi.advanceTimersByTimeAsync(0);
+      expect(fetchMock).toHaveBeenCalledTimes(1);
+      await vi.advanceTimersByTimeAsync(60_000);
+      expect(fetchMock).toHaveBeenCalledTimes(2);
+      await vi.advanceTimersByTimeAsync(6 * 60 * 60 * 1000);
+      expect(fetchMock).toHaveBeenCalledTimes(3);
+      for (const [url, { method }] of fetchMock.mock.calls) {
+        expect(String(url)).toBe("https://generativelanguage.googleapis.com/v1beta/models");
+        expect(method).toBe("GET");
+      }
+      stop();
+      await vi.advanceTimersByTimeAsync(6 * 60 * 60 * 1000);
+      expect(fetchMock).toHaveBeenCalledTimes(3);
+    } finally {
+      stop();
+      vi.useRealTimers();
+    }
   });
 });

@@ -122,4 +122,36 @@ function stopDiscovery() {
   }
 }
 
-module.exports = { startDiscovery, stopDiscovery, _aiModels: aiModels };
+const GEMINI_STARTUP_RETRY_MS = 60_000;
+let geminiSchedule = null;
+
+/** Refresh only the authenticated Google catalog, including on startup. */
+function startGeminiDiscovery(intervalMs = DEFAULT_INTERVAL_MS) {
+  if (geminiSchedule || !process.env.GEMINI_API_KEY) return stopGeminiDiscovery;
+  const interval = Math.max(MIN_INTERVAL_MS, Number(intervalMs) || DEFAULT_INTERVAL_MS);
+  const schedule = { timer: null };
+  geminiSchedule = schedule;
+
+  const tick = async () => {
+    const { catalog } = await aiModels.refreshGeminiCatalog();
+    if (geminiSchedule !== schedule) return;
+    schedule.timer = setTimeout(tick, catalog ? interval : GEMINI_STARTUP_RETRY_MS);
+    schedule.timer.unref?.();
+  };
+  void tick();
+  return stopGeminiDiscovery;
+}
+
+function stopGeminiDiscovery() {
+  if (!geminiSchedule) return;
+  clearTimeout(geminiSchedule.timer);
+  geminiSchedule = null;
+}
+
+module.exports = {
+  startDiscovery,
+  stopDiscovery,
+  startGeminiDiscovery,
+  stopGeminiDiscovery,
+  _aiModels: aiModels,
+};
